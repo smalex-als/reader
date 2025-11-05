@@ -8,8 +8,10 @@ const { stat, readdir, readFile, writeFile } = require('node:fs/promises');
 
 const HOST = process.env.HOST || '127.0.0.1';
 const PORT = parseInt(process.env.PORT || '3000', 10);
-const ROOT_DIR = path.resolve(__dirname, '.');
-const DATA_DIR = path.join(ROOT_DIR, 'data');
+const PROJECT_ROOT = path.resolve(__dirname, '.');
+const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
+const STATIC_ROOT = fs.existsSync(path.join(DIST_DIR, 'index.html')) ? DIST_DIR : PROJECT_ROOT;
+const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -122,7 +124,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, ()=>{
   console.log(`Scanned Book Reader server listening on http://${HOST}:${PORT}`);
-  console.log(`Serving from ${ROOT_DIR}`);
+  console.log(`Serving from ${STATIC_ROOT}`);
 });
 
 function resolvePath(urlPath){
@@ -130,8 +132,18 @@ function resolvePath(urlPath){
   if(requested === '/' || requested === ''){
     requested = '/index.html';
   }
-  const candidate = path.resolve(ROOT_DIR, '.' + requested);
-  if(!candidate.startsWith(ROOT_DIR)){
+
+  if(requested.startsWith('/data/')){
+    const relative = requested.slice('/data/'.length);
+    const candidate = path.resolve(DATA_DIR, relative);
+    if(!candidate.startsWith(DATA_DIR)){
+      return null;
+    }
+    return candidate;
+  }
+
+  const candidate = path.resolve(STATIC_ROOT, '.' + requested);
+  if(!candidate.startsWith(STATIC_ROOT)){
     return null;
   }
   return candidate;
@@ -234,7 +246,7 @@ async function handlePageText(req, res, url){
   }
 
   if(!decodedPath.startsWith('/')) decodedPath = '/' + decodedPath;
-  const fsImagePath = path.resolve(ROOT_DIR, '.' + decodedPath);
+  const fsImagePath = path.resolve(DATA_DIR, decodedPath.replace(/^\/?data\//, ''));
   if(!fsImagePath.startsWith(DATA_DIR)){
     sendPlain(res, 400, 'Image path outside data directory');
     logRequest(400, req.method, url.pathname);
@@ -352,7 +364,7 @@ async function handlePageAudio(req, res){
     return;
   }
   if(!decodedPath.startsWith('/')) decodedPath = '/' + decodedPath;
-  const fsImagePath = path.resolve(ROOT_DIR, '.' + decodedPath);
+  const fsImagePath = path.resolve(DATA_DIR, decodedPath.replace(/^\/?data\//, ''));
   if(!fsImagePath.startsWith(DATA_DIR)){
     sendJson(res, 400, { error: 'Image must reside under /data' });
     logRequest(400, req.method, '/api/page-audio');
@@ -460,7 +472,7 @@ async function readRequestBody(req){
 }
 
 function filePathToUrl(fsPath){
-  const relative = path.relative(ROOT_DIR, fsPath).split(path.sep).join('/');
+  const relative = path.relative(PROJECT_ROOT, fsPath).split(path.sep).join('/');
   return '/' + relative;
 }
 

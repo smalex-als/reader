@@ -3,7 +3,7 @@
   --btn:#1f2632; --btn-hover:#2a3343; --border:#263040;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body,#root{height:100%}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji"}
 .app{display:grid;grid-template-rows:auto 1fr auto; height:100%}
 header,footer{background:var(--panel);border-bottom:1px solid var(--border);}

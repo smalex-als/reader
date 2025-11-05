@@ -1,5 +1,5 @@
-import React, { useLayoutEffect, useRef } from 'https://esm.sh/react@18';
-import { initApp } from './main.js';
+import { useLayoutEffect, useRef } from 'react';
+import { initApp } from './lib/initApp.js';
 
 export default function App(){
   const appRef = useRef(null);
@@ -18,7 +18,7 @@ export default function App(){
           <div className="toolbar-group">
             <label className="hint">
               Book
-              <select id="bookSelect" title="Choose a book from the server">
+              <select id="bookSelect" title="Choose a book from the server" defaultValue="">
                 <option value="">Loading…</option>
               </select>
             </label>
@@ -87,8 +87,7 @@ export default function App(){
         <div className="row">
           <div className="hint">Scanned Book Reader • Local-first • No uploads • Stores last page &amp; settings</div>
           <div className="hint" style={{ marginLeft: 'auto' }}>
-            Shortcuts: ←/→ Prev/Next • +/- Zoom • 0 Reset • W/H Fit • R Rotate • I Invert • X Text • P Play • T Thumbs • G Go •{' '}
-            F Fullscreen • Use Book menu to switch volumes
+            Shortcuts: ←/→ Prev/Next • +/- Zoom • 0 Reset • W/H Fit • R Rotate • I Invert • X Text • P Play • T Thumbs • G Go • F Fullscreen • Use Book menu to switch volumes
           </div>
         </div>
       </footer>
