@@ -1,14 +1,63 @@
-export function initApp(rootElement){
-  const container = rootElement instanceof HTMLElement ? rootElement : document.getElementById('app');
+type ZoomMode = 'fit-width' | 'fit-height' | 'custom';
+
+type PageEntry = {
+  name: string;
+  url: string;
+};
+
+type Pan = {
+  x: number;
+  y: number;
+};
+
+interface AppState {
+  books: string[];
+  bookId: string | null;
+  imgs: PageEntry[];
+  idx: number;
+  zoom: number;
+  zoomMode: ZoomMode;
+  angle: number;
+  invert: boolean;
+  brightness: number;
+  contrast: number;
+  thumbsOpen: boolean;
+  pan: Pan;
+}
+
+type StoredState = {
+  bookId?: string | null;
+  idx?: number;
+  zoom?: number;
+  zoomMode?: ZoomMode;
+  invert?: boolean;
+  brightness?: number;
+  contrast?: number;
+  thumbsOpen?: boolean;
+};
+
+type TextCacheEntry = {
+  text: string;
+  source: 'file' | 'ai' | 'none' | 'error';
+};
+
+type AudioCacheEntry = {
+  url: string;
+  source: 'file' | 'ai';
+};
+
+export function initApp(rootElement: HTMLElement | null): () => void {
+  const containerBase = rootElement instanceof HTMLElement ? rootElement : document.getElementById('app');
+  const container = containerBase instanceof HTMLElement ? containerBase : null;
   if(!container){
     console.error('Scanned Book Reader: app root element not found.');
     return () => {};
   }
-  const $ = sel => container.querySelector(sel);
-  const app = {
+  const $ = <T extends Element>(sel: string) => container.querySelector(sel) as T | null;
+  const app: AppState = {
     books: [],
     bookId: null,
-    imgs: [], // {name, url}
+    imgs: [],
     idx: 0,
     zoom: 1,
     zoomMode: 'fit-width',
@@ -17,38 +66,38 @@ export function initApp(rootElement){
     brightness: 100,
     contrast: 100,
     thumbsOpen: false,
-    pan: {x:0, y:0}
+    pan: { x: 0, y: 0 }
   };
 
-  const pageImg = $('#page');
-  const viewer = $('#viewer');
-  const thumbs = $('#thumbs');
-  const pageCounter = $('#pageCounter');
-  const zoomLabel = $('#zoomLabel');
-  const toast = $('#toast');
-  const bookSelect = $('#bookSelect');
-  const refreshBooksBtn = $('#refreshBooksBtn');
-  const brightnessInput = $('#brightness');
-  const contrastInput = $('#contrast');
-  const gotoInput = $('#gotoInput');
-  const invertBtn = $('#invertBtn');
-  const playBtn = $('#playBtn');
-  const textBtn = $('#textBtn');
-  const textModal = $('#textModal');
-  const textModalTitle = $('#textModalTitle');
-  const textModalBody = $('#textModalBody');
-  const textModalClose = $('#textModalClose');
-  const nextBtn = $('#nextBtn');
-  const prevBtn = $('#prevBtn');
-  const toggleThumbsBtn = $('#toggleThumbs');
-  const fitWidthBtn = $('#fitWidthBtn');
-  const fitHeightBtn = $('#fitHeightBtn');
-  const zoomInBtn = $('#zoomInBtn');
-  const zoomOutBtn = $('#zoomOutBtn');
-  const resetZoomBtn = $('#resetZoomBtn');
-  const rotateBtn = $('#rotateBtn');
-  const gotoBtn = $('#gotoBtn');
-  const fullBtn = $('#fullBtn');
+  const pageImg = $<HTMLImageElement>('#page');
+  const viewer = $<HTMLElement>('#viewer');
+  const thumbs = $<HTMLElement>('#thumbs');
+  const pageCounter = $<HTMLElement>('#pageCounter');
+  const zoomLabel = $<HTMLElement>('#zoomLabel');
+  const toast = $<HTMLElement>('#toast');
+  const bookSelect = $<HTMLSelectElement>('#bookSelect');
+  const refreshBooksBtn = $<HTMLButtonElement>('#refreshBooksBtn');
+  const brightnessInput = $<HTMLInputElement>('#brightness');
+  const contrastInput = $<HTMLInputElement>('#contrast');
+  const gotoInput = $<HTMLInputElement>('#gotoInput');
+  const invertBtn = $<HTMLButtonElement>('#invertBtn');
+  const playBtn = $<HTMLButtonElement>('#playBtn');
+  const textBtn = $<HTMLButtonElement>('#textBtn');
+  const textModal = $<HTMLElement>('#textModal');
+  const textModalTitle = $<HTMLElement>('#textModalTitle');
+  const textModalBody = $<HTMLElement>('#textModalBody');
+  const textModalClose = $<HTMLButtonElement>('#textModalClose');
+  const nextBtn = $<HTMLButtonElement>('#nextBtn');
+  const prevBtn = $<HTMLButtonElement>('#prevBtn');
+  const toggleThumbsBtn = $<HTMLButtonElement>('#toggleThumbs');
+  const fitWidthBtn = $<HTMLButtonElement>('#fitWidthBtn');
+  const fitHeightBtn = $<HTMLButtonElement>('#fitHeightBtn');
+  const zoomInBtn = $<HTMLButtonElement>('#zoomInBtn');
+  const zoomOutBtn = $<HTMLButtonElement>('#zoomOutBtn');
+  const resetZoomBtn = $<HTMLButtonElement>('#resetZoomBtn');
+  const rotateBtn = $<HTMLButtonElement>('#rotateBtn');
+  const gotoBtn = $<HTMLButtonElement>('#gotoBtn');
+  const fullBtn = $<HTMLButtonElement>('#fullBtn');
   if(!pageImg || !viewer || !thumbs || !pageCounter || !zoomLabel || !toast || !bookSelect || !refreshBooksBtn || !brightnessInput || !contrastInput || !gotoInput || !invertBtn || !playBtn || !textBtn || !textModal || !textModalTitle || !textModalBody || !textModalClose || !nextBtn || !prevBtn || !toggleThumbsBtn || !fitWidthBtn || !fitHeightBtn || !zoomInBtn || !zoomOutBtn || !resetZoomBtn || !rotateBtn || !gotoBtn || !fullBtn){
     console.error('Scanned Book Reader: required DOM nodes not found.');
     return () => {};
@@ -56,59 +105,64 @@ export function initApp(rootElement){
   textBtn.disabled = true;
   playBtn.disabled = true;
 
-  const textCache = new Map();
-  const audioCache = new Map();
+  const textCache = new Map<string, TextCacheEntry>();
+  const audioCache = new Map<string, AudioCacheEntry>();
   const audioPlayer = new Audio();
   audioPlayer.preload = 'auto';
   audioPlayer.addEventListener('ended', ()=>{ playBtn.classList.remove('active'); audioPageKey = null; });
   audioPlayer.addEventListener('pause', ()=>{ playBtn.classList.remove('active'); });
   audioPlayer.addEventListener('play', ()=>{ playBtn.classList.add('active'); });
   audioPlayer.addEventListener('error', ()=>{ playBtn.classList.remove('active'); showToast('Audio playback failed'); });
-  let audioPageKey = null;
+  let audioPageKey: string | null = null;
   let modalOpen = false;
   const stateKey = 'scanned-book-reader:v1';
   let initialState = readState();
   applyState(initialState);
 
-  function showToast(msg){
-    toast.textContent = msg; toast.classList.add('show');
+  function showToast(msg: string){
+    toast.textContent = msg;
+    toast.classList.add('show');
     setTimeout(()=> toast.classList.remove('show'), 1800);
   }
   function saveState(){
-    try{ localStorage.setItem(stateKey, JSON.stringify({
-      bookId: app.bookId,
-      idx: app.idx,
-      zoom: app.zoom,
-      zoomMode: app.zoomMode,
-      invert: app.invert,
-      brightness: app.brightness,
-      contrast: app.contrast,
-      thumbsOpen: app.thumbsOpen
-    })); }catch(e){}
+    try{
+      localStorage.setItem(stateKey, JSON.stringify({
+        bookId: app.bookId,
+        idx: app.idx,
+        zoom: app.zoom,
+        zoomMode: app.zoomMode,
+        invert: app.invert,
+        brightness: app.brightness,
+        contrast: app.contrast,
+        thumbsOpen: app.thumbsOpen
+      }));
+    }catch(e){
+      console.warn('Failed to persist reader state', e);
+    }
   }
 
-  function readState(){
+  function readState(): StoredState | null{
     try{
-      return JSON.parse(localStorage.getItem(stateKey)||'null');
+      return JSON.parse(localStorage.getItem(stateKey)||'null') as StoredState | null;
     }catch(e){
       return null;
     }
   }
 
-  function applyState(state){
+  function applyState(state: StoredState | null){
     if(!state) return;
-    if(typeof state.bookId === 'string') app.bookId = state.bookId;
-    if(Number.isFinite(state.idx)) app.idx = state.idx;
-    if(Number.isFinite(state.zoom)) app.zoom = state.zoom;
+    if(typeof state.bookId === 'string' || state.bookId === null) app.bookId = state.bookId;
+    if(typeof state.idx === 'number' && Number.isFinite(state.idx)) app.idx = Math.trunc(state.idx);
+    if(typeof state.zoom === 'number' && Number.isFinite(state.zoom)) app.zoom = state.zoom;
     if(typeof state.zoomMode === 'string' && ['fit-width','fit-height','custom'].includes(state.zoomMode)){
-      app.zoomMode = state.zoomMode;
+      app.zoomMode = state.zoomMode as ZoomMode;
     }
-    if(Number.isFinite(state.brightness)) app.brightness = state.brightness;
-    if(Number.isFinite(state.contrast)) app.contrast = state.contrast;
+    if(typeof state.brightness === 'number' && Number.isFinite(state.brightness)) app.brightness = state.brightness;
+    if(typeof state.contrast === 'number' && Number.isFinite(state.contrast)) app.contrast = state.contrast;
     if(typeof state.thumbsOpen === 'boolean') app.thumbsOpen = state.thumbsOpen;
     if(typeof state.invert === 'boolean') app.invert = state.invert;
-    brightnessInput.value = app.brightness;
-    contrastInput.value = app.contrast;
+    brightnessInput.value = String(app.brightness);
+    contrastInput.value = String(app.contrast);
     thumbs.classList.toggle('open', app.thumbsOpen);
     invertBtn.classList.toggle('active', app.invert);
     if(modalOpen) hideTextModal();
@@ -117,7 +171,7 @@ export function initApp(rootElement){
     updateCounter();
   }
 
-  function snapshotState(){
+  function snapshotState(): StoredState{
     return {
       bookId: app.bookId,
       idx: app.idx,
@@ -135,10 +189,11 @@ export function initApp(rootElement){
     zoomLabel.textContent = Math.round(app.zoom*100)+'%';
   }
 
-  function renderThumbs(){
+  function renderThumbs(): void{
     thumbs.innerHTML = '';
     app.imgs.forEach((it,i)=>{
-      const el = document.createElement('div'); el.className = 'thumb'+(i===app.idx?' active':'');
+      const el = document.createElement('div');
+      el.className = 'thumb'+(i===app.idx?' active':'');
       el.innerHTML = `<img loading="lazy" src="${it.url}" alt="${escapeHtml(it.name)}"/><div><div>${escapeHtml(it.name)}</div><div class="meta">${i+1}</div></div>`;
       el.addEventListener('click', ()=>{
         if(modalOpen) hideTextModal();
@@ -151,15 +206,17 @@ export function initApp(rootElement){
     });
   }
 
-  function escapeHtml(s){ return s.replace(/[&<>"]+/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function escapeHtml(s: string): string{
+    return s.replace(/[&<>"]+/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c] ?? c));
+  }
 
-  function applyFilters(){
+  function applyFilters(): void{
     const invertFilter = app.invert ? ' invert(1) hue-rotate(180deg)' : '';
     pageImg.style.filter = `brightness(${app.brightness}%) contrast(${app.contrast}%)${invertFilter}`;
     invertBtn.classList.toggle('active', app.invert);
   }
 
-  function renderPage(options = {}){
+  function renderPage(options: { recenter?: boolean } = {}): void{
     const { recenter = false } = options;
     const hasPages = app.imgs.length > 0;
     textBtn.disabled = !hasPages;
@@ -178,7 +235,7 @@ export function initApp(rootElement){
     [...thumbs.children].forEach((el,i)=> el.classList.toggle('active', i===app.idx));
   }
 
-  function applyZoomMode({ recenter = false } = {}){
+  function applyZoomMode({ recenter = false }: { recenter?: boolean } = {}): boolean{
     const prevZoom = app.zoom;
     const prevPanX = app.pan.x;
     const prevPanY = app.pan.y;
@@ -199,18 +256,18 @@ export function initApp(rootElement){
     return changed;
   }
 
-  function updateTransform(){
+  function updateTransform(): void{
     clampPan();
     pageImg.style.transform = `translate(-50%, 0) translate(${app.pan.x}px, ${app.pan.y}px) rotate(${app.angle}deg) scale(${app.zoom})`;
   }
 
-  function getViewportSize(){
+  function getViewportSize(): { width: number; height: number }{
     const width = Math.max(0, viewer.clientWidth - (app.thumbsOpen? 180 : 0));
     const height = Math.max(0, viewer.clientHeight);
     return { width, height };
   }
 
-  function getContentSize(){
+  function getContentSize(): { width: number; height: number }{
     if(!pageImg.naturalWidth || !pageImg.naturalHeight){
       return { width: 0, height: 0 };
     }
@@ -222,7 +279,7 @@ export function initApp(rootElement){
     return { width: baseWidth * zoom, height: baseHeight * zoom };
   }
 
-  function clampPan(){
+  function clampPan(): void{
     if(!pageImg.naturalWidth || !pageImg.naturalHeight){
       app.pan.x = 0;
       app.pan.y = 0;
@@ -244,7 +301,7 @@ export function initApp(rootElement){
     }
   }
 
-  function computeFitWidth(){
+  function computeFitWidth(): boolean{
     if(!pageImg.naturalWidth || !pageImg.naturalHeight) return false;
     const { width: vw } = getViewportSize();
     if(vw <= 0) return false;
@@ -259,7 +316,7 @@ export function initApp(rootElement){
     return true;
   }
 
-  function computeFitHeight(){
+  function computeFitHeight(): boolean{
     if(!pageImg.naturalWidth || !pageImg.naturalHeight) return false;
     const { height: vh } = getViewportSize();
     if(vh <= 0) return false;
@@ -274,7 +331,7 @@ export function initApp(rootElement){
     return true;
   }
 
-  function deriveTextUrl(imageUrl){
+  function deriveTextUrl(imageUrl: string): string | null{
     if(!imageUrl || imageUrl.startsWith('data:') || imageUrl.startsWith('blob:')) return null;
     try{
       const url = new URL(imageUrl, window.location.origin);
@@ -288,7 +345,7 @@ export function initApp(rootElement){
     }
   }
 
-  async function openTextPreview(){
+  async function openTextPreview(): Promise<void>{
     if(!app.imgs.length){
       showToast('No page loaded');
       return;
@@ -323,6 +380,7 @@ export function initApp(rootElement){
         showToast('Generated text with OpenAI');
       }
     }catch(err){
+      console.error(err);
       textCache.set(cacheKey, { text: 'Text not available for this page.', source: 'error' });
       textModalTitle.textContent = entry.name;
       setTextModalContent('Text not available for this page.');
@@ -330,7 +388,7 @@ export function initApp(rootElement){
     }
   }
 
-  async function loadPageText(entry, textUrl){
+  async function loadPageText(entry: PageEntry, textUrl: string | null): Promise<TextCacheEntry | null>{
     if(textUrl){
       const res = await fetch(textUrl, { headers: { 'Accept': 'text/plain, text/*;q=0.9' } });
       if(res.ok){
@@ -351,24 +409,24 @@ export function initApp(rootElement){
     return aiResult;
   }
 
-  async function fetchAiText(imagePath){
+  async function fetchAiText(imagePath: string): Promise<TextCacheEntry | null>{
     const params = new URLSearchParams({ image: imagePath });
     const res = await fetch(`/api/page-text?${params.toString()}`, { headers: { 'Accept': 'application/json' } });
     if(!res.ok){
       if(res.headers.get('content-type')?.includes('application/json')){
-        const data = await res.json().catch(()=> ({}));
+        const data = await res.json().catch(()=> ({})) as { error?: string };
         throw new Error(data.error || 'AI extraction failed');
       }
       const text = await res.text().catch(()=> '');
       throw new Error(text || 'AI extraction failed');
     }
-    const data = await res.json();
+    const data = await res.json() as { text?: string; source?: string };
     const raw = typeof data.text === 'string'? data.text.trim() : '';
     const text = raw.length ? raw : '(No text found)';
     return { text, source: data.source === 'file' ? 'file' : 'ai' };
   }
 
-  async function ensurePageText(entry){
+  async function ensurePageText(entry: PageEntry): Promise<TextCacheEntry | null>{
     const cacheKey = entry.url;
     let cached = textCache.get(cacheKey);
     if(cached){
@@ -393,7 +451,7 @@ export function initApp(rootElement){
     audioPageKey = null;
   }
 
-  async function playAudio(){
+  async function playAudio(): Promise<void>{
     if(!app.imgs.length){
       showToast('No page loaded');
       return;
@@ -439,7 +497,7 @@ export function initApp(rootElement){
           })
         });
         const payloadText = await response.text();
-        let payload = {};
+        let payload: { url?: string; source?: string; error?: string } = {};
         if(payloadText){
           try{ payload = JSON.parse(payloadText); }catch(e){ payload = {}; }
         }
@@ -464,7 +522,8 @@ export function initApp(rootElement){
       showToast(audioInfo.source === 'ai' ? 'Playing generated narration' : 'Playing saved narration');
     }catch(err){
       console.error(err);
-      showToast(err.message || 'Failed to play audio');
+      const message = err instanceof Error ? err.message : String(err);
+      showToast(message || 'Failed to play audio');
       stopAudio();
     }finally{
       playBtn.disabled = false;
@@ -472,25 +531,25 @@ export function initApp(rootElement){
     }
   }
 
-  function showTextModal(title, content){
+  function showTextModal(title: string, content: string){
     textModalTitle.textContent = title || 'Page Text';
     setTextModalContent(content);
     textModal.classList.add('show');
     modalOpen = true;
   }
 
-  function setTextModalContent(content){
+  function setTextModalContent(content: string){
     textModalBody.textContent = content || '';
     textModalBody.scrollTop = 0;
   }
 
-  function hideTextModal(){
+  function hideTextModal(): void{
     textModal.classList.remove('show');
     textModalBody.textContent = '';
     modalOpen = false;
   }
 
-  async function refreshBooks(saved){
+  async function refreshBooks(saved?: StoredState | null): Promise<void>{
     const sourceState = saved || snapshotState();
     const usingInitial = !!(initialState && saved === initialState);
     bookSelect.disabled = true; refreshBooksBtn.disabled = true;
@@ -500,7 +559,7 @@ export function initApp(rootElement){
     loadingOpt.textContent = 'Loading…';
     bookSelect.appendChild(loadingOpt);
     try{
-      const data = await fetchJson('/api/books');
+      const data = await fetchJson<{ books?: string[] }>('/api/books');
       const books = Array.isArray(data?.books)? data.books : [];
       app.books = books;
       bookSelect.innerHTML = '';
@@ -542,7 +601,7 @@ export function initApp(rootElement){
     }
   }
 
-  async function loadBook(bookId, saved){
+  async function loadBook(bookId: string | null, saved: StoredState | null): Promise<void>{
     if(modalOpen) hideTextModal();
     stopAudio();
     textCache.clear();
@@ -559,7 +618,7 @@ export function initApp(rootElement){
       return;
     }
     try{
-      const data = await fetchJson(`/api/books/${encodeURIComponent(bookId)}/manifest`);
+      const data = await fetchJson<{ manifest?: unknown[] }>(`/api/books/${encodeURIComponent(bookId)}/manifest`);
       const manifest = Array.isArray(data?.manifest)? data.manifest : [];
       if(!manifest.length){
         app.bookId = bookId;
@@ -582,18 +641,20 @@ export function initApp(rootElement){
         try{ name = decodeURIComponent(raw); }catch(e){}
         return { name, url: str };
       });
-      const restored = saved && saved.bookId === bookId;
-      const savedMode = saved && typeof saved.zoomMode === 'string' && ['fit-width','fit-height','custom'].includes(saved.zoomMode) ? saved.zoomMode : null;
+      const restored = !!saved && saved.bookId === bookId;
+      const savedMode = saved && typeof saved.zoomMode === 'string' && ['fit-width','fit-height','custom'].includes(saved.zoomMode) ? (saved.zoomMode as ZoomMode) : null;
       app.zoomMode = restored && savedMode ? savedMode : 'fit-width';
-      if(restored){
-        app.idx = Math.min(Math.max(0, saved.idx|0), app.imgs.length-1);
-        app.zoom = Number.isFinite(saved.zoom)? saved.zoom : 1;
+      if(restored && saved){
+        const savedIdx = typeof saved.idx === 'number' && Number.isFinite(saved.idx) ? Math.trunc(saved.idx) : 0;
+        app.idx = Math.min(Math.max(0, savedIdx), app.imgs.length-1);
+        const savedZoom = typeof saved.zoom === 'number' && Number.isFinite(saved.zoom) ? saved.zoom : 1;
+        app.zoom = savedZoom;
         app.angle = 0;
-        if(Number.isFinite(saved.brightness)) app.brightness = saved.brightness;
-        if(Number.isFinite(saved.contrast)) app.contrast = saved.contrast;
-        app.thumbsOpen = !!saved.thumbsOpen;
-        brightnessInput.value = app.brightness;
-        contrastInput.value = app.contrast;
+        if(typeof saved.brightness === 'number' && Number.isFinite(saved.brightness)) app.brightness = saved.brightness;
+        if(typeof saved.contrast === 'number' && Number.isFinite(saved.contrast)) app.contrast = saved.contrast;
+        app.thumbsOpen = Boolean(saved.thumbsOpen);
+        brightnessInput.value = String(app.brightness);
+        contrastInput.value = String(app.contrast);
         thumbs.classList.toggle('open', app.thumbsOpen);
       }else{
         app.idx = 0;
@@ -610,10 +671,10 @@ export function initApp(rootElement){
     }
   }
 
-  async function fetchJson(url){
+  async function fetchJson<T = unknown>(url: string): Promise<T>{
     const res = await fetch(url, {headers:{'Accept':'application/json'}});
     if(!res.ok) throw new Error(`Request failed: ${res.status}`);
-    return res.json();
+    return res.json() as Promise<T>;
   }
 
   function fitWidth(){
@@ -682,19 +743,29 @@ export function initApp(rootElement){
     applyFilters();
     saveState();
   });
-  playBtn.addEventListener('click', playAudio);
-  document.addEventListener('click', (event)=>{
+  playBtn.addEventListener('click', ()=>{ void playAudio(); });
+  document.addEventListener('click', (event: MouseEvent)=>{
     if(event.target === playBtn){
-      playAudio();
+      void playAudio();
     }
   });
-  textBtn.addEventListener('click', openTextPreview);
+  textBtn.addEventListener('click', ()=>{ void openTextPreview(); });
 
-  brightnessInput.addEventListener('input', (e)=>{ app.brightness = +e.target.value; applyFilters(); saveState(); });
-  contrastInput.addEventListener('input', (e)=>{ app.contrast = +e.target.value; applyFilters(); saveState(); });
+  brightnessInput.addEventListener('input', (e)=>{
+    const target = e.target as HTMLInputElement;
+    app.brightness = Number(target.value);
+    applyFilters();
+    saveState();
+  });
+  contrastInput.addEventListener('input', (e)=>{
+    const target = e.target as HTMLInputElement;
+    app.contrast = Number(target.value);
+    applyFilters();
+    saveState();
+  });
 
   gotoBtn.addEventListener('click', ()=>{
-    const v = parseInt(gotoInput.value,10);
+    const v = Number.parseInt(gotoInput.value,10);
     if(!Number.isFinite(v) || v<1 || v>app.imgs.length) return;
     stopAudio();
     if(modalOpen) hideTextModal();
@@ -714,24 +785,33 @@ export function initApp(rootElement){
     if(!document.fullscreenElement){ el.requestFullscreen?.(); } else { document.exitFullscreen?.(); }
   });
 
-  let dragging=false, start={x:0,y:0}, startPan={x:0,y:0};
-  viewer.addEventListener('mousedown', (e)=>{
-    if(e.button!==0) return; dragging=true; start={x:e.clientX,y:e.clientY}; startPan={...app.pan}; viewer.classList.add('dragging');
+  let dragging = false;
+  let start: { x: number; y: number } = {x:0,y:0};
+  let startPan: Pan = {x:0,y:0};
+  viewer.addEventListener('mousedown', (e: MouseEvent)=>{
+    if(e.button!==0) return;
+    dragging=true;
+    start = {x:e.clientX,y:e.clientY};
+    startPan = {...app.pan};
+    viewer.classList.add('dragging');
   });
   window.addEventListener('mouseup', ()=>{ dragging=false; viewer.classList.remove('dragging'); saveState(); });
-  window.addEventListener('mousemove', (e)=>{
-    if(!dragging) return; app.pan = { x: startPan.x + (e.clientX-start.x), y: startPan.y + (e.clientY-start.y)}; updateTransform();
+  window.addEventListener('mousemove', (e: MouseEvent)=>{
+    if(!dragging) return;
+    app.pan = { x: startPan.x + (e.clientX-start.x), y: startPan.y + (e.clientY-start.y)};
+    updateTransform();
   });
 
-  viewer.addEventListener('wheel', (e)=>{
+  viewer.addEventListener('wheel', (e: WheelEvent)=>{
     e.preventDefault();
     app.pan.x -= e.deltaX;
     app.pan.y -= e.deltaY;
     updateTransform();
   }, {passive:false});
 
-  window.addEventListener('keydown',(e)=>{
-    if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  window.addEventListener('keydown',(e: KeyboardEvent)=>{
+    const activeTag = (document.activeElement as HTMLElement | null)?.tagName ?? '';
+    if(['INPUT','TEXTAREA'].includes(activeTag)) return;
     switch(e.key){
       case 'ArrowRight': case 'PageDown': case ' ': next(); break;
       case 'ArrowLeft': case 'PageUp': prev(); break;
@@ -763,10 +843,10 @@ export function initApp(rootElement){
         applyFilters(); saveState();
         break;
       case 'x': case 'X':
-        openTextPreview();
+        void openTextPreview();
         break;
       case 'p': case 'P':
-        playAudio();
+        void playAudio();
         break;
       case 't': case 'T': toggleThumbsBtn.click(); break;
       case 'g': case 'G': gotoInput.focus(); break;
@@ -787,13 +867,13 @@ export function initApp(rootElement){
   bookSelect.addEventListener('change', ()=>{
     const value = bookSelect.value;
     if(!value){
-      loadBook(null, null);
+      void loadBook(null, null);
       return;
     }
-    loadBook(value, null);
+    void loadBook(value, null);
   });
 
-  refreshBooks(initialState);
+  void refreshBooks(initialState);
 
   if('serviceWorker' in navigator){
     const code = `self.addEventListener('install', e=> self.skipWaiting()); self.addEventListener('activate', e=> clients.claim());`;
@@ -802,10 +882,10 @@ export function initApp(rootElement){
     navigator.serviceWorker.register(swUrl).catch(()=>{});
   }
 
-  refreshBooksBtn.addEventListener('click', ()=>{ refreshBooks(snapshotState()); });
+  refreshBooksBtn.addEventListener('click', ()=>{ void refreshBooks(snapshotState()); });
   textModalClose.addEventListener('click', hideTextModal);
-  textModal.addEventListener('click', (e)=>{ if(e.target === textModal) hideTextModal(); });
-  window.addEventListener('keydown', (e)=>{
+  textModal.addEventListener('click', (e: MouseEvent)=>{ if(e.target === textModal) hideTextModal(); });
+  window.addEventListener('keydown', (e: KeyboardEvent)=>{
     if(e.key === 'Escape' && modalOpen){
       hideTextModal();
     }

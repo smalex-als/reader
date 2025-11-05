@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef } from 'react';
-import { initApp } from './lib/initApp.js';
+import { initApp } from './lib/initApp';
 
-export default function App(){
-  const appRef = useRef(null);
+export default function App(): JSX.Element{
+  const appRef = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
     if(!appRef.current){
