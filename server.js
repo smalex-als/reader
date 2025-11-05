@@ -15,8 +15,24 @@ const STATIC_ROOT = existsSync(DIST_DIR) ? DIST_DIR : __dirname;
 
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = parseInt(process.env.PORT || '3000', 10);
-const TEXT_PROMPT = `Transcribe the scanned book page as clean, readable text. Preserve line breaks only where they indicate new paragraphs or headings. Ignore page numbers, footers, and obvious scanning artifacts. Do not add commentary.`;
 const DEFAULT_VOICE = 'santa';
+const TEXT_PROMPT = `Extract all visible text from this image as plain text. Preserve paragraph structure and spacing. Normalize all fractions: instead of Unicode characters like ½ or ¼, use plain text equivalents like 1/2, 1/4, 1 1/2, etc. Do not use emojis, special characters, or markdown. Keep the content exactly as it appears, but ensure formatting is consistent: use normal paragraphs with one empty line between them. Preserve line breaks and indentation only where they represent clear paragraph or step boundaries. Ignore page numbers, footers, and obvious scanning artifacts. Do not add commentary.`;
+const voiceProfiles = {
+    santa: {
+        openAiVoice: 'ash',
+        instructions: `Identity: Santa Claus
+
+Affect: Jolly, warm, and cheerful, with a playful and magical quality that fits Santa's personality.
+
+Tone: Festive and welcoming, creating a joyful, holiday atmosphere for the caller.
+
+Emotion: Joyful and playful, filled with holiday spirit, ensuring the caller feels excited and appreciated.
+
+Pronunciation: Clear, articulate, and exaggerated in key festive phrases to maintain clarity and fun.
+
+Pause: Brief pauses after each option and statement to allow for processing and to add a natural flow to the message.`
+    }
+};
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 
@@ -44,7 +60,14 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/data', express.static(DATA_DIR, { fallthrough: false }));
+app.use('/data', express.static(DATA_DIR));
+app.use('/data', (req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    res.status(404).end();
+    return;
+  }
+  next();
+});
 app.use(express.static(STATIC_ROOT));
 
 const asyncHandler = (fn) => (req, res, next) => {
@@ -185,11 +208,11 @@ async function loadPageText(imageUrl) {
         role: 'user',
         content: [
           {
-            type: 'text',
+            type: 'input_text',
             text: TEXT_PROMPT
           },
           {
-            type: 'image_url',
+            type: 'input_image',
             image_url: `data:${mimeType};base64,${base64}`
           }
         ]
@@ -217,7 +240,7 @@ async function loadPageText(imageUrl) {
   };
 }
 
-async function handlePageAudio({ image, text, voice }) {
+async function handlePageAudio({ image, text, voiceProfile }) {
   const { absolute, relative } = resolveDataUrl(image);
   const sourceStat = await safeStat(absolute);
   if (!sourceStat?.isFile()) {
@@ -250,12 +273,12 @@ async function handlePageAudio({ image, text, voice }) {
   }
 
   const openai = getOpenAI();
-  const resolvedVoice = typeof voice === 'string' && voice.trim().length > 0 ? voice.trim() : DEFAULT_VOICE;
-
   const speech = await openai.audio.speech.create({
     model: 'gpt-4o-mini-tts',
-    voice: resolvedVoice,
-    input: spokenText
+    voice: voiceProfile.openAiVoice,
+    input: spokenText,
+    format: 'mp3',
+    instructions: voiceProfile.instructions
   });
 
   const audioBuffer = Buffer.from(await speech.arrayBuffer());
@@ -301,7 +324,9 @@ app.post(
     if (!image) {
       throw createHttpError(400, 'Image is required');
     }
-    const result = await handlePageAudio({ image, text, voice });
+    const requestedVoiceId = typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
+    const voiceProfile = voiceProfiles[requestedVoiceId] || voiceProfiles[DEFAULT_VOICE];
+    const result = await handlePageAudio({ image, text, voiceProfile });
     res.json(result);
   })
 );
