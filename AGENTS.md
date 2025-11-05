@@ -7,7 +7,7 @@
 
 ## Build, Test, and Development Commands
 - Serve the reader and bundled sample data with `node server.js` (set `HOST`/`PORT` to override defaults); the server also exposes `GET /api/books` and `GET /api/books/:id/manifest` for quick manifest generation.
-- Set `OPENAI_API_KEY` before starting the server to enable on-demand text extraction when `.txt` transcripts are missing.
+- Set `OPENAI_API_KEY` before starting the server to enable on-demand text extraction and speech synthesis when `.txt`/`.mp3` assets are missing.
 - Open the app directly in a browser for quick checks, or start a local server for CORS-safe manifest testing: `npx http-server .` (Node) or `python3 -m http.server 8000`.
 - Use LiveReload tooling such as `npx live-server index.html` when iterating on UI changes; no bundler is required.
 
@@ -17,7 +17,7 @@
 - Persist user-facing strings through the toast helper to maintain consistent feedback patterns.
 
 ## Testing Guidelines
-- Manual smoke tests are required: select a book from the Book menu, confirm pages render from the server, toggle zoom/rotation controls, flip inverse colors, open the text preview, and reload to confirm state restoration.
+- Manual smoke tests are required: select a book from the Book menu, confirm pages render from the server, toggle zoom/rotation controls, flip inverse colors, open the text preview, play the narration (ensuring audio is generated if needed), and reload to confirm state restoration.
 - If adding automated coverage, place new files under `tests/` and mirror the UI flows with Playwright or Cypress; name specs after the feature (e.g., `tests/rotation.spec.ts`).
 - Document any new test scripts in this guide once introduced.
 

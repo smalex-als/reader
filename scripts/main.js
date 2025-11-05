@@ -1,4 +1,10 @@
-(function(){
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', init);
+}else{
+  init();
+}
+
+function init(){
   const $ = sel => document.querySelector(sel);
   const app = {
     books: [],
@@ -27,14 +33,28 @@
   const contrastInput = $('#contrast');
   const gotoInput = $('#gotoInput');
   const invertBtn = $('#invertBtn');
+  const playBtn = $('#playBtn');
   const textBtn = $('#textBtn');
   const textModal = $('#textModal');
   const textModalTitle = $('#textModalTitle');
   const textModalBody = $('#textModalBody');
   const textModalClose = $('#textModalClose');
+  if(!pageImg || !viewer || !thumbs || !pageCounter || !zoomLabel || !toast || !bookSelect || !refreshBooksBtn || !brightnessInput || !contrastInput || !gotoInput || !invertBtn || !playBtn || !textBtn || !textModal || !textModalTitle || !textModalBody || !textModalClose){
+    console.error('Scanned Book Reader: required DOM nodes not found.');
+    return;
+  }
   textBtn.disabled = true;
+  playBtn.disabled = true;
 
   const textCache = new Map();
+  const audioCache = new Map();
+  const audioPlayer = new Audio();
+  audioPlayer.preload = 'auto';
+  audioPlayer.addEventListener('ended', ()=>{ playBtn.classList.remove('active'); audioPageKey = null; });
+  audioPlayer.addEventListener('pause', ()=>{ playBtn.classList.remove('active'); });
+  audioPlayer.addEventListener('play', ()=>{ playBtn.classList.add('active'); });
+  audioPlayer.addEventListener('error', ()=>{ playBtn.classList.remove('active'); showToast('Audio playback failed'); });
+  let audioPageKey = null;
   let modalOpen = false;
   const stateKey = 'scanned-book-reader:v1';
   let initialState = readState();
@@ -133,7 +153,9 @@
     const { recenter = false } = options;
     const hasPages = app.imgs.length > 0;
     textBtn.disabled = !hasPages;
+    playBtn.disabled = !hasPages;
     if(!hasPages){
+      stopAudio();
       pageImg.removeAttribute('src');
       updateCounter();
       return;
@@ -336,6 +358,110 @@
     return { text, source: data.source === 'file' ? 'file' : 'ai' };
   }
 
+  async function ensurePageText(entry){
+    const cacheKey = entry.url;
+    let cached = textCache.get(cacheKey);
+    if(cached){
+      return cached;
+    }
+    const textUrl = deriveTextUrl(entry.url);
+    const result = await loadPageText(entry, textUrl);
+    if(result){
+      textCache.set(cacheKey, result);
+    }
+    return result;
+  }
+
+  function stopAudio(){
+    if(!audioPlayer.paused){
+      audioPlayer.pause();
+    }
+    if(audioPlayer.currentTime){
+      audioPlayer.currentTime = 0;
+    }
+    playBtn.classList.remove('active');
+    audioPageKey = null;
+  }
+
+  async function playAudio(){
+    if(!app.imgs.length){
+      showToast('No page loaded');
+      return;
+    }
+    if(playBtn.disabled || playBtn.dataset.busy === '1'){
+      return;
+    }
+    const entry = app.imgs[app.idx];
+    const cacheKey = entry.url;
+    if(!audioPlayer.paused && audioPageKey === cacheKey){
+      stopAudio();
+      return;
+    }
+    playBtn.disabled = true;
+    playBtn.dataset.busy = '1';
+    try{
+      let textData = textCache.get(cacheKey);
+      if(!textData){
+        showToast('Preparing page text…');
+        textData = await ensurePageText(entry);
+      }
+      if(!textData){
+        showToast('No text available for audio');
+        return;
+      }
+      let audioInfo = audioCache.get(cacheKey);
+      if(!audioInfo){
+        const localImagePath = entry.url.startsWith('/') ? entry.url : `/${entry.url}`;
+        if(!localImagePath.startsWith('/data/')){
+          showToast('Audio unavailable for this source');
+          return;
+        }
+        showToast('Generating narration…');
+        const response = await fetch('/api/page-audio', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            image: localImagePath,
+            text: textData.text
+          })
+        });
+        const payloadText = await response.text();
+        let payload = {};
+        if(payloadText){
+          try{ payload = JSON.parse(payloadText); }catch(e){ payload = {}; }
+        }
+        if(!response.ok){
+          throw new Error(payload.error || `Audio request failed (${response.status})`);
+        }
+        if(!payload || typeof payload.url !== 'string'){
+          throw new Error('Audio response missing URL');
+        }
+        audioInfo = { url: payload.url, source: payload.source === 'ai' ? 'ai' : 'file' };
+        audioCache.set(cacheKey, audioInfo);
+        if(audioInfo.source === 'ai'){
+          showToast('Generated narration with OpenAI');
+        }
+      }else{
+        showToast('Loading saved narration…');
+      }
+      stopAudio();
+      audioPlayer.src = audioInfo.url;
+      audioPageKey = cacheKey;
+      await audioPlayer.play();
+      showToast(audioInfo.source === 'ai' ? 'Playing generated narration' : 'Playing saved narration');
+    }catch(err){
+      console.error(err);
+      showToast(err.message || 'Failed to play audio');
+      stopAudio();
+    }finally{
+      playBtn.disabled = false;
+      delete playBtn.dataset.busy;
+    }
+  }
+
   function showTextModal(title, content){
     textModalTitle.textContent = title || 'Page Text';
     setTextModalContent(content);
@@ -369,6 +495,8 @@
       app.books = books;
       bookSelect.innerHTML = '';
       if(!books.length){
+        stopAudio();
+        audioCache.clear();
         const opt = document.createElement('option');
         opt.value = '';
         opt.textContent = 'No books available';
@@ -406,7 +534,9 @@
 
   async function loadBook(bookId, saved){
     if(modalOpen) hideTextModal();
+    stopAudio();
     textCache.clear();
+    audioCache.clear();
     if(!bookId){
       app.bookId = null;
       app.imgs = [];
@@ -492,6 +622,7 @@
 
   function next(){
     if(app.idx < app.imgs.length-1){
+      stopAudio();
       if(modalOpen) hideTextModal();
       app.idx++;
       app.pan = {x:0, y:0};
@@ -501,6 +632,7 @@
   }
   function prev(){
     if(app.idx > 0){
+      stopAudio();
       if(modalOpen) hideTextModal();
       app.idx--;
       app.pan = {x:0, y:0};
@@ -540,6 +672,12 @@
     applyFilters();
     saveState();
   });
+  playBtn.addEventListener('click', playAudio);
+  document.addEventListener('click', (event)=>{
+    if(event.target === playBtn){
+      playAudio();
+    }
+  });
   textBtn.addEventListener('click', openTextPreview);
 
   $('#brightness').addEventListener('input', (e)=>{ app.brightness = +e.target.value; applyFilters(); saveState(); });
@@ -548,6 +686,7 @@
   $('#gotoBtn').addEventListener('click', ()=>{
     const v = parseInt(gotoInput.value,10);
     if(!Number.isFinite(v) || v<1 || v>app.imgs.length) return;
+    stopAudio();
     if(modalOpen) hideTextModal();
     app.idx = v-1;
     app.pan = {x:0, y:0};
@@ -616,6 +755,9 @@
       case 'x': case 'X':
         openTextPreview();
         break;
+      case 'p': case 'P':
+        playAudio();
+        break;
       case 't': case 'T': $('#toggleThumbs').click(); break;
       case 'g': case 'G': gotoInput.focus(); break;
       case 'f': case 'F': $('#fullBtn').click(); break;
@@ -658,4 +800,4 @@
       hideTextModal();
     }
   });
-})();
+}

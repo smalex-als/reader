@@ -28,6 +28,23 @@ const MIME_TYPES = {
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 const TEXT_PROMPT = `Extract all visible text from this image as plain text. Preserve paragraph structure and spacing. Normalize all fractions: instead of Unicode characters like ½ or ¼, use plain text equivalents like 1/2, 1/4, 1 1/2, etc. Do not use emojis, special characters, or markdown. Keep the content exactly as it appears, but ensure formatting is consistent: use normal paragraphs with one empty line between them. Preserve line breaks and indentation only where they represent clear paragraph or step boundaries.`;
+const DEFAULT_VOICE_ID = 'santa';
+const voiceProfiles = {
+  santa: {
+    openAiVoice: 'ash',
+    instructions: `Identity: Santa Claus
+
+Affect: Jolly, warm, and cheerful, with a playful and magical quality that fits Santa's personality.
+
+Tone: Festive and welcoming, creating a joyful, holiday atmosphere for the caller.
+
+Emotion: Joyful and playful, filled with holiday spirit, ensuring the caller feels excited and appreciated.
+
+Pronunciation: Clear, articulate, and exaggerated in key festive phrases to maintain clarity and fun.
+
+Pause: Brief pauses after each option and statement to allow for processing and to add a natural flow to the message.`
+  }
+};
 
 const server = http.createServer(async (req, res) => {
   try{
@@ -121,6 +138,16 @@ function resolvePath(urlPath){
 }
 
 async function handleApi(req, res, url){
+  if(url.pathname === '/api/page-audio'){
+    if(req.method !== 'POST'){
+      sendPlain(res, 405, 'Method Not Allowed');
+      logRequest(405, req.method, url.pathname);
+      return;
+    }
+    await handlePageAudio(req, res);
+    return;
+  }
+
   if(req.method !== 'GET'){
     sendPlain(res, 405, 'Method Not Allowed');
     logRequest(405, req.method, url.pathname);
@@ -278,6 +305,112 @@ async function handlePageText(req, res, url){
   }
 }
 
+async function handlePageAudio(req, res){
+  let body = '';
+  try{
+    body = await readRequestBody(req);
+  }catch(err){
+    console.error('Failed to read audio request body', err);
+    sendJson(res, 400, { error: 'Invalid request body' });
+    logRequest(400, req.method, '/api/page-audio');
+    return;
+  }
+
+  let payload = {};
+  if(body){
+    try{
+      payload = JSON.parse(body);
+    }catch(err){
+      sendJson(res, 400, { error: 'Request body must be valid JSON' });
+      logRequest(400, req.method, '/api/page-audio');
+      return;
+    }
+  }
+
+  const imageParam = typeof payload.image === 'string' ? payload.image : '';
+  const text = typeof payload.text === 'string' ? payload.text.trim() : '';
+  const requestedVoiceId = typeof payload.voice === 'string' && payload.voice.trim().length ? payload.voice.trim().toLowerCase() : '';
+  const voiceProfile = voiceProfiles[requestedVoiceId] || voiceProfiles[DEFAULT_VOICE_ID];
+
+  if(!imageParam){
+    sendJson(res, 400, { error: 'Request must include image path' });
+    logRequest(400, req.method, '/api/page-audio');
+    return;
+  }
+  if(!text){
+    sendJson(res, 400, { error: 'Request body must include text' });
+    logRequest(400, req.method, '/api/page-audio');
+    return;
+  }
+
+  let decodedPath;
+  try{
+    decodedPath = decodeURIComponent(imageParam);
+  }catch(e){
+    sendJson(res, 400, { error: 'Invalid image path' });
+    logRequest(400, req.method, '/api/page-audio');
+    return;
+  }
+  if(!decodedPath.startsWith('/')) decodedPath = '/' + decodedPath;
+  const fsImagePath = path.resolve(ROOT_DIR, '.' + decodedPath);
+  if(!fsImagePath.startsWith(DATA_DIR)){
+    sendJson(res, 400, { error: 'Image must reside under /data' });
+    logRequest(400, req.method, '/api/page-audio');
+    return;
+  }
+
+  let fileStat;
+  try{
+    fileStat = await stat(fsImagePath);
+  }catch(err){
+    if(err && err.code === 'ENOENT'){
+      sendJson(res, 404, { error: 'Image not found' });
+      logRequest(404, req.method, '/api/page-audio');
+      return;
+    }
+    throw err;
+  }
+  if(!fileStat.isFile()){
+    sendJson(res, 400, { error: 'Invalid image file' });
+    logRequest(400, req.method, '/api/page-audio');
+    return;
+  }
+
+  const ext = path.extname(fsImagePath).toLowerCase();
+  if(!IMAGE_EXTS.has(ext)){
+    sendJson(res, 400, { error: 'Unsupported image type' });
+    logRequest(400, req.method, '/api/page-audio');
+    return;
+  }
+
+  const audioPath = fsImagePath.replace(/\.[^/.]+$/, '.mp3');
+  try{
+    await stat(audioPath);
+    sendJson(res, 200, { source: 'file', url: filePathToUrl(audioPath) });
+    logRequest(200, req.method, '/api/page-audio');
+    return;
+  }catch(err){
+    if(!err || err.code !== 'ENOENT') throw err;
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if(!apiKey){
+    sendJson(res, 503, { error: 'OPENAI_API_KEY not configured' });
+    logRequest(503, req.method, '/api/page-audio');
+    return;
+  }
+
+  try{
+    await generateSpeechWithOpenAI(text, voiceProfile, apiKey, audioPath);
+    sendJson(res, 200, { source: 'ai', url: filePathToUrl(audioPath) });
+    logRequest(200, req.method, '/api/page-audio');
+  }catch(err){
+    console.error('OpenAI TTS error', err);
+    sendJson(res, 502, { error: 'Failed to synthesize audio' });
+    logRequest(502, req.method, '/api/page-audio');
+  }
+}
+
 async function extractTextWithOpenAI(imagePath, ext, apiKey){
   const buffer = await readFile(imagePath);
   const base64 = buffer.toString('base64');
@@ -316,6 +449,48 @@ async function extractTextWithOpenAI(imagePath, ext, apiKey){
   const data = await response.json();
   const text = data?.choices?.[0]?.message?.content;
   return (typeof text === 'string' ? text : '').trim();
+}
+
+async function readRequestBody(req){
+  const chunks = [];
+  for await (const chunk of req){
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+function filePathToUrl(fsPath){
+  const relative = path.relative(ROOT_DIR, fsPath).split(path.sep).join('/');
+  return '/' + relative;
+}
+
+async function generateSpeechWithOpenAI(text, voiceProfile, apiKey, outputPath){
+  const payload = {
+    model: 'gpt-4o-mini-tts',
+    voice: voiceProfile.openAiVoice,
+    format: 'mp3',
+    input: text,
+    instructions: voiceProfile.instructions
+  };
+
+  const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if(!response.ok){
+    const errBody = await response.text().catch(()=> '');
+    throw new Error(`OpenAI TTS failed: ${response.status} ${errBody}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  await writeFile(outputPath, buffer);
+  return buffer;
 }
 function sendPlain(res, status, message){
   if(res.writableEnded) return;
