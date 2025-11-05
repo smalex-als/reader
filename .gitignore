@@ -1,0 +1,22 @@
+# Dependency directories
+node_modules/
+
+# Build outputs
+dist/
+
+# Logs and temp files
+*.log
+logs/
+tmp/
+temp/
+
+# Environment overrides
+.env
+.env.*
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS metadata
+.DS_Store
