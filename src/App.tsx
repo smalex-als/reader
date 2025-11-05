@@ -259,9 +259,11 @@ export default function App() {
           }
         }
 
-        const data = await fetchJson<{ source: 'file' | 'ai'; text: string }>(
-          `/api/page-text?image=${encodeURIComponent(currentImage)}`
-        );
+        const params = new URLSearchParams({ image: currentImage });
+        if (force) {
+          params.set('skipCache', '1');
+        }
+        const data = await fetchJson<{ source: 'file' | 'ai'; text: string }>(`/api/page-text?${params.toString()}`);
         const entry: PageText = { text: data.text, source: data.source };
         setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
         setRegeneratedText(data.source === 'ai' || force);
@@ -282,6 +284,13 @@ export default function App() {
     }
     const audio = audioRef.current;
     if (!audio) {
+      return;
+    }
+    if (
+      audioState.currentPageKey === currentImage &&
+      (audioState.status === 'loading' || audioState.status === 'generating')
+    ) {
+      showToast('Narration is already in progress…', 'info');
       return;
     }
     setAudioState((prev) => ({
@@ -308,6 +317,13 @@ export default function App() {
         const requestBody = {
           image: currentImage
         };
+        setAudioState((prev) => ({
+          ...prev,
+          status: 'generating',
+          error: undefined,
+          currentPageKey: currentImage
+        }));
+        showToast('Generating narration…', 'info');
         const response = await fetch('/api/page-audio', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -345,7 +361,7 @@ export default function App() {
       }));
       showToast('Unable to play audio', 'error');
     }
-  }, [audioCache, currentImage, showToast]);
+  }, [audioCache, audioState, currentImage, showToast]);
 
   useEffect(() => {
     const audio = new Audio();

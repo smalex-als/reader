@@ -24,7 +24,7 @@ interface ToolbarProps {
   onToggleTextModal: () => void;
   onToggleFullscreen: () => void;
   fullscreen: boolean;
-  audioStatus: 'idle' | 'loading' | 'playing' | 'paused' | 'error';
+  audioStatus: 'idle' | 'loading' | 'generating' | 'playing' | 'paused' | 'error';
   onPlayAudio: () => void;
   onStopAudio: () => void;
   gotoInputRef: React.RefObject<HTMLInputElement>;
@@ -61,7 +61,15 @@ export default function Toolbar({
   onStopAudio,
   gotoInputRef
 }: ToolbarProps) {
-  const audioLabel = audioStatus === 'playing' ? 'Pause Audio' : 'Play Audio';
+  const audioBusy = audioStatus === 'loading' || audioStatus === 'generating';
+  const audioLabel =
+    audioStatus === 'playing'
+      ? 'Pause Audio'
+      : audioStatus === 'generating'
+      ? 'Generating…'
+      : audioStatus === 'loading'
+      ? 'Loading…'
+      : 'Play Audio';
   const audioHandler = audioStatus === 'playing' ? onStopAudio : onPlayAudio;
 
   return (
@@ -179,7 +187,12 @@ export default function Toolbar({
         </div>
 
         <div className="toolbar-group">
-          <button type="button" className="button" onClick={audioHandler} disabled={manifestLength === 0}>
+          <button
+            type="button"
+            className="button"
+            onClick={audioHandler}
+            disabled={manifestLength === 0 || audioBusy}
+          >
             {audioLabel}
           </button>
           <button type="button" className="button" onClick={onToggleTextModal}>

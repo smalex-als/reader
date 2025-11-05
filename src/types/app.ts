@@ -57,7 +57,7 @@ export interface ToastMessage {
 }
 
 export interface AudioState {
-  status: 'idle' | 'loading' | 'playing' | 'paused' | 'error';
+  status: 'idle' | 'loading' | 'generating' | 'playing' | 'paused' | 'error';
   url: string | null;
   error?: string;
   currentPageKey: string | null;

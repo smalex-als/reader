@@ -170,14 +170,15 @@ function getOpenAI() {
   return openaiClient;
 }
 
-async function loadPageText(imageUrl) {
+async function loadPageText(imageUrl, options = {}) {
+  const { skipCache = false } = options;
   const { absolute, relative } = resolveDataUrl(imageUrl);
   const baseName = relative.replace(/\.[^.]+$/, '');
   const textRelative = `${baseName}.txt`;
   const textAbsolute = path.join(DATA_DIR, textRelative);
 
   const textStat = await safeStat(textAbsolute);
-  if (textStat?.isFile()) {
+  if (textStat?.isFile() && !skipCache) {
     const textContent = await fs.readFile(textAbsolute, 'utf8');
     return {
       source: 'file',
@@ -306,7 +307,14 @@ app.get(
   '/api/page-text',
   asyncHandler(async (req, res) => {
     const image = req.query.image;
-    const result = await loadPageText(image);
+    const skipCacheParam = req.query.skipCache;
+    const skipCache =
+      typeof skipCacheParam === 'string'
+        ? ['1', 'true', 'yes'].includes(skipCacheParam.toLowerCase())
+        : Array.isArray(skipCacheParam)
+        ? skipCacheParam.some((value) => ['1', 'true', 'yes'].includes(String(value).toLowerCase()))
+        : false;
+    const result = await loadPageText(image, { skipCache });
     res.json({ source: result.source, text: result.text });
   })
 );
