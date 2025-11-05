@@ -6,7 +6,7 @@ Front end
 - Implement mouse drag panning within the viewer, wheel-based panning, clamped to content bounds. Support keyboard shortcuts: arrows/PageUp/PageDown/Space for navigation, +/-/0 zoom controls, W/H fit, R rotate, I invert, X text modal, P play audio, G focus goto input, F fullscreen, Esc closes modal.
 - Maintain a toast helper that shows temporary status messages in `toast`.
 - Modal `textModal` toggles open/close; fetch page text via `deriveTextUrl` (same path with `.txt` extension). If no file exists, call `/api/page-text?image=/data/...`. Cache text per page; mark generated content with “• Generated”.
-- Audio: manage `Audio` element, cache URLs. Attempt to reuse existing `.mp3` next to the image (`/data/.../page.mp3`). Otherwise POST `/api/page-audio` with `{ image, text, voice? }` and use returned URL. Handle play/pause/end states, stop audio when navigating.
+- Audio: manage `Audio` element, cache URLs. Attempt to reuse existing `.mp3` next to the image (`/data/.../page.mp3`). Otherwise POST `/api/page-audio` with `{ image, voice? }` (the server loads text as needed) and use returned URL. Handle play/pause/end states, stop audio when navigating.
 - Keep CSS responsive flex layout, toolbar styling, fullscreen viewer, toast animation, modal overlay, inverse colors via CSS filters. Use kebab-case class names.
 
 Back end (`server.js`)
@@ -14,7 +14,7 @@ Back end (`server.js`)
 - `GET /api/books`: list immediate subdirectories of `./data` (sorted, case-insensitive, numeric-aware) and return `{ books: string[] }`.
 - `GET /api/books/:id/manifest`: list image files (png/jpg/jpeg/gif/webp) inside the book directory; return `{ book, manifest: string[] }` with `/data/...` URLs.
 - `GET /api/page-text?image=/data/...`: if matching `.txt` file exists, stream it back `{ source:'file', text }`. Otherwise, require `process.env.OPENAI_API_KEY`, run an OpenAI vision request (model `gpt-4o`) with the provided `TEXT_PROMPT`, persist the new `.txt`, return `{ source:'ai', text }`. Handle 404/400 errors for invalid paths.
-- `POST /api/page-audio`: accept JSON `{ image, text, voice? }`, validate under `/data`, reuse existing `.mp3` or call OpenAI TTS (`gpt-4o-mini-tts`) using a default “santa” profile unless another valid voice is requested. Save generated audio alongside the image and return `{ source:'ai'|'file', url }`.
+- `POST /api/page-audio`: accept JSON `{ image, voice? }`, validate under `/data`, reuse existing `.mp3` or call OpenAI TTS (`gpt-4o-mini-tts`) using a default “santa” profile unless another valid voice is requested. Load or generate the corresponding page text server-side, save generated audio alongside the image, and return `{ source:'ai'|'file', url }`.
 - Support `HOST`/`PORT` env overrides. Log every API/static request. Include helpers for MIME lookup, path resolution, body parsing, JSON/plain responses.
 
 Quality & testing

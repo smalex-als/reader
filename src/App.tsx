@@ -306,8 +306,7 @@ export default function App() {
 
       if (!entry) {
         const requestBody = {
-          image: currentImage,
-          text: textCache[currentImage]?.text
+          image: currentImage
         };
         const response = await fetch('/api/page-audio', {
           method: 'POST',
@@ -346,7 +345,7 @@ export default function App() {
       }));
       showToast('Unable to play audio', 'error');
     }
-  }, [audioCache, currentImage, showToast, textCache]);
+  }, [audioCache, currentImage, showToast]);
 
   useEffect(() => {
     const audio = new Audio();

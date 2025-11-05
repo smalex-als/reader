@@ -240,7 +240,7 @@ async function loadPageText(imageUrl) {
   };
 }
 
-async function handlePageAudio({ image, text, voiceProfile }) {
+async function handlePageAudio({ image, voiceProfile }) {
   const { absolute, relative } = resolveDataUrl(image);
   const sourceStat = await safeStat(absolute);
   if (!sourceStat?.isFile()) {
@@ -259,14 +259,8 @@ async function handlePageAudio({ image, text, voiceProfile }) {
     };
   }
 
-  const trimmedText = (text || '').trim();
-  let spokenText = trimmedText;
-
-  if (!spokenText) {
-    // try to reuse generated text
-    const generated = await loadPageText(image);
-    spokenText = generated.text.trim();
-  }
+  const generated = await loadPageText(image);
+  const spokenText = generated.text.trim();
 
   if (!spokenText) {
     throw createHttpError(400, 'No text available for audio generation');
@@ -320,13 +314,13 @@ app.get(
 app.post(
   '/api/page-audio',
   asyncHandler(async (req, res) => {
-    const { image, text, voice } = req.body || {};
+    const { image, voice } = req.body || {};
     if (!image) {
       throw createHttpError(400, 'Image is required');
     }
     const requestedVoiceId = typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
     const voiceProfile = voiceProfiles[requestedVoiceId] || voiceProfiles[DEFAULT_VOICE];
-    const result = await handlePageAudio({ image, text, voiceProfile });
+    const result = await handlePageAudio({ image, voiceProfile });
     res.json(result);
   })
 );
