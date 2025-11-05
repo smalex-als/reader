@@ -111,7 +111,7 @@ server.listen(PORT, HOST, ()=>{
 function resolvePath(urlPath){
   let requested = decodeURIComponent(urlPath || '/');
   if(requested === '/' || requested === ''){
-    requested = '/book.html';
+    requested = '/index.html';
   }
   const candidate = path.resolve(ROOT_DIR, '.' + requested);
   if(!candidate.startsWith(ROOT_DIR)){

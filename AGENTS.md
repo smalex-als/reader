@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `book.html` contains the full application: semantic HTML, inline styles, and vanilla JavaScript that manage the page viewer, thumbnail rail, and toolbar.
+- `index.html` is the entry point and references `styles/app.css` plus the scripts in `scripts/`.
 - The JavaScript keeps shared state in the `app` object and persists session data under the `scanned-book-reader:v1` key; extend this pattern when introducing new controls.
 - Keep new assets in clearly named folders (for example, `assets/` or `examples/`) and reference them with relative paths so the static page continues to load without a build step.
 
@@ -9,7 +9,7 @@
 - Serve the reader and bundled sample data with `node server.js` (set `HOST`/`PORT` to override defaults); the server also exposes `GET /api/books` and `GET /api/books/:id/manifest` for quick manifest generation.
 - Set `OPENAI_API_KEY` before starting the server to enable on-demand text extraction when `.txt` transcripts are missing.
 - Open the app directly in a browser for quick checks, or start a local server for CORS-safe manifest testing: `npx http-server .` (Node) or `python3 -m http.server 8000`.
-- Use LiveReload tooling such as `npx live-server book.html` when iterating on UI changes; no bundler is required.
+- Use LiveReload tooling such as `npx live-server index.html` when iterating on UI changes; no bundler is required.
 
 ## Coding Style & Naming Conventions
 - Follow the existing two-space indentation for HTML, CSS, and JS; keep imports inline and avoid introducing frameworks unless justified.
