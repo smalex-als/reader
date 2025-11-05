@@ -1,11 +1,10 @@
-if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', init);
-}else{
-  init();
-}
-
-function init(){
-  const $ = sel => document.querySelector(sel);
+export function initApp(rootElement){
+  const container = rootElement instanceof HTMLElement ? rootElement : document.getElementById('app');
+  if(!container){
+    console.error('Scanned Book Reader: app root element not found.');
+    return () => {};
+  }
+  const $ = sel => container.querySelector(sel);
   const app = {
     books: [],
     bookId: null,
@@ -39,9 +38,20 @@ function init(){
   const textModalTitle = $('#textModalTitle');
   const textModalBody = $('#textModalBody');
   const textModalClose = $('#textModalClose');
-  if(!pageImg || !viewer || !thumbs || !pageCounter || !zoomLabel || !toast || !bookSelect || !refreshBooksBtn || !brightnessInput || !contrastInput || !gotoInput || !invertBtn || !playBtn || !textBtn || !textModal || !textModalTitle || !textModalBody || !textModalClose){
+  const nextBtn = $('#nextBtn');
+  const prevBtn = $('#prevBtn');
+  const toggleThumbsBtn = $('#toggleThumbs');
+  const fitWidthBtn = $('#fitWidthBtn');
+  const fitHeightBtn = $('#fitHeightBtn');
+  const zoomInBtn = $('#zoomInBtn');
+  const zoomOutBtn = $('#zoomOutBtn');
+  const resetZoomBtn = $('#resetZoomBtn');
+  const rotateBtn = $('#rotateBtn');
+  const gotoBtn = $('#gotoBtn');
+  const fullBtn = $('#fullBtn');
+  if(!pageImg || !viewer || !thumbs || !pageCounter || !zoomLabel || !toast || !bookSelect || !refreshBooksBtn || !brightnessInput || !contrastInput || !gotoInput || !invertBtn || !playBtn || !textBtn || !textModal || !textModalTitle || !textModalBody || !textModalClose || !nextBtn || !prevBtn || !toggleThumbsBtn || !fitWidthBtn || !fitHeightBtn || !zoomInBtn || !zoomOutBtn || !resetZoomBtn || !rotateBtn || !gotoBtn || !fullBtn){
     console.error('Scanned Book Reader: required DOM nodes not found.');
-    return;
+    return () => {};
   }
   textBtn.disabled = true;
   playBtn.disabled = true;
@@ -641,28 +651,28 @@ function init(){
     }
   }
 
-  $('#nextBtn').addEventListener('click', next);
-  $('#prevBtn').addEventListener('click', prev);
-  $('#fitWidthBtn').addEventListener('click', fitWidth);
-  $('#fitHeightBtn').addEventListener('click', fitHeight);
+  nextBtn.addEventListener('click', next);
+  prevBtn.addEventListener('click', prev);
+  fitWidthBtn.addEventListener('click', fitWidth);
+  fitHeightBtn.addEventListener('click', fitHeight);
 
-  $('#zoomInBtn').addEventListener('click', ()=>{
+  zoomInBtn.addEventListener('click', ()=>{
     app.zoomMode = 'custom';
     app.zoom = Math.min(8, app.zoom*1.1);
     updateTransform(); updateCounter(); saveState();
   });
-  $('#zoomOutBtn').addEventListener('click', ()=>{
+  zoomOutBtn.addEventListener('click', ()=>{
     app.zoomMode = 'custom';
     app.zoom = Math.max(0.05, app.zoom/1.1);
     updateTransform(); updateCounter(); saveState();
   });
-  $('#resetZoomBtn').addEventListener('click', ()=>{
+  resetZoomBtn.addEventListener('click', ()=>{
     app.zoomMode = 'custom';
     app.zoom = 1;
     app.pan={x:0,y:0};
     updateTransform(); updateCounter(); saveState();
   });
-  $('#rotateBtn').addEventListener('click', ()=>{
+  rotateBtn.addEventListener('click', ()=>{
     app.angle = (app.angle+90)%360;
     applyZoomMode({ recenter: app.zoomMode !== 'custom' });
     saveState();
@@ -680,10 +690,10 @@ function init(){
   });
   textBtn.addEventListener('click', openTextPreview);
 
-  $('#brightness').addEventListener('input', (e)=>{ app.brightness = +e.target.value; applyFilters(); saveState(); });
-  $('#contrast').addEventListener('input', (e)=>{ app.contrast = +e.target.value; applyFilters(); saveState(); });
+  brightnessInput.addEventListener('input', (e)=>{ app.brightness = +e.target.value; applyFilters(); saveState(); });
+  contrastInput.addEventListener('input', (e)=>{ app.contrast = +e.target.value; applyFilters(); saveState(); });
 
-  $('#gotoBtn').addEventListener('click', ()=>{
+  gotoBtn.addEventListener('click', ()=>{
     const v = parseInt(gotoInput.value,10);
     if(!Number.isFinite(v) || v<1 || v>app.imgs.length) return;
     stopAudio();
@@ -693,13 +703,13 @@ function init(){
     renderPage({recenter:true}); saveState();
   });
 
-  $('#toggleThumbs').addEventListener('click', ()=>{
+  toggleThumbsBtn.addEventListener('click', ()=>{
     app.thumbsOpen = !app.thumbsOpen; thumbs.classList.toggle('open', app.thumbsOpen);
     applyZoomMode({ recenter: app.zoomMode !== 'custom' });
     saveState();
   });
 
-  $('#fullBtn').addEventListener('click', ()=>{
+  fullBtn.addEventListener('click', ()=>{
     const el = document.documentElement;
     if(!document.fullscreenElement){ el.requestFullscreen?.(); } else { document.exitFullscreen?.(); }
   });
@@ -758,9 +768,9 @@ function init(){
       case 'p': case 'P':
         playAudio();
         break;
-      case 't': case 'T': $('#toggleThumbs').click(); break;
+      case 't': case 'T': toggleThumbsBtn.click(); break;
       case 'g': case 'G': gotoInput.focus(); break;
-      case 'f': case 'F': $('#fullBtn').click(); break;
+      case 'f': case 'F': fullBtn.click(); break;
     }
   });
 
@@ -800,4 +810,6 @@ function init(){
       hideTextModal();
     }
   });
+
+  return () => {};
 }
