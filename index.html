@@ -7,74 +7,8 @@
   <link rel="stylesheet" href="./styles/app.css" />
 </head>
 <body>
-  <div class="app" id="app">
-    <header>
-      <div class="row">
-        <div class="toolbar-group">
-          <label class="hint">Book
-            <select id="bookSelect" title="Choose a book from the server">
-              <option value="">Loading…</option>
-            </select>
-          </label>
-          <button class="btn" id="refreshBooksBtn" title="Reload book list">Reload</button>
-          <button class="btn" id="toggleThumbs" title="Toggle thumbnails (T)">Thumbnails</button>
-          <span class="sep"></span>
-          <button class="btn" id="prevBtn" title="Previous (← / PgUp)">Prev</button>
-          <button class="btn" id="nextBtn" title="Next (→ / PgDn / Space)">Next</button>
-          <span class="hint page-counter" id="pageCounter">– / –</span>
-        </div>
+  <div id="root"></div>
 
-        <div class="toolbar-group">
-          <button class="btn" id="fitWidthBtn" title="Fit width (W)">Fit W</button>
-          <button class="btn" id="fitHeightBtn" title="Fit height (H)">Fit H</button>
-          <button class="btn" id="resetZoomBtn" title="Reset zoom (0)">100%</button>
-          <button class="btn" id="zoomOutBtn" title="Zoom out (-)">–</button>
-          <button class="btn" id="zoomInBtn" title="Zoom in (+)">+</button>
-          <span class="hint" id="zoomLabel">100%</span>
-          <span class="sep"></span>
-          <button class="btn" id="rotateBtn" title="Rotate 90° (R)">Rotate</button>
-          <button class="btn" id="invertBtn" title="Toggle inverse colors (I)">Invert</button>
-          <button class="btn" id="playBtn" title="Play text-to-speech (P)">Play</button>
-          <button class="btn" id="textBtn" title="Show parsed text (X)">Text</button>
-          <label class="hint">Brightness <input type="range" id="brightness" min="50" max="200" value="100"></label>
-          <label class="hint">Contrast <input type="range" id="contrast" min="50" max="200" value="100"></label>
-        </div>
-
-        <div class="toolbar-group" style="margin-left:auto">
-          <label class="hint">Go to <input type="number" id="gotoInput" min="1" style="width:5rem" /> <button class="btn" id="gotoBtn" title="Go (G)">Go</button></label>
-          <button class="btn" id="fullBtn" title="Fullscreen (F)">Full</button>
-          <span class="hint">Drag to pan • Scroll to move • I toggles invert • X shows text • P plays audio • Use Book menu to switch volumes</span>
-        </div>
-      </div>
-    </header>
-
-    <div class="viewer" id="viewer">
-      <aside class="thumbs" id="thumbs"></aside>
-      <div class="canvas-wrap" id="canvasWrap">
-        <img id="page" class="page" alt="Page"/>
-      </div>
-      <div id="toast" class="toast"></div>
-    </div>
-    <div class="modal" id="textModal" role="dialog" aria-modal="true" aria-labelledby="textModalTitle">
-      <div class="modal-card">
-        <div class="modal-header">
-          <div class="modal-title" id="textModalTitle">Page Text</div>
-          <button class="modal-close" id="textModalClose" aria-label="Close text preview">×</button>
-        </div>
-        <div class="modal-body" id="textModalBody">Loading…</div>
-      </div>
-    </div>
-
-    <footer>
-      <div class="row">
-        <div class="hint">Scanned Book Reader • Local-first • No uploads • Stores last page & settings</div>
-        <div class="hint" style="margin-left:auto">
-          Shortcuts: ←/→ Prev/Next • +/- Zoom • 0 Reset • W/H Fit • R Rotate • I Invert • X Text • P Play • T Thumbs • G Go • F Fullscreen • Use Book menu to switch volumes
-        </div>
-      </div>
-    </footer>
-  </div>
-
-  <script src="./scripts/main.js" type="module"></script>
+  <script type="module" src="./scripts/main.jsx"></script>
 </body>
 </html>
