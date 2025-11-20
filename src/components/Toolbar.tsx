@@ -1,3 +1,5 @@
+import type { AudioState } from '@/types/app';
+
 interface ToolbarProps {
   books: string[];
   currentBook: string | null;
@@ -24,7 +26,7 @@ interface ToolbarProps {
   onToggleTextModal: () => void;
   onToggleFullscreen: () => void;
   fullscreen: boolean;
-  audioStatus: 'idle' | 'loading' | 'generating' | 'playing' | 'paused' | 'error';
+  audioState: AudioState;
   onPlayAudio: () => void;
   onStopAudio: () => void;
   gotoInputRef: React.RefObject<HTMLInputElement>;
@@ -56,22 +58,33 @@ export default function Toolbar({
   onToggleTextModal,
   onToggleFullscreen,
   fullscreen,
-  audioStatus,
+  audioState,
   onPlayAudio,
   onStopAudio,
   gotoInputRef
 }: ToolbarProps) {
   const controlsDisabled = manifestLength === 0 || !currentBook;
-  const audioBusy = audioStatus === 'loading' || audioStatus === 'generating';
-  const audioLabel =
-    audioStatus === 'playing'
-      ? 'Pause Audio'
-      : audioStatus === 'generating'
-      ? 'Generating…'
-      : audioStatus === 'loading'
-      ? 'Loading…'
-      : 'Play Audio';
-  const audioHandler = audioStatus === 'playing' ? onStopAudio : onPlayAudio;
+  const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
+  const audioHandler = audioState.status === 'playing' ? onStopAudio : onPlayAudio;
+  const audioLabel = audioState.status === 'playing' ? 'Stop Audio' : 'Play Audio';
+  const formattedSource = audioState.source ? (audioState.source === 'ai' ? 'AI' : 'file') : null;
+  const audioStatusMessage = (() => {
+    switch (audioState.status) {
+      case 'loading':
+        return 'Loading narration…';
+      case 'generating':
+        return 'Generating narration…';
+      case 'playing':
+        return `Playing narration${formattedSource ? ` (${formattedSource})` : ''}`;
+      case 'paused':
+        return `Narration paused${formattedSource ? ` (${formattedSource})` : ''}`;
+      case 'error':
+        return audioState.error ?? 'Narration unavailable';
+      default:
+        return null;
+    }
+  })();
+  const showAudioStatus = audioStatusMessage !== null;
 
   return (
     <div className="toolbar">
@@ -200,6 +213,12 @@ export default function Toolbar({
           >
             {audioLabel}
           </button>
+          {showAudioStatus && (
+            <div className="toolbar-status" role="status" aria-live="polite">
+              {audioBusy && <span className="toolbar-spinner" aria-hidden />}
+              <span className="toolbar-status-text">{audioStatusMessage}</span>
+            </div>
+          )}
           <button
             type="button"
             className="button"
