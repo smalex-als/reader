@@ -20,3 +20,6 @@ temp/
 
 # OS metadata
 .DS_Store
+
+# Local data sets
+data/
