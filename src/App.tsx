@@ -74,6 +74,7 @@ export default function App() {
   const [audioState, setAudioState] = useState<AudioState>({
     status: 'idle',
     url: null,
+    source: null,
     currentPageKey: null
   });
   const [loading, setLoading] = useState(false);
@@ -109,6 +110,7 @@ export default function App() {
         ...prev,
         status: 'idle',
         url: null,
+        source: null,
         currentPageKey: null,
         error: undefined
       }));
@@ -227,6 +229,7 @@ export default function App() {
     setAudioState((prev) => ({
       ...prev,
       status: 'idle',
+      source: null,
       currentPageKey: null
     }));
   }, []);
@@ -297,6 +300,7 @@ export default function App() {
       ...prev,
       status: 'loading',
       error: undefined,
+      source: null,
       currentPageKey: currentImage
     }));
     try {
@@ -321,6 +325,7 @@ export default function App() {
           ...prev,
           status: 'generating',
           error: undefined,
+          source: null,
           currentPageKey: currentImage
         }));
         showToast('Generating narration…', 'info');
@@ -349,6 +354,7 @@ export default function App() {
         ...prev,
         url: entry!.url,
         status: 'playing',
+        source: entry!.source,
         currentPageKey: currentImage
       }));
       showToast(`Playing narration (${entry.source})`, 'info');
@@ -357,6 +363,7 @@ export default function App() {
       setAudioState((prev) => ({
         ...prev,
         status: 'error',
+        source: null,
         error: 'Unable to play audio'
       }));
       showToast('Unable to play audio', 'error');
@@ -383,13 +390,15 @@ export default function App() {
     const handleEnded = () => {
       setAudioState((prev) => ({
         ...prev,
-        status: 'idle'
+        status: 'idle',
+        source: null
       }));
     };
     const handleError = () => {
       setAudioState((prev) => ({
         ...prev,
         status: 'error',
+        source: null,
         error: 'Playback failed'
       }));
       showToast('Audio playback failed', 'error');
@@ -665,7 +674,7 @@ export default function App() {
           }}
           onToggleFullscreen={() => void toggleFullscreen()}
           fullscreen={isFullscreen}
-          audioStatus={audioState.status}
+          audioState={audioState}
           onPlayAudio={() => void playAudio()}
           onStopAudio={stopAudio}
           gotoInputRef={gotoInputRef}

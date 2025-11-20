@@ -137,6 +137,27 @@ body {
   flex-wrap: wrap;
 }
 
+.toolbar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+}
+
+.toolbar-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  animation: spin 0.9s linear infinite;
+}
+
+.toolbar-status-text {
+  white-space: nowrap;
+}
+
 .toolbar-field {
   display: flex;
   flex-direction: column;
@@ -385,6 +406,12 @@ body {
 .modal-status {
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.9rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1024px) {
