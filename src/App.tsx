@@ -417,6 +417,7 @@ export default function App() {
         setBooks(data.books);
         if (data.books.length === 0) {
           setBookId(null);
+          showToast('No books found. Add files to /data to begin.', 'info');
           return;
         }
         if (bookId && data.books.includes(bookId)) {
@@ -607,6 +608,12 @@ export default function App() {
   ]);
 
   const currentText = currentImage ? textCache[currentImage] ?? null : null;
+  const hasBooks = books.length > 0;
+  const footerMessage = currentImage
+    ? currentImage
+    : hasBooks
+    ? 'Choose a book to begin reading.'
+    : 'No books found. Add files to /data to begin.';
 
   return (
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
@@ -674,11 +681,7 @@ export default function App() {
           {loading && <div className="viewer-status">Loading…</div>}
         </div>
         <div className="page-footer">
-          {currentImage ? (
-            <span className="page-path">{currentImage}</span>
-          ) : (
-            <span className="page-path">Choose a book to begin reading.</span>
-          )}
+          <span className="page-path">{footerMessage}</span>
         </div>
       </main>
       <Toast toast={toast} onDismiss={dismiss} />

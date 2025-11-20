@@ -61,6 +61,7 @@ export default function Toolbar({
   onStopAudio,
   gotoInputRef
 }: ToolbarProps) {
+  const controlsDisabled = manifestLength === 0 || !currentBook;
   const audioBusy = audioStatus === 'loading' || audioStatus === 'generating';
   const audioLabel =
     audioStatus === 'playing'
@@ -112,6 +113,7 @@ export default function Toolbar({
               type="number"
               className="input"
               placeholder={manifestLength === 0 ? '—' : String(currentPage + 1)}
+              disabled={manifestLength === 0}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
                   const desired = Number.parseInt(event.currentTarget.value, 10);
@@ -127,26 +129,26 @@ export default function Toolbar({
 
       <div className="toolbar-row">
         <div className="toolbar-group">
-          <button type="button" className="button" onClick={onZoomOut}>
+          <button type="button" className="button" onClick={onZoomOut} disabled={controlsDisabled}>
             Zoom -
           </button>
-          <button type="button" className="button" onClick={onZoomIn}>
+          <button type="button" className="button" onClick={onZoomIn} disabled={controlsDisabled}>
             Zoom +
           </button>
-          <button type="button" className="button" onClick={onResetZoom}>
+          <button type="button" className="button" onClick={onResetZoom} disabled={controlsDisabled}>
             Reset
           </button>
-          <button type="button" className="button" onClick={onFitWidth}>
+          <button type="button" className="button" onClick={onFitWidth} disabled={controlsDisabled}>
             Fit Width
           </button>
-          <button type="button" className="button" onClick={onFitHeight}>
+          <button type="button" className="button" onClick={onFitHeight} disabled={controlsDisabled}>
             Fit Height
           </button>
           <span className="toolbar-readout">Zoom: {(zoom * 100).toFixed(0)}%</span>
         </div>
 
         <div className="toolbar-group">
-          <button type="button" className="button" onClick={onRotate}>
+          <button type="button" className="button" onClick={onRotate} disabled={controlsDisabled}>
             Rotate 90°
           </button>
           <span className="toolbar-readout">{rotation}°</span>
@@ -154,6 +156,7 @@ export default function Toolbar({
             type="button"
             className={`button ${invert ? 'button-active' : ''}`}
             onClick={onInvert}
+            disabled={controlsDisabled}
           >
             Invert
           </button>
@@ -170,6 +173,7 @@ export default function Toolbar({
               min={50}
               max={200}
               value={brightness}
+              disabled={controlsDisabled}
               onChange={(event) => onBrightness(Number(event.target.value))}
             />
           </span>
@@ -181,6 +185,7 @@ export default function Toolbar({
               min={50}
               max={200}
               value={contrast}
+              disabled={controlsDisabled}
               onChange={(event) => onContrast(Number(event.target.value))}
             />
           </span>
@@ -191,11 +196,16 @@ export default function Toolbar({
             type="button"
             className="button"
             onClick={audioHandler}
-            disabled={manifestLength === 0 || audioBusy}
+            disabled={controlsDisabled || audioBusy}
           >
             {audioLabel}
           </button>
-          <button type="button" className="button" onClick={onToggleTextModal}>
+          <button
+            type="button"
+            className="button"
+            onClick={onToggleTextModal}
+            disabled={controlsDisabled}
+          >
             Page Text
           </button>
           <button type="button" className="button" onClick={onToggleFullscreen}>
