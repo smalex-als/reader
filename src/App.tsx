@@ -5,6 +5,7 @@ import Toast from '@/components/Toast';
 import TextModal from '@/components/TextModal';
 import BookmarksModal from '@/components/BookmarksModal';
 import PrintModal from '@/components/PrintModal';
+import HelpModal from '@/components/HelpModal';
 import { useToast } from '@/hooks/useToast';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { clamp, clampPan } from '@/lib/math';
@@ -86,6 +87,7 @@ export default function App() {
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [printSelection, setPrintSelection] = useState<string>('current');
   const [printLoading, setPrintLoading] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
 
@@ -98,6 +100,27 @@ export default function App() {
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
   const currentImage = manifest[currentPage] ?? null;
+
+  const hotkeys = useMemo(
+    () => [
+      { keys: '← / ↑ / PageUp', action: 'Previous page' },
+      { keys: '→ / ↓ / PageDown / Space', action: 'Next page' },
+      { keys: '+ / =', action: 'Zoom in' },
+      { keys: '-', action: 'Zoom out' },
+      { keys: '0', action: 'Reset zoom/rotation' },
+      { keys: 'W', action: 'Fit width' },
+      { keys: 'H', action: 'Fit height' },
+      { keys: 'R', action: 'Rotate 90°' },
+      { keys: 'I', action: 'Invert colors' },
+      { keys: 'X', action: 'Toggle page text' },
+      { keys: 'P', action: 'Play/Pause narration' },
+      { keys: 'G', action: 'Focus Go To input' },
+      { keys: 'F', action: 'Toggle fullscreen' },
+      { keys: 'Esc', action: 'Close dialogs' },
+      { keys: 'Shift + /', action: 'Open help' }
+    ],
+    []
+  );
 
   const renderPage = useCallback(
     (pageIndex: number) => {
@@ -647,7 +670,7 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (textModalOpen && event.key !== 'Escape') {
+      if ((textModalOpen || helpOpen || printModalOpen || bookmarksOpen) && event.key !== 'Escape') {
         return;
       }
       if (isTextInput(event.target) && event.key !== 'Escape') {
@@ -655,6 +678,10 @@ export default function App() {
       }
       const key = event.key.toLowerCase();
       switch (key) {
+        case '?':
+          event.preventDefault();
+          setHelpOpen(true);
+          break;
         case 'arrowleft':
         case 'arrowup':
         case 'pageup':
@@ -726,6 +753,15 @@ export default function App() {
         case 'escape':
           if (textModalOpen) {
             setTextModalOpen(false);
+          }
+          if (helpOpen) {
+            setHelpOpen(false);
+          }
+          if (printModalOpen) {
+            setPrintModalOpen(false);
+          }
+          if (bookmarksOpen) {
+            setBookmarksOpen(false);
           }
           break;
         default:
@@ -800,6 +836,8 @@ export default function App() {
     ? 'Choose a book to begin reading.'
     : 'No books found. Add files to /data to begin.';
 
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
   const openPrintModal = useCallback(() => {
     setPrintModalOpen(true);
     if (selectedPrintOption) {
@@ -921,6 +959,7 @@ export default function App() {
           isBookmarked={isBookmarked}
           bookmarksCount={bookmarks.length}
           onOpenPrint={openPrintModal}
+          onOpenHelp={openHelp}
         />
         <div ref={viewerShellRef} className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''}`}>
           <Viewer
@@ -946,6 +985,7 @@ export default function App() {
         onConfirm={() => void createPrintPdf()}
         loading={printLoading}
       />
+      <HelpModal open={helpOpen} hotkeys={hotkeys} onClose={closeHelp} />
       <BookmarksModal
         open={bookmarksOpen}
         bookmarks={bookmarks}

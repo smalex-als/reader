@@ -35,6 +35,7 @@ interface ToolbarProps {
   isBookmarked: boolean;
   bookmarksCount: number;
   onOpenPrint: () => void;
+  onOpenHelp: () => void;
 }
 
 export default function Toolbar({
@@ -71,7 +72,8 @@ export default function Toolbar({
   onShowBookmarks,
   isBookmarked,
   bookmarksCount,
-  onOpenPrint
+  onOpenPrint,
+  onOpenHelp
 }: ToolbarProps) {
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
@@ -255,6 +257,9 @@ export default function Toolbar({
             disabled={!currentBook}
           >
             Bookmarks ({bookmarksCount})
+          </button>
+          <button type="button" className="button" onClick={onOpenHelp}>
+            Help / Hotkeys
           </button>
           <button type="button" className="button" onClick={onToggleFullscreen}>
             {fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
