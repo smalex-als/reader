@@ -870,9 +870,13 @@ export default function App() {
       if (!response.ok) {
         throw new Error('Failed to generate PDF');
       }
+      const disposition = response.headers.get('content-disposition') ?? '';
+      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const serverFilename = match?.[1];
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      const filename = `${bookId}-pages-${selectedPrintOption.id}.pdf`;
+      const fallback = `${bookId}-pages-${selectedPrintOption.id}.pdf`;
+      const filename = serverFilename || fallback;
       const anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = filename;

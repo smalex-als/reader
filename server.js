@@ -385,6 +385,15 @@ async function deriveBookmarkLabelFromText(imageUrl) {
   }
 }
 
+function slugifyFilename(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 80) || 'pages';
+}
+
 async function createPdfFromImages(bookId, imageUrls) {
   if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     throw createHttpError(400, 'At least one page is required for printing');
@@ -478,9 +487,13 @@ app.post(
       }
       return value;
     });
+    const primaryPage = images[0];
+    const textLabel = await deriveBookmarkLabelFromText(primaryPage);
+    const baseLabel = textLabel || deriveBookmarkLabel(primaryPage);
+    const slug = slugifyFilename(`${bookId}-${baseLabel}`);
     const pdfBuffer = await createPdfFromImages(bookId, images);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${bookId}-pages.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${slug}.pdf"`);
     res.send(pdfBuffer);
   })
 );
