@@ -3,6 +3,7 @@ import Toolbar from '@/components/Toolbar';
 import Viewer from '@/components/Viewer';
 import Toast from '@/components/Toast';
 import TextModal from '@/components/TextModal';
+import BookmarksModal from '@/components/BookmarksModal';
 import { useToast } from '@/hooks/useToast';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { clamp, clampPan } from '@/lib/math';
@@ -22,7 +23,8 @@ import type {
   PageText,
   ViewerMetrics,
   ViewerPan,
-  ZoomMode
+  ZoomMode,
+  Bookmark
 } from '@/types/app';
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -77,6 +79,9 @@ export default function App() {
     source: null,
     currentPageKey: null
   });
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const [bookmarksLoading, setBookmarksLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
 
@@ -234,6 +239,29 @@ export default function App() {
     }));
   }, []);
 
+  const fetchBookmarks = useCallback(
+    async (targetBookId: string | null = bookId) => {
+      if (!targetBookId) {
+        setBookmarks([]);
+        return;
+      }
+      setBookmarksLoading(true);
+      try {
+        const data = await fetchJson<{ book: string; bookmarks: Bookmark[] }>(
+          `/api/books/${encodeURIComponent(targetBookId)}/bookmarks`
+        );
+        setBookmarks(data.bookmarks ?? []);
+      } catch (error) {
+        console.error(error);
+        setBookmarks([]);
+        showToast('Unable to load bookmarks', 'error');
+      } finally {
+        setBookmarksLoading(false);
+      }
+    },
+    [bookId, showToast]
+  );
+
   const fetchPageText = useCallback(
     async (force = false) => {
       if (!currentImage) {
@@ -370,6 +398,100 @@ export default function App() {
     }
   }, [audioCache, audioState, currentImage, showToast]);
 
+  const addBookmark = useCallback(async () => {
+    if (!bookId || !currentImage) {
+      return;
+    }
+    try {
+      setBookmarksLoading(true);
+      const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page: currentPage,
+          image: currentImage
+        })
+      });
+      if (!response.ok) {
+        throw new Error('Failed to save bookmark');
+      }
+      const data = (await response.json()) as { bookmarks: Bookmark[] };
+      setBookmarks(data.bookmarks ?? []);
+      showToast('Bookmark saved', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Unable to save bookmark', 'error');
+    } finally {
+      setBookmarksLoading(false);
+    }
+  }, [bookId, currentImage, currentPage, showToast]);
+
+  const removeBookmark = useCallback(
+    async (pageIndex?: number) => {
+      if (!bookId) {
+        return;
+      }
+      const targetPage = typeof pageIndex === 'number' ? pageIndex : currentPage;
+      if (targetPage < 0) {
+        return;
+      }
+      try {
+        setBookmarksLoading(true);
+        const response = await fetch(
+          `/api/books/${encodeURIComponent(bookId)}/bookmarks?page=${encodeURIComponent(targetPage)}`,
+          { method: 'DELETE' }
+        );
+        if (!response.ok) {
+          throw new Error('Failed to remove bookmark');
+        }
+        const data = (await response.json()) as { bookmarks: Bookmark[] };
+        setBookmarks(data.bookmarks ?? []);
+        showToast('Bookmark removed', 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Unable to remove bookmark', 'error');
+      } finally {
+        setBookmarksLoading(false);
+      }
+    },
+    [bookId, currentPage, showToast]
+  );
+
+  const toggleBookmark = useCallback(() => {
+    const existing = bookmarks.some((entry) => entry.page === currentPage);
+    if (existing) {
+      void removeBookmark(currentPage);
+    } else {
+      void addBookmark();
+    }
+  }, [addBookmark, bookmarks, currentPage, removeBookmark]);
+
+  const showBookmarks = useCallback(() => {
+    setBookmarksOpen(true);
+    if (bookmarks.length === 0) {
+      void fetchBookmarks();
+    }
+  }, [bookmarks.length, fetchBookmarks]);
+
+  const closeBookmarks = useCallback(() => {
+    setBookmarksOpen(false);
+  }, []);
+
+  const handleSelectBookmark = useCallback(
+    (bookmark: Bookmark) => {
+      setBookmarksOpen(false);
+      renderPage(bookmark.page);
+    },
+    [renderPage]
+  );
+
+  const handleRemoveBookmarkFromList = useCallback(
+    (bookmark: Bookmark) => {
+      void removeBookmark(bookmark.page);
+    },
+    [removeBookmark]
+  );
+
   useEffect(() => {
     const audio = new Audio();
     audio.preload = 'auto';
@@ -451,6 +573,8 @@ export default function App() {
   useEffect(() => {
     if (!bookId) {
       setManifest([]);
+      setBookmarks([]);
+      setBookmarksOpen(false);
       return;
     }
     const storedSettings = loadSettingsForBook(bookId);
@@ -488,6 +612,14 @@ export default function App() {
       }
     })();
   }, [bookId, showToast, stopAudio]);
+
+  useEffect(() => {
+    if (!bookId) {
+      setBookmarks([]);
+      return;
+    }
+    void fetchBookmarks(bookId);
+  }, [bookId, fetchBookmarks]);
 
   useEffect(() => {
     if (!bookId) {
@@ -617,6 +749,7 @@ export default function App() {
   ]);
 
   const currentText = currentImage ? textCache[currentImage] ?? null : null;
+  const isBookmarked = bookmarks.some((entry) => entry.page === currentPage);
   const hasBooks = books.length > 0;
   const footerMessage = currentImage
     ? currentImage
@@ -678,6 +811,10 @@ export default function App() {
           onPlayAudio={() => void playAudio()}
           onStopAudio={stopAudio}
           gotoInputRef={gotoInputRef}
+          onToggleBookmark={toggleBookmark}
+          onShowBookmarks={showBookmarks}
+          isBookmarked={isBookmarked}
+          bookmarksCount={bookmarks.length}
         />
         <div ref={viewerShellRef} className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''}`}>
           <Viewer
@@ -694,6 +831,16 @@ export default function App() {
         </div>
       </main>
       <Toast toast={toast} onDismiss={dismiss} />
+      <BookmarksModal
+        open={bookmarksOpen}
+        bookmarks={bookmarks}
+        loading={bookmarksLoading}
+        currentBook={bookId}
+        currentPage={currentPage}
+        onClose={closeBookmarks}
+        onSelect={handleSelectBookmark}
+        onRemove={handleRemoveBookmarkFromList}
+      />
       <TextModal
         open={textModalOpen}
         text={currentText}

@@ -15,6 +15,7 @@ const STATIC_ROOT = existsSync(DIST_DIR) ? DIST_DIR : __dirname;
 
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = parseInt(process.env.PORT || '3000', 10);
+const BOOKMARKS_FILENAME = 'bookmarks.txt';
 const DEFAULT_VOICE = 'santa';
 const TEXT_PROMPT = `Extract all visible text from this image as plain text. Preserve paragraph structure and spacing. Normalize all fractions: instead of Unicode characters like ½ or ¼, use plain text equivalents like 1/2, 1/4, 1 1/2, etc. Do not use emojis, special characters, or markdown. Keep the content exactly as it appears, but ensure formatting is consistent: use normal paragraphs with one empty line between them. Preserve line breaks and indentation only where they represent clear paragraph or step boundaries. Ignore page numbers, footers, and obvious scanning artifacts. Do not add commentary.`;
 const voiceProfiles = {
@@ -122,11 +123,7 @@ async function listBooks() {
 }
 
 async function loadManifest(bookId) {
-  const directory = path.join(DATA_DIR, bookId);
-  const stat = await safeStat(directory);
-  if (!stat?.isDirectory()) {
-    throw createHttpError(404, 'Book not found');
-  }
+  const directory = await assertBookDirectory(bookId);
 
   const entries = await fs.readdir(directory, { withFileTypes: true });
   const manifest = entries
@@ -155,6 +152,19 @@ async function safeStat(targetPath) {
 }
 
 let openaiClient = null;
+
+function getBookDirectory(bookId) {
+  return path.join(DATA_DIR, bookId);
+}
+
+async function assertBookDirectory(bookId) {
+  const directory = getBookDirectory(bookId);
+  const stat = await safeStat(directory);
+  if (!stat?.isDirectory()) {
+    throw createHttpError(404, 'Book not found');
+  }
+  return directory;
+}
 
 function getOpenAI() {
   if (!process.env.OPENAI_API_KEY) {
@@ -286,6 +296,87 @@ async function handlePageAudio({ image, voiceProfile }) {
   };
 }
 
+function deriveBookmarkLabel(imageUrl) {
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    return 'Page';
+  }
+  const filename = imageUrl.split('/').pop() || imageUrl;
+  return filename.replace(/\.[^.]+$/, '') || filename;
+}
+
+function sanitizeBookmark(raw, bookId) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const page = Number.parseInt(raw.page, 10);
+  const image = typeof raw.image === 'string' ? raw.image : '';
+  if (!Number.isInteger(page) || page < 0) {
+    return null;
+  }
+  if (!image.startsWith(`/data/${bookId}/`)) {
+    return null;
+  }
+  const label = typeof raw.label === 'string' ? raw.label.trim() : deriveBookmarkLabel(image);
+  return {
+    page,
+    image,
+    label: label || deriveBookmarkLabel(image)
+  };
+}
+
+async function loadBookmarks(bookId) {
+  const directory = await assertBookDirectory(bookId);
+  const filePath = path.join(directory, BOOKMARKS_FILENAME);
+  const stat = await safeStat(filePath);
+  if (!stat?.isFile()) {
+    return [];
+  }
+  const raw = await fs.readFile(filePath, 'utf8');
+  let parsed = [];
+  try {
+    const json = JSON.parse(raw);
+    if (Array.isArray(json)) {
+      parsed = json;
+    }
+  } catch {
+    // ignore parse failures and fall back to empty list
+  }
+  return parsed
+    .map((entry) => sanitizeBookmark(entry, bookId))
+    .filter(Boolean)
+    .sort((a, b) => a.page - b.page);
+}
+
+async function saveBookmarks(bookId, bookmarks) {
+  const directory = await assertBookDirectory(bookId);
+  const filePath = path.join(directory, BOOKMARKS_FILENAME);
+  const normalized = (Array.isArray(bookmarks) ? bookmarks : [])
+    .map((entry) => sanitizeBookmark(entry, bookId))
+    .filter(Boolean)
+    .sort((a, b) => a.page - b.page);
+  await fs.mkdir(directory, { recursive: true });
+  await fs.writeFile(filePath, JSON.stringify(normalized, null, 2), 'utf8');
+  return normalized;
+}
+
+async function deriveBookmarkLabelFromText(imageUrl) {
+  const { relative } = resolveDataUrl(imageUrl);
+  const baseName = relative.replace(/\.[^.]+$/, '');
+  const textRelative = `${baseName}.txt`;
+  const textAbsolute = path.join(DATA_DIR, textRelative);
+  const stat = await safeStat(textAbsolute);
+  if (!stat?.isFile()) {
+    return null;
+  }
+  try {
+    const content = await fs.readFile(textAbsolute, 'utf8');
+    const firstLine = content.split(/\r?\n/).find((line) => line.trim().length > 0);
+    return firstLine?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 app.get(
   '/api/books',
   asyncHandler(async (_req, res) => {
@@ -330,6 +421,57 @@ app.post(
     const voiceProfile = voiceProfiles[requestedVoiceId] || voiceProfiles[DEFAULT_VOICE];
     const result = await handlePageAudio({ image, voiceProfile });
     res.json(result);
+  })
+);
+
+app.get(
+  '/api/books/:id/bookmarks',
+  asyncHandler(async (req, res) => {
+    const bookId = normalizeBookId(req.params.id);
+    const bookmarks = await loadBookmarks(bookId);
+    res.json({ book: bookId, bookmarks });
+  })
+);
+
+app.post(
+  '/api/books/:id/bookmarks',
+  asyncHandler(async (req, res) => {
+    const bookId = normalizeBookId(req.params.id);
+    const { page, image } = req.body || {};
+    if (!Number.isInteger(page) || page < 0) {
+      throw createHttpError(400, 'Valid page index is required');
+    }
+    if (typeof image !== 'string' || !image.startsWith(`/data/${bookId}/`)) {
+      throw createHttpError(400, 'Bookmark image must belong to this book');
+    }
+    const existing = await loadBookmarks(bookId);
+    const labelFromText = await deriveBookmarkLabelFromText(image);
+    const nextEntry = sanitizeBookmark(
+      { page, image, label: labelFromText ?? deriveBookmarkLabel(image) },
+      bookId
+    );
+    if (!nextEntry) {
+      throw createHttpError(400, 'Invalid bookmark payload');
+    }
+    const deduped = existing.filter((entry) => entry.page !== nextEntry.page);
+    const updated = await saveBookmarks(bookId, [...deduped, nextEntry]);
+    res.json({ book: bookId, bookmarks: updated });
+  })
+);
+
+app.delete(
+  '/api/books/:id/bookmarks',
+  asyncHandler(async (req, res) => {
+    const bookId = normalizeBookId(req.params.id);
+    const pageParam = req.query.page;
+    const page = typeof pageParam === 'string' ? Number.parseInt(pageParam, 10) : null;
+    if (!Number.isInteger(page) || page < 0) {
+      throw createHttpError(400, 'Valid page is required to remove bookmark');
+    }
+    const existing = await loadBookmarks(bookId);
+    const filtered = existing.filter((entry) => entry.page !== page);
+    const updated = await saveBookmarks(bookId, filtered);
+    res.json({ book: bookId, bookmarks: updated });
   })
 );
 

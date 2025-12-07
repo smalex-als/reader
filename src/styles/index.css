@@ -408,6 +408,74 @@ body {
   font-size: 0.9rem;
 }
 
+.bookmark-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bookmark-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.bookmark-item-active {
+  border-color: rgba(0, 200, 120, 0.6);
+  box-shadow: 0 0 0 1px rgba(0, 200, 120, 0.2);
+}
+
+.bookmark-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.bookmark-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bookmark-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.bookmark-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.bookmark-path {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  word-break: break-word;
+}
+
+.bookmark-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-self: center;
+}
+
+.bookmark-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(0, 200, 120, 0.2);
+  color: rgba(0, 255, 170, 0.9);
+  font-size: 0.8rem;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

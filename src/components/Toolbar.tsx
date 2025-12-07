@@ -30,6 +30,10 @@ interface ToolbarProps {
   onPlayAudio: () => void;
   onStopAudio: () => void;
   gotoInputRef: React.RefObject<HTMLInputElement>;
+  onToggleBookmark: () => void;
+  onShowBookmarks: () => void;
+  isBookmarked: boolean;
+  bookmarksCount: number;
 }
 
 export default function Toolbar({
@@ -61,7 +65,11 @@ export default function Toolbar({
   audioState,
   onPlayAudio,
   onStopAudio,
-  gotoInputRef
+  gotoInputRef,
+  onToggleBookmark,
+  onShowBookmarks,
+  isBookmarked,
+  bookmarksCount
 }: ToolbarProps) {
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
@@ -226,6 +234,22 @@ export default function Toolbar({
             disabled={controlsDisabled}
           >
             Page Text
+          </button>
+          <button
+            type="button"
+            className={`button ${isBookmarked ? 'button-active' : ''}`}
+            onClick={onToggleBookmark}
+            disabled={controlsDisabled}
+          >
+            {isBookmarked ? 'Bookmarked' : 'Add Bookmark'}
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onShowBookmarks}
+            disabled={!currentBook}
+          >
+            Bookmarks ({bookmarksCount})
           </button>
           <button type="button" className="button" onClick={onToggleFullscreen}>
             {fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}

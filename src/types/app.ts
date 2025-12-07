@@ -5,6 +5,12 @@ export interface PageText {
   source: 'file' | 'ai';
 }
 
+export interface Bookmark {
+  page: number;
+  image: string;
+  label: string;
+}
+
 export interface AudioCacheEntry {
   url: string;
   source: 'file' | 'ai';
