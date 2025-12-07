@@ -34,6 +34,7 @@ interface ToolbarProps {
   onShowBookmarks: () => void;
   isBookmarked: boolean;
   bookmarksCount: number;
+  onOpenPrint: () => void;
 }
 
 export default function Toolbar({
@@ -69,7 +70,8 @@ export default function Toolbar({
   onToggleBookmark,
   onShowBookmarks,
   isBookmarked,
-  bookmarksCount
+  bookmarksCount,
+  onOpenPrint
 }: ToolbarProps) {
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
@@ -234,6 +236,9 @@ export default function Toolbar({
             disabled={controlsDisabled}
           >
             Page Text
+          </button>
+          <button type="button" className="button" onClick={onOpenPrint} disabled={controlsDisabled}>
+            Print PDF
           </button>
           <button
             type="button"

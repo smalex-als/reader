@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import mime from 'mime-types';
 import { OpenAI } from 'openai';
+import { PDFDocument } from 'pdf-lib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,6 +112,13 @@ function resolveDataUrl(urlPath) {
     throw createHttpError(400, 'Path escapes data directory');
   }
   return { relative, absolute: resolved };
+}
+
+function validateBookImage(bookId, imageUrl) {
+  if (typeof imageUrl !== 'string' || !imageUrl.startsWith(`/data/${bookId}/`)) {
+    throw createHttpError(400, 'Image must belong to requested book');
+  }
+  return resolveDataUrl(imageUrl);
 }
 
 async function listBooks() {
@@ -377,6 +385,38 @@ async function deriveBookmarkLabelFromText(imageUrl) {
   }
 }
 
+async function createPdfFromImages(bookId, imageUrls) {
+  if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+    throw createHttpError(400, 'At least one page is required for printing');
+  }
+  if (imageUrls.length > 10) {
+    throw createHttpError(400, 'Too many pages requested (max 10)');
+  }
+
+  const pdf = await PDFDocument.create();
+
+  for (const imageUrl of imageUrls) {
+    const { absolute } = validateBookImage(bookId, imageUrl);
+    const stat = await safeStat(absolute);
+    if (!stat?.isFile()) {
+      throw createHttpError(404, 'Requested page not found');
+    }
+    const buffer = await fs.readFile(absolute);
+    const mimeType = mime.lookup(absolute);
+    const isPng = mimeType === 'image/png';
+    const isJpg = mimeType === 'image/jpeg' || mimeType === 'image/jpg';
+    if (!isPng && !isJpg) {
+      throw createHttpError(400, 'Only PNG and JPEG pages can be printed');
+    }
+    const embedded = isPng ? await pdf.embedPng(buffer) : await pdf.embedJpg(buffer);
+    const { width, height } = embedded;
+    const page = pdf.addPage([width, height]);
+    page.drawImage(embedded, { x: 0, y: 0, width, height });
+  }
+
+  return Buffer.from(await pdf.save());
+}
+
 app.get(
   '/api/books',
   asyncHandler(async (_req, res) => {
@@ -421,6 +461,27 @@ app.post(
     const voiceProfile = voiceProfiles[requestedVoiceId] || voiceProfiles[DEFAULT_VOICE];
     const result = await handlePageAudio({ image, voiceProfile });
     res.json(result);
+  })
+);
+
+app.post(
+  '/api/books/:id/print',
+  asyncHandler(async (req, res) => {
+    const bookId = normalizeBookId(req.params.id);
+    const { pages } = req.body || {};
+    if (!Array.isArray(pages)) {
+      throw createHttpError(400, 'Pages array is required');
+    }
+    const images = pages.map((value) => {
+      if (typeof value !== 'string') {
+        throw createHttpError(400, 'Pages must be image URLs');
+      }
+      return value;
+    });
+    const pdfBuffer = await createPdfFromImages(bookId, images);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${bookId}-pages.pdf"`);
+    res.send(pdfBuffer);
   })
 );
 

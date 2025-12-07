@@ -476,6 +476,51 @@ body {
   font-size: 0.8rem;
 }
 
+.print-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.print-option {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+}
+
+.print-option input {
+  margin-top: 0.3rem;
+}
+
+.print-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.print-option-title {
+  font-weight: 600;
+}
+
+.print-option-detail {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.print-option-active {
+  border-color: rgba(0, 120, 255, 0.6);
+  box-shadow: 0 0 0 1px rgba(0, 120, 255, 0.25);
+}
+
+.print-option-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
