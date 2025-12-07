@@ -621,7 +621,8 @@ export default function App() {
           `/api/books/${encodeURIComponent(bookId)}/manifest`
         );
         setManifest(data.manifest);
-        const requestedPage = pendingPageRef.current ?? 0;
+        const storedPage = loadLastPage(bookId);
+        const requestedPage = storedPage ?? pendingPageRef.current ?? 0;
         if (data.manifest.length > 0) {
           const safePage = clamp(requestedPage, 0, data.manifest.length - 1);
           setCurrentPage(safePage);
