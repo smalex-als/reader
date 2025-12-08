@@ -930,7 +930,7 @@ export default function App() {
 
   return (
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
-      <main className="main">
+      <aside className="sidebar">
         <Toolbar
           currentBook={bookId}
           manifestLength={manifest.length}
@@ -972,6 +972,8 @@ export default function App() {
           onOpenPrint={openPrintModal}
           onOpenHelp={openHelp}
         />
+      </aside>
+      <main className="main">
         <div ref={viewerShellRef} className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''}`}>
           <Viewer
             imageUrl={currentImage}
