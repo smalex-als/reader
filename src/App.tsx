@@ -13,7 +13,8 @@ import { useAudioController } from '@/hooks/useAudioController';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
-import { clamp, clampPan } from '@/lib/math';
+import { useZoom } from '@/hooks/useZoom';
+import { clamp } from '@/lib/math';
 import {
   loadLastBook,
   loadLastPage,
@@ -22,7 +23,7 @@ import {
   saveLastPage,
   saveSettingsForBook
 } from '@/lib/storage';
-import type { AppSettings, ViewerMetrics, ViewerPan, ZoomMode, Bookmark } from '@/types/app';
+import type { AppSettings } from '@/types/app';
 
 const DEFAULT_SETTINGS: AppSettings = {
   zoom: 1,
@@ -34,8 +35,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   pan: { x: 0, y: 0 }
 };
 
-const ZOOM_MIN = 0.25;
-const ZOOM_MAX = 6;
 const ZOOM_STEP = 0.15;
 
 function createDefaultSettings(): AppSettings {
@@ -63,12 +62,22 @@ export default function App() {
   const [bookId, setBookId] = useState<string | null>(loadLastBook());
   const [manifest, setManifest] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
-  const [settings, setSettings] = useState<AppSettings>(createDefaultSettings);
-  const [metrics, setMetrics] = useState<ViewerMetrics | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
+  const {
+    settings,
+    setSettings,
+    metrics,
+    setMetrics,
+    applyZoomMode,
+    updateZoom,
+    updateRotation,
+    updatePan,
+    resetTransform,
+    handleMetricsChange
+  } = useZoom(createDefaultSettings());
 
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const gotoInputRef = useRef<HTMLInputElement | null>(null);
@@ -169,101 +178,11 @@ export default function App() {
     showToast
   });
 
-  const updateTransform = useCallback(
-    (partial: Partial<Pick<AppSettings, 'zoom' | 'zoomMode' | 'rotation' | 'pan'>>) => {
-      setSettings((prev) => {
-        const requestedZoom = partial.zoom ?? prev.zoom;
-        const clampedZoom = clamp(requestedZoom, ZOOM_MIN, ZOOM_MAX);
-        const nextZoomMode = partial.zoomMode ?? prev.zoomMode;
-        const basePan = partial.pan ?? prev.pan;
-        const panMetrics = metrics ? { ...metrics, scale: clampedZoom } : null;
-        const nextPan = panMetrics ? clampPan(basePan, panMetrics) : basePan;
-        const rotation = partial.rotation ?? prev.rotation;
-
-        if (
-          clampedZoom === prev.zoom &&
-          nextZoomMode === prev.zoomMode &&
-          rotation === prev.rotation &&
-          nextPan.x === prev.pan.x &&
-          nextPan.y === prev.pan.y
-        ) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          ...partial,
-          zoom: clampedZoom,
-          zoomMode: nextZoomMode,
-          rotation,
-          pan: nextPan
-        };
-      });
-    },
-    [metrics]
-  );
-
-  const applyZoomMode = useCallback(
-    (mode: ZoomMode, overrideMetrics?: ViewerMetrics | null) => {
-      const targetMetrics = overrideMetrics ?? metrics;
-      if (!targetMetrics || targetMetrics.naturalWidth === 0 || targetMetrics.naturalHeight === 0) {
-        updateTransform({ zoomMode: mode, pan: { x: 0, y: 0 } });
-        return;
-      }
-
-      const rotation = Math.abs(settings.rotation % 360);
-      const rotated = rotation === 90 || rotation === 270;
-      const naturalWidth = rotated ? targetMetrics.naturalHeight : targetMetrics.naturalWidth;
-      const naturalHeight = rotated ? targetMetrics.naturalWidth : targetMetrics.naturalHeight;
-
-      let nextZoom = settings.zoom;
-      if (mode === 'fit-width' && naturalWidth > 0) {
-        nextZoom = targetMetrics.containerWidth / naturalWidth;
-      } else if (mode === 'fit-height' && naturalHeight > 0) {
-        nextZoom = targetMetrics.containerHeight / naturalHeight;
-      }
-
-      if (!Number.isFinite(nextZoom) || nextZoom <= 0) {
-        nextZoom = 1;
-      }
-
-      updateTransform({ zoom: nextZoom, zoomMode: mode, pan: { x: 0, y: 0 } });
-    },
-    [metrics, settings.rotation, settings.zoom, updateTransform]
-  );
-
-  const updateZoom = useCallback(
-    (nextZoom: number, mode: ZoomMode = 'custom') => {
-      updateTransform({ zoom: nextZoom, zoomMode: mode });
-    },
-    [updateTransform]
-  );
-
-  const updateRotation = useCallback(() => {
-    const nextRotation = (settings.rotation + 90) % 360;
-    updateTransform({ rotation: nextRotation, pan: { x: 0, y: 0 } });
-  }, [settings.rotation, updateTransform]);
-
-  const updatePan = useCallback(
-    (nextPan: ViewerPan) => {
-      updateTransform({ pan: nextPan });
-    },
-    [updateTransform]
-  );
-
   const applyFilters = useCallback((filters: Partial<Pick<AppSettings, 'brightness' | 'contrast' | 'invert'>>) => {
     setSettings((prev) => ({
       ...prev,
       ...filters
     }));
-  }, []);
-
-  const resetTransform = useCallback(() => {
-    updateTransform({ zoom: 1, zoomMode: 'custom', rotation: 0, pan: { x: 0, y: 0 } });
-  }, [updateTransform]);
-
-  const handleMetricsChange = useCallback((nextMetrics: ViewerMetrics) => {
-    setMetrics(nextMetrics);
   }, []);
 
   useEffect(() => {
@@ -351,16 +270,6 @@ export default function App() {
     }, 250);
     return () => window.clearTimeout(timeout);
   }, [bookId, settings]);
-
-  useEffect(() => {
-    if (!metrics) {
-      return;
-    }
-    if (settings.zoomMode === 'custom') {
-      return;
-    }
-    applyZoomMode(settings.zoomMode, metrics);
-  }, [applyZoomMode, metrics, settings.zoomMode]);
 
   const openHelp = useCallback(() => setHelpOpen(true), []);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
