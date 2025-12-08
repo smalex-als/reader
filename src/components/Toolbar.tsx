@@ -1,11 +1,10 @@
 import type { AudioState } from '@/types/app';
 
 interface ToolbarProps {
-  books: string[];
   currentBook: string | null;
   manifestLength: number;
   currentPage: number;
-  onSelectBook: (bookId: string) => void;
+  onOpenBookModal: () => void;
   onPrev: () => void;
   onNext: () => void;
   onGoTo: (page: number) => void;
@@ -39,11 +38,10 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
-  books,
   currentBook,
   manifestLength,
   currentPage,
-  onSelectBook,
+  onOpenBookModal,
   onPrev,
   onNext,
   onGoTo,
@@ -101,23 +99,12 @@ export default function Toolbar({
   return (
     <div className="toolbar">
       <div className="toolbar-row">
-        <label className="toolbar-field">
-          Book
-          <select
-            className="select"
-            value={currentBook ?? ''}
-            onChange={(event) => onSelectBook(event.target.value)}
-          >
-            <option value="" disabled>
-              Select book
-            </option>
-            {books.map((book) => (
-              <option key={book} value={book}>
-                {book}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="toolbar-group">
+          <span className="toolbar-readout">Book: {currentBook ?? 'None selected'}</span>
+          <button type="button" className="button" onClick={onOpenBookModal}>
+            {currentBook ? 'Change Book' : 'Select Book'}
+          </button>
+        </div>
 
         <div className="toolbar-group">
           <button type="button" className="button" onClick={onPrev} disabled={manifestLength === 0}>

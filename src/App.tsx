@@ -6,6 +6,7 @@ import TextModal from '@/components/TextModal';
 import BookmarksModal from '@/components/BookmarksModal';
 import PrintModal from '@/components/PrintModal';
 import HelpModal from '@/components/HelpModal';
+import BookSelectModal from '@/components/BookSelectModal';
 import { useToast } from '@/hooks/useToast';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { clamp, clampPan } from '@/lib/math';
@@ -88,6 +89,7 @@ export default function App() {
   const [printSelection, setPrintSelection] = useState<string>('current');
   const [printLoading, setPrintLoading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [bookModalOpen, setBookModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
 
@@ -116,6 +118,7 @@ export default function App() {
       { keys: 'P', action: 'Play/Pause narration' },
       { keys: 'G', action: 'Focus Go To input' },
       { keys: 'F', action: 'Toggle fullscreen' },
+      { keys: 'B', action: 'Open book selector' },
       { keys: 'Esc', action: 'Close dialogs' },
       { keys: 'Shift + /', action: 'Open help' }
     ],
@@ -581,6 +584,10 @@ export default function App() {
         if (bookId && data.books.includes(bookId)) {
           return;
         }
+        if (!bookId) {
+          setBookModalOpen(true);
+          return;
+        }
         const fallback = data.books[0];
         setBookId(fallback);
         saveLastBook(fallback);
@@ -669,9 +676,14 @@ export default function App() {
     applyZoomMode(settings.zoomMode, metrics);
   }, [applyZoomMode, metrics, settings.zoomMode]);
 
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
+  const openBookModal = useCallback(() => setBookModalOpen(true), []);
+  const closeBookModal = useCallback(() => setBookModalOpen(false), []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((textModalOpen || helpOpen || printModalOpen || bookmarksOpen) && event.key !== 'Escape') {
+      if ((textModalOpen || helpOpen || printModalOpen || bookmarksOpen || bookModalOpen) && event.key !== 'Escape') {
         return;
       }
       if (isTextInput(event.target) && event.key !== 'Escape') {
@@ -747,6 +759,10 @@ export default function App() {
           event.preventDefault();
           gotoInputRef.current?.focus();
           break;
+        case 'b':
+          event.preventDefault();
+          openBookModal();
+          break;
         case 'f':
           event.preventDefault();
           void toggleFullscreen();
@@ -754,6 +770,9 @@ export default function App() {
         case 'escape':
           if (textModalOpen) {
             setTextModalOpen(false);
+          }
+          if (bookModalOpen) {
+            closeBookModal();
           }
           if (helpOpen) {
             setHelpOpen(false);
@@ -786,7 +805,13 @@ export default function App() {
     updateRotation,
     updateZoom,
     fetchPageText,
-    toggleFullscreen
+    toggleFullscreen,
+    bookModalOpen,
+    closeBookModal,
+    openBookModal,
+    helpOpen,
+    printModalOpen,
+    bookmarksOpen
   ]);
 
   const currentText = currentImage ? textCache[currentImage] ?? null : null;
@@ -837,8 +862,6 @@ export default function App() {
     ? 'Choose a book to begin reading.'
     : 'No books found. Add files to /data to begin.';
 
-  const openHelp = useCallback(() => setHelpOpen(true), []);
-  const closeHelp = useCallback(() => setHelpOpen(false), []);
   const openPrintModal = useCallback(() => {
     setPrintModalOpen(true);
     if (selectedPrintOption) {
@@ -907,29 +930,12 @@ export default function App() {
 
   return (
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
-      <aside className="sidebar">
-        <h1 className="sidebar-title">Scanned Book Reader</h1>
-        <ul className="book-list">
-          {books.map((book) => (
-            <li key={book}>
-              <button
-                type="button"
-                className={`book-button ${bookId === book ? 'book-button-active' : ''}`}
-                onClick={() => setBookId(book)}
-              >
-                {book}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </aside>
       <main className="main">
         <Toolbar
-          books={books}
           currentBook={bookId}
           manifestLength={manifest.length}
           currentPage={currentPage}
-          onSelectBook={setBookId}
+          onOpenBookModal={openBookModal}
           onPrev={() => renderPage(currentPage - 1)}
           onNext={() => renderPage(currentPage + 1)}
           onGoTo={(page) => renderPage(page)}
@@ -989,6 +995,17 @@ export default function App() {
         onClose={closePrintModal}
         onConfirm={() => void createPrintPdf()}
         loading={printLoading}
+      />
+      <BookSelectModal
+        open={bookModalOpen}
+        books={books}
+        currentBook={bookId}
+        onSelect={(nextBook) => {
+          setBookId(nextBook);
+          saveLastBook(nextBook);
+          closeBookModal();
+        }}
+        onClose={closeBookModal}
       />
       <HelpModal open={helpOpen} hotkeys={hotkeys} onClose={closeHelp} />
       <BookmarksModal

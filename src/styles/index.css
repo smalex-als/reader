@@ -476,6 +476,43 @@ body {
   font-size: 0.8rem;
 }
 
+.book-select-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.book-select-button {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.book-select-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.book-select-button-active {
+  border-color: rgba(0, 120, 255, 0.7);
+  background: rgba(0, 120, 255, 0.12);
+}
+
+.book-select-marker {
+  font-size: 0.85rem;
+  color: rgba(0, 200, 120, 0.9);
+}
+
 .print-options {
   display: flex;
   flex-direction: column;
