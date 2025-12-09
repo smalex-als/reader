@@ -13,6 +13,7 @@ import { useAudioController } from '@/hooks/useAudioController';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
+import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useZoom } from '@/hooks/useZoom';
 import { clamp } from '@/lib/math';
 import {
@@ -95,6 +96,7 @@ export default function App() {
     resetAudioCache,
     stopAudio
   } = useAudioController(currentImage, showToast);
+  const { streamState, startStream, stopStream } = useStreamingAudio(showToast);
   const {
     closeTextModal,
     currentText,
@@ -156,8 +158,9 @@ export default function App() {
         saveLastPage(bookId, nextIndex);
       }
       resetAudio();
+      stopStream();
     },
-    [bookId, manifest.length, resetAudio, setRegeneratedText]
+    [bookId, manifest.length, resetAudio, setRegeneratedText, stopStream]
   );
 
   const {
@@ -234,6 +237,7 @@ export default function App() {
     setManifest([]);
     setCurrentPage(0);
     stopAudio();
+    stopStream();
 
     (async () => {
       try {
@@ -259,7 +263,7 @@ export default function App() {
         setLoading(false);
       }
     })();
-  }, [bookId, closeBookmarks, resetAudioCache, resetTextState, showToast, stopAudio]);
+  }, [bookId, closeBookmarks, resetAudioCache, resetTextState, showToast, stopAudio, stopStream]);
 
   useEffect(() => {
     if (!bookId) {
@@ -270,6 +274,24 @@ export default function App() {
     }, 250);
     return () => window.clearTimeout(timeout);
   }, [bookId, settings]);
+
+  const handlePlayStream = useCallback(async () => {
+    if (!currentImage) {
+      return;
+    }
+    const pageText = currentText ?? (await fetchPageText());
+    const textValue = pageText?.text?.trim();
+    if (!textValue) {
+      showToast('No page text available to stream', 'error');
+      return;
+    }
+    stopAudio();
+    await startStream({ text: textValue, pageKey: currentImage });
+  }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio]);
+
+  const handleStopStream = useCallback(() => {
+    stopStream();
+  }, [stopStream]);
 
   const openHelp = useCallback(() => setHelpOpen(true), []);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
@@ -341,6 +363,7 @@ export default function App() {
           if (audioState.status === 'playing') {
             stopAudio();
           } else {
+            stopStream();
             void playAudio();
           }
           break;
@@ -390,6 +413,7 @@ export default function App() {
     settings.invert,
     settings.zoom,
     stopAudio,
+    stopStream,
     closeTextModal,
     textModalOpen,
     updateRotation,
@@ -442,8 +466,14 @@ export default function App() {
           onToggleFullscreen={() => void toggleFullscreen()}
           fullscreen={isFullscreen}
           audioState={audioState}
-          onPlayAudio={() => void playAudio()}
+          onPlayAudio={() => {
+            stopStream();
+            void playAudio();
+          }}
           onStopAudio={stopAudio}
+          streamState={streamState}
+          onPlayStream={() => void handlePlayStream()}
+          onStopStream={handleStopStream}
           gotoInputRef={gotoInputRef}
           onToggleBookmark={toggleBookmark}
           onShowBookmarks={showBookmarks}

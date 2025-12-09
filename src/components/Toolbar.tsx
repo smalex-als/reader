@@ -1,4 +1,4 @@
-import type { AudioState } from '@/types/app';
+import type { AudioState, StreamState } from '@/types/app';
 
 interface ToolbarProps {
   currentBook: string | null;
@@ -28,6 +28,9 @@ interface ToolbarProps {
   audioState: AudioState;
   onPlayAudio: () => void;
   onStopAudio: () => void;
+  streamState: StreamState;
+  onPlayStream: () => void;
+  onStopStream: () => void;
   gotoInputRef: React.RefObject<HTMLInputElement>;
   onToggleBookmark: () => void;
   onShowBookmarks: () => void;
@@ -65,6 +68,9 @@ export default function Toolbar({
   audioState,
   onPlayAudio,
   onStopAudio,
+  streamState,
+  onPlayStream,
+  onStopStream,
   gotoInputRef,
   onToggleBookmark,
   onShowBookmarks,
@@ -77,6 +83,9 @@ export default function Toolbar({
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
   const audioHandler = audioState.status === 'playing' ? onStopAudio : onPlayAudio;
   const audioLabel = audioState.status === 'playing' ? 'Stop Audio' : 'Play Audio';
+  const streamActive = streamState.status === 'streaming' || streamState.status === 'connecting';
+  const streamHandler = streamActive ? onStopStream : onPlayStream;
+  const streamLabel = streamActive ? 'Stop Stream' : 'Play Stream';
   const formattedSource = audioState.source ? (audioState.source === 'ai' ? 'AI' : 'file') : null;
   const audioStatusMessage = (() => {
     switch (audioState.status) {
@@ -218,6 +227,9 @@ export default function Toolbar({
               <span className="toolbar-status-text">{audioStatusMessage}</span>
             </div>
           )}
+          <button type="button" className="button" onClick={streamHandler} disabled={controlsDisabled}>
+            {streamLabel}
+          </button>
           <button
             type="button"
             className="button"

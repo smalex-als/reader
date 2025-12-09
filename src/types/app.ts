@@ -51,6 +51,7 @@ export interface AppState {
   textCache: Record<string, PageText>;
   audioCache: Record<string, AudioCacheEntry>;
   audioState: AudioState;
+  streamState: StreamState;
   loading: boolean;
   metrics: ViewerMetrics | null;
 }
@@ -68,4 +69,12 @@ export interface AudioState {
   source: 'file' | 'ai' | null;
   error?: string;
   currentPageKey: string | null;
+}
+
+export interface StreamState {
+  status: 'idle' | 'connecting' | 'streaming' | 'error';
+  pageKey: string | null;
+  playbackSeconds: number;
+  modelSeconds: number;
+  error?: string;
 }

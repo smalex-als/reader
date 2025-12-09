@@ -20,13 +20,13 @@ export function usePageText(
   const [regeneratedText, setRegeneratedText] = useState(false);
 
   const fetchPageText = useCallback(
-    async (force = false) => {
+    async (force = false): Promise<PageText | null> => {
       if (!currentImage) {
-        return;
+        return null;
       }
       const cached = textCache[currentImage];
       if (cached && !force) {
-        return;
+        return cached;
       }
 
       setTextLoading(true);
@@ -40,7 +40,7 @@ export function usePageText(
               const entry: PageText = { text, source: 'file' };
               setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
               setRegeneratedText(false);
-              return;
+              return entry;
             }
           } catch {
             // fall back to API
@@ -58,9 +58,11 @@ export function usePageText(
         setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
         setRegeneratedText(data.source === 'ai' || force);
         showToast(`Page text ${data.source === 'ai' ? 'generated' : 'loaded'}`, 'success');
+        return entry;
       } catch (error) {
         console.error(error);
         showToast('Unable to load page text', 'error');
+        return null;
       } finally {
         setTextLoading(false);
       }
