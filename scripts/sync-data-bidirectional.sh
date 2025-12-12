@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DATA_DIR="${PROJECT_ROOT}/data"
-REMOTE_TARGET="${REMOTE_TARGET:-192.168.1.214:jsprojects/reader/data/}"
+REMOTE_TARGET="${REMOTE_TARGET:-192.168.1.174:jsprojects/reader/data/}"
 # Defaults avoid deletes to reduce accidental data loss; override if you need one-way deletes.
 REMOTE_TO_LOCAL_FLAGS="${REMOTE_TO_LOCAL_FLAGS:--av --update}"
 LOCAL_TO_REMOTE_FLAGS="${LOCAL_TO_REMOTE_FLAGS:--av --update}"

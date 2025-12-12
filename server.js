@@ -1,8 +1,9 @@
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
+import https from 'node:https';
 import mime from 'mime-types';
 import { OpenAI } from 'openai';
 import { PDFDocument } from 'pdf-lib';
@@ -18,6 +19,8 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const BOOKMARKS_FILENAME = 'bookmarks.txt';
 const DEFAULT_VOICE = 'santa';
+const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
+const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 const TEXT_PROMPT = `Extract all visible text from this image as plain text. Preserve paragraph structure and spacing. Normalize all fractions: instead of Unicode characters like ½ or ¼, use plain text equivalents like 1/2, 1/4, 1 1/2, etc. Do not use emojis, special characters, or markdown. Keep the content exactly as it appears, but ensure formatting is consistent: use normal paragraphs with one empty line between them. Preserve line breaks and indentation only where they represent clear paragraph or step boundaries. Ignore page numbers, footers, and obvious scanning artifacts. Do not add commentary.`;
 const voiceProfiles = {
     santa: {
@@ -574,7 +577,18 @@ app.use((err, req, res, _next) => {
     .json({ error: message, status });
 });
 
-app.listen(PORT, HOST, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server listening on http://${HOST}:${PORT}`);
-});
+if (HTTPS_KEY_PATH && HTTPS_CERT_PATH) {
+  const httpsOptions = {
+    key: readFileSync(path.resolve(__dirname, HTTPS_KEY_PATH)),
+    cert: readFileSync(path.resolve(__dirname, HTTPS_CERT_PATH))
+  };
+  https.createServer(httpsOptions, app).listen(PORT, HOST, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Server listening on https://${HOST}:${PORT}`);
+  });
+} else {
+  app.listen(PORT, HOST, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Server listening on http://${HOST}:${PORT}`);
+  });
+}
