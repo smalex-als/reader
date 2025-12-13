@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  reader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      HTTPS_CERT_PATH: /certs/myserver.local.pem
+      HTTPS_KEY_PATH: /certs/myserver.local.key
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./data:/app/data
+      - ${HOME}/dev/certs2:/certs:ro
+    restart: unless-stopped
