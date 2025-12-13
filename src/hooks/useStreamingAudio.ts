@@ -4,7 +4,7 @@ import type { StreamState } from '@/types/app';
 const SAMPLE_RATE = 24_000;
 const SILENT_FRAME_LIMIT = 4;
 const STREAM_SERVER =
-  (import.meta.env.VITE_STREAM_SERVER as string | undefined) ?? 'http://192.168.1.174:3000';
+  (import.meta.env.VITE_STREAM_SERVER as string | undefined) ?? 'https://myserver.local:3000';
 const DEFAULT_STREAM_VOICE =
   (import.meta.env.VITE_STREAM_VOICE as string | undefined) ?? 'en-Davis_man';
 
