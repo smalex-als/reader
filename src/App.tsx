@@ -15,6 +15,7 @@ import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useZoom } from '@/hooks/useZoom';
+import { useImagePreload } from '@/hooks/useImagePreload';
 import { clamp } from '@/lib/math';
 import {
   loadLastBook,
@@ -88,6 +89,7 @@ export default function App() {
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
   const currentImage = manifest[currentPage] ?? null;
+  useImagePreload(manifest, currentPage);
 
   const {
     audioState,

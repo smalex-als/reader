@@ -27,6 +27,8 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
     startY: 0,
     pan: { x: 0, y: 0 }
   });
+  const preloadTokenRef = useRef(0);
+  const [displayedImage, setDisplayedImage] = useState<string | null>(imageUrl);
   const [metrics, setMetrics] = useState<ViewerMetrics>(INITIAL_METRICS);
 
   const filters = useMemo(() => {
@@ -130,8 +132,40 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
   );
 
   useEffect(() => {
+    if (imageUrl === displayedImage) {
+      return;
+    }
+    if (!imageUrl) {
+      setDisplayedImage(null);
+      return;
+    }
+
+    const token = preloadTokenRef.current + 1;
+    preloadTokenRef.current = token;
+    const img = new Image();
+    img.decoding = 'async';
+    img.loading = 'eager';
+    img.onload = () => {
+      if (preloadTokenRef.current === token) {
+        setDisplayedImage(imageUrl);
+      }
+    };
+    img.onerror = () => {
+      if (preloadTokenRef.current === token) {
+        setDisplayedImage(imageUrl);
+      }
+    };
+    img.src = imageUrl;
+
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [displayedImage, imageUrl]);
+
+  useEffect(() => {
     updateMetrics();
-  }, [imageUrl, settings.zoom, updateMetrics, rotation]);
+  }, [displayedImage, settings.zoom, updateMetrics, rotation]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -146,7 +180,7 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
   }, [updateMetrics]);
 
   useEffect(() => {
-    if (!imageUrl) {
+    if (!displayedImage) {
       return;
     }
     const img = imageRef.current;
@@ -162,7 +196,7 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
     return () => {
       img.removeEventListener('load', handleLoad);
     };
-  }, [imageUrl, updateMetrics]);
+  }, [displayedImage, updateMetrics]);
 
   const handleImageError = useCallback(() => {
     setMetrics(INITIAL_METRICS);
@@ -177,12 +211,15 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
       onWheel={handleWheel}
       role="presentation"
     >
-      {imageUrl ? (
+      {displayedImage ? (
         <img
           ref={imageRef}
-          src={imageUrl}
+          src={displayedImage}
           alt=""
           className="viewer-image"
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           style={{
             transform,
             filter: filters,
