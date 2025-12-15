@@ -28,7 +28,9 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
     pan: { x: 0, y: 0 }
   });
   const preloadTokenRef = useRef(0);
-  const [displayedImage, setDisplayedImage] = useState<string | null>(imageUrl);
+  const [activeImage, setActiveImage] = useState<string | null>(imageUrl);
+  const [incomingImage, setIncomingImage] = useState<string | null>(null);
+  const [showIncoming, setShowIncoming] = useState(false);
   const [metrics, setMetrics] = useState<ViewerMetrics>(INITIAL_METRICS);
 
   const filters = useMemo(() => {
@@ -132,27 +134,32 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
   );
 
   useEffect(() => {
-    if (imageUrl === displayedImage) {
+    if (!imageUrl) {
+      setActiveImage(null);
+      setIncomingImage(null);
+      setShowIncoming(false);
       return;
     }
-    if (!imageUrl) {
-      setDisplayedImage(null);
+    if (imageUrl === activeImage || imageUrl === incomingImage) {
       return;
     }
 
     const token = preloadTokenRef.current + 1;
     preloadTokenRef.current = token;
+
     const img = new Image();
     img.decoding = 'async';
     img.loading = 'eager';
     img.onload = () => {
       if (preloadTokenRef.current === token) {
-        setDisplayedImage(imageUrl);
+        setIncomingImage(imageUrl);
+        setShowIncoming(true);
       }
     };
     img.onerror = () => {
       if (preloadTokenRef.current === token) {
-        setDisplayedImage(imageUrl);
+        setIncomingImage(imageUrl);
+        setShowIncoming(true);
       }
     };
     img.src = imageUrl;
@@ -161,11 +168,17 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
       img.onload = null;
       img.onerror = null;
     };
-  }, [displayedImage, imageUrl]);
+  }, [activeImage, imageUrl, incomingImage]);
 
   useEffect(() => {
+    const visibleImage = showIncoming && incomingImage ? incomingImage : activeImage;
+    if (!visibleImage) {
+      setMetrics({ ...INITIAL_METRICS, scale: settings.zoom });
+      onMetricsChange({ ...INITIAL_METRICS, scale: settings.zoom });
+      return;
+    }
     updateMetrics();
-  }, [displayedImage, settings.zoom, updateMetrics, rotation]);
+  }, [activeImage, incomingImage, onMetricsChange, showIncoming, settings.zoom, updateMetrics, rotation]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -180,9 +193,6 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
   }, [updateMetrics]);
 
   useEffect(() => {
-    if (!displayedImage) {
-      return;
-    }
     const img = imageRef.current;
     if (!img) {
       return;
@@ -196,12 +206,21 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
     return () => {
       img.removeEventListener('load', handleLoad);
     };
-  }, [displayedImage, updateMetrics]);
+  }, [updateMetrics]);
 
   const handleImageError = useCallback(() => {
     setMetrics(INITIAL_METRICS);
     onMetricsChange({ ...INITIAL_METRICS, scale: settings.zoom });
   }, [onMetricsChange, settings.zoom]);
+
+  const handleIncomingTransitionEnd = useCallback(() => {
+    if (!incomingImage || !showIncoming) {
+      return;
+    }
+    setActiveImage(incomingImage);
+    setIncomingImage(null);
+    setShowIncoming(false);
+  }, [incomingImage, showIncoming]);
 
   return (
     <div
@@ -211,23 +230,48 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
       onWheel={handleWheel}
       role="presentation"
     >
-      {displayedImage ? (
-        <img
-          ref={imageRef}
-          src={displayedImage}
-          alt=""
-          className="viewer-image"
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-          style={{
-            transform,
-            filter: filters,
-            transition: pointerState.current.active ? 'none' : 'transform 0.12s ease-out'
-          }}
-          onError={handleImageError}
-          draggable={false}
-        />
+      {activeImage ? (
+        <div className="viewer-stack">
+          <img
+            ref={imageRef}
+            src={activeImage}
+            alt=""
+            className="viewer-image"
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            style={{
+              transform,
+              filter: filters,
+              opacity: showIncoming ? 0 : 1,
+              transition: pointerState.current.active
+                ? 'none'
+                : 'opacity 0.12s ease-out, transform 0.12s ease-out'
+            }}
+            onError={handleImageError}
+            draggable={false}
+          />
+          {incomingImage && (
+            <img
+              src={incomingImage}
+              alt=""
+              className="viewer-image viewer-image-next"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+              style={{
+                transform,
+                filter: filters,
+                opacity: showIncoming ? 1 : 0,
+                transition: pointerState.current.active
+                  ? 'none'
+                  : 'opacity 0.12s ease-out, transform 0.12s ease-out'
+              }}
+              onTransitionEnd={handleIncomingTransitionEnd}
+              draggable={false}
+            />
+          )}
+        </div>
       ) : (
         <div className="viewer-empty">Select a book to begin</div>
       )}

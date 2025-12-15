@@ -266,10 +266,21 @@ body {
   cursor: grabbing;
 }
 
+.viewer-stack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .viewer-image {
+  position: absolute;
   max-width: none;
   will-change: transform;
   pointer-events: none;
+  inset: 0;
+  margin: auto;
 }
 
 .viewer-empty {
