@@ -3,9 +3,9 @@ set -euo pipefail
 
 # Generate a self-signed cert/key pair with SAN entries that match your dev host/IP.
 # Usage: ./scripts/generate-self-signed-cert.sh [hostname] [ip]
-# Example: ./scripts/generate-self-signed-cert.sh myserver.local 192.168.1.174
+# Example: ./scripts/generate-self-signed-cert.sh myserver.home 192.168.1.174
 
-HOSTNAME="${1:-myserver.local}"
+HOSTNAME="${1:-myserver.home}"
 IP_ADDR="${2:-192.168.1.174}"
 OUT_DIR="${OUT_DIR:-certs}"
 DAYS="${DAYS:-825}"
