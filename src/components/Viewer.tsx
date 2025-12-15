@@ -27,10 +27,6 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
     startY: 0,
     pan: { x: 0, y: 0 }
   });
-  const preloadTokenRef = useRef(0);
-  const [activeImage, setActiveImage] = useState<string | null>(imageUrl);
-  const [incomingImage, setIncomingImage] = useState<string | null>(null);
-  const [showIncoming, setShowIncoming] = useState(false);
   const [metrics, setMetrics] = useState<ViewerMetrics>(INITIAL_METRICS);
 
   const filters = useMemo(() => {
@@ -66,119 +62,76 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
   }, [onMetricsChange, settings.zoom]);
 
   const handlePointerMove = useCallback(
-    (event: PointerEvent) => {
-      if (!pointerState.current.active) {
-        return;
-      }
-      event.preventDefault();
-      const deltaX = event.clientX - pointerState.current.startX;
-      const deltaY = event.clientY - pointerState.current.startY;
-      const nextPan = {
-        x: pointerState.current.pan.x + deltaX,
-        y: pointerState.current.pan.y + deltaY
-      };
-      onPan(nextPan);
-    },
-    [onPan]
+      (event: PointerEvent) => {
+        if (!pointerState.current.active) {
+          return;
+        }
+        event.preventDefault();
+        const deltaX = event.clientX - pointerState.current.startX;
+        const deltaY = event.clientY - pointerState.current.startY;
+        const nextPan = {
+          x: pointerState.current.pan.x + deltaX,
+          y: pointerState.current.pan.y + deltaY
+        };
+        onPan(nextPan);
+      },
+      [onPan]
   );
 
   const handlePointerUp = useCallback(
-    (event: PointerEvent) => {
-      if (!pointerState.current.active) {
-        return;
-      }
-      pointerState.current.active = false;
-      event.preventDefault();
-      const element = containerRef.current;
-      if (element && element.hasPointerCapture(event.pointerId)) {
-        element.releasePointerCapture(event.pointerId);
-      }
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-      window.removeEventListener('pointercancel', handlePointerUp);
-    },
-    [handlePointerMove]
+      (event: PointerEvent) => {
+        if (!pointerState.current.active) {
+          return;
+        }
+        pointerState.current.active = false;
+        event.preventDefault();
+        const element = containerRef.current;
+        if (element && element.hasPointerCapture(event.pointerId)) {
+          element.releasePointerCapture(event.pointerId);
+        }
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+        window.removeEventListener('pointercancel', handlePointerUp);
+      },
+      [handlePointerMove]
   );
 
   const handlePointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!containerRef.current) {
-        return;
-      }
-      event.preventDefault();
-      pointerState.current = {
-        active: true,
-        startX: event.clientX,
-        startY: event.clientY,
-        pan: { ...settings.pan }
-      };
-      containerRef.current.setPointerCapture(event.pointerId);
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
-      window.addEventListener('pointercancel', handlePointerUp);
-    },
-    [handlePointerMove, handlePointerUp, settings.pan]
+      (event: ReactPointerEvent<HTMLDivElement>) => {
+        if (!containerRef.current) {
+          return;
+        }
+        event.preventDefault();
+        pointerState.current = {
+          active: true,
+          startX: event.clientX,
+          startY: event.clientY,
+          pan: { ...settings.pan }
+        };
+        containerRef.current.setPointerCapture(event.pointerId);
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
+      },
+      [handlePointerMove, handlePointerUp, settings.pan]
   );
 
   const handleWheel = useCallback(
-    (event: React.WheelEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      const factor = event.ctrlKey || event.metaKey ? 0.1 : 1;
-      const nextPan = {
-        x: settings.pan.x - event.deltaX * factor,
-        y: settings.pan.y - event.deltaY * factor
-      };
-      onPan(nextPan);
-    },
-    [onPan, settings.pan.x, settings.pan.y]
+      (event: React.WheelEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        const factor = event.ctrlKey || event.metaKey ? 0.1 : 1;
+        const nextPan = {
+          x: settings.pan.x - event.deltaX * factor,
+          y: settings.pan.y - event.deltaY * factor
+        };
+        onPan(nextPan);
+      },
+      [onPan, settings.pan.x, settings.pan.y]
   );
 
   useEffect(() => {
-    if (!imageUrl) {
-      setActiveImage(null);
-      setIncomingImage(null);
-      setShowIncoming(false);
-      return;
-    }
-    if (imageUrl === activeImage || imageUrl === incomingImage) {
-      return;
-    }
-
-    const token = preloadTokenRef.current + 1;
-    preloadTokenRef.current = token;
-
-    const img = new Image();
-    img.decoding = 'async';
-    img.loading = 'eager';
-    img.onload = () => {
-      if (preloadTokenRef.current === token) {
-        setIncomingImage(imageUrl);
-        setShowIncoming(true);
-      }
-    };
-    img.onerror = () => {
-      if (preloadTokenRef.current === token) {
-        setIncomingImage(imageUrl);
-        setShowIncoming(true);
-      }
-    };
-    img.src = imageUrl;
-
-    return () => {
-      img.onload = null;
-      img.onerror = null;
-    };
-  }, [activeImage, imageUrl, incomingImage]);
-
-  useEffect(() => {
-    const visibleImage = showIncoming && incomingImage ? incomingImage : activeImage;
-    if (!visibleImage) {
-      setMetrics({ ...INITIAL_METRICS, scale: settings.zoom });
-      onMetricsChange({ ...INITIAL_METRICS, scale: settings.zoom });
-      return;
-    }
     updateMetrics();
-  }, [activeImage, incomingImage, onMetricsChange, showIncoming, settings.zoom, updateMetrics, rotation]);
+  }, [imageUrl, settings.zoom, updateMetrics, rotation]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -193,6 +146,9 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
   }, [updateMetrics]);
 
   useEffect(() => {
+    if (!imageUrl) {
+      return;
+    }
     const img = imageRef.current;
     if (!img) {
       return;
@@ -206,80 +162,43 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
     return () => {
       img.removeEventListener('load', handleLoad);
     };
-  }, [updateMetrics]);
+  }, [imageUrl, updateMetrics]);
 
   const handleImageError = useCallback(() => {
     setMetrics(INITIAL_METRICS);
     onMetricsChange({ ...INITIAL_METRICS, scale: settings.zoom });
   }, [onMetricsChange, settings.zoom]);
 
-  const handleIncomingTransitionEnd = useCallback(() => {
-    if (!incomingImage || !showIncoming) {
-      return;
-    }
-    setActiveImage(incomingImage);
-    setIncomingImage(null);
-    setShowIncoming(false);
-  }, [incomingImage, showIncoming]);
-
   return (
-    <div
-      ref={containerRef}
-      className="viewer"
-      onPointerDown={handlePointerDown}
-      onWheel={handleWheel}
-      role="presentation"
-    >
-      {activeImage ? (
-        <div className="viewer-stack">
-          <img
-            ref={imageRef}
-            src={activeImage}
-            alt=""
-            className="viewer-image"
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
-            style={{
-              transform,
-              filter: filters,
-              opacity: showIncoming ? 0 : 1,
-              transition: pointerState.current.active
-                ? 'none'
-                : 'opacity 0.12s ease-out, transform 0.12s ease-out'
-            }}
-            onError={handleImageError}
-            draggable={false}
-          />
-          {incomingImage && (
+      <div
+          ref={containerRef}
+          className="viewer"
+          onPointerDown={handlePointerDown}
+          onWheel={handleWheel}
+          role="presentation"
+      >
+        {imageUrl ? (
             <img
-              src={incomingImage}
-              alt=""
-              className="viewer-image viewer-image-next"
-              loading="eager"
-              decoding="async"
-              fetchPriority="high"
-              style={{
-                transform,
-                filter: filters,
-                opacity: showIncoming ? 1 : 0,
-                transition: pointerState.current.active
-                  ? 'none'
-                  : 'opacity 0.12s ease-out, transform 0.12s ease-out'
-              }}
-              onTransitionEnd={handleIncomingTransitionEnd}
-              draggable={false}
+                ref={imageRef}
+                src={imageUrl}
+                alt=""
+                className="viewer-image"
+                style={{
+                  transform,
+                  filter: filters,
+                  transition: pointerState.current.active ? 'none' : 'transform 0.12s ease-out'
+                }}
+                onError={handleImageError}
+                draggable={false}
             />
-          )}
-        </div>
-      ) : (
-        <div className="viewer-empty">Select a book to begin</div>
-      )}
-      {metrics.naturalWidth > 0 && (
-        <div className="viewer-overlay">
-          {Math.round(metrics.naturalWidth)} × {Math.round(metrics.naturalHeight)}
-        </div>
-      )}
-    </div>
+        ) : (
+            <div className="viewer-empty">Select a book to begin</div>
+        )}
+        {metrics.naturalWidth > 0 && (
+            <div className="viewer-overlay">
+              {Math.round(metrics.naturalWidth)} × {Math.round(metrics.naturalHeight)}
+            </div>
+        )}
+      </div>
   );
 }

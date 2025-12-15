@@ -14,7 +14,6 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, 'data');
 const DIST_DIR = path.join(__dirname, 'dist');
 const STATIC_ROOT = existsSync(DIST_DIR) ? DIST_DIR : __dirname;
-const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -66,16 +65,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-  '/data',
-  express.static(DATA_DIR, {
-    immutable: true,
-    maxAge: ONE_YEAR_SECONDS * 1000,
-    setHeaders(res) {
-      res.setHeader('Cache-Control', `public, max-age=${ONE_YEAR_SECONDS}, immutable`);
-    }
-  })
-);
+app.use('/data', express.static(DATA_DIR));
 app.use('/data', (req, res, next) => {
   if (req.method === 'GET' || req.method === 'HEAD') {
     res.status(404).end();
@@ -83,17 +73,7 @@ app.use('/data', (req, res, next) => {
   }
   next();
 });
-app.use(
-  express.static(STATIC_ROOT, {
-    setHeaders(res, filePath) {
-      if (filePath.endsWith('.html')) {
-        res.setHeader('Cache-Control', 'no-cache');
-        return;
-      }
-      res.setHeader('Cache-Control', `public, max-age=${ONE_YEAR_SECONDS}, immutable`);
-    }
-  })
-);
+app.use(express.static(STATIC_ROOT));
 
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);

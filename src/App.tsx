@@ -15,7 +15,6 @@ import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useZoom } from '@/hooks/useZoom';
-import { useImagePreload } from '@/hooks/useImagePreload';
 import { clamp } from '@/lib/math';
 import {
   loadLastBook,
@@ -89,7 +88,6 @@ export default function App() {
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
   const currentImage = manifest[currentPage] ?? null;
-  useImagePreload(manifest, currentPage);
 
   const {
     audioState,
@@ -122,47 +120,47 @@ export default function App() {
   } = usePrintOptions({ bookId, manifest, currentPage, showToast });
 
   const hotkeys = useMemo(
-    () => [
-      { keys: '← / ↑ / PageUp', action: 'Previous page' },
-      { keys: '→ / ↓ / PageDown / Space', action: 'Next page' },
-      { keys: '+ / =', action: 'Zoom in' },
-      { keys: '-', action: 'Zoom out' },
-      { keys: '0', action: 'Reset zoom/rotation' },
-      { keys: 'W', action: 'Fit width' },
-      { keys: 'H', action: 'Fit height' },
-      { keys: 'R', action: 'Rotate 90°' },
-      { keys: 'I', action: 'Invert colors' },
-      { keys: 'X', action: 'Toggle page text' },
-      { keys: 'P', action: 'Play/Pause narration' },
-      { keys: 'G', action: 'Focus Go To input' },
-      { keys: 'F', action: 'Toggle fullscreen' },
-      { keys: 'B', action: 'Open book selector' },
-      { keys: 'Esc', action: 'Close dialogs' },
-      { keys: 'Shift + /', action: 'Open help' }
-    ],
-    []
+      () => [
+        { keys: '← / ↑ / PageUp', action: 'Previous page' },
+        { keys: '→ / ↓ / PageDown / Space', action: 'Next page' },
+        { keys: '+ / =', action: 'Zoom in' },
+        { keys: '-', action: 'Zoom out' },
+        { keys: '0', action: 'Reset zoom/rotation' },
+        { keys: 'W', action: 'Fit width' },
+        { keys: 'H', action: 'Fit height' },
+        { keys: 'R', action: 'Rotate 90°' },
+        { keys: 'I', action: 'Invert colors' },
+        { keys: 'X', action: 'Toggle page text' },
+        { keys: 'P', action: 'Play/Pause narration' },
+        { keys: 'G', action: 'Focus Go To input' },
+        { keys: 'F', action: 'Toggle fullscreen' },
+        { keys: 'B', action: 'Open book selector' },
+        { keys: 'Esc', action: 'Close dialogs' },
+        { keys: 'Shift + /', action: 'Open help' }
+      ],
+      []
   );
 
   const renderPage = useCallback(
-    (pageIndex: number) => {
-      if (manifest.length === 0) {
-        return;
-      }
-      const maxIndex = manifest.length - 1;
-      const nextIndex = clamp(pageIndex, 0, maxIndex);
-      setCurrentPage(nextIndex);
-      setSettings((prev) => ({
-        ...prev,
-        pan: { x: 0, y: 0 }
-      }));
-      setRegeneratedText(false);
-      if (bookId) {
-        saveLastPage(bookId, nextIndex);
-      }
-      resetAudio();
-      stopStream();
-    },
-    [bookId, manifest.length, resetAudio, setRegeneratedText, stopStream]
+      (pageIndex: number) => {
+        if (manifest.length === 0) {
+          return;
+        }
+        const maxIndex = manifest.length - 1;
+        const nextIndex = clamp(pageIndex, 0, maxIndex);
+        setCurrentPage(nextIndex);
+        setSettings((prev) => ({
+          ...prev,
+          pan: { x: 0, y: 0 }
+        }));
+        setRegeneratedText(false);
+        if (bookId) {
+          saveLastPage(bookId, nextIndex);
+        }
+        resetAudio();
+        stopStream();
+      },
+      [bookId, manifest.length, resetAudio, setRegeneratedText, stopStream]
   );
 
   const {
@@ -244,7 +242,7 @@ export default function App() {
     (async () => {
       try {
         const data = await fetchJson<{ book: string; manifest: string[] }>(
-          `/api/books/${encodeURIComponent(bookId)}/manifest`
+            `/api/books/${encodeURIComponent(bookId)}/manifest`
         );
         setManifest(data.manifest);
         const storedPage = loadLastPage(bookId);
@@ -432,118 +430,118 @@ export default function App() {
   ]);
   const hasBooks = books.length > 0;
   const footerMessage = currentImage
-    ? currentImage
-    : hasBooks
-    ? 'Choose a book to begin reading.'
-    : 'No books found. Add files to /data to begin.';
+      ? currentImage
+      : hasBooks
+          ? 'Choose a book to begin reading.'
+          : 'No books found. Add files to /data to begin.';
 
   return (
-    <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
-      <aside className="sidebar">
-        <Toolbar
-          currentBook={bookId}
-          manifestLength={manifest.length}
-          currentPage={currentPage}
-          onOpenBookModal={openBookModal}
-          onPrev={() => renderPage(currentPage - 1)}
-          onNext={() => renderPage(currentPage + 1)}
-          onGoTo={(page) => renderPage(page)}
-          onZoomIn={() => updateZoom(settings.zoom + ZOOM_STEP)}
-          onZoomOut={() => updateZoom(settings.zoom - ZOOM_STEP)}
-          onResetZoom={resetTransform}
-          onFitWidth={() => applyZoomMode('fit-width')}
-          onFitHeight={() => applyZoomMode('fit-height')}
-          onRotate={updateRotation}
-          onInvert={() => applyFilters({ invert: !settings.invert })}
-          invert={settings.invert}
-          zoom={settings.zoom}
-          rotation={settings.rotation}
-          brightness={settings.brightness}
-          contrast={settings.contrast}
-          onBrightness={(value) => applyFilters({ brightness: value })}
-          onContrast={(value) => applyFilters({ contrast: value })}
-          onToggleTextModal={() => {
-            toggleTextModal();
-          }}
-          onToggleFullscreen={() => void toggleFullscreen()}
-          fullscreen={isFullscreen}
-          audioState={audioState}
-          onPlayAudio={() => {
-            stopStream();
-            void playAudio();
-          }}
-          onStopAudio={stopAudio}
-          streamState={streamState}
-          onPlayStream={() => void handlePlayStream()}
-          onStopStream={handleStopStream}
-          gotoInputRef={gotoInputRef}
-          onToggleBookmark={toggleBookmark}
-          onShowBookmarks={showBookmarks}
-          isBookmarked={isBookmarked}
-          bookmarksCount={bookmarks.length}
-          onOpenPrint={openPrintModal}
-          onOpenHelp={openHelp}
-        />
-      </aside>
-      <main className="main">
-        <div ref={viewerShellRef} className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''}`}>
-          <Viewer
-            imageUrl={currentImage}
-            settings={settings}
-            onPan={updatePan}
-            onMetricsChange={handleMetricsChange}
-            rotation={settings.rotation}
+      <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
+        <aside className="sidebar">
+          <Toolbar
+              currentBook={bookId}
+              manifestLength={manifest.length}
+              currentPage={currentPage}
+              onOpenBookModal={openBookModal}
+              onPrev={() => renderPage(currentPage - 1)}
+              onNext={() => renderPage(currentPage + 1)}
+              onGoTo={(page) => renderPage(page)}
+              onZoomIn={() => updateZoom(settings.zoom + ZOOM_STEP)}
+              onZoomOut={() => updateZoom(settings.zoom - ZOOM_STEP)}
+              onResetZoom={resetTransform}
+              onFitWidth={() => applyZoomMode('fit-width')}
+              onFitHeight={() => applyZoomMode('fit-height')}
+              onRotate={updateRotation}
+              onInvert={() => applyFilters({ invert: !settings.invert })}
+              invert={settings.invert}
+              zoom={settings.zoom}
+              rotation={settings.rotation}
+              brightness={settings.brightness}
+              contrast={settings.contrast}
+              onBrightness={(value) => applyFilters({ brightness: value })}
+              onContrast={(value) => applyFilters({ contrast: value })}
+              onToggleTextModal={() => {
+                toggleTextModal();
+              }}
+              onToggleFullscreen={() => void toggleFullscreen()}
+              fullscreen={isFullscreen}
+              audioState={audioState}
+              onPlayAudio={() => {
+                stopStream();
+                void playAudio();
+              }}
+              onStopAudio={stopAudio}
+              streamState={streamState}
+              onPlayStream={() => void handlePlayStream()}
+              onStopStream={handleStopStream}
+              gotoInputRef={gotoInputRef}
+              onToggleBookmark={toggleBookmark}
+              onShowBookmarks={showBookmarks}
+              isBookmarked={isBookmarked}
+              bookmarksCount={bookmarks.length}
+              onOpenPrint={openPrintModal}
+              onOpenHelp={openHelp}
           />
-          {loading && <div className="viewer-status">Loading…</div>}
-        </div>
-        <div className="page-footer">
-          <span className="page-path">{footerMessage}</span>
-        </div>
-      </main>
-      <Toast toast={toast} onDismiss={dismiss} />
-      <PrintModal
-        open={printModalOpen}
-        options={printOptions}
-        selectedId={selectedPrintOption?.id ?? null}
-        onSelect={setPrintSelection}
-        onClose={closePrintModal}
-        onConfirm={() => void createPrintPdf()}
-        loading={printLoading}
-      />
-      <BookSelectModal
-        open={bookModalOpen}
-        books={books}
-        currentBook={bookId}
-        onSelect={(nextBook) => {
-          setBookId(nextBook);
-          saveLastBook(nextBook);
-          closeBookModal();
-        }}
-        onClose={closeBookModal}
-      />
-      <HelpModal open={helpOpen} hotkeys={hotkeys} onClose={closeHelp} />
-      <BookmarksModal
-        open={bookmarksOpen}
-        bookmarks={bookmarks}
-        loading={bookmarksLoading}
-        currentBook={bookId}
-        currentPage={currentPage}
-        onClose={closeBookmarks}
-        onSelect={handleSelectBookmark}
-        onRemove={handleRemoveBookmarkFromList}
-      />
-      <TextModal
-        open={textModalOpen}
-        text={currentText}
-        loading={textLoading}
-        onClose={closeTextModal}
-        title={currentImage ?? 'Page text'}
-        onRegenerate={() => {
-          setRegeneratedText(true);
-          void fetchPageText(true);
-        }}
-        regenerated={regeneratedText}
-      />
-    </div>
+        </aside>
+        <main className="main">
+          <div ref={viewerShellRef} className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''}`}>
+            <Viewer
+                imageUrl={currentImage}
+                settings={settings}
+                onPan={updatePan}
+                onMetricsChange={handleMetricsChange}
+                rotation={settings.rotation}
+            />
+            {loading && <div className="viewer-status">Loading…</div>}
+          </div>
+          <div className="page-footer">
+            <span className="page-path">{footerMessage}</span>
+          </div>
+        </main>
+        <Toast toast={toast} onDismiss={dismiss} />
+        <PrintModal
+            open={printModalOpen}
+            options={printOptions}
+            selectedId={selectedPrintOption?.id ?? null}
+            onSelect={setPrintSelection}
+            onClose={closePrintModal}
+            onConfirm={() => void createPrintPdf()}
+            loading={printLoading}
+        />
+        <BookSelectModal
+            open={bookModalOpen}
+            books={books}
+            currentBook={bookId}
+            onSelect={(nextBook) => {
+              setBookId(nextBook);
+              saveLastBook(nextBook);
+              closeBookModal();
+            }}
+            onClose={closeBookModal}
+        />
+        <HelpModal open={helpOpen} hotkeys={hotkeys} onClose={closeHelp} />
+        <BookmarksModal
+            open={bookmarksOpen}
+            bookmarks={bookmarks}
+            loading={bookmarksLoading}
+            currentBook={bookId}
+            currentPage={currentPage}
+            onClose={closeBookmarks}
+            onSelect={handleSelectBookmark}
+            onRemove={handleRemoveBookmarkFromList}
+        />
+        <TextModal
+            open={textModalOpen}
+            text={currentText}
+            loading={textLoading}
+            onClose={closeTextModal}
+            title={currentImage ?? 'Page text'}
+            onRegenerate={() => {
+              setRegeneratedText(true);
+              void fetchPageText(true);
+            }}
+            regenerated={regeneratedText}
+        />
+      </div>
   );
 }
