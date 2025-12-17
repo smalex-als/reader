@@ -5,7 +5,7 @@ const SAMPLE_RATE = 24_000;
 const SILENT_FRAME_LIMIT = 4;
 const STREAM_SERVER =
   (import.meta.env.VITE_STREAM_SERVER as string | undefined) ?? 'https://myserver.home:3000';
-const DEFAULT_STREAM_VOICE =
+export const DEFAULT_STREAM_VOICE =
   (import.meta.env.VITE_STREAM_VOICE as string | undefined) ?? 'en-Davis_man';
 
 const INITIAL_STREAM_STATE: StreamState = {

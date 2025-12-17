@@ -3,6 +3,7 @@ import type { AppSettings } from '@/types/app';
 const SETTINGS_KEY = 'scanned-reader:settings';
 const BOOK_KEY = 'scanned-reader:lastBook';
 const PAGE_KEY = 'scanned-reader:lastPage';
+const STREAM_VOICE_KEY = 'scanned-reader:streamVoice';
 
 type StoredSettings = Record<string, AppSettings>;
 
@@ -73,4 +74,19 @@ export function saveLastPage(bookId: string, pageIndex: number) {
   const pages = readJson<Record<string, number>>(PAGE_KEY) ?? {};
   pages[bookId] = pageIndex;
   writeJson(PAGE_KEY, pages);
+}
+
+export function loadStreamVoiceForBook(bookId: string): string | null {
+  const voices = readJson<Record<string, string>>(STREAM_VOICE_KEY);
+  if (!voices) {
+    return null;
+  }
+  const voice = voices[bookId];
+  return typeof voice === 'string' ? voice : null;
+}
+
+export function saveStreamVoiceForBook(bookId: string, voice: string) {
+  const voices = readJson<Record<string, string>>(STREAM_VOICE_KEY) ?? {};
+  voices[bookId] = voice;
+  writeJson(STREAM_VOICE_KEY, voices);
 }

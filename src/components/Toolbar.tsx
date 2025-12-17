@@ -29,6 +29,9 @@ interface ToolbarProps {
   onPlayAudio: () => void;
   onStopAudio: () => void;
   streamState: StreamState;
+  streamVoice: string;
+  streamVoiceOptions: readonly string[];
+  onStreamVoiceChange: (voice: string) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
   gotoInputRef: React.RefObject<HTMLInputElement>;
@@ -69,6 +72,9 @@ export default function Toolbar({
   onPlayAudio,
   onStopAudio,
   streamState,
+  streamVoice,
+  streamVoiceOptions,
+  onStreamVoiceChange,
   onPlayStream,
   onStopStream,
   gotoInputRef,
@@ -104,6 +110,11 @@ export default function Toolbar({
     }
   })();
   const showAudioStatus = audioStatusMessage !== null;
+  const formatVoiceLabel = (voice: string) => {
+    const withoutLocale = voice.startsWith('en-') ? voice.slice(3) : voice;
+    const [name, variant] = withoutLocale.split('_');
+    return variant ? `${name} - ${variant}` : name;
+  };
 
   return (
     <div className="toolbar">
@@ -227,6 +238,21 @@ export default function Toolbar({
               <span className="toolbar-status-text">{audioStatusMessage}</span>
             </div>
           )}
+          <label className="toolbar-field">
+            Stream Voice
+            <select
+              className="select"
+              value={streamVoice}
+              disabled={controlsDisabled}
+              onChange={(event) => onStreamVoiceChange(event.target.value)}
+            >
+              {streamVoiceOptions.map((voice) => (
+                <option key={voice} value={voice}>
+                  {formatVoiceLabel(voice)}
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="button" className="button" onClick={streamHandler} disabled={controlsDisabled}>
             {streamLabel}
           </button>

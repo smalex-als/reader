@@ -13,18 +13,40 @@ import { useAudioController } from '@/hooks/useAudioController';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
-import { useStreamingAudio } from '@/hooks/useStreamingAudio';
+import { DEFAULT_STREAM_VOICE, useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useZoom } from '@/hooks/useZoom';
 import { clamp } from '@/lib/math';
 import {
   loadLastBook,
   loadLastPage,
   loadSettingsForBook,
+  loadStreamVoiceForBook,
   saveLastBook,
   saveLastPage,
-  saveSettingsForBook
+  saveSettingsForBook,
+  saveStreamVoiceForBook
 } from '@/lib/storage';
 import type { AppSettings } from '@/types/app';
+
+const STREAM_VOICE_OPTIONS = [
+  'en-Breeze_woman',
+  'en-Brutalon_man',
+  'en-Carter_man',
+  'en-Clarion_man',
+  'en-Clarissa_woman',
+  'en-Davis_man',
+  'en-Emma_woman',
+  'en-Frank_man',
+  'en-Grace_woman',
+  'en-Gravitar_man',
+  'en-Gravus_man',
+  'en-MechCorsair_man',
+  'en-Mike_man',
+  'en-Oldenheart_man',
+  'en-Silkvox_man',
+  'en-Snarkling_woman',
+  'en-Soother_woman'
+] as const;
 
 const DEFAULT_SETTINGS: AppSettings = {
   zoom: 1,
@@ -40,6 +62,10 @@ const ZOOM_STEP = 0.15;
 
 function createDefaultSettings(): AppSettings {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as AppSettings;
+}
+
+function getDefaultStreamVoice() {
+  return STREAM_VOICE_OPTIONS.includes(DEFAULT_STREAM_VOICE) ? DEFAULT_STREAM_VOICE : STREAM_VOICE_OPTIONS[0];
 }
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -66,6 +92,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [streamVoice, setStreamVoice] = useState<string>(() => getDefaultStreamVoice());
   const pendingPageRef = useRef<number | null>(null);
   const {
     settings,
@@ -225,10 +252,17 @@ export default function App() {
     if (!bookId) {
       setManifest([]);
       closeBookmarks();
+      setStreamVoice(getDefaultStreamVoice());
       return;
     }
     const storedSettings = loadSettingsForBook(bookId);
     setSettings(storedSettings ?? createDefaultSettings());
+    const storedVoice = loadStreamVoiceForBook(bookId);
+    if (storedVoice && STREAM_VOICE_OPTIONS.includes(storedVoice)) {
+      setStreamVoice(storedVoice);
+    } else {
+      setStreamVoice(getDefaultStreamVoice());
+    }
     pendingPageRef.current = loadLastPage(bookId);
     setLoading(true);
     resetTextState();
@@ -275,6 +309,16 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [bookId, settings]);
 
+  useEffect(() => {
+    if (!bookId) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      saveStreamVoiceForBook(bookId, streamVoice);
+    }, 150);
+    return () => window.clearTimeout(timeout);
+  }, [bookId, streamVoice]);
+
   const handlePlayStream = useCallback(async () => {
     if (!currentImage) {
       return;
@@ -286,8 +330,8 @@ export default function App() {
       return;
     }
     stopAudio();
-    await startStream({ text: textValue, pageKey: currentImage });
-  }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio]);
+    await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
+  }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio, streamVoice]);
 
   const handleStopStream = useCallback(() => {
     stopStream();
@@ -472,6 +516,9 @@ export default function App() {
               }}
               onStopAudio={stopAudio}
               streamState={streamState}
+              streamVoice={streamVoice}
+              streamVoiceOptions={STREAM_VOICE_OPTIONS}
+              onStreamVoiceChange={setStreamVoice}
               onPlayStream={() => void handlePlayStream()}
               onStopStream={handleStopStream}
               gotoInputRef={gotoInputRef}
