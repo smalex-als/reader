@@ -47,6 +47,7 @@ const STREAM_VOICE_OPTIONS = [
   'en-Snarkling_woman',
   'en-Soother_woman'
 ] as const;
+type StreamVoice = (typeof STREAM_VOICE_OPTIONS)[number];
 
 const DEFAULT_SETTINGS: AppSettings = {
   zoom: 1,
@@ -64,8 +65,12 @@ function createDefaultSettings(): AppSettings {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as AppSettings;
 }
 
-function getDefaultStreamVoice() {
-  return STREAM_VOICE_OPTIONS.includes(DEFAULT_STREAM_VOICE) ? DEFAULT_STREAM_VOICE : STREAM_VOICE_OPTIONS[0];
+function isStreamVoice(value: string): value is StreamVoice {
+  return STREAM_VOICE_OPTIONS.includes(value as StreamVoice);
+}
+
+function getDefaultStreamVoice(): StreamVoice {
+  return isStreamVoice(DEFAULT_STREAM_VOICE) ? DEFAULT_STREAM_VOICE : STREAM_VOICE_OPTIONS[0];
 }
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -92,7 +97,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [streamVoice, setStreamVoice] = useState<string>(() => getDefaultStreamVoice());
+  const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
   const pendingPageRef = useRef<number | null>(null);
   const {
     settings,
@@ -258,7 +263,7 @@ export default function App() {
     const storedSettings = loadSettingsForBook(bookId);
     setSettings(storedSettings ?? createDefaultSettings());
     const storedVoice = loadStreamVoiceForBook(bookId);
-    if (storedVoice && STREAM_VOICE_OPTIONS.includes(storedVoice)) {
+    if (storedVoice && isStreamVoice(storedVoice)) {
       setStreamVoice(storedVoice);
     } else {
       setStreamVoice(getDefaultStreamVoice());
@@ -332,6 +337,15 @@ export default function App() {
     stopAudio();
     await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
   }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio, streamVoice]);
+
+  const handleStreamVoiceChange = useCallback(
+    (voice: string) => {
+      if (isStreamVoice(voice)) {
+        setStreamVoice(voice);
+      }
+    },
+    []
+  );
 
   const handleStopStream = useCallback(() => {
     stopStream();
@@ -518,7 +532,7 @@ export default function App() {
               streamState={streamState}
               streamVoice={streamVoice}
               streamVoiceOptions={STREAM_VOICE_OPTIONS}
-              onStreamVoiceChange={setStreamVoice}
+              onStreamVoiceChange={handleStreamVoiceChange}
               onPlayStream={() => void handlePlayStream()}
               onStopStream={handleStopStream}
               gotoInputRef={gotoInputRef}
