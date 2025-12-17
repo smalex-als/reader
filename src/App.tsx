@@ -1,3 +1,4 @@
+import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toolbar from '@/components/Toolbar';
 import Viewer from '@/components/Viewer';
@@ -60,6 +61,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const ZOOM_STEP = 0.15;
+const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 
 function createDefaultSettings(): AppSettings {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as AppSettings;
@@ -98,6 +100,7 @@ export default function App() {
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
   const {
     settings,
@@ -114,6 +117,7 @@ export default function App() {
 
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const gotoInputRef = useRef<HTMLInputElement | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement | null>(null);
 
   const { toast, showToast, dismiss } = useToast();
   const fullscreenControls = useFullscreen(viewerShellRef);
@@ -347,6 +351,47 @@ export default function App() {
     []
   );
 
+  const handleTriggerPdfUpload = useCallback(() => {
+    pdfInputRef.current?.click();
+  }, []);
+
+  const handlePdfSelected = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) {
+        return;
+      }
+      setUploadingPdf(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch('/api/upload/pdf', { method: 'POST', body: formData });
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.status}`);
+        }
+        const data = (await response.json()) as { book: string; manifest?: string[] };
+        const newBookId = data.book;
+        setBooks((prev) => {
+          const next = Array.from(new Set([...prev, newBookId]));
+          next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
+          return next;
+        });
+        setBookId(newBookId);
+        setManifest(Array.isArray(data.manifest) ? data.manifest : []);
+        setCurrentPage(0);
+        setBookModalOpen(false);
+        showToast('Book created from PDF', 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Failed to upload PDF', 'error');
+      } finally {
+        setUploadingPdf(false);
+      }
+    },
+    [showToast]
+  );
+
   const handleStopStream = useCallback(() => {
     stopStream();
   }, [stopStream]);
@@ -496,6 +541,13 @@ export default function App() {
   return (
       <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
         <aside className="sidebar">
+          <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
+              style={{ display: 'none' }}
+              onChange={handlePdfSelected}
+          />
           <Toolbar
               currentBook={bookId}
               manifestLength={manifest.length}
@@ -533,6 +585,8 @@ export default function App() {
               streamVoice={streamVoice}
               streamVoiceOptions={STREAM_VOICE_OPTIONS}
               onStreamVoiceChange={handleStreamVoiceChange}
+              onUploadPdf={handleTriggerPdfUpload}
+              uploadingPdf={uploadingPdf}
               onPlayStream={() => void handlePlayStream()}
               onStopStream={handleStopStream}
               gotoInputRef={gotoInputRef}

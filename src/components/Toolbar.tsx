@@ -32,6 +32,8 @@ interface ToolbarProps {
   streamVoice: string;
   streamVoiceOptions: readonly string[];
   onStreamVoiceChange: (voice: string) => void;
+  onUploadPdf: () => void;
+  uploadingPdf: boolean;
   onPlayStream: () => void;
   onStopStream: () => void;
   gotoInputRef: React.RefObject<HTMLInputElement>;
@@ -75,6 +77,8 @@ export default function Toolbar({
   streamVoice,
   streamVoiceOptions,
   onStreamVoiceChange,
+  onUploadPdf,
+  uploadingPdf,
   onPlayStream,
   onStopStream,
   gotoInputRef,
@@ -123,6 +127,9 @@ export default function Toolbar({
           <span className="toolbar-readout">Book: {currentBook ?? 'None selected'}</span>
           <button type="button" className="button" onClick={onOpenBookModal}>
             {currentBook ? 'Change Book' : 'Select Book'}
+          </button>
+          <button type="button" className="button" onClick={onUploadPdf} disabled={uploadingPdf}>
+            {uploadingPdf ? 'Uploading…' : 'Upload PDF'}
           </button>
         </div>
 

@@ -3,10 +3,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import https from 'node:https';
 import mime from 'mime-types';
 import { OpenAI } from 'openai';
 import { PDFDocument } from 'pdf-lib';
+import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +44,10 @@ Pause: Brief pauses after each option and statement to allow for processing and 
 };
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
+const PDF_EXTENSIONS = new Set(['.pdf']);
+const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
+
+const execFileAsync = promisify(execFile);
 
 const collator = new Intl.Collator('en', {
   sensitivity: 'base',
@@ -64,6 +72,7 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
 
 app.use('/data', express.static(DATA_DIR));
 app.use('/data', (req, res, next) => {
@@ -397,6 +406,59 @@ function slugifyFilename(text) {
     .slice(0, 80) || 'pages';
 }
 
+async function removePathSafe(targetPath) {
+  try {
+    await fs.rm(targetPath, { recursive: true, force: true });
+  } catch {
+    // ignore cleanup errors
+  }
+}
+
+async function createBookFromPdf(buffer, filename) {
+  ensureDataDir();
+  const ext = (path.extname(filename || '') || '').toLowerCase();
+  if (ext && !PDF_EXTENSIONS.has(ext)) {
+    throw createHttpError(400, 'Only PDF files are supported');
+  }
+
+  const baseName = slugifyFilename(path.basename(filename || 'book', ext || undefined) || 'book');
+  let bookId = baseName || 'book';
+  let suffix = 1;
+  while (await safeStat(getBookDirectory(bookId))) {
+    bookId = `${baseName}-${suffix}`;
+    suffix += 1;
+  }
+
+  const bookDir = getBookDirectory(bookId);
+  await fs.mkdir(bookDir, { recursive: true });
+
+  const tempPath = path.join(
+    tmpdir(),
+    `upload-${Date.now()}-${Math.random().toString(16).slice(2)}${ext || '.pdf'}`
+  );
+  await fs.writeFile(tempPath, buffer);
+
+  try {
+    await execFileAsync('pdftoppm', ['-jpeg', '-r', '200', tempPath, 'page'], { cwd: bookDir });
+  } catch (error) {
+    await removePathSafe(bookDir);
+    throw createHttpError(
+      500,
+      'Failed to process PDF. Ensure pdftoppm is installed and the file is valid.'
+    );
+  } finally {
+    await removePathSafe(tempPath);
+  }
+
+  try {
+    const manifest = await loadManifest(bookId);
+    return { bookId, manifest };
+  } catch (error) {
+    await removePathSafe(bookDir);
+    throw error;
+  }
+}
+
 async function createPdfFromImages(bookId, imageUrls) {
   if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     throw createHttpError(400, 'At least one page is required for printing');
@@ -434,6 +496,19 @@ app.get(
   asyncHandler(async (_req, res) => {
     const books = await listBooks();
     res.json({ books });
+  })
+);
+
+app.post(
+  '/api/upload/pdf',
+  upload.single('file'),
+  asyncHandler(async (req, res) => {
+    const file = req.file;
+    if (!file) {
+      throw createHttpError(400, 'PDF file is required');
+    }
+    const { bookId, manifest } = await createBookFromPdf(file.buffer, file.originalname || 'book.pdf');
+    res.json({ book: bookId, manifest });
   })
 );
 
