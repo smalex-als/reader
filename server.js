@@ -45,7 +45,7 @@ Pause: Brief pauses after each option and statement to allow for processing and 
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 const PDF_EXTENSIONS = new Set(['.pdf']);
-const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 const execFileAsync = promisify(execFile);
 
@@ -643,8 +643,14 @@ app.get('*', (req, res, next) => {
 });
 
 app.use((err, req, res, _next) => {
-  const status = err.status || 500;
-  const message = err.message || 'Internal Server Error';
+  const status =
+    err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+      ? 413
+      : err.status || 500;
+  const message =
+    err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+      ? `PDF too large (max ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))}MB)`
+      : err.message || 'Internal Server Error';
   // eslint-disable-next-line no-console
   console.error('Error handling request', { status, message, stack: err.stack });
   res
