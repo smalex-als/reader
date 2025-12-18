@@ -26,6 +26,25 @@ const DEFAULT_VOICE = 'santa';
 const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 const TEXT_PROMPT = `Extract all visible text from this image as plain text. Preserve paragraph structure and spacing. Normalize all fractions: instead of Unicode characters like ½ or ¼, use plain text equivalents like 1/2, 1/4, 1 1/2, etc. Do not use emojis, special characters, or markdown. Keep the content exactly as it appears, but ensure formatting is consistent: use normal paragraphs with one empty line between them. Preserve line breaks and indentation only where they represent clear paragraph or step boundaries. Ignore page numbers, footers, and obvious scanning artifacts. Do not add commentary.`;
+const NARRATION_PROMPT = `You will be given extracted OCR text from a scanned page (often a recipe).
+
+Rewrite it into a version adapted for spoken narration (text-to-speech).
+
+Rules:
+- Output plain text only (no markdown).
+- Preserve meaning and factual content; do not add new information.
+- Fix obvious OCR artifacts, broken words, and hyphenation.
+- Combine hard line breaks into natural sentences, but keep paragraph breaks where they help narration.
+- Convert bullets/numbered steps into spoken-friendly phrasing.
+- Keep the same language as the input.
+- Normalize weird symbols into words when helpful for speech.
+
+Nutrition guidance (recipe books):
+- If the page includes a detailed “Nutrition per serving” section, do NOT narrate the full breakdown (e.g., grams of fat, sodium, etc.).
+- Instead, give a short summary: approximate calories (or just “about X calories” if present) and a qualitative macro balance like “protein-heavy”, “carb-heavy”, “high in fat”, or “balanced”.
+- If calories are not present, omit calories and only give the qualitative macro balance if the text clearly implies it; otherwise omit nutrition entirely.
+
+Return only the adapted narration text.`;
 const voiceProfiles = {
     santa: {
         openAiVoice: 'ash',
@@ -177,6 +196,73 @@ function getBookDirectory(bookId) {
   return path.join(DATA_DIR, bookId);
 }
 
+function deriveNarrationRelative(textRelative) {
+  if (typeof textRelative !== 'string' || !textRelative.length) {
+    return textRelative;
+  }
+  if (textRelative.endsWith('.txt')) {
+    return textRelative.replace(/\.txt$/i, '.narration.txt');
+  }
+  return `${textRelative}.narration.txt`;
+}
+
+function adaptTextForNarrationHeuristic(text) {
+  const input = typeof text === 'string' ? text : '';
+  if (!input.trim()) {
+    return '';
+  }
+
+  const normalized = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // Remove common end-of-line hyphenation from scanned text.
+  const dehyphenated = normalized.replace(/(\p{L})-\n(\p{L})/gu, '$1$2');
+
+  const paragraphs = dehyphenated
+    .split(/\n{2,}/)
+    .map((chunk) => chunk.replace(/\s*\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim())
+    .filter(Boolean);
+
+  const narration = paragraphs
+    .join('\n\n')
+    // Normalize common bullet characters into a simple dash for TTS.
+    .replace(/[•●◦▪]/g, '-')
+    .trim();
+
+  return narration;
+}
+
+async function generateNarrationTextFromLLM(text) {
+  const input = typeof text === 'string' ? text : '';
+  if (!input.trim()) {
+    return '';
+  }
+
+  if (!process.env.OPENAI_API_KEY) {
+    return '';
+  }
+
+  const openai = getOpenAI();
+  const response = await openai.responses.create({
+    model: 'gpt-5.2',
+    input: [
+      {
+        role: 'user',
+        content: [
+          { type: 'input_text', text: NARRATION_PROMPT },
+          { type: 'input_text', text: input.trim() }
+        ]
+      }
+    ]
+  });
+
+  const narration =
+    response.output_text?.trim() ||
+    response?.output?.[0]?.content?.[0]?.text?.trim() ||
+    '';
+
+  return narration;
+}
+
 async function assertBookDirectory(bookId) {
   const directory = getBookDirectory(bookId);
   const stat = await safeStat(directory);
@@ -206,13 +292,37 @@ async function loadPageText(imageUrl, options = {}) {
   const baseName = relative.replace(/\.[^.]+$/, '');
   const textRelative = `${baseName}.txt`;
   const textAbsolute = path.join(DATA_DIR, textRelative);
+  const narrationRelative = deriveNarrationRelative(textRelative);
+  const narrationAbsolute = path.join(DATA_DIR, narrationRelative);
 
   const textStat = await safeStat(textAbsolute);
   if (textStat?.isFile() && !skipCache) {
     const textContent = await fs.readFile(textAbsolute, 'utf8');
+    const narrationStat = await safeStat(narrationAbsolute);
+    let narrationText = '';
+    if (narrationStat?.isFile()) {
+      narrationText = await fs.readFile(narrationAbsolute, 'utf8');
+    } else {
+      try {
+        narrationText = await generateNarrationTextFromLLM(textContent);
+      } catch (error) {
+        console.warn('Narration adaptation failed; falling back to heuristic', error);
+        narrationText = '';
+      }
+
+      if (!narrationText) {
+        narrationText = adaptTextForNarrationHeuristic(textContent);
+      }
+
+      if (narrationText) {
+        await fs.mkdir(path.dirname(narrationAbsolute), { recursive: true });
+        await fs.writeFile(narrationAbsolute, narrationText, 'utf8');
+      }
+    }
     return {
       source: 'file',
       text: textContent,
+      narrationText,
       url: `/data/${textRelative}`,
       absolutePath: textAbsolute
     };
@@ -260,12 +370,28 @@ async function loadPageText(imageUrl, options = {}) {
     throw createHttpError(502, 'Failed to generate text');
   }
 
+  let narrationText = '';
+  try {
+    narrationText = await generateNarrationTextFromLLM(text);
+  } catch (error) {
+    console.warn('Narration adaptation failed; falling back to heuristic', error);
+    narrationText = '';
+  }
+  if (!narrationText) {
+    narrationText = adaptTextForNarrationHeuristic(text);
+  }
+
   await fs.mkdir(path.dirname(textAbsolute), { recursive: true });
   await fs.writeFile(textAbsolute, text, 'utf8');
+  if (narrationText) {
+    await fs.mkdir(path.dirname(narrationAbsolute), { recursive: true });
+    await fs.writeFile(narrationAbsolute, narrationText, 'utf8');
+  }
 
   return {
     source: 'ai',
     text,
+    narrationText,
     url: `/data/${textRelative}`,
     absolutePath: textAbsolute
   };
@@ -291,7 +417,7 @@ async function handlePageAudio({ image, voiceProfile }) {
   }
 
   const generated = await loadPageText(image);
-  const spokenText = generated.text.trim();
+  const spokenText = (generated.narrationText || generated.text).trim();
 
   if (!spokenText) {
     throw createHttpError(400, 'No text available for audio generation');
@@ -533,7 +659,7 @@ app.get(
         ? skipCacheParam.some((value) => ['1', 'true', 'yes'].includes(String(value).toLowerCase()))
         : false;
     const result = await loadPageText(image, { skipCache });
-    res.json({ source: result.source, text: result.text });
+    res.json({ source: result.source, text: result.text, narrationText: result.narrationText || '' });
   })
 );
 

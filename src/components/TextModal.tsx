@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import type { PageText } from '@/types/app';
 
 interface TextModalProps {
@@ -24,6 +25,25 @@ export default function TextModal({
   }
 
   const generatedMarker = text?.source === 'ai' || regenerated;
+  const hasNarration = Boolean(text?.narrationText?.trim());
+  const [view, setView] = useState<'narration' | 'original'>(hasNarration ? 'narration' : 'original');
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setView(hasNarration ? 'narration' : 'original');
+  }, [hasNarration, open]);
+
+  const displayedText = useMemo(() => {
+    if (!text) {
+      return '';
+    }
+    if (view === 'narration') {
+      return text.narrationText || '';
+    }
+    return text.text || '';
+  }, [text, view]);
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -40,7 +60,39 @@ export default function TextModal({
         <section className="modal-body">
           {loading && <p className="modal-status">Loading page text…</p>}
           {!loading && !text && <p className="modal-status">No text available.</p>}
-          {!loading && text ? <pre className="modal-content">{text.text}</pre> : null}
+          {!loading && text ? (
+            <>
+              <div className="modal-toolbar">
+                <div className="segmented" role="tablist" aria-label="Text view">
+                  <button
+                    type="button"
+                    className={`segmented-item ${view === 'original' ? 'segmented-item-active' : ''}`}
+                    onClick={() => setView('original')}
+                    disabled={loading}
+                    role="tab"
+                    aria-selected={view === 'original'}
+                  >
+                    Extracted
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-item ${view === 'narration' ? 'segmented-item-active' : ''}`}
+                    onClick={() => setView('narration')}
+                    disabled={loading || !hasNarration}
+                    role="tab"
+                    aria-selected={view === 'narration'}
+                  >
+                    Narration
+                  </button>
+                </div>
+              </div>
+              {!hasNarration && view === 'narration' ? (
+                <p className="modal-status">No narration-adapted text available.</p>
+              ) : (
+                <pre className="modal-content">{displayedText}</pre>
+              )}
+            </>
+          ) : null}
         </section>
         <footer className="modal-footer">
           <button

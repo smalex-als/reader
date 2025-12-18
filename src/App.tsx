@@ -333,7 +333,7 @@ export default function App() {
       return;
     }
     const pageText = currentText ?? (await fetchPageText());
-    const textValue = pageText?.text?.trim();
+    const textValue = (pageText?.narrationText || pageText?.text || '').trim();
     if (!textValue) {
       showToast('No page text available to stream', 'error');
       return;

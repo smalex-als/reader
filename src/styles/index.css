@@ -394,6 +394,46 @@ body {
   flex: 1;
 }
 
+.modal-toolbar {
+  margin: 0.75rem 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+.segmented {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.segmented-item {
+  padding: 0.4rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.segmented-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.segmented-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.segmented-item-active {
+  background: rgba(0, 200, 120, 0.22);
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .modal-content {
   margin: 0;
   white-space: pre-wrap;

@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from 'react';
-import { deriveTextUrl } from '@/lib/paths';
 import type { PageText } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -31,30 +30,18 @@ export function usePageText(
 
       setTextLoading(true);
       try {
-        if (!force) {
-          const directUrl = deriveTextUrl(currentImage);
-          try {
-            const response = await fetch(directUrl);
-            if (response.ok) {
-              const text = await response.text();
-              const entry: PageText = { text, source: 'file' };
-              setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
-              setRegeneratedText(false);
-              return entry;
-            }
-          } catch {
-            // fall back to API
-          }
-        }
-
         const params = new URLSearchParams({ image: currentImage });
         if (force) {
           params.set('skipCache', '1');
         }
-        const data = await fetchJson<{ source: 'file' | 'ai'; text: string }>(
+        const data = await fetchJson<{ source: 'file' | 'ai'; text: string; narrationText?: string }>(
           `/api/page-text?${params.toString()}`
         );
-        const entry: PageText = { text: data.text, source: data.source };
+        const entry: PageText = {
+          text: data.text,
+          narrationText: data.narrationText ?? '',
+          source: data.source
+        };
         setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
         setRegeneratedText(data.source === 'ai' || force);
         showToast(`Page text ${data.source === 'ai' ? 'generated' : 'loaded'}`, 'success');
