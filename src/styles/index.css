@@ -448,6 +448,134 @@ body {
   font-size: 0.9rem;
 }
 
+.ocr-status {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.ocr-status-running {
+  border-color: rgba(0, 120, 255, 0.6);
+  color: rgba(120, 190, 255, 0.95);
+}
+
+.ocr-status-paused {
+  border-color: rgba(255, 200, 0, 0.6);
+  color: rgba(255, 220, 120, 0.95);
+}
+
+.ocr-status-complete {
+  border-color: rgba(0, 200, 120, 0.6);
+  color: rgba(0, 255, 170, 0.95);
+}
+
+.ocr-status-queued,
+.ocr-status-idle {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ocr-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.ocr-progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.ocr-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(0, 120, 255, 0.6), rgba(0, 200, 120, 0.7));
+  width: 0;
+  transition: width 0.2s ease;
+}
+
+.ocr-progress-meta {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.ocr-queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.ocr-queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.ocr-queue-empty {
+  padding: 1rem 0;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+.ocr-queue-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.ocr-queue-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.ocr-queue-subtitle {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+  word-break: break-all;
+}
+
+.ocr-queue-status {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.ocr-queue-status-running {
+  border-color: rgba(0, 120, 255, 0.6);
+  color: rgba(120, 190, 255, 0.95);
+}
+
+.ocr-queue-status-completed {
+  border-color: rgba(0, 200, 120, 0.6);
+  color: rgba(0, 255, 170, 0.95);
+}
+
+.ocr-queue-status-error {
+  border-color: rgba(255, 80, 80, 0.7);
+  color: rgba(255, 120, 120, 0.95);
+}
+
 .bookmark-list {
   list-style: none;
   margin: 0;

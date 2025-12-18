@@ -43,6 +43,12 @@ interface ToolbarProps {
   bookmarksCount: number;
   onOpenPrint: () => void;
   onOpenHelp: () => void;
+  onOpenOcrQueue: () => void;
+  ocrQueueTotal: number;
+  ocrQueueProcessed: number;
+  ocrQueueFailed: number;
+  ocrQueueRunning: boolean;
+  ocrQueuePaused: boolean;
 }
 
 export default function Toolbar({
@@ -87,7 +93,13 @@ export default function Toolbar({
   isBookmarked,
   bookmarksCount,
   onOpenPrint,
-  onOpenHelp
+  onOpenHelp,
+  onOpenOcrQueue,
+  ocrQueueTotal,
+  ocrQueueProcessed,
+  ocrQueueFailed,
+  ocrQueueRunning,
+  ocrQueuePaused
 }: ToolbarProps) {
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
@@ -114,6 +126,21 @@ export default function Toolbar({
     }
   })();
   const showAudioStatus = audioStatusMessage !== null;
+  const showOcrStatus = ocrQueueTotal > 0;
+  const ocrStatusText = (() => {
+    if (!showOcrStatus) {
+      return null;
+    }
+    const statusLabel = ocrQueuePaused
+      ? 'Paused'
+      : ocrQueueRunning
+      ? 'Running'
+      : ocrQueueProcessed < ocrQueueTotal
+      ? 'Queued'
+      : 'Complete';
+    const failedLabel = ocrQueueFailed > 0 ? ` · ${ocrQueueFailed} failed` : '';
+    return `${statusLabel} · ${ocrQueueProcessed}/${ocrQueueTotal}${failedLabel}`;
+  })();
   const formatVoiceLabel = (voice: string) => {
     const withoutLocale = voice.startsWith('en-') ? voice.slice(3) : voice;
     const [name, variant] = withoutLocale.split('_');
@@ -274,6 +301,15 @@ export default function Toolbar({
           <button type="button" className="button" onClick={onOpenPrint} disabled={controlsDisabled}>
             Print PDF
           </button>
+          <button type="button" className="button" onClick={onOpenOcrQueue} disabled={controlsDisabled}>
+            Batch OCR
+          </button>
+          {showOcrStatus && (
+            <div className="toolbar-status" role="status" aria-live="polite">
+              {ocrQueueRunning && !ocrQueuePaused && <span className="toolbar-spinner" aria-hidden />}
+              <span className="toolbar-status-text">{ocrStatusText}</span>
+            </div>
+          )}
           <button
             type="button"
             className={`button ${isBookmarked ? 'button-active' : ''}`}

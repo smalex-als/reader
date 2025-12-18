@@ -8,11 +8,13 @@ import BookmarksModal from '@/components/BookmarksModal';
 import PrintModal from '@/components/PrintModal';
 import HelpModal from '@/components/HelpModal';
 import BookSelectModal from '@/components/BookSelectModal';
+import OcrQueueModal from '@/components/OcrQueueModal';
 import { useToast } from '@/hooks/useToast';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useAudioController } from '@/hooks/useAudioController';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { usePageText } from '@/hooks/usePageText';
+import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { DEFAULT_STREAM_VOICE, useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useZoom } from '@/hooks/useZoom';
@@ -99,6 +101,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [ocrQueueOpen, setOcrQueueOpen] = useState(false);
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
@@ -144,6 +147,16 @@ export default function App() {
     textModalOpen,
     toggleTextModal
   } = usePageText(currentImage, showToast);
+  const {
+    jobs: ocrJobs,
+    paused: ocrPaused,
+    progress: ocrProgress,
+    enqueuePages,
+    clearQueue,
+    resetQueue,
+    retryFailed,
+    togglePause
+  } = useOcrQueue({ manifest, showToast });
   const {
     closePrintModal,
     createPrintPdf,
@@ -223,6 +236,33 @@ export default function App() {
       ...filters
     }));
   }, []);
+
+  const queueAllPages = useCallback(() => {
+    const pages = manifest.map((_, index) => index);
+    enqueuePages(pages);
+  }, [enqueuePages, manifest]);
+
+  const queueRemainingPages = useCallback(() => {
+    const pages = manifest.map((_, index) => index).filter((index) => index >= currentPage);
+    enqueuePages(pages);
+  }, [currentPage, enqueuePages, manifest]);
+
+  const queueCurrentPage = useCallback(() => {
+    if (currentPage >= 0) {
+      enqueuePages([currentPage]);
+    }
+  }, [currentPage, enqueuePages]);
+
+  const ocrQueueState = useMemo(
+    () => ({
+      total: ocrProgress.total,
+      processed: ocrProgress.processed,
+      failed: ocrProgress.failed,
+      running: ocrProgress.running,
+      paused: ocrPaused
+    }),
+    [ocrPaused, ocrProgress]
+  );
 
   useEffect(() => {
     (async () => {
@@ -307,6 +347,11 @@ export default function App() {
       }
     })();
   }, [bookId, closeBookmarks, resetAudioCache, resetTextState, showToast, stopAudio, stopStream]);
+
+  useEffect(() => {
+    resetQueue();
+    setOcrQueueOpen(false);
+  }, [bookId, resetQueue]);
 
   useEffect(() => {
     if (!bookId) {
@@ -403,7 +448,10 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if ((textModalOpen || helpOpen || printModalOpen || bookmarksOpen || bookModalOpen) && event.key !== 'Escape') {
+      if (
+        (textModalOpen || helpOpen || printModalOpen || bookmarksOpen || bookModalOpen || ocrQueueOpen) &&
+        event.key !== 'Escape'
+      ) {
         return;
       }
       if (isTextInput(event.target) && event.key !== 'Escape') {
@@ -489,6 +537,9 @@ export default function App() {
           if (bookModalOpen) {
             closeBookModal();
           }
+          if (ocrQueueOpen) {
+            setOcrQueueOpen(false);
+          }
           if (helpOpen) {
             setHelpOpen(false);
           }
@@ -529,7 +580,8 @@ export default function App() {
     printModalOpen,
     bookmarksOpen,
     closeBookmarks,
-    closePrintModal
+    closePrintModal,
+    ocrQueueOpen
   ]);
   const hasBooks = books.length > 0;
   const footerMessage = currentImage
@@ -596,6 +648,12 @@ export default function App() {
               bookmarksCount={bookmarks.length}
               onOpenPrint={openPrintModal}
               onOpenHelp={openHelp}
+              onOpenOcrQueue={() => setOcrQueueOpen(true)}
+              ocrQueueTotal={ocrQueueState.total}
+              ocrQueueProcessed={ocrQueueState.processed}
+              ocrQueueFailed={ocrQueueState.failed}
+              ocrQueueRunning={ocrQueueState.running}
+              ocrQueuePaused={ocrQueueState.paused}
           />
         </aside>
         <main className="main">
@@ -656,6 +714,18 @@ export default function App() {
               void fetchPageText(true);
             }}
             regenerated={regeneratedText}
+        />
+        <OcrQueueModal
+            open={ocrQueueOpen}
+            onClose={() => setOcrQueueOpen(false)}
+            jobs={ocrJobs}
+            paused={ocrPaused}
+            onTogglePause={togglePause}
+            onQueueAll={queueAllPages}
+            onQueueRemaining={queueRemainingPages}
+            onQueueCurrent={queueCurrentPage}
+            onRetryFailed={retryFailed}
+            onClearQueue={clearQueue}
         />
       </div>
   );
