@@ -233,7 +233,7 @@ async function loadPageText(imageUrl, options = {}) {
   const base64 = buffer.toString('base64');
 
   const response = await openai.responses.create({
-    model: 'gpt-4o',
+    model: 'gpt-5.2',
     input: [
       {
         role: 'user',
