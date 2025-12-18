@@ -9,6 +9,8 @@ import PrintModal from '@/components/PrintModal';
 import HelpModal from '@/components/HelpModal';
 import BookSelectModal from '@/components/BookSelectModal';
 import OcrQueueModal from '@/components/OcrQueueModal';
+import TocModal from '@/components/TocModal';
+import TocNavModal from '@/components/TocNavModal';
 import { useToast } from '@/hooks/useToast';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useAudioController } from '@/hooks/useAudioController';
@@ -29,7 +31,7 @@ import {
   saveSettingsForBook,
   saveStreamVoiceForBook
 } from '@/lib/storage';
-import type { AppSettings } from '@/types/app';
+import type { AppSettings, TocEntry } from '@/types/app';
 
 const STREAM_VOICE_OPTIONS = [
   'en-Breeze_woman',
@@ -102,6 +104,12 @@ export default function App() {
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ocrQueueOpen, setOcrQueueOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
+  const [tocManageOpen, setTocManageOpen] = useState(false);
+  const [tocEntries, setTocEntries] = useState<TocEntry[]>([]);
+  const [tocLoading, setTocLoading] = useState(false);
+  const [tocGenerating, setTocGenerating] = useState(false);
+  const [tocSaving, setTocSaving] = useState(false);
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
@@ -264,6 +272,80 @@ export default function App() {
     [ocrPaused, ocrProgress]
   );
 
+  const loadToc = useCallback(async () => {
+    if (!bookId) {
+      return;
+    }
+    setTocLoading(true);
+    try {
+      const data = await fetchJson<{ toc: TocEntry[] }>(
+        `/api/books/${encodeURIComponent(bookId)}/toc`
+      );
+      setTocEntries(Array.isArray(data.toc) ? data.toc : []);
+    } catch (error) {
+      console.error(error);
+      showToast('Unable to load table of contents', 'error');
+    } finally {
+      setTocLoading(false);
+    }
+  }, [bookId, showToast]);
+
+  const handleGenerateToc = useCallback(async () => {
+    if (!bookId) {
+      return;
+    }
+    setTocGenerating(true);
+    try {
+      const response = await fetchJson<{ toc: TocEntry[] }>(
+        `/api/books/${encodeURIComponent(bookId)}/toc/generate`,
+        { method: 'POST' }
+      );
+      setTocEntries(Array.isArray(response.toc) ? response.toc : []);
+      showToast('Table of contents generated', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Unable to generate table of contents', 'error');
+    } finally {
+      setTocGenerating(false);
+    }
+  }, [bookId, showToast]);
+
+  const handleSaveToc = useCallback(async () => {
+    if (!bookId) {
+      return;
+    }
+    setTocSaving(true);
+    try {
+      const response = await fetchJson<{ toc: TocEntry[] }>(
+        `/api/books/${encodeURIComponent(bookId)}/toc`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toc: tocEntries })
+        }
+      );
+      setTocEntries(Array.isArray(response.toc) ? response.toc : []);
+      showToast('Table of contents saved', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Unable to save table of contents', 'error');
+    } finally {
+      setTocSaving(false);
+    }
+  }, [bookId, showToast, tocEntries]);
+
+  const handleAddTocEntry = useCallback(() => {
+    setTocEntries((prev) => [...prev, { title: '', page: currentPage }]);
+  }, [currentPage]);
+
+  const handleRemoveTocEntry = useCallback((index: number) => {
+    setTocEntries((prev) => prev.filter((_, idx) => idx !== index));
+  }, []);
+
+  const handleUpdateTocEntry = useCallback((index: number, next: TocEntry) => {
+    setTocEntries((prev) => prev.map((entry, idx) => (idx === index ? next : entry)));
+  }, []);
+
   useEffect(() => {
     (async () => {
       try {
@@ -352,6 +434,18 @@ export default function App() {
     resetQueue();
     setOcrQueueOpen(false);
   }, [bookId, resetQueue]);
+
+  useEffect(() => {
+    setTocEntries([]);
+    setTocOpen(false);
+    setTocManageOpen(false);
+  }, [bookId]);
+
+  useEffect(() => {
+    if (tocOpen || tocManageOpen) {
+      void loadToc();
+    }
+  }, [loadToc, tocManageOpen, tocOpen]);
 
   useEffect(() => {
     if (!bookId) {
@@ -449,7 +543,16 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
-        (textModalOpen || helpOpen || printModalOpen || bookmarksOpen || bookModalOpen || ocrQueueOpen) &&
+        (
+          textModalOpen ||
+          helpOpen ||
+          printModalOpen ||
+          bookmarksOpen ||
+          bookModalOpen ||
+          ocrQueueOpen ||
+          tocOpen ||
+          tocManageOpen
+        ) &&
         event.key !== 'Escape'
       ) {
         return;
@@ -540,6 +643,12 @@ export default function App() {
           if (ocrQueueOpen) {
             setOcrQueueOpen(false);
           }
+          if (tocOpen) {
+            setTocOpen(false);
+          }
+          if (tocManageOpen) {
+            setTocManageOpen(false);
+          }
           if (helpOpen) {
             setHelpOpen(false);
           }
@@ -581,7 +690,9 @@ export default function App() {
     bookmarksOpen,
     closeBookmarks,
     closePrintModal,
-    ocrQueueOpen
+    ocrQueueOpen,
+    tocOpen,
+    tocManageOpen
   ]);
   const hasBooks = books.length > 0;
   const footerMessage = currentImage
@@ -649,6 +760,8 @@ export default function App() {
               onOpenPrint={openPrintModal}
               onOpenHelp={openHelp}
               onOpenOcrQueue={() => setOcrQueueOpen(true)}
+              onOpenToc={() => setTocOpen(true)}
+              onOpenTocManage={() => setTocManageOpen(true)}
               ocrQueueTotal={ocrQueueState.total}
               ocrQueueProcessed={ocrQueueState.processed}
               ocrQueueFailed={ocrQueueState.failed}
@@ -714,6 +827,30 @@ export default function App() {
               void fetchPageText(true);
             }}
             regenerated={regeneratedText}
+        />
+        <TocNavModal
+            open={tocOpen}
+            entries={tocEntries}
+            loading={tocLoading}
+            onClose={() => setTocOpen(false)}
+            onGoToPage={(pageIndex) => {
+              setTocOpen(false);
+              renderPage(pageIndex);
+            }}
+        />
+        <TocModal
+            open={tocManageOpen}
+            entries={tocEntries}
+            loading={tocLoading}
+            generating={tocGenerating}
+            saving={tocSaving}
+            manifestLength={manifest.length}
+            onClose={() => setTocManageOpen(false)}
+            onGenerate={handleGenerateToc}
+            onSave={handleSaveToc}
+            onAddEntry={handleAddTocEntry}
+            onRemoveEntry={handleRemoveTocEntry}
+            onUpdateEntry={handleUpdateTocEntry}
         />
         <OcrQueueModal
             open={ocrQueueOpen}

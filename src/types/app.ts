@@ -12,6 +12,11 @@ export interface Bookmark {
   label: string;
 }
 
+export interface TocEntry {
+  title: string;
+  page: number;
+}
+
 export interface AudioCacheEntry {
   url: string;
   source: 'file' | 'ai';

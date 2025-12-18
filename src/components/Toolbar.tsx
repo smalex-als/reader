@@ -44,6 +44,8 @@ interface ToolbarProps {
   onOpenPrint: () => void;
   onOpenHelp: () => void;
   onOpenOcrQueue: () => void;
+  onOpenToc: () => void;
+  onOpenTocManage: () => void;
   ocrQueueTotal: number;
   ocrQueueProcessed: number;
   ocrQueueFailed: number;
@@ -95,6 +97,8 @@ export default function Toolbar({
   onOpenPrint,
   onOpenHelp,
   onOpenOcrQueue,
+  onOpenToc,
+  onOpenTocManage,
   ocrQueueTotal,
   ocrQueueProcessed,
   ocrQueueFailed,
@@ -297,6 +301,17 @@ export default function Toolbar({
             disabled={controlsDisabled}
           >
             Page Text
+          </button>
+          <button type="button" className="button" onClick={onOpenToc} disabled={controlsDisabled}>
+            Table of Contents
+          </button>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={onOpenTocManage}
+            disabled={controlsDisabled}
+          >
+            Edit TOC
           </button>
           <button type="button" className="button" onClick={onOpenPrint} disabled={controlsDisabled}>
             Print PDF

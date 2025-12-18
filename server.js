@@ -22,6 +22,7 @@ const STATIC_ROOT = existsSync(DIST_DIR) ? DIST_DIR : __dirname;
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const BOOKMARKS_FILENAME = 'bookmarks.txt';
+const TOC_FILENAME = 'toc.json';
 const DEFAULT_VOICE = 'santa';
 const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
@@ -45,6 +46,18 @@ Nutrition guidance (recipe books):
 - If calories are not present, omit calories and only give the qualitative macro balance if the text clearly implies it; otherwise omit nutrition entirely.
 
 Return only the adapted narration text.`;
+const TOC_PROMPT = `You are creating a table of contents from OCR snippets per page.
+
+You will be given a list of page numbers and OCR text snippets. Identify likely section or chapter titles and the page where they begin.
+
+Rules:
+- Output strict JSON only (no markdown, no extra text).
+- Return an array of objects with shape: {"title": string, "page": number}.
+- Page numbers are 1-based and must match the input pages.
+- Keep titles concise and faithful to the text.
+- Prefer fewer, higher-quality entries over too many.
+- If no clear structure exists, return [].
+`;
 const voiceProfiles = {
     santa: {
         openAiVoice: 'ash',
@@ -143,6 +156,14 @@ function resolveDataUrl(urlPath) {
     throw createHttpError(400, 'Path escapes data directory');
   }
   return { relative, absolute: resolved };
+}
+
+function deriveTextPathsFromImageUrl(imageUrl) {
+  const { relative } = resolveDataUrl(imageUrl);
+  const baseName = relative.replace(/\.[^.]+$/, '');
+  const textRelative = `${baseName}.txt`;
+  const textAbsolute = path.join(DATA_DIR, textRelative);
+  return { textRelative, textAbsolute };
 }
 
 function validateBookImage(bookId, imageUrl) {
@@ -493,6 +514,155 @@ async function loadBookmarks(bookId) {
     .sort((a, b) => a.page - b.page);
 }
 
+function sanitizeTocEntry(raw, maxPageIndex) {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const title = typeof raw.title === 'string' ? raw.title.trim() : '';
+  const page = Number.parseInt(raw.page, 10);
+  if (!title || !Number.isInteger(page)) {
+    return null;
+  }
+  if (page < 0 || page > maxPageIndex) {
+    return null;
+  }
+  return { title, page };
+}
+
+async function loadToc(bookId) {
+  const directory = await assertBookDirectory(bookId);
+  const filePath = path.join(directory, TOC_FILENAME);
+  const stat = await safeStat(filePath);
+  if (!stat?.isFile()) {
+    return [];
+  }
+  const raw = await fs.readFile(filePath, 'utf8');
+  let parsed = [];
+  try {
+    const json = JSON.parse(raw);
+    if (Array.isArray(json)) {
+      parsed = json;
+    }
+  } catch {
+    // ignore parse failures and fall back to empty list
+  }
+  const manifest = await loadManifest(bookId);
+  const maxPageIndex = Math.max(0, manifest.length - 1);
+  return parsed
+    .map((entry) => sanitizeTocEntry(entry, maxPageIndex))
+    .filter(Boolean)
+    .sort((a, b) => a.page - b.page);
+}
+
+async function saveToc(bookId, toc) {
+  const directory = await assertBookDirectory(bookId);
+  const manifest = await loadManifest(bookId);
+  const maxPageIndex = Math.max(0, manifest.length - 1);
+  const normalized = (Array.isArray(toc) ? toc : [])
+    .map((entry) => sanitizeTocEntry(entry, maxPageIndex))
+    .filter(Boolean)
+    .sort((a, b) => a.page - b.page);
+  const filePath = path.join(directory, TOC_FILENAME);
+  await fs.mkdir(directory, { recursive: true });
+  await fs.writeFile(filePath, JSON.stringify(normalized, null, 2), 'utf8');
+  return normalized;
+}
+
+function extractJsonArray(text) {
+  if (typeof text !== 'string') {
+    return null;
+  }
+  const start = text.indexOf('[');
+  const end = text.lastIndexOf(']');
+  if (start === -1 || end === -1 || end <= start) {
+    return null;
+  }
+  const snippet = text.slice(start, end + 1);
+  try {
+    return JSON.parse(snippet);
+  } catch {
+    return null;
+  }
+}
+
+async function generateTocFromOcr(bookId) {
+  const manifest = await loadManifest(bookId);
+  const snippets = [];
+  const MAX_SNIPPET_CHARS = 800;
+  const MAX_PAGES = 500;
+
+  for (let index = 0; index < manifest.length; index += 1) {
+    if (snippets.length >= MAX_PAGES) {
+      break;
+    }
+    const imageUrl = manifest[index];
+    const { textAbsolute } = deriveTextPathsFromImageUrl(imageUrl);
+    const stat = await safeStat(textAbsolute);
+    if (!stat?.isFile()) {
+      continue;
+    }
+    const content = await fs.readFile(textAbsolute, 'utf8');
+    const trimmed = content.replace(/\s+/g, ' ').trim();
+    if (!trimmed) {
+      continue;
+    }
+    snippets.push({
+      page: index + 1,
+      text: trimmed.slice(0, MAX_SNIPPET_CHARS)
+    });
+  }
+
+  if (snippets.length === 0) {
+    throw createHttpError(400, 'No OCR text found for this book');
+  }
+
+  const openai = getOpenAI();
+  const response = await openai.responses.create({
+    model: 'gpt-5.2',
+    input: [
+      {
+        role: 'user',
+        content: [
+          { type: 'input_text', text: TOC_PROMPT },
+          { type: 'input_text', text: JSON.stringify({ pages: snippets }) }
+        ]
+      }
+    ]
+  });
+
+  const raw =
+    response.output_text?.trim() ||
+    response?.output?.[0]?.content?.[0]?.text?.trim() ||
+    '';
+
+  const parsed = extractJsonArray(raw);
+  if (!Array.isArray(parsed)) {
+    throw createHttpError(502, 'Unable to generate table of contents');
+  }
+
+  const maxPageIndex = Math.max(0, manifest.length - 1);
+  const normalized = parsed
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+      const title = typeof entry.title === 'string' ? entry.title.trim() : '';
+      const page = Number.parseInt(entry.page, 10);
+      if (!title || !Number.isInteger(page)) {
+        return null;
+      }
+      const pageIndex = page - 1;
+      if (pageIndex < 0 || pageIndex > maxPageIndex) {
+        return null;
+      }
+      return { title, page: pageIndex };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.page - b.page);
+
+  return saveToc(bookId, normalized);
+}
+
 async function saveBookmarks(bookId, bookmarks) {
   const directory = await assertBookDirectory(bookId);
   const filePath = path.join(directory, BOOKMARKS_FILENAME);
@@ -750,6 +920,34 @@ app.delete(
     const filtered = existing.filter((entry) => entry.page !== page);
     const updated = await saveBookmarks(bookId, filtered);
     res.json({ book: bookId, bookmarks: updated });
+  })
+);
+
+app.get(
+  '/api/books/:id/toc',
+  asyncHandler(async (req, res) => {
+    const bookId = normalizeBookId(req.params.id);
+    const toc = await loadToc(bookId);
+    res.json({ book: bookId, toc });
+  })
+);
+
+app.post(
+  '/api/books/:id/toc',
+  asyncHandler(async (req, res) => {
+    const bookId = normalizeBookId(req.params.id);
+    const { toc } = req.body || {};
+    const saved = await saveToc(bookId, toc);
+    res.json({ book: bookId, toc: saved });
+  })
+);
+
+app.post(
+  '/api/books/:id/toc/generate',
+  asyncHandler(async (req, res) => {
+    const bookId = normalizeBookId(req.params.id);
+    const toc = await generateTocFromOcr(bookId);
+    res.json({ book: bookId, toc });
   })
 );
 
