@@ -38,6 +38,7 @@ The server serves `dist/` if it exists, otherwise it serves the project root.
 - `server/routes/`: API route groups (books, media, health).
 - `server/lib/`: OCR, audio, PDF, bookmarks, TOC, and path helpers.
 - `server/config.js`: server constants and prompts.
+- `server/prompts/`: OCR, narration, and TOC prompt text files.
 - `server.js`: entrypoint that starts the server.
 
 ## Data layout
@@ -78,6 +79,7 @@ Notes:
 
 - OCR backend is configured in `server/config.js` via `OCR_BACKEND`. The default is `llmproxy`, configured
   via `LLMPROXY_ENDPOINT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`.
+- Prompt text lives in `server/prompts/` for easy editing and review.
 - PDF upload uses `pdftoppm` from Poppler. Install it before using `/api/upload/pdf`.
 
 ## API highlights

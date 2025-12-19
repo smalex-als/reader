@@ -481,6 +481,41 @@ export default function App() {
     await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
   }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio, streamVoice]);
 
+  const handleCopyText = useCallback(async () => {
+    if (!currentImage) {
+      showToast('No page selected', 'error');
+      return;
+    }
+    const pageText = currentText ?? (await fetchPageText());
+    const textValue = (pageText?.text || '').trim();
+    if (!textValue) {
+      showToast('No OCR text available to copy', 'error');
+      return;
+    }
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(textValue);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = textValue;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!copied) {
+          throw new Error('copy failed');
+        }
+      }
+      showToast('Copied OCR text to clipboard', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Unable to copy text', 'error');
+    }
+  }, [currentImage, currentText, fetchPageText, showToast]);
+
   const handleStreamVoiceChange = useCallback(
     (voice: string) => {
       if (isStreamVoice(voice)) {
@@ -736,6 +771,7 @@ export default function App() {
               onToggleTextModal={() => {
                 toggleTextModal();
               }}
+              onCopyText={handleCopyText}
               onToggleFullscreen={() => void toggleFullscreen()}
               fullscreen={isFullscreen}
               audioState={audioState}

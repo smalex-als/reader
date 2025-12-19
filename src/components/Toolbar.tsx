@@ -23,6 +23,7 @@ interface ToolbarProps {
   onBrightness: (value: number) => void;
   onContrast: (value: number) => void;
   onToggleTextModal: () => void;
+  onCopyText: () => void;
   onToggleFullscreen: () => void;
   fullscreen: boolean;
   audioState: AudioState;
@@ -76,6 +77,7 @@ export default function Toolbar({
   onBrightness,
   onContrast,
   onToggleTextModal,
+  onCopyText,
   onToggleFullscreen,
   fullscreen,
   audioState,
@@ -301,6 +303,15 @@ export default function Toolbar({
             disabled={controlsDisabled}
           >
             Page Text
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onCopyText}
+            disabled={controlsDisabled}
+            title="Copy OCR text"
+          >
+            ⧉ Copy Text
           </button>
           <button type="button" className="button" onClick={onOpenToc} disabled={controlsDisabled}>
             Table of Contents
