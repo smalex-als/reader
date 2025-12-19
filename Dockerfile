@@ -26,6 +26,7 @@ RUN npm install --omit=dev && npm cache clean --force
 RUN mkdir -p /app/data
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/server ./server
 
 EXPOSE 3000
 
