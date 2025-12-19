@@ -35,7 +35,7 @@ export default function TextModal({
   const hasSummary = Boolean(insights?.summary?.trim());
   const hasKeyPoints = Boolean(insights?.keyPoints?.length);
   const hasInsights = hasSummary || hasKeyPoints;
-  const [view, setView] = useState<'narration' | 'original' | 'summary' | 'key-points'>(
+  const [view, setView] = useState<'narration' | 'original' | 'notes'>(
     hasNarration ? 'narration' : 'original'
   );
 
@@ -105,23 +105,13 @@ export default function TextModal({
                   </button>
                   <button
                     type="button"
-                    className={`segmented-item ${view === 'summary' ? 'segmented-item-active' : ''}`}
-                    onClick={() => setView('summary')}
+                    className={`segmented-item ${view === 'notes' ? 'segmented-item-active' : ''}`}
+                    onClick={() => setView('notes')}
                     disabled={loading}
                     role="tab"
-                    aria-selected={view === 'summary'}
+                    aria-selected={view === 'notes'}
                   >
-                    Summary
-                  </button>
-                  <button
-                    type="button"
-                    className={`segmented-item ${view === 'key-points' ? 'segmented-item-active' : ''}`}
-                    onClick={() => setView('key-points')}
-                    disabled={loading}
-                    role="tab"
-                    aria-selected={view === 'key-points'}
-                  >
-                    Key Points
+                    Notes
                   </button>
                 </div>
                 <button
@@ -136,19 +126,14 @@ export default function TextModal({
               {view === 'narration' && !hasNarration ? (
                 <p className="modal-status">No narration-adapted text available.</p>
               ) : null}
-              {view === 'summary' && !summaryText && !insightsLoading ? (
-                <p className="modal-status">No summary yet. Generate notes to create one.</p>
+              {view === 'notes' && !summaryText && keyPoints.length === 0 && !insightsLoading ? (
+                <p className="modal-status">No notes yet. Generate notes to create them.</p>
               ) : null}
-              {view === 'key-points' && keyPoints.length === 0 && !insightsLoading ? (
-                <p className="modal-status">No key points yet. Generate notes to create them.</p>
-              ) : null}
-              {insightsLoading && (view === 'summary' || view === 'key-points') ? (
+              {insightsLoading && view === 'notes' ? (
                 <p className="modal-status">Generating notes…</p>
               ) : null}
-              {view === 'summary' && summaryText ? (
-                <p className="modal-prose">{summaryText}</p>
-              ) : null}
-              {view === 'key-points' && keyPoints.length > 0 ? (
+              {view === 'notes' && summaryText ? <p className="modal-prose">{summaryText}</p> : null}
+              {view === 'notes' && keyPoints.length > 0 ? (
                 <ul className="modal-list">
                   {keyPoints.map((point, index) => (
                     <li key={`${point}-${index}`}>{point}</li>
