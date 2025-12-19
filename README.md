@@ -32,6 +32,14 @@ node server.js
 
 The server serves `dist/` if it exists, otherwise it serves the project root.
 
+## Server layout
+
+- `server/index.js`: Express app setup, middleware, routing, error handling.
+- `server/routes/`: API route groups (books, media, health).
+- `server/lib/`: OCR, audio, PDF, bookmarks, TOC, and path helpers.
+- `server/config.js`: server constants and prompts.
+- `server.js`: entrypoint that starts the server.
+
 ## Data layout
 
 ```
@@ -68,7 +76,7 @@ Front-end environment variables:
 
 Notes:
 
-- OCR backend is configured in `server.js` via `OCR_BACKEND`. The default is `llmproxy`, configured
+- OCR backend is configured in `server/config.js` via `OCR_BACKEND`. The default is `llmproxy`, configured
   via `LLMPROXY_ENDPOINT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`.
 - PDF upload uses `pdftoppm` from Poppler. Install it before using `/api/upload/pdf`.
 
