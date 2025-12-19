@@ -334,7 +334,6 @@ async function extractTextFromLlmproxy(absolute) {
   }
 
   const payload = await response.json();
-  console.log(JSON.stringify(payload));
   const rawText = typeof payload?.response === 'string' ? payload.response : '';
   let text = rawText.trim();
   if (!text) {
