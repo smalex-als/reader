@@ -26,6 +26,9 @@ const TOC_FILENAME = 'toc.json';
 const DEFAULT_VOICE = 'santa';
 const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
+const OCR_BACKEND = 'alternate'; // 'openai' | 'alternate'
+const ALT_OCR_ENDPOINT = 'https://myserver.home:3002/parse-jpeg';
+const ALT_OCR_INSECURE_TLS = true;
 const TEXT_PROMPT = `Extract all visible text from this image as plain text. Preserve paragraph structure and spacing. Normalize all fractions: instead of Unicode characters like ½ or ¼, use plain text equivalents like 1/2, 1/4, 1 1/2, etc. Do not use emojis, special characters, or markdown. Keep the content exactly as it appears, but ensure formatting is consistent: use normal paragraphs with one empty line between them. Preserve line breaks and indentation only where they represent clear paragraph or step boundaries. Ignore page numbers, footers, and obvious scanning artifacts. Do not add commentary.`;
 const NARRATION_PROMPT = `You will be given extracted OCR text from a scanned page (often a recipe).
 
@@ -307,6 +310,37 @@ function getOpenAI() {
   return openaiClient;
 }
 
+async function extractTextFromAlternateOcr(absolute) {
+  const args = ['-sS', '-X', 'POST', ALT_OCR_ENDPOINT];
+  if (ALT_OCR_INSECURE_TLS) {
+    args.push('--insecure');
+  }
+  args.push('-F', `image=@${absolute}`);
+
+  let stdout = '';
+  try {
+    ({ stdout } = await execFileAsync('curl', args, { maxBuffer: 50 * 1024 * 1024 }));
+  } catch (error) {
+    const stderr = error?.stderr?.toString?.().trim();
+    const message = stderr || error?.message || 'unknown error';
+    throw createHttpError(502, `Alternate OCR failed: ${message}`);
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(stdout);
+  } catch (error) {
+    throw createHttpError(502, 'Alternate OCR returned invalid JSON');
+  }
+
+  const text = typeof payload?.extracted_text === 'string' ? payload.extracted_text.trim() : '';
+  if (!text) {
+    throw createHttpError(502, 'Alternate OCR returned empty text');
+  }
+
+  return text;
+}
+
 async function loadPageText(imageUrl, options = {}) {
   const { skipCache = false } = options;
   const { absolute, relative } = resolveDataUrl(imageUrl);
@@ -359,33 +393,40 @@ async function loadPageText(imageUrl, options = {}) {
     throw createHttpError(400, 'Unsupported image type');
   }
 
-  const openai = getOpenAI();
-  const buffer = await fs.readFile(absolute);
-  const base64 = buffer.toString('base64');
+  let text = '';
+  if (OCR_BACKEND === 'alternate') {
+    text = await extractTextFromAlternateOcr(absolute);
+  } else if (OCR_BACKEND === 'openai') {
+    const openai = getOpenAI();
+    const buffer = await fs.readFile(absolute);
+    const base64 = buffer.toString('base64');
 
-  const response = await openai.responses.create({
-    model: 'gpt-5.2',
-    input: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: TEXT_PROMPT
-          },
-          {
-            type: 'input_image',
-            image_url: `data:${mimeType};base64,${base64}`
-          }
-        ]
-      }
-    ]
-  });
+    const response = await openai.responses.create({
+      model: 'gpt-5.2',
+      input: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'input_text',
+              text: TEXT_PROMPT
+            },
+            {
+              type: 'input_image',
+              image_url: `data:${mimeType};base64,${base64}`
+            }
+          ]
+        }
+      ]
+    });
 
-  const text =
-    response.output_text?.trim() ||
-    response?.output?.[0]?.content?.[0]?.text?.trim() ||
-    '';
+    text =
+      response.output_text?.trim() ||
+      response?.output?.[0]?.content?.[0]?.text?.trim() ||
+      '';
+  } else {
+    throw createHttpError(500, `Unknown OCR backend: ${OCR_BACKEND}`);
+  }
 
   if (!text) {
     throw createHttpError(502, 'Failed to generate text');
