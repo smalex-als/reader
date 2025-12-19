@@ -494,6 +494,35 @@ export default function App() {
     [currentImage, fetchPageInsights]
   );
 
+  const handlePlayNotes = useCallback(async () => {
+    if (!currentImage) {
+      return;
+    }
+    stopAudio();
+    stopStream();
+
+    const insights = currentInsights ?? (await fetchPageInsights());
+    const summary = insights?.summary?.trim() ?? '';
+    const keyPoints = Array.isArray(insights?.keyPoints)
+      ? insights.keyPoints.map((point) => point.trim()).filter(Boolean)
+      : [];
+
+    if (!summary && keyPoints.length === 0) {
+      showToast('No notes available to play', 'error');
+      return;
+    }
+
+    const keyPointsText =
+      keyPoints.length > 0 ? `Key points:\n${keyPoints.map((point) => `- ${point}`).join('\n')}` : '';
+    const textValue = [summary, keyPointsText].filter(Boolean).join('\n\n');
+    const notesKey = `${currentImage}#notes`;
+    await startStream({ text: textValue, pageKey: notesKey, voice: streamVoice });
+  }, [currentImage, currentInsights, fetchPageInsights, showToast, startStream, stopAudio, stopStream, streamVoice]);
+
+  const handleStopNotes = useCallback(() => {
+    stopStream();
+  }, [stopStream]);
+
   const handleCopyText = useCallback(async () => {
     if (!currentImage) {
       showToast('No page selected', 'error');
@@ -871,6 +900,11 @@ export default function App() {
             loading={textLoading}
             insights={currentInsights}
             insightsLoading={insightsLoading}
+            notesStreamActive={
+              !!currentImage &&
+              streamState.pageKey === `${currentImage}#notes` &&
+              (streamState.status === 'connecting' || streamState.status === 'streaming')
+            }
             onClose={closeTextModal}
             title={currentImage ?? 'Page text'}
             onRegenerate={() => {
@@ -879,6 +913,8 @@ export default function App() {
             }}
             regenerated={regeneratedText}
             onGenerateInsights={handleGenerateInsights}
+            onPlayNotes={handlePlayNotes}
+            onStopNotes={handleStopNotes}
         />
         <TocNavModal
             open={tocOpen}

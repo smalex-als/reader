@@ -7,11 +7,14 @@ interface TextModalProps {
   loading: boolean;
   insights: PageInsights | null;
   insightsLoading: boolean;
+  notesStreamActive: boolean;
   onClose: () => void;
   title: string;
   onRegenerate: () => void;
   regenerated: boolean;
   onGenerateInsights: (force?: boolean) => void;
+  onPlayNotes: () => void;
+  onStopNotes: () => void;
 }
 
 export default function TextModal({
@@ -20,11 +23,14 @@ export default function TextModal({
   loading,
   insights,
   insightsLoading,
+  notesStreamActive,
   onClose,
   title,
   onRegenerate,
   regenerated,
-  onGenerateInsights
+  onGenerateInsights,
+  onPlayNotes,
+  onStopNotes
 }: TextModalProps) {
   if (!open) {
     return null;
@@ -122,6 +128,16 @@ export default function TextModal({
                 >
                   {insightsLoading ? 'Generating…' : hasInsights ? 'Regenerate Notes' : 'Generate Notes'}
                 </button>
+                {view === 'notes' ? (
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={notesStreamActive ? onStopNotes : onPlayNotes}
+                    disabled={loading || insightsLoading}
+                  >
+                    {notesStreamActive ? 'Stop Notes' : 'Play Notes'}
+                  </button>
+                ) : null}
               </div>
               {view === 'narration' && !hasNarration ? (
                 <p className="modal-status">No narration-adapted text available.</p>
