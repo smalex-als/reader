@@ -26,10 +26,11 @@ const TOC_FILENAME = 'toc.json';
 const DEFAULT_VOICE = 'santa';
 const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
-const OCR_BACKEND = 'alternate'; // 'openai' | 'alternate'
-const ALT_OCR_ENDPOINT = 'https://myserver.home:3002/parse-jpeg';
-const ALT_OCR_INSECURE_TLS = true;
-const TEXT_PROMPT = `Extract all visible text from this image as plain text. Preserve paragraph structure and spacing. Normalize all fractions: instead of Unicode characters like ½ or ¼, use plain text equivalents like 1/2, 1/4, 1 1/2, etc. Do not use emojis, special characters, or markdown. Keep the content exactly as it appears, but ensure formatting is consistent: use normal paragraphs with one empty line between them. Preserve line breaks and indentation only where they represent clear paragraph or step boundaries. Ignore page numbers, footers, and obvious scanning artifacts. Do not add commentary.`;
+const OCR_BACKEND = 'llmproxy'; // 'openai' | 'llmproxy'
+const LLMPROXY_ENDPOINT = 'http://192.168.1.174:11434/api/generate';
+const LLMPROXY_MODEL = 'ministral-3:14b';
+const LLMPROXY_AUTH = 'dummy';
+const TEXT_PROMPT = `Extract all visible text from this image as plain text. Normalize all fractions: instead of Unicode characters like ½ or ¼, use plain text equivalents like 1/2, 1/4, 1 1/2, etc. Do not use emojis, special characters, or markdown. Keep the content exactly as it appears, but ensure formatting is consistent: use normal paragraphs with one empty line between them. Preserve line breaks and indentation only where they represent clear paragraph or step boundaries. Ignore page numbers, footers, and obvious scanning artifacts. Do not add commentary. Extract all visible text from this image as plain text. Do NOT return JSON. Do NOT use braces, keys, or structured formats. Output only continuous human-readable text.`;
 const NARRATION_PROMPT = `You will be given extracted OCR text from a scanned page (often a recipe).
 
 Rewrite it into a version adapted for spoken narration (text-to-speech).
@@ -310,32 +311,34 @@ function getOpenAI() {
   return openaiClient;
 }
 
-async function extractTextFromAlternateOcr(absolute) {
-  const args = ['-sS', '-X', 'POST', ALT_OCR_ENDPOINT];
-  if (ALT_OCR_INSECURE_TLS) {
-    args.push('--insecure');
-  }
-  args.push('-F', `image=@${absolute}`);
+async function extractTextFromLlmproxy(absolute) {
+  const buffer = await fs.readFile(absolute);
+  const base64 = buffer.toString('base64');
 
-  let stdout = '';
-  try {
-    ({ stdout } = await execFileAsync('curl', args, { maxBuffer: 50 * 1024 * 1024 }));
-  } catch (error) {
-    const stderr = error?.stderr?.toString?.().trim();
-    const message = stderr || error?.message || 'unknown error';
-    throw createHttpError(502, `Alternate OCR failed: ${message}`);
+  const response = await fetch(LLMPROXY_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${LLMPROXY_AUTH}`
+    },
+    body: JSON.stringify({
+      model: LLMPROXY_MODEL,
+      prompt: TEXT_PROMPT,
+      images: [base64],
+      stream: false
+    })
+  });
+
+  if (!response.ok) {
+    throw createHttpError(502, `LLM proxy failed (${response.status} ${response.statusText})`);
   }
 
-  let payload;
-  try {
-    payload = JSON.parse(stdout);
-  } catch (error) {
-    throw createHttpError(502, 'Alternate OCR returned invalid JSON');
-  }
-
-  const text = typeof payload?.extracted_text === 'string' ? payload.extracted_text.trim() : '';
+  const payload = await response.json();
+  console.log(JSON.stringify(payload));
+  const rawText = typeof payload?.response === 'string' ? payload.response : '';
+  let text = rawText.trim();
   if (!text) {
-    throw createHttpError(502, 'Alternate OCR returned empty text');
+    throw createHttpError(502, 'LLM proxy returned empty text');
   }
 
   return text;
@@ -394,8 +397,8 @@ async function loadPageText(imageUrl, options = {}) {
   }
 
   let text = '';
-  if (OCR_BACKEND === 'alternate') {
-    text = await extractTextFromAlternateOcr(absolute);
+  if (OCR_BACKEND === 'llmproxy') {
+    text = await extractTextFromLlmproxy(absolute);
   } else if (OCR_BACKEND === 'openai') {
     const openai = getOpenAI();
     const buffer = await fs.readFile(absolute);
