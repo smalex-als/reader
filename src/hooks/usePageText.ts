@@ -104,10 +104,11 @@ export function usePageText(
       const next = !prev;
       if (!prev) {
         void fetchPageText();
+        void fetchPageInsights();
       }
       return next;
     });
-  }, [fetchPageText]);
+  }, [fetchPageInsights, fetchPageText]);
 
   const closeTextModal = useCallback(() => setTextModalOpen(false), []);
 
