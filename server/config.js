@@ -30,6 +30,7 @@ const readPrompt = (filename) =>
 export const TEXT_PROMPT = readPrompt('text.txt');
 export const NARRATION_PROMPT = readPrompt('narration.txt');
 export const TOC_PROMPT = readPrompt('toc.txt');
+export const INSIGHTS_PROMPT = readPrompt('insights.txt');
 
 export const voiceProfiles = {
   santa: {

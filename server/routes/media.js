@@ -6,6 +6,7 @@ import { asyncHandler } from '../lib/async.js';
 import { loadPageText } from '../lib/ocr.js';
 import { handlePageAudio } from '../lib/audio.js';
 import { createBookFromPdf } from '../lib/pdf.js';
+import { loadPageInsights } from '../lib/insights.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -42,6 +43,19 @@ router.post('/api/upload/pdf', upload.single('file'), asyncHandler(async (req, r
   }
   const { bookId, manifest } = await createBookFromPdf(file.buffer, file.originalname || 'book.pdf');
   res.json({ book: bookId, manifest });
+}));
+
+router.get('/api/page-insights', asyncHandler(async (req, res) => {
+  const image = req.query.image;
+  const skipCacheParam = req.query.skipCache;
+  const skipCache =
+    typeof skipCacheParam === 'string'
+      ? ['1', 'true', 'yes'].includes(skipCacheParam.toLowerCase())
+      : Array.isArray(skipCacheParam)
+      ? skipCacheParam.some((value) => ['1', 'true', 'yes'].includes(String(value).toLowerCase()))
+      : false;
+  const result = await loadPageInsights(image, { skipCache });
+  res.json({ source: result.source, summary: result.summary, keyPoints: result.keyPoints });
 }));
 
 export default router;

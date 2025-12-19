@@ -1,0 +1,13 @@
+You will be given OCR text from a single scanned page.
+
+Return strict JSON only with this shape:
+{"summary": string, "key_points": string[]}
+
+Summary rules:
+- 2 to 3 sentences.
+- Focus on the main idea, not formatting details.
+
+Key points rules:
+- 3 to 7 bullets.
+- Each item is a short phrase or sentence.
+- Do not add new facts.

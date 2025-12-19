@@ -1,24 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { PageText } from '@/types/app';
+import type { PageInsights, PageText } from '@/types/app';
 
 interface TextModalProps {
   open: boolean;
   text: PageText | null;
   loading: boolean;
+  insights: PageInsights | null;
+  insightsLoading: boolean;
   onClose: () => void;
   title: string;
   onRegenerate: () => void;
   regenerated: boolean;
+  onGenerateInsights: (force?: boolean) => void;
 }
 
 export default function TextModal({
   open,
   text,
   loading,
+  insights,
+  insightsLoading,
   onClose,
   title,
   onRegenerate,
-  regenerated
+  regenerated,
+  onGenerateInsights
 }: TextModalProps) {
   if (!open) {
     return null;
@@ -26,7 +32,12 @@ export default function TextModal({
 
   const generatedMarker = text?.source === 'ai' || regenerated;
   const hasNarration = Boolean(text?.narrationText?.trim());
-  const [view, setView] = useState<'narration' | 'original'>(hasNarration ? 'narration' : 'original');
+  const hasSummary = Boolean(insights?.summary?.trim());
+  const hasKeyPoints = Boolean(insights?.keyPoints?.length);
+  const hasInsights = hasSummary || hasKeyPoints;
+  const [view, setView] = useState<'narration' | 'original' | 'summary' | 'key-points'>(
+    hasNarration ? 'narration' : 'original'
+  );
 
   useEffect(() => {
     if (!open) {
@@ -44,6 +55,14 @@ export default function TextModal({
     }
     return text.text || '';
   }, [text, view]);
+
+  const summaryText = useMemo(() => {
+    return insights?.summary?.trim() || '';
+  }, [insights]);
+
+  const keyPoints = useMemo(() => {
+    return insights?.keyPoints ?? [];
+  }, [insights]);
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -84,13 +103,61 @@ export default function TextModal({
                   >
                     Narration
                   </button>
+                  <button
+                    type="button"
+                    className={`segmented-item ${view === 'summary' ? 'segmented-item-active' : ''}`}
+                    onClick={() => setView('summary')}
+                    disabled={loading}
+                    role="tab"
+                    aria-selected={view === 'summary'}
+                  >
+                    Summary
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-item ${view === 'key-points' ? 'segmented-item-active' : ''}`}
+                    onClick={() => setView('key-points')}
+                    disabled={loading}
+                    role="tab"
+                    aria-selected={view === 'key-points'}
+                  >
+                    Key Points
+                  </button>
                 </div>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => onGenerateInsights(hasInsights)}
+                  disabled={loading || insightsLoading}
+                >
+                  {insightsLoading ? 'Generating…' : hasInsights ? 'Regenerate Notes' : 'Generate Notes'}
+                </button>
               </div>
-              {!hasNarration && view === 'narration' ? (
+              {view === 'narration' && !hasNarration ? (
                 <p className="modal-status">No narration-adapted text available.</p>
-              ) : (
+              ) : null}
+              {view === 'summary' && !summaryText && !insightsLoading ? (
+                <p className="modal-status">No summary yet. Generate notes to create one.</p>
+              ) : null}
+              {view === 'key-points' && keyPoints.length === 0 && !insightsLoading ? (
+                <p className="modal-status">No key points yet. Generate notes to create them.</p>
+              ) : null}
+              {insightsLoading && (view === 'summary' || view === 'key-points') ? (
+                <p className="modal-status">Generating notes…</p>
+              ) : null}
+              {view === 'summary' && summaryText ? (
+                <p className="modal-prose">{summaryText}</p>
+              ) : null}
+              {view === 'key-points' && keyPoints.length > 0 ? (
+                <ul className="modal-list">
+                  {keyPoints.map((point, index) => (
+                    <li key={`${point}-${index}`}>{point}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {view === 'original' || view === 'narration' ? (
                 <pre className="modal-content">{displayedText}</pre>
-              )}
+              ) : null}
             </>
           ) : null}
         </section>

@@ -6,6 +6,12 @@ export interface PageText {
   source: 'file' | 'ai';
 }
 
+export interface PageInsights {
+  summary: string;
+  keyPoints: string[];
+  source: 'file' | 'ai';
+}
+
 export interface Bookmark {
   page: number;
   image: string;

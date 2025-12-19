@@ -146,8 +146,11 @@ export default function App() {
   const { streamState, startStream, stopStream } = useStreamingAudio(showToast);
   const {
     closeTextModal,
+    currentInsights,
     currentText,
+    fetchPageInsights,
     fetchPageText,
+    insightsLoading,
     regeneratedText,
     resetTextState,
     setRegeneratedText,
@@ -480,6 +483,16 @@ export default function App() {
     stopAudio();
     await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
   }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio, streamVoice]);
+
+  const handleGenerateInsights = useCallback(
+    async (force = false) => {
+      if (!currentImage) {
+        return;
+      }
+      await fetchPageInsights(force);
+    },
+    [currentImage, fetchPageInsights]
+  );
 
   const handleCopyText = useCallback(async () => {
     if (!currentImage) {
@@ -856,6 +869,8 @@ export default function App() {
             open={textModalOpen}
             text={currentText}
             loading={textLoading}
+            insights={currentInsights}
+            insightsLoading={insightsLoading}
             onClose={closeTextModal}
             title={currentImage ?? 'Page text'}
             onRegenerate={() => {
@@ -863,6 +878,7 @@ export default function App() {
               void fetchPageText(true);
             }}
             regenerated={regeneratedText}
+            onGenerateInsights={handleGenerateInsights}
         />
         <TocNavModal
             open={tocOpen}
