@@ -7,12 +7,14 @@ interface TocModalProps {
   generating: boolean;
   saving: boolean;
   manifestLength: number;
+  chapterGeneratingIndex: number | null;
   onClose: () => void;
   onGenerate: () => void;
   onSave: () => void;
   onAddEntry: () => void;
   onRemoveEntry: (index: number) => void;
   onUpdateEntry: (index: number, next: TocEntry) => void;
+  onGenerateChapter: (index: number) => void;
 }
 
 export default function TocModal({
@@ -22,18 +24,21 @@ export default function TocModal({
   generating,
   saving,
   manifestLength,
+  chapterGeneratingIndex,
   onClose,
   onGenerate,
   onSave,
   onAddEntry,
   onRemoveEntry,
-  onUpdateEntry
+  onUpdateEntry,
+  onGenerateChapter
 }: TocModalProps) {
   if (!open) {
     return null;
   }
 
   const busy = loading || generating || saving;
+  const chapterBusy = chapterGeneratingIndex !== null;
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -90,6 +95,14 @@ export default function TocModal({
                     disabled={busy}
                   />
                 </label>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => onGenerateChapter(index)}
+                  disabled={busy || chapterBusy}
+                >
+                  {chapterGeneratingIndex === index ? 'Generating…' : 'Generate Text'}
+                </button>
                 <button
                   type="button"
                   className="button button-ghost"

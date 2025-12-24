@@ -110,6 +110,7 @@ export default function App() {
   const [tocLoading, setTocLoading] = useState(false);
   const [tocGenerating, setTocGenerating] = useState(false);
   const [tocSaving, setTocSaving] = useState(false);
+  const [chapterGeneratingIndex, setChapterGeneratingIndex] = useState<number | null>(null);
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
@@ -348,6 +349,66 @@ export default function App() {
   const handleUpdateTocEntry = useCallback((index: number, next: TocEntry) => {
     setTocEntries((prev) => prev.map((entry, idx) => (idx === index ? next : entry)));
   }, []);
+
+  const handleGenerateChapter = useCallback(
+    async (index: number) => {
+      if (!bookId) {
+        return;
+      }
+      const entry = tocEntries[index];
+      if (!entry) {
+        showToast('Chapter entry not found', 'error');
+        return;
+      }
+      const pageStart = entry.page;
+      const sortedPages = tocEntries
+        .map((tocEntry) => tocEntry.page)
+        .filter((page) => Number.isInteger(page))
+        .sort((a, b) => a - b);
+      const chapterNumber = sortedPages.indexOf(pageStart) + 1;
+      if (chapterNumber <= 0) {
+        showToast('Chapter order could not be determined', 'error');
+        return;
+      }
+      const nextPageCandidates = tocEntries
+        .map((tocEntry) => tocEntry.page)
+        .filter((page) => Number.isInteger(page) && page > pageStart)
+        .sort((a, b) => a - b);
+      const pageEnd = nextPageCandidates[0] ?? manifest.length;
+
+      if (pageStart < 0 || pageStart >= manifest.length) {
+        showToast('Chapter start page is out of range', 'error');
+        return;
+      }
+      if (!Number.isInteger(pageEnd) || pageEnd <= pageStart || pageEnd > manifest.length) {
+        showToast('Chapter end page is invalid', 'error');
+        return;
+      }
+
+      setChapterGeneratingIndex(index);
+      try {
+        const result = await fetchJson<{ file: string }>(
+          `/api/books/${encodeURIComponent(bookId)}/chapters/generate`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pageStart,
+              pageEnd,
+              chapterNumber
+            })
+          }
+        );
+        showToast(`Chapter text saved: ${result.file}`, 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Unable to generate chapter text', 'error');
+      } finally {
+        setChapterGeneratingIndex(null);
+      }
+    },
+    [bookId, manifest.length, showToast, tocEntries]
+  );
 
   useEffect(() => {
     (async () => {
@@ -933,12 +994,14 @@ export default function App() {
             generating={tocGenerating}
             saving={tocSaving}
             manifestLength={manifest.length}
+            chapterGeneratingIndex={chapterGeneratingIndex}
             onClose={() => setTocManageOpen(false)}
             onGenerate={handleGenerateToc}
             onSave={handleSaveToc}
             onAddEntry={handleAddTocEntry}
             onRemoveEntry={handleRemoveTocEntry}
             onUpdateEntry={handleUpdateTocEntry}
+            onGenerateChapter={handleGenerateChapter}
         />
         <OcrQueueModal
             open={ocrQueueOpen}

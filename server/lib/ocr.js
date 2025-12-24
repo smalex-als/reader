@@ -115,7 +115,7 @@ async function extractTextFromLlmproxy(absolute) {
 }
 
 export async function loadPageText(imageUrl, options = {}) {
-  const { skipCache = false } = options;
+  const { skipCache = false, skipNarration = false } = options;
   const { absolute, relative } = resolveDataUrl(imageUrl);
   const baseName = relative.replace(/\.[^.]+$/, '');
   const textRelative = `${baseName}.txt`;
@@ -126,25 +126,27 @@ export async function loadPageText(imageUrl, options = {}) {
   const textStat = await safeStat(textAbsolute);
   if (textStat?.isFile() && !skipCache) {
     const textContent = await fs.readFile(textAbsolute, 'utf8');
-    const narrationStat = await safeStat(narrationAbsolute);
     let narrationText = '';
-    if (narrationStat?.isFile()) {
-      narrationText = await fs.readFile(narrationAbsolute, 'utf8');
-    } else {
-      try {
-        narrationText = await generateNarrationTextFromLLM(textContent);
-      } catch (error) {
-        console.warn('Narration adaptation failed; falling back to heuristic', error);
-        narrationText = '';
-      }
+    if (!skipNarration) {
+      const narrationStat = await safeStat(narrationAbsolute);
+      if (narrationStat?.isFile()) {
+        narrationText = await fs.readFile(narrationAbsolute, 'utf8');
+      } else {
+        try {
+          narrationText = await generateNarrationTextFromLLM(textContent);
+        } catch (error) {
+          console.warn('Narration adaptation failed; falling back to heuristic', error);
+          narrationText = '';
+        }
 
-      if (!narrationText) {
-        narrationText = adaptTextForNarrationHeuristic(textContent);
-      }
+        if (!narrationText) {
+          narrationText = adaptTextForNarrationHeuristic(textContent);
+        }
 
-      if (narrationText) {
-        await fs.mkdir(path.dirname(narrationAbsolute), { recursive: true });
-        await fs.writeFile(narrationAbsolute, narrationText, 'utf8');
+        if (narrationText) {
+          await fs.mkdir(path.dirname(narrationAbsolute), { recursive: true });
+          await fs.writeFile(narrationAbsolute, narrationText, 'utf8');
+        }
       }
     }
     return {
@@ -206,14 +208,16 @@ export async function loadPageText(imageUrl, options = {}) {
   }
 
   let narrationText = '';
-  try {
-    narrationText = await generateNarrationTextFromLLM(text);
-  } catch (error) {
-    console.warn('Narration adaptation failed; falling back to heuristic', error);
-    narrationText = '';
-  }
-  if (!narrationText) {
-    narrationText = adaptTextForNarrationHeuristic(text);
+  if (!skipNarration) {
+    try {
+      narrationText = await generateNarrationTextFromLLM(text);
+    } catch (error) {
+      console.warn('Narration adaptation failed; falling back to heuristic', error);
+      narrationText = '';
+    }
+    if (!narrationText) {
+      narrationText = adaptTextForNarrationHeuristic(text);
+    }
   }
 
   await fs.mkdir(path.dirname(textAbsolute), { recursive: true });

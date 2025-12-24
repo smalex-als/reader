@@ -112,7 +112,7 @@ export async function loadPageInsights(imageUrl, options = {}) {
     };
   }
 
-  const pageText = await loadPageText(imageUrl);
+  const pageText = await loadPageText(imageUrl, { skipNarration: true });
   const { summary, keyPoints } = await generateInsightsFromText(pageText.text);
 
   await fs.mkdir(path.dirname(summaryAbsolute), { recursive: true });

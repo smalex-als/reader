@@ -12,6 +12,7 @@ import {
   saveBookmarks
 } from '../lib/bookmarks.js';
 import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
+import { generateChapterText } from '../lib/chapters.js';
 
 const router = express.Router();
 
@@ -107,6 +108,16 @@ router.post('/api/books/:id/toc/generate', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const toc = await generateTocFromOcr(bookId);
   res.json({ book: bookId, toc });
+}));
+
+router.post('/api/books/:id/chapters/generate', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const { pageStart, pageEnd, chapterNumber } = req.body || {};
+  const start = typeof pageStart === 'string' ? Number.parseInt(pageStart, 10) : pageStart;
+  const end = typeof pageEnd === 'string' ? Number.parseInt(pageEnd, 10) : pageEnd;
+  const chapter = typeof chapterNumber === 'string' ? Number.parseInt(chapterNumber, 10) : chapterNumber;
+  const result = await generateChapterText(bookId, start, end, chapter);
+  res.json(result);
 }));
 
 export default router;
