@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isValidElement, useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -8,10 +9,33 @@ interface ChapterViewerProps {
   chapterTitle: string | null;
   pageRange: { start: number; end: number } | null;
   tocLoading: boolean;
+  onPlayParagraph: (text: string, key: string) => void;
 }
 
 function formatChapterFilename(chapterNumber: number) {
   return `chapter${String(chapterNumber).padStart(3, '0')}.txt`;
+}
+
+function extractTextFromNode(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(extractTextFromNode).join('');
+  }
+  if (isValidElement(node)) {
+    return extractTextFromNode(node.props.children);
+  }
+  return '';
+}
+
+function hashText(input: string) {
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash << 5) - hash + input.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
 }
 
 export default function ChapterViewer({
@@ -19,7 +43,8 @@ export default function ChapterViewer({
   chapterNumber,
   chapterTitle,
   pageRange,
-  tocLoading
+  tocLoading,
+  onPlayParagraph
 }: ChapterViewerProps) {
   const [chapterText, setChapterText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -128,6 +153,43 @@ export default function ChapterViewer({
     return `Pages ${start}-${end}`;
   }, [pageRange]);
 
+  const markdownComponents = useMemo(() => {
+    const renderBlock = (Tag: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
+      return ({ children }: { children?: ReactNode }) => {
+        const textValue = extractTextFromNode(children ?? '').trim();
+        const paragraphKey = chapterNumber ? `chapter-${chapterNumber}-${hashText(textValue)}` : '';
+        return (
+          <Tag className="text-viewer-block">
+            {children}
+            {textValue ? (
+              <button
+                type="button"
+                className="text-paragraph-stream"
+                onClick={() => onPlayParagraph(textValue, paragraphKey)}
+                aria-label="Play from here"
+                title="Play from here"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M8 5v14l11-7-11-7z" />
+                </svg>
+              </button>
+            ) : null}
+          </Tag>
+        );
+      };
+    };
+
+    return {
+      p: renderBlock('p'),
+      h1: renderBlock('h1'),
+      h2: renderBlock('h2'),
+      h3: renderBlock('h3'),
+      h4: renderBlock('h4'),
+      h5: renderBlock('h5'),
+      h6: renderBlock('h6')
+    };
+  }, [chapterNumber, onPlayParagraph]);
+
   return (
     <div className="text-viewer">
       <header className="text-viewer-header">
@@ -163,7 +225,9 @@ export default function ChapterViewer({
         )}
         {!tocLoading && chapterNumber && !loading && !error && chapterText && (
           <div className="text-viewer-markdown">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{chapterText}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {chapterText}
+            </ReactMarkdown>
           </div>
         )}
         {!tocLoading && chapterNumber && !loading && !generating && !missingFile && !error && !chapterText && (

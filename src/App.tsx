@@ -619,6 +619,20 @@ export default function App() {
     await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
   }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio, streamVoice]);
 
+  const handlePlayChapterParagraph = useCallback(
+    async (text: string, key: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        showToast('No paragraph text available to stream', 'error');
+        return;
+      }
+      stopAudio();
+      stopStream();
+      await startStream({ text: trimmed, pageKey: key, voice: streamVoice });
+    },
+    [showToast, startStream, stopAudio, stopStream, streamVoice]
+  );
+
   const handleGenerateInsights = useCallback(
     async (force = false) => {
       if (!currentImage) {
@@ -1018,6 +1032,7 @@ export default function App() {
                   chapterTitle={currentChapterEntry?.title ?? null}
                   pageRange={chapterRange}
                   tocLoading={tocLoading}
+                  onPlayParagraph={handlePlayChapterParagraph}
               />
             )}
             {loading && <div className="viewer-status">Loading…</div>}
