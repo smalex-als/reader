@@ -38,8 +38,7 @@ export default function TextModal({
 
   const generatedMarker = text?.source === 'ai' || regenerated;
   const hasSummary = Boolean(insights?.summary?.trim());
-  const hasKeyPoints = Boolean(insights?.keyPoints?.length);
-  const hasInsights = hasSummary || hasKeyPoints;
+  const hasInsights = hasSummary;
   const [view, setView] = useState<'original' | 'notes'>('original');
 
   useEffect(() => {
@@ -58,10 +57,6 @@ export default function TextModal({
 
   const summaryText = useMemo(() => {
     return insights?.summary?.trim() || '';
-  }, [insights]);
-
-  const keyPoints = useMemo(() => {
-    return insights?.keyPoints ?? [];
   }, [insights]);
 
   return (
@@ -123,20 +118,13 @@ export default function TextModal({
                   </button>
                 ) : null}
               </div>
-              {view === 'notes' && !summaryText && keyPoints.length === 0 && !insightsLoading ? (
+              {view === 'notes' && !summaryText && !insightsLoading ? (
                 <p className="modal-status">No notes yet. Generate notes to create them.</p>
               ) : null}
               {insightsLoading && view === 'notes' ? (
                 <p className="modal-status">Generating notes…</p>
               ) : null}
               {view === 'notes' && summaryText ? <p className="modal-prose">{summaryText}</p> : null}
-              {view === 'notes' && keyPoints.length > 0 ? (
-                <ul className="modal-list">
-                  {keyPoints.map((point, index) => (
-                    <li key={`${point}-${index}`}>{point}</li>
-                  ))}
-                </ul>
-              ) : null}
               {view === 'original' ? <pre className="modal-content">{displayedText}</pre> : null}
             </>
           ) : null}

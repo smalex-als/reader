@@ -13,46 +13,21 @@ import { fetchLlmproxy } from './llmproxy.js';
 import { resolveDataUrl } from './paths.js';
 import { loadPageText } from './ocr.js';
 
-function extractJsonObject(text) {
-  if (typeof text !== 'string') {
-    return null;
+function parsePlainInsights(text) {
+  if (typeof text !== 'string' || !text.trim()) {
+    return { summary: '', keyPoints: [] };
   }
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) {
-    return null;
-  }
-  const snippet = text.slice(start, end + 1);
-  try {
-    return JSON.parse(snippet);
-  } catch {
-    return null;
-  }
-}
-
-function normalizeKeyPoints(value) {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => (typeof item === 'string' ? item.trim() : ''))
-      .filter(Boolean);
-  }
-  if (typeof value === 'string') {
-    return value
-      .split(/\r?\n/)
-      .map((line) => line.replace(/^[-*]\s*/, '').trim())
-      .filter(Boolean);
-  }
-  return [];
+  const cleaned = text.trim();
+  const normalized = cleaned.replace(/\*\*(.+?)\*\*/g, '$1');
+  return { summary: normalized.trim() };
 }
 
 function deriveInsightPaths(imageUrl) {
   const { relative } = resolveDataUrl(imageUrl);
   const baseName = relative.replace(/\.[^.]+$/, '');
   const summaryRelative = `${baseName}.summary.txt`;
-  const keyPointsRelative = `${baseName}.keypoints.txt`;
   const summaryAbsolute = path.join(DATA_DIR, summaryRelative);
-  const keyPointsAbsolute = path.join(DATA_DIR, keyPointsRelative);
-  return { summaryRelative, keyPointsRelative, summaryAbsolute, keyPointsAbsolute };
+  return { summaryRelative, summaryAbsolute };
 }
 
 async function generateInsightsFromText(text) {
@@ -79,21 +54,17 @@ async function generateInsightsFromText(text) {
   }
 
   const payload = await response.json();
-  const raw = typeof payload?.response === 'string' ? payload.response.trim() : '';
-  const parsed = extractJsonObject(raw);
-  if (!parsed || typeof parsed !== 'object') {
+  // eslint-disable-next-line no-console
+  console.log('Insights LLM response', payload);
+  const rawResponse = payload?.response;
+  const raw = typeof rawResponse === 'string' ? rawResponse.trim() : '';
+  const { summary, keyPoints } = parsePlainInsights(raw);
+
+  if (!summary) {
     throw createHttpError(502, 'Unable to generate insights');
   }
 
-  const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
-  const keyPoints =
-    normalizeKeyPoints(parsed.key_points ?? parsed.keyPoints ?? parsed.keypoints);
-
-  if (!summary) {
-    throw createHttpError(502, 'Insights missing summary');
-  }
-
-  return { summary, keyPoints };
+  return { summary };
 }
 
 export async function loadPageInsights(imageUrl, options = {}) {
@@ -104,31 +75,24 @@ export async function loadPageInsights(imageUrl, options = {}) {
     throw createHttpError(404, 'Image not found');
   }
 
-  const { summaryAbsolute, keyPointsAbsolute } = deriveInsightPaths(imageUrl);
+  const { summaryAbsolute } = deriveInsightPaths(imageUrl);
   const summaryStat = await safeStat(summaryAbsolute);
-  const keyPointsStat = await safeStat(keyPointsAbsolute);
-  if (summaryStat?.isFile() && keyPointsStat?.isFile() && !skipCache) {
+  if (summaryStat?.isFile() && !skipCache) {
     const summary = await fs.readFile(summaryAbsolute, 'utf8');
-    const keyPoints = await fs
-      .readFile(keyPointsAbsolute, 'utf8')
-      .then((content) => normalizeKeyPoints(content));
     return {
       source: 'file',
-      summary: summary.trim(),
-      keyPoints
+      summary: summary.trim()
     };
   }
 
   const pageText = await loadPageText(imageUrl);
-  const { summary, keyPoints } = await generateInsightsFromText(pageText.text);
+  const { summary } = await generateInsightsFromText(pageText.text);
 
   await fs.mkdir(path.dirname(summaryAbsolute), { recursive: true });
   await fs.writeFile(summaryAbsolute, summary, 'utf8');
-  await fs.writeFile(keyPointsAbsolute, keyPoints.join('\n'), 'utf8');
 
   return {
     source: 'ai',
-    summary,
-    keyPoints
+    summary
   };
 }

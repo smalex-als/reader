@@ -7,7 +7,6 @@ export interface PageText {
 
 export interface PageInsights {
   summary: string;
-  keyPoints: string[];
   source: 'file' | 'ai';
 }
 

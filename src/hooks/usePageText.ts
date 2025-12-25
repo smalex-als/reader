@@ -77,12 +77,10 @@ export function usePageText(
         const data = await fetchJson<{
           source: 'file' | 'ai';
           summary: string;
-          keyPoints: string[];
         }>(`/api/page-insights?${params.toString()}`);
         const entry: PageInsights = {
           source: data.source,
-          summary: data.summary ?? '',
-          keyPoints: Array.isArray(data.keyPoints) ? data.keyPoints : []
+          summary: data.summary ?? ''
         };
         setInsightsCache((prev) => ({ ...prev, [currentImage]: entry }));
         showToast(`Page insights ${data.source === 'ai' ? 'generated' : 'loaded'}`, 'success');

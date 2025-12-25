@@ -749,18 +749,12 @@ export default function App() {
 
     const insights = currentInsights ?? (await fetchPageInsights());
     const summary = insights?.summary?.trim() ?? '';
-    const keyPoints = Array.isArray(insights?.keyPoints)
-      ? insights.keyPoints.map((point) => point.trim()).filter(Boolean)
-      : [];
-
-    if (!summary && keyPoints.length === 0) {
+    if (!summary) {
       showToast('No notes available to play', 'error');
       return;
     }
 
-    const keyPointsText =
-      keyPoints.length > 0 ? `Key points:\n${keyPoints.map((point) => `- ${point}`).join('\n')}` : '';
-    const textValue = stripMarkdown([summary, keyPointsText].filter(Boolean).join('\n\n'));
+    const textValue = stripMarkdown(summary);
     const notesKey = `${currentImage}#notes`;
     await startStream({ text: textValue, pageKey: notesKey, voice: streamVoice });
   }, [

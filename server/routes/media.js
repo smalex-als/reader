@@ -55,7 +55,7 @@ router.get('/api/page-insights', asyncHandler(async (req, res) => {
       ? skipCacheParam.some((value) => ['1', 'true', 'yes'].includes(String(value).toLowerCase()))
       : false;
   const result = await loadPageInsights(image, { skipCache });
-  res.json({ source: result.source, summary: result.summary, keyPoints: result.keyPoints });
+  res.json({ source: result.source, summary: result.summary });
 }));
 
 export default router;
