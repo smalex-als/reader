@@ -19,7 +19,8 @@ export const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 
 export const OCR_BACKEND = 'llmproxy'; // 'openai' | 'llmproxy'
-export const LLMPROXY_ENDPOINT = 'http://192.168.1.174:11434/api/generate';
+export const LLMPROXY_ENDPOINT =
+  process.env.LLMPROXY_ENDPOINT || 'http://myserver.home:11434/api/generate';
 export const LLMPROXY_MODEL = 'ministral-3:14b';
 export const LLMPROXY_AUTH = 'dummy';
 
@@ -31,6 +32,7 @@ export const TEXT_PROMPT = readPrompt('text.txt');
 export const NARRATION_PROMPT = readPrompt('narration.txt');
 export const TOC_PROMPT = readPrompt('toc.txt');
 export const INSIGHTS_PROMPT = readPrompt('insights.txt');
+export const CHAPTER_SPLIT_PROMPT = readPrompt('chapters.txt');
 
 export const voiceProfiles = {
   santa: {
