@@ -169,7 +169,7 @@ export default function ChapterViewer({
         {!tocLoading && chapterNumber && !loading && !generating && !missingFile && !error && !chapterText && (
           <p className="text-viewer-status">Chapter text is empty.</p>
         )}
-        {!tocLoading && chapterNumber ? (
+        {!tocLoading && chapterNumber && !missingFile ? (
           <div className="text-viewer-regenerate">
             <button
               type="button"
