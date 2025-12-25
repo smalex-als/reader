@@ -71,7 +71,7 @@ export async function generateChapterText(bookId, pageStart, pageEnd, chapterNum
 
   const chunks = [];
   for (const imageUrl of imageUrls) {
-    const { text } = await loadPageText(imageUrl, { skipNarration: true });
+    const { text } = await loadPageText(imageUrl);
     const cleaned = typeof text === 'string' ? text.trim() : '';
     chunks.push(cleaned);
   }

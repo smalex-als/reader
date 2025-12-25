@@ -20,16 +20,7 @@ router.get('/api/page-text', asyncHandler(async (req, res) => {
       : Array.isArray(skipCacheParam)
       ? skipCacheParam.some((value) => ['1', 'true', 'yes'].includes(String(value).toLowerCase()))
       : false;
-  const skipNarrationParam = req.query.skipNarration;
-  const skipNarration =
-    typeof skipNarrationParam === 'string'
-      ? ['1', 'true', 'yes'].includes(skipNarrationParam.toLowerCase())
-      : Array.isArray(skipNarrationParam)
-      ? skipNarrationParam.some((value) =>
-          ['1', 'true', 'yes'].includes(String(value).toLowerCase())
-        )
-      : false;
-  const result = await loadPageText(image, { skipCache, skipNarration });
+  const result = await loadPageText(image, { skipCache });
   res.json({ source: result.source, text: result.text });
 }));
 

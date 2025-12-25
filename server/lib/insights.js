@@ -1,10 +1,16 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { DATA_DIR, INSIGHTS_PROMPT } from '../config.js';
+import {
+  DATA_DIR,
+  INSIGHTS_PROMPT,
+  LLMPROXY_AUTH,
+  LLMPROXY_ENDPOINT,
+  LLMPROXY_MODEL
+} from '../config.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
+import { fetchLlmproxy } from './llmproxy.js';
 import { resolveDataUrl } from './paths.js';
-import { getOpenAI } from './openai.js';
 import { loadPageText } from './ocr.js';
 
 function extractJsonObject(text) {
@@ -55,24 +61,25 @@ async function generateInsightsFromText(text) {
     throw createHttpError(400, 'No text available for insights');
   }
 
-  const openai = getOpenAI();
-  const response = await openai.responses.create({
-    model: 'gpt-5.2',
-    input: [
-      {
-        role: 'user',
-        content: [
-          { type: 'input_text', text: INSIGHTS_PROMPT },
-          { type: 'input_text', text: trimmed }
-        ]
-      }
-    ]
+  const response = await fetchLlmproxy(LLMPROXY_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(LLMPROXY_AUTH ? { Authorization: `Bearer ${LLMPROXY_AUTH}` } : {})
+    },
+    body: JSON.stringify({
+      model: LLMPROXY_MODEL,
+      prompt: `${INSIGHTS_PROMPT}\n\n${trimmed}`,
+      stream: false
+    })
   });
 
-  const raw =
-    response.output_text?.trim() ||
-    response?.output?.[0]?.content?.[0]?.text?.trim() ||
-    '';
+  if (!response.ok) {
+    throw createHttpError(502, `Insights generation failed (${response.status} ${response.statusText})`);
+  }
+
+  const payload = await response.json();
+  const raw = typeof payload?.response === 'string' ? payload.response.trim() : '';
   const parsed = extractJsonObject(raw);
   if (!parsed || typeof parsed !== 'object') {
     throw createHttpError(502, 'Unable to generate insights');
@@ -112,7 +119,7 @@ export async function loadPageInsights(imageUrl, options = {}) {
     };
   }
 
-  const pageText = await loadPageText(imageUrl, { skipNarration: true });
+  const pageText = await loadPageText(imageUrl);
   const { summary, keyPoints } = await generateInsightsFromText(pageText.text);
 
   await fs.mkdir(path.dirname(summaryAbsolute), { recursive: true });
