@@ -41,7 +41,6 @@ const readPrompt = (filename) =>
   readFileSync(path.join(PROMPTS_DIR, filename), 'utf8').trim();
 
 export const TEXT_PROMPT = readPrompt('text.txt');
-export const NARRATION_PROMPT = readPrompt('narration.txt');
 export const TOC_PROMPT = readPrompt('toc.txt');
 export const INSIGHTS_PROMPT = readPrompt('insights.txt');
 export const CHAPTER_SPLIT_PROMPT = readPrompt('chapters.txt');

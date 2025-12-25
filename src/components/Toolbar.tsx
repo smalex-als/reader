@@ -122,15 +122,15 @@ export default function Toolbar({
   const audioStatusMessage = (() => {
     switch (audioState.status) {
       case 'loading':
-        return 'Loading narration…';
+        return 'Loading audio…';
       case 'generating':
-        return 'Generating narration…';
+        return 'Generating audio…';
       case 'playing':
-        return `Playing narration${formattedSource ? ` (${formattedSource})` : ''}`;
+        return `Playing audio${formattedSource ? ` (${formattedSource})` : ''}`;
       case 'paused':
-        return `Narration paused${formattedSource ? ` (${formattedSource})` : ''}`;
+        return `Audio paused${formattedSource ? ` (${formattedSource})` : ''}`;
       case 'error':
-        return audioState.error ?? 'Narration unavailable';
+        return audioState.error ?? 'Audio unavailable';
       default:
         return null;
     }

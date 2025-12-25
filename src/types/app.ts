@@ -2,7 +2,6 @@ export type ZoomMode = 'custom' | 'fit-width' | 'fit-height';
 
 export interface PageText {
   text: string;
-  narrationText: string;
   source: 'file' | 'ai';
 }
 

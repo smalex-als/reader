@@ -19,9 +19,8 @@ Back end (`server.js`)
 - Express HTTP server. Serve static assets from `dist/` if built, otherwise project root. Serve `/data` directory for images/text/audio.
 - `GET /api/books`: list immediate subdirectories of `./data` (sorted, case-insensitive, numeric-aware) and return `{ books: string[] }`.
 - `GET /api/books/:id/manifest`: list image files (png/jpg/jpeg/gif/webp) inside the book directory; return `{ book, manifest: string[] }` with `/data/...` URLs.
-- `GET /api/page-text?image=/data/...`: if matching `.txt` file exists and `skipCache` is not set, return `{ source: 'file', text, narrationText }`. Otherwise generate OCR text and narration, persist `.txt` and `.narration.txt`, and return `{ source: 'ai', text, narrationText }`.
+- `GET /api/page-text?image=/data/...`: if matching `.txt` file exists and `skipCache` is not set, return `{ source: 'file', text }`. Otherwise generate OCR text, persist `.txt`, and return `{ source: 'ai', text }`.
 - OCR backend: default `llmproxy` that POSTs to `LLMPROXY_ENDPOINT` with `TEXT_PROMPT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`. Alternate backend `openai` runs `gpt-5.2` vision with `TEXT_PROMPT` (requires `OPENAI_API_KEY`).
-- Narration adaptation: attempt `gpt-5.2` with `NARRATION_PROMPT` when `OPENAI_API_KEY` is present; fall back to a heuristic cleanup when unavailable.
 - `POST /api/page-audio`: accept JSON `{ image, voice? }`, validate under `/data`, reuse existing `.mp3` or call OpenAI TTS (`gpt-4o-mini-tts`) using a default "santa" profile unless another valid voice is requested. Load or generate the corresponding page text server-side, save generated audio alongside the image, and return `{ source:'ai'|'file', url }`.
 - `POST /api/upload/pdf`: accept multipart PDF uploads, convert to JPEG pages with `pdftoppm`, and create a new book directory.
 - `POST /api/books/:id/print`: accept `{ pages: string[] }`, create a PDF from PNG/JPEG images (max 10 pages).
@@ -31,6 +30,6 @@ Back end (`server.js`)
 - Support `HOST`/`PORT` and optional `HTTPS_KEY_PATH`/`HTTPS_CERT_PATH`. Log every API/static request. Include helpers for MIME lookup, path resolution, body parsing, and JSON responses.
 
 Quality & testing
-- Type-check with `tsconfig.json`. Manual smoke test flow: load a book, navigate pages, exercise zoom/rotate/invert, open text modal, play narration (with generation if needed), test streaming audio, run batch OCR, edit/save TOC, print a PDF, reload to confirm state restoration.
+- Type-check with `tsconfig.json`. Manual smoke test flow: load a book, navigate pages, exercise zoom/rotate/invert, open text modal, play audio, test streaming audio, run batch OCR, edit/save TOC, print a PDF, reload to confirm state restoration.
 
 Deliver the full project ready to run via `npm install`, `npm run dev` (front end), and `node server.js` for the API/static server.

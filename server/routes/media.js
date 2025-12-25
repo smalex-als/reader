@@ -30,7 +30,7 @@ router.get('/api/page-text', asyncHandler(async (req, res) => {
         )
       : false;
   const result = await loadPageText(image, { skipCache, skipNarration });
-  res.json({ source: result.source, text: result.text, narrationText: result.narrationText || '' });
+  res.json({ source: result.source, text: result.text });
 }));
 
 router.post('/api/page-audio', asyncHandler(async (req, res) => {

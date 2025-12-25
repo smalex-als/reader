@@ -87,7 +87,7 @@ export function useAudioController(
           source: null,
           currentPageKey: currentImage
         }));
-        showToast('Generating narration…', 'info');
+        showToast('Generating audio…', 'info');
         const response = await fetch('/api/page-audio', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -116,7 +116,7 @@ export function useAudioController(
         source: entry!.source,
         currentPageKey: currentImage
       }));
-      showToast(`Playing narration (${entry.source})`, 'info');
+      showToast(`Playing audio (${entry.source})`, 'info');
     } catch (error) {
       console.error(error);
       setAudioState((prev) => ({

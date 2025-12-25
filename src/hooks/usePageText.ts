@@ -36,12 +36,11 @@ export function usePageText(
         if (force) {
           params.set('skipCache', '1');
         }
-        const data = await fetchJson<{ source: 'file' | 'ai'; text: string; narrationText?: string }>(
+        const data = await fetchJson<{ source: 'file' | 'ai'; text: string }>(
           `/api/page-text?${params.toString()}`
         );
         const entry: PageText = {
           text: data.text,
-          narrationText: data.narrationText ?? '',
           source: data.source
         };
         setTextCache((prev) => ({ ...prev, [currentImage]: entry }));

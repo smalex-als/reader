@@ -1,13 +1,13 @@
 # Scanned Book Reader
 
 A Vite + React + TypeScript single-page app for browsing scanned books, paired with a lightweight
-Node/Express server for OCR, narration, and PDF tooling.
+Node/Express server for OCR and PDF tooling.
 
 ## Features
 
 - Book picker with page navigation, zoom, rotate, fit, invert, brightness/contrast, and pan.
 - OCR page text modal with regeneration and batch OCR queue.
-- Narration playback (reuse existing MP3s or generate with OpenAI).
+- Audio playback (reuse existing MP3s or generate with OpenAI).
 - AI page insights (summary and key points).
 - Streaming audio via WebSocket (external stream server).
 - Bookmarks, table of contents (manual or generated), and print-to-PDF.
@@ -39,7 +39,7 @@ The server serves `dist/` if it exists, otherwise it serves the project root.
 - `server/routes/`: API route groups (books, media, health).
 - `server/lib/`: OCR, audio, PDF, bookmarks, TOC, and path helpers.
 - `server/config.js`: server constants and prompts.
-- `server/prompts/`: OCR, narration, and TOC prompt text files.
+- `server/prompts/`: OCR and TOC prompt text files.
 - `server.js`: entrypoint that starts the server.
 
 ## Data layout
@@ -49,7 +49,6 @@ data/
   <bookId>/
     page-001.jpg
     page-001.txt
-    page-001.narration.txt
     page-001.mp3
     bookmarks.txt
     toc.json
@@ -57,7 +56,7 @@ data/
 
 - Books are directories under `data/`.
 - Supported page images: png, jpg, jpeg, gif, webp.
-- OCR text uses `.txt`, narration text uses `.narration.txt`, and audio uses `.mp3`.
+- OCR text uses `.txt`, and audio uses `.mp3`.
 - `bookmarks.txt` is a JSON array of `{ page, image, label }`.
 - `toc.json` is a JSON array of `{ title, page }` where `page` is 0-based.
 
@@ -65,7 +64,7 @@ data/
 
 Server environment variables:
 
-- `OPENAI_API_KEY` (required for OCR if `OCR_BACKEND` is `openai`, narration adaptation, TOC generation,
+- `OPENAI_API_KEY` (required for OCR if `OCR_BACKEND` is `openai`, TOC generation,
   and TTS audio generation)
 - `HOST` (default `0.0.0.0`)
 - `PORT` (default `3000`)

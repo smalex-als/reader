@@ -6,7 +6,6 @@ import {
   LLMPROXY_AUTH,
   LLMPROXY_ENDPOINT,
   LLMPROXY_MODEL,
-  NARRATION_PROMPT,
   OCR_BACKEND,
   TEXT_PROMPT
 } from '../config.js';
@@ -15,73 +14,6 @@ import { safeStat } from './fs.js';
 import { fetchLlmproxy } from './llmproxy.js';
 import { resolveDataUrl } from './paths.js';
 import { getOpenAI } from './openai.js';
-
-function deriveNarrationRelative(textRelative) {
-  if (typeof textRelative !== 'string' || !textRelative.length) {
-    return textRelative;
-  }
-  if (textRelative.endsWith('.txt')) {
-    return textRelative.replace(/\.txt$/i, '.narration.txt');
-  }
-  return `${textRelative}.narration.txt`;
-}
-
-function adaptTextForNarrationHeuristic(text) {
-  const input = typeof text === 'string' ? text : '';
-  if (!input.trim()) {
-    return '';
-  }
-
-  const normalized = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-  // Remove common end-of-line hyphenation from scanned text.
-  const dehyphenated = normalized.replace(/(\p{L})-\n(\p{L})/gu, '$1$2');
-
-  const paragraphs = dehyphenated
-    .split(/\n{2,}/)
-    .map((chunk) => chunk.replace(/\s*\n\s*/g, ' ').replace(/\s{2,}/g, ' ').trim())
-    .filter(Boolean);
-
-  const narration = paragraphs
-    .join('\n\n')
-    // Normalize common bullet characters into a simple dash for TTS.
-    .replace(/[•●◦▪]/g, '-')
-    .trim();
-
-  return narration;
-}
-
-async function generateNarrationTextFromLLM(text) {
-  const input = typeof text === 'string' ? text : '';
-  if (!input.trim()) {
-    return '';
-  }
-
-  if (!process.env.OPENAI_API_KEY) {
-    return '';
-  }
-
-  const openai = getOpenAI();
-  const response = await openai.responses.create({
-    model: 'gpt-5.2',
-    input: [
-      {
-        role: 'user',
-        content: [
-          { type: 'input_text', text: NARRATION_PROMPT },
-          { type: 'input_text', text: input.trim() }
-        ]
-      }
-    ]
-  });
-
-  const narration =
-    response.output_text?.trim() ||
-    response?.output?.[0]?.content?.[0]?.text?.trim() ||
-    '';
-
-  return narration;
-}
 
 async function extractTextFromLlmproxy(absolute) {
   const buffer = await fs.readFile(absolute);
@@ -116,44 +48,18 @@ async function extractTextFromLlmproxy(absolute) {
 }
 
 export async function loadPageText(imageUrl, options = {}) {
-  const { skipCache = false, skipNarration = false } = options;
+  const { skipCache = false } = options;
   const { absolute, relative } = resolveDataUrl(imageUrl);
   const baseName = relative.replace(/\.[^.]+$/, '');
   const textRelative = `${baseName}.txt`;
   const textAbsolute = path.join(DATA_DIR, textRelative);
-  const narrationRelative = deriveNarrationRelative(textRelative);
-  const narrationAbsolute = path.join(DATA_DIR, narrationRelative);
 
   const textStat = await safeStat(textAbsolute);
   if (textStat?.isFile() && !skipCache) {
     const textContent = await fs.readFile(textAbsolute, 'utf8');
-    let narrationText = '';
-    if (!skipNarration) {
-      const narrationStat = await safeStat(narrationAbsolute);
-      if (narrationStat?.isFile()) {
-        narrationText = await fs.readFile(narrationAbsolute, 'utf8');
-      } else {
-        try {
-          narrationText = await generateNarrationTextFromLLM(textContent);
-        } catch (error) {
-          console.warn('Narration adaptation failed; falling back to heuristic', error);
-          narrationText = '';
-        }
-
-        if (!narrationText) {
-          narrationText = adaptTextForNarrationHeuristic(textContent);
-        }
-
-        if (narrationText) {
-          await fs.mkdir(path.dirname(narrationAbsolute), { recursive: true });
-          await fs.writeFile(narrationAbsolute, narrationText, 'utf8');
-        }
-      }
-    }
     return {
       source: 'file',
       text: textContent,
-      narrationText,
       url: `/data/${textRelative}`,
       absolutePath: textAbsolute
     };
@@ -208,30 +114,12 @@ export async function loadPageText(imageUrl, options = {}) {
     throw createHttpError(502, 'Failed to generate text');
   }
 
-  let narrationText = '';
-  if (!skipNarration) {
-    try {
-      narrationText = await generateNarrationTextFromLLM(text);
-    } catch (error) {
-      console.warn('Narration adaptation failed; falling back to heuristic', error);
-      narrationText = '';
-    }
-    if (!narrationText) {
-      narrationText = adaptTextForNarrationHeuristic(text);
-    }
-  }
-
   await fs.mkdir(path.dirname(textAbsolute), { recursive: true });
   await fs.writeFile(textAbsolute, text, 'utf8');
-  if (narrationText) {
-    await fs.mkdir(path.dirname(narrationAbsolute), { recursive: true });
-    await fs.writeFile(narrationAbsolute, narrationText, 'utf8');
-  }
 
   return {
     source: 'ai',
     text,
-    narrationText,
     url: `/data/${textRelative}`,
     absolutePath: textAbsolute
   };

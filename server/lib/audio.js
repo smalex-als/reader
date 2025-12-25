@@ -27,7 +27,7 @@ export async function handlePageAudio({ image, voiceProfile }) {
   }
 
   const generated = await loadPageText(image);
-  const spokenText = (generated.narrationText || generated.text).trim();
+  const spokenText = generated.text.trim();
 
   if (!spokenText) {
     throw createHttpError(400, 'No text available for audio generation');

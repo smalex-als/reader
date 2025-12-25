@@ -37,27 +37,21 @@ export default function TextModal({
   }
 
   const generatedMarker = text?.source === 'ai' || regenerated;
-  const hasNarration = Boolean(text?.narrationText?.trim());
   const hasSummary = Boolean(insights?.summary?.trim());
   const hasKeyPoints = Boolean(insights?.keyPoints?.length);
   const hasInsights = hasSummary || hasKeyPoints;
-  const [view, setView] = useState<'narration' | 'original' | 'notes'>(
-    hasNarration ? 'narration' : 'original'
-  );
+  const [view, setView] = useState<'original' | 'notes'>('original');
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    setView(hasNarration ? 'narration' : 'original');
-  }, [hasNarration, open]);
+    setView('original');
+  }, [open]);
 
   const displayedText = useMemo(() => {
     if (!text) {
       return '';
-    }
-    if (view === 'narration') {
-      return text.narrationText || '';
     }
     return text.text || '';
   }, [text, view]);
@@ -101,16 +95,6 @@ export default function TextModal({
                   </button>
                   <button
                     type="button"
-                    className={`segmented-item ${view === 'narration' ? 'segmented-item-active' : ''}`}
-                    onClick={() => setView('narration')}
-                    disabled={loading || !hasNarration}
-                    role="tab"
-                    aria-selected={view === 'narration'}
-                  >
-                    Narration
-                  </button>
-                  <button
-                    type="button"
                     className={`segmented-item ${view === 'notes' ? 'segmented-item-active' : ''}`}
                     onClick={() => setView('notes')}
                     disabled={loading}
@@ -139,9 +123,6 @@ export default function TextModal({
                   </button>
                 ) : null}
               </div>
-              {view === 'narration' && !hasNarration ? (
-                <p className="modal-status">No narration-adapted text available.</p>
-              ) : null}
               {view === 'notes' && !summaryText && keyPoints.length === 0 && !insightsLoading ? (
                 <p className="modal-status">No notes yet. Generate notes to create them.</p>
               ) : null}
@@ -156,9 +137,7 @@ export default function TextModal({
                   ))}
                 </ul>
               ) : null}
-              {view === 'original' || view === 'narration' ? (
-                <pre className="modal-content">{displayedText}</pre>
-              ) : null}
+              {view === 'original' ? <pre className="modal-content">{displayedText}</pre> : null}
             </>
           ) : null}
         </section>

@@ -77,6 +77,7 @@ function stripMarkdown(text: string) {
   output = output.replace(/`[^`]*`/g, '');
   output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
   output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
+  output = output.replace(/[•●◦▪]/g, '-');
   output = output.replace(/^\s{0,3}#{1,6}\s+/gm, '');
   output = output.replace(/^\s{0,3}>\s?/gm, '');
   output = output.replace(/^\s{0,3}[-*+]\s+/gm, '');
@@ -234,7 +235,7 @@ export default function App() {
         { keys: 'I', action: 'Invert colors' },
         { keys: 'X', action: 'Toggle page text' },
         { keys: 'V', action: 'Toggle view mode' },
-        { keys: 'P', action: 'Play/Pause narration' },
+        { keys: 'P', action: 'Play/Pause audio' },
         { keys: 'G', action: 'Focus Go To input' },
         { keys: 'F', action: 'Toggle fullscreen' },
         { keys: 'B', action: 'Open book selector' },
@@ -706,7 +707,7 @@ export default function App() {
       return;
     }
     const pageText = currentText ?? (await fetchPageText());
-    const textValue = (pageText?.narrationText || pageText?.text || '').trim();
+    const textValue = stripMarkdown(pageText?.text || '');
     if (!textValue) {
       showToast('No page text available to stream', 'error');
       return;
@@ -759,7 +760,7 @@ export default function App() {
 
     const keyPointsText =
       keyPoints.length > 0 ? `Key points:\n${keyPoints.map((point) => `- ${point}`).join('\n')}` : '';
-    const textValue = [summary, keyPointsText].filter(Boolean).join('\n\n');
+    const textValue = stripMarkdown([summary, keyPointsText].filter(Boolean).join('\n\n'));
     const notesKey = `${currentImage}#notes`;
     await startStream({ text: textValue, pageKey: notesKey, voice: streamVoice });
   }, [
