@@ -4,6 +4,8 @@ interface ToolbarProps {
   currentBook: string | null;
   manifestLength: number;
   currentPage: number;
+  viewMode: 'pages' | 'text';
+  onViewModeChange: (mode: 'pages' | 'text') => void;
   onOpenBookModal: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -58,6 +60,8 @@ export default function Toolbar({
   currentBook,
   manifestLength,
   currentPage,
+  viewMode,
+  onViewModeChange,
   onOpenBookModal,
   onPrev,
   onNext,
@@ -176,6 +180,28 @@ export default function Toolbar({
           <span className="toolbar-counter">
             Page {manifestLength === 0 ? 0 : currentPage + 1} / {manifestLength}
           </span>
+          <div className="segmented" role="tablist" aria-label="Reading mode">
+            <button
+              type="button"
+              className={`segmented-item ${viewMode === 'pages' ? 'segmented-item-active' : ''}`}
+              onClick={() => onViewModeChange('pages')}
+              disabled={manifestLength === 0}
+              role="tab"
+              aria-selected={viewMode === 'pages'}
+            >
+              Pages
+            </button>
+            <button
+              type="button"
+              className={`segmented-item ${viewMode === 'text' ? 'segmented-item-active' : ''}`}
+              onClick={() => onViewModeChange('text')}
+              disabled={manifestLength === 0}
+              role="tab"
+              aria-selected={viewMode === 'text'}
+            >
+              Text
+            </button>
+          </div>
           <label className="toolbar-field toolbar-goto">
             Go to
             <input

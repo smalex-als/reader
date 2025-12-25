@@ -2,6 +2,7 @@ import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toolbar from '@/components/Toolbar';
 import Viewer from '@/components/Viewer';
+import ChapterViewer from '@/components/ChapterViewer';
 import Toast from '@/components/Toast';
 import TextModal from '@/components/TextModal';
 import BookmarksModal from '@/components/BookmarksModal';
@@ -111,6 +112,7 @@ export default function App() {
   const [tocGenerating, setTocGenerating] = useState(false);
   const [tocSaving, setTocSaving] = useState(false);
   const [chapterGeneratingIndex, setChapterGeneratingIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'pages' | 'text'>('pages');
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
@@ -136,6 +138,28 @@ export default function App() {
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
   const currentImage = manifest[currentPage] ?? null;
+  const sortedTocEntries = useMemo(() => {
+    return [...tocEntries]
+      .filter((entry) => Number.isInteger(entry.page))
+      .sort((a, b) => a.page - b.page);
+  }, [tocEntries]);
+  const currentChapterIndex = useMemo(() => {
+    if (sortedTocEntries.length === 0) {
+      return null;
+    }
+    const nextIndex = sortedTocEntries.findIndex((entry) => entry.page > currentPage);
+    if (nextIndex === -1) {
+      return sortedTocEntries.length - 1;
+    }
+    return Math.max(0, nextIndex - 1);
+  }, [currentPage, sortedTocEntries]);
+  const currentChapterEntry = currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
+  const nextChapterEntry =
+    currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex + 1] : null;
+  const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
+  const chapterRange = currentChapterEntry
+    ? { start: currentChapterEntry.page, end: nextChapterEntry?.page ?? manifest.length }
+    : null;
 
   const {
     audioState,
@@ -192,6 +216,7 @@ export default function App() {
         { keys: 'R', action: 'Rotate 90°' },
         { keys: 'I', action: 'Invert colors' },
         { keys: 'X', action: 'Toggle page text' },
+        { keys: 'V', action: 'Toggle view mode' },
         { keys: 'P', action: 'Play/Pause narration' },
         { keys: 'G', action: 'Focus Go To input' },
         { keys: 'F', action: 'Toggle fullscreen' },
@@ -223,6 +248,55 @@ export default function App() {
       },
       [bookId, manifest.length, resetAudio, setRegeneratedText, stopStream]
   );
+
+  const handleViewModeChange = useCallback((mode: 'pages' | 'text') => {
+    setViewMode(mode);
+  }, []);
+
+  const toggleViewMode = useCallback(() => {
+    setViewMode((prev) => (prev === 'pages' ? 'text' : 'pages'));
+  }, []);
+
+  const goToChapterIndex = useCallback(
+    (index: number) => {
+      const entry = sortedTocEntries[index];
+      if (!entry) {
+        return;
+      }
+      renderPage(entry.page);
+    },
+    [renderPage, sortedTocEntries]
+  );
+
+  const handlePrev = useCallback(() => {
+    if (viewMode === 'text') {
+      if (currentChapterIndex === null) {
+        renderPage(currentPage - 1);
+        return;
+      }
+      if (currentChapterIndex <= 0) {
+        return;
+      }
+      goToChapterIndex(currentChapterIndex - 1);
+      return;
+    }
+    renderPage(currentPage - 1);
+  }, [currentChapterIndex, currentPage, goToChapterIndex, renderPage, viewMode]);
+
+  const handleNext = useCallback(() => {
+    if (viewMode === 'text') {
+      if (currentChapterIndex === null) {
+        renderPage(currentPage + 1);
+        return;
+      }
+      if (currentChapterIndex >= sortedTocEntries.length - 1) {
+        return;
+      }
+      goToChapterIndex(currentChapterIndex + 1);
+      return;
+    }
+    renderPage(currentPage + 1);
+  }, [currentChapterIndex, currentPage, goToChapterIndex, renderPage, sortedTocEntries.length, viewMode]);
 
   const {
     bookmarks,
@@ -506,10 +580,10 @@ export default function App() {
   }, [bookId]);
 
   useEffect(() => {
-    if (tocOpen || tocManageOpen) {
+    if (tocOpen || tocManageOpen || viewMode === 'text') {
       void loadToc();
     }
-  }, [loadToc, tocManageOpen, tocOpen]);
+  }, [loadToc, tocManageOpen, tocOpen, viewMode]);
 
   useEffect(() => {
     if (!bookId) {
@@ -708,14 +782,14 @@ export default function App() {
         case 'arrowup':
         case 'pageup':
           event.preventDefault();
-          renderPage(currentPage - 1);
+          handlePrev();
           break;
         case 'arrowright':
         case 'arrowdown':
         case 'pagedown':
         case ' ':
           event.preventDefault();
-          renderPage(currentPage + 1);
+          handleNext();
           break;
         case '+':
         case '=':
@@ -749,6 +823,10 @@ export default function App() {
         case 'x':
           event.preventDefault();
           toggleTextModal();
+          break;
+        case 'v':
+          event.preventDefault();
+          toggleViewMode();
           break;
         case 'p':
           event.preventDefault();
@@ -807,9 +885,7 @@ export default function App() {
     applyFilters,
     applyZoomMode,
     audioState.status,
-    currentPage,
     playAudio,
-    renderPage,
     resetTransform,
     settings.invert,
     settings.zoom,
@@ -820,6 +896,9 @@ export default function App() {
     updateRotation,
     updateZoom,
     toggleFullscreen,
+    handleNext,
+    handlePrev,
+    toggleViewMode,
     bookModalOpen,
     closeBookModal,
     openBookModal,
@@ -833,11 +912,18 @@ export default function App() {
     tocManageOpen
   ]);
   const hasBooks = books.length > 0;
-  const footerMessage = currentImage
+  const footerMessage =
+    viewMode === 'text'
+      ? chapterNumber && currentChapterEntry
+        ? `Chapter ${chapterNumber}: ${currentChapterEntry.title}`
+        : hasBooks
+        ? 'Open the TOC to create chapters for text view.'
+        : 'No books found. Add files to /data to begin.'
+      : currentImage
       ? currentImage
       : hasBooks
-          ? 'Choose a book to begin reading.'
-          : 'No books found. Add files to /data to begin.';
+      ? 'Choose a book to begin reading.'
+      : 'No books found. Add files to /data to begin.';
 
   return (
       <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
@@ -853,9 +939,11 @@ export default function App() {
               currentBook={bookId}
               manifestLength={manifest.length}
               currentPage={currentPage}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
               onOpenBookModal={openBookModal}
-              onPrev={() => renderPage(currentPage - 1)}
-              onNext={() => renderPage(currentPage + 1)}
+              onPrev={handlePrev}
+              onNext={handleNext}
               onGoTo={(page) => renderPage(page)}
               onZoomIn={() => updateZoom(settings.zoom + ZOOM_STEP)}
               onZoomOut={() => updateZoom(settings.zoom - ZOOM_STEP)}
@@ -909,14 +997,29 @@ export default function App() {
           />
         </aside>
         <main className="main">
-          <div ref={viewerShellRef} className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''}`}>
-            <Viewer
-                imageUrl={currentImage}
-                settings={settings}
-                onPan={updatePan}
-                onMetricsChange={handleMetricsChange}
-                rotation={settings.rotation}
-            />
+          <div
+            ref={viewerShellRef}
+            className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''} ${
+              viewMode === 'text' ? 'viewer-shell-text' : ''
+            }`}
+          >
+            {viewMode === 'pages' ? (
+              <Viewer
+                  imageUrl={currentImage}
+                  settings={settings}
+                  onPan={updatePan}
+                  onMetricsChange={handleMetricsChange}
+                  rotation={settings.rotation}
+              />
+            ) : (
+              <ChapterViewer
+                  bookId={bookId}
+                  chapterNumber={chapterNumber}
+                  chapterTitle={currentChapterEntry?.title ?? null}
+                  pageRange={chapterRange}
+                  tocLoading={tocLoading}
+              />
+            )}
             {loading && <div className="viewer-status">Loading…</div>}
           </div>
           <div className="page-footer">

@@ -298,6 +298,165 @@ body {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.viewer-shell-text {
+  background: rgba(12, 12, 12, 0.95);
+}
+
+.text-viewer {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.75rem 2rem;
+  gap: 1.5rem;
+  overflow: auto;
+}
+
+.text-viewer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.text-viewer-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.text-viewer-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.text-viewer-heading {
+  margin: 0;
+  font-size: 1.4rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.text-viewer-meta {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.text-viewer-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.text-viewer-status {
+  margin: 0;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.text-viewer-content {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.text-viewer-markdown {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.text-viewer-markdown h1,
+.text-viewer-markdown h2,
+.text-viewer-markdown h3,
+.text-viewer-markdown h4,
+.text-viewer-markdown h5,
+.text-viewer-markdown h6 {
+  margin: 1.6rem 0 0.75rem;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.2;
+}
+
+.text-viewer-markdown h1 {
+  font-size: 1.6rem;
+}
+
+.text-viewer-markdown h2 {
+  font-size: 1.4rem;
+}
+
+.text-viewer-markdown h3 {
+  font-size: 1.2rem;
+}
+
+.text-viewer-markdown p {
+  margin: 0 0 1rem;
+}
+
+.text-viewer-markdown ul,
+.text-viewer-markdown ol {
+  margin: 0 0 1rem;
+  padding-left: 1.5rem;
+}
+
+.text-viewer-markdown li {
+  margin-bottom: 0.4rem;
+}
+
+.text-viewer-markdown blockquote {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.text-viewer-markdown code {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.35rem;
+}
+
+.text-viewer-markdown pre {
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.65rem;
+  background: rgba(0, 0, 0, 0.55);
+  overflow: auto;
+}
+
+.text-viewer-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.text-viewer-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1rem;
+}
+
+.text-viewer-markdown th,
+.text-viewer-markdown td {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+
+.text-viewer-markdown th {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.text-viewer-markdown hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 1.5rem 0;
+}
+
 .page-footer {
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.5);
@@ -889,5 +1048,9 @@ body {
 
   .toc-page .input {
     max-width: 100%;
+  }
+
+  .text-viewer {
+    padding: 1.25rem;
   }
 }
