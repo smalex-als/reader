@@ -12,6 +12,7 @@ import {
 } from '../config.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
+import { fetchLlmproxy } from './llmproxy.js';
 import { resolveDataUrl } from './paths.js';
 import { getOpenAI } from './openai.js';
 
@@ -86,7 +87,7 @@ async function extractTextFromLlmproxy(absolute) {
   const buffer = await fs.readFile(absolute);
   const base64 = buffer.toString('base64');
 
-  const response = await fetch(LLMPROXY_ENDPOINT, {
+  const response = await fetchLlmproxy(LLMPROXY_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

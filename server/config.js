@@ -23,6 +23,18 @@ export const LLMPROXY_ENDPOINT =
   process.env.LLMPROXY_ENDPOINT || 'http://myserver.home:11434/api/generate';
 export const LLMPROXY_MODEL = 'ministral-3:14b';
 export const LLMPROXY_AUTH = 'dummy';
+export const LLMPROXY_HEADERS_TIMEOUT_MS = Number.parseInt(
+  process.env.LLMPROXY_HEADERS_TIMEOUT_MS || '900000',
+  10
+);
+export const LLMPROXY_BODY_TIMEOUT_MS = Number.parseInt(
+  process.env.LLMPROXY_BODY_TIMEOUT_MS || '900000',
+  10
+);
+export const LLMPROXY_CONNECT_TIMEOUT_MS = Number.parseInt(
+  process.env.LLMPROXY_CONNECT_TIMEOUT_MS || '30000',
+  10
+);
 
 const PROMPTS_DIR = path.join(ROOT_DIR, 'server', 'prompts');
 const readPrompt = (filename) =>
