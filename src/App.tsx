@@ -67,6 +67,23 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const ZOOM_STEP = 0.15;
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
+const STREAM_CHUNK_SIZE = 500;
+const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
+const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\([^)]+\)/g;
+
+function stripMarkdown(text: string) {
+  let output = text;
+  output = output.replace(/```[\s\S]*?```/g, '');
+  output = output.replace(/`[^`]*`/g, '');
+  output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
+  output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
+  output = output.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+  output = output.replace(/^\s{0,3}>\s?/gm, '');
+  output = output.replace(/^\s{0,3}[-*+]\s+/gm, '');
+  output = output.replace(/^\s{0,3}---+\s*$/gm, '');
+  output = output.replace(/\n{3,}/g, '\n\n');
+  return output.trim();
+}
 
 function createDefaultSettings(): AppSettings {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as AppSettings;
@@ -605,6 +622,85 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [bookId, streamVoice]);
 
+  const streamSequenceRef = useRef<{
+    chunks: string[];
+    index: number;
+    baseKey: string;
+  } | null>(null);
+  const pendingStreamSequenceRef = useRef<{
+    fullText: string;
+    startIndex: number;
+    baseKey: string;
+  } | null>(null);
+  const [streamSequenceActive, setStreamSequenceActive] = useState(false);
+
+  const stopStreamSequence = useCallback(() => {
+    streamSequenceRef.current = null;
+    setStreamSequenceActive(false);
+  }, []);
+
+  const splitStreamChunks = useCallback((text: string, startIndex: number) => {
+    const input = stripMarkdown(text.slice(Math.max(0, startIndex)));
+    const chunks: string[] = [];
+    let cursor = 0;
+    while (cursor < input.length) {
+      const slice = input.slice(cursor, cursor + STREAM_CHUNK_SIZE);
+      if (cursor + STREAM_CHUNK_SIZE >= input.length) {
+        chunks.push(slice.trim());
+        break;
+      }
+      const breakWindow = slice.slice(Math.max(0, slice.length - 200));
+      let breakIndex = breakWindow.lastIndexOf('\n\n');
+      if (breakIndex === -1) {
+        breakIndex = breakWindow.lastIndexOf('\n');
+      }
+      if (breakIndex === -1) {
+        breakIndex = breakWindow.lastIndexOf(' ');
+      }
+      if (breakIndex === -1) {
+        breakIndex = slice.length;
+      } else {
+        breakIndex += Math.max(0, slice.length - 200);
+      }
+      const chunk = input.slice(cursor, cursor + breakIndex);
+      chunks.push(chunk.trim());
+      cursor += Math.max(1, breakIndex);
+    }
+    return chunks.filter((chunk) => chunk.length > 0);
+  }, []);
+
+  const startStreamSequence = useCallback(
+    async (fullText: string, startIndex: number, baseKey: string) => {
+      if (streamState.status === 'connecting' || streamState.status === 'streaming') {
+        pendingStreamSequenceRef.current = { fullText, startIndex, baseKey };
+        stopStream();
+        stopStreamSequence();
+        return;
+      }
+      const chunks = splitStreamChunks(fullText, startIndex);
+      if (chunks.length === 0) {
+        showToast('No text available to stream', 'error');
+        return;
+      }
+      stopAudio();
+      stopStream();
+      stopStreamSequence();
+      streamSequenceRef.current = { chunks, index: 0, baseKey };
+      setStreamSequenceActive(true);
+      await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice: streamVoice });
+    },
+    [
+      showToast,
+      splitStreamChunks,
+      startStream,
+      stopAudio,
+      stopStream,
+      stopStreamSequence,
+      streamState.status,
+      streamVoice
+    ]
+  );
+
   const handlePlayStream = useCallback(async () => {
     if (!currentImage) {
       return;
@@ -616,21 +712,20 @@ export default function App() {
       return;
     }
     stopAudio();
+    stopStreamSequence();
     await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
-  }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio, streamVoice]);
+  }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio, stopStreamSequence, streamVoice]);
 
   const handlePlayChapterParagraph = useCallback(
-    async (text: string, key: string) => {
-      const trimmed = text.trim();
+    async (payload: { fullText: string; startIndex: number; key: string }) => {
+      const trimmed = payload.fullText.trim();
       if (!trimmed) {
         showToast('No paragraph text available to stream', 'error');
         return;
       }
-      stopAudio();
-      stopStream();
-      await startStream({ text: trimmed, pageKey: key, voice: streamVoice });
+      await startStreamSequence(payload.fullText, payload.startIndex, payload.key);
     },
-    [showToast, startStream, stopAudio, stopStream, streamVoice]
+    [showToast, startStreamSequence]
   );
 
   const handleGenerateInsights = useCallback(
@@ -649,6 +744,7 @@ export default function App() {
     }
     stopAudio();
     stopStream();
+    stopStreamSequence();
 
     const insights = currentInsights ?? (await fetchPageInsights());
     const summary = insights?.summary?.trim() ?? '';
@@ -666,11 +762,22 @@ export default function App() {
     const textValue = [summary, keyPointsText].filter(Boolean).join('\n\n');
     const notesKey = `${currentImage}#notes`;
     await startStream({ text: textValue, pageKey: notesKey, voice: streamVoice });
-  }, [currentImage, currentInsights, fetchPageInsights, showToast, startStream, stopAudio, stopStream, streamVoice]);
+  }, [
+    currentImage,
+    currentInsights,
+    fetchPageInsights,
+    showToast,
+    startStream,
+    stopAudio,
+    stopStream,
+    stopStreamSequence,
+    streamVoice
+  ]);
 
   const handleStopNotes = useCallback(() => {
     stopStream();
-  }, [stopStream]);
+    stopStreamSequence();
+  }, [stopStream, stopStreamSequence]);
 
   const handleCopyText = useCallback(async () => {
     if (!currentImage) {
@@ -759,7 +866,8 @@ export default function App() {
 
   const handleStopStream = useCallback(() => {
     stopStream();
-  }, [stopStream]);
+    stopStreamSequence();
+  }, [stopStream, stopStreamSequence]);
 
   const openHelp = useCallback(() => setHelpOpen(true), []);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
@@ -905,6 +1013,7 @@ export default function App() {
     settings.zoom,
     stopAudio,
     stopStream,
+    stopStreamSequence,
     closeTextModal,
     textModalOpen,
     updateRotation,
@@ -925,6 +1034,39 @@ export default function App() {
     tocOpen,
     tocManageOpen
   ]);
+
+  useEffect(() => {
+    if (!streamSequenceActive || streamState.status !== 'idle') {
+      return;
+    }
+    const sequence = streamSequenceRef.current;
+    if (!sequence) {
+      setStreamSequenceActive(false);
+      return;
+    }
+    if (sequence.index >= sequence.chunks.length - 1) {
+      stopStreamSequence();
+      return;
+    }
+    sequence.index += 1;
+    void startStream({
+      text: sequence.chunks[sequence.index],
+      pageKey: `${sequence.baseKey}#chunk-${sequence.index}`,
+      voice: streamVoice
+    });
+  }, [startStream, stopStreamSequence, streamSequenceActive, streamState.status, streamVoice]);
+
+  useEffect(() => {
+    if (streamState.status !== 'idle') {
+      return;
+    }
+    const pending = pendingStreamSequenceRef.current;
+    if (!pending) {
+      return;
+    }
+    pendingStreamSequenceRef.current = null;
+    void startStreamSequence(pending.fullText, pending.startIndex, pending.baseKey);
+  }, [startStreamSequence, streamState.status]);
   const hasBooks = books.length > 0;
   const footerMessage =
     viewMode === 'text'

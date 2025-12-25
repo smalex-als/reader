@@ -9,7 +9,7 @@ interface ChapterViewerProps {
   chapterTitle: string | null;
   pageRange: { start: number; end: number } | null;
   tocLoading: boolean;
-  onPlayParagraph: (text: string, key: string) => void;
+  onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
 }
 
 function formatChapterFilename(chapterNumber: number) {
@@ -154,10 +154,32 @@ export default function ChapterViewer({
   }, [pageRange]);
 
   const markdownComponents = useMemo(() => {
+    const resolveStartIndex = (textValue: string, node?: any) => {
+      if (!chapterText) {
+        return 0;
+      }
+      const nodeOffset = node?.position?.start?.offset;
+      if (typeof nodeOffset === 'number') {
+        const lineStart = chapterText.lastIndexOf('\n', nodeOffset - 1);
+        return lineStart === -1 ? 0 : lineStart + 1;
+      }
+      if (textValue) {
+        const foundIndex = chapterText.indexOf(textValue);
+        if (foundIndex !== -1) {
+          const lineStart = chapterText.lastIndexOf('\n', foundIndex - 1);
+          return lineStart === -1 ? 0 : lineStart + 1;
+        }
+      }
+      return 0;
+    };
+
     const renderBlock = (Tag: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
-      return ({ children }: { children?: ReactNode }) => {
+      return ({ children, node }: { children?: ReactNode; node?: any }) => {
         const textValue = extractTextFromNode(children ?? '').trim();
-        const paragraphKey = chapterNumber ? `chapter-${chapterNumber}-${hashText(textValue)}` : '';
+        const startIndex = resolveStartIndex(textValue, node);
+        const paragraphKey = chapterNumber
+          ? `chapter-${chapterNumber}-${hashText(textValue)}-${startIndex}`
+          : '';
         return (
           <Tag className="text-viewer-block">
             {children}
@@ -165,7 +187,13 @@ export default function ChapterViewer({
               <button
                 type="button"
                 className="text-paragraph-stream"
-                onClick={() => onPlayParagraph(textValue, paragraphKey)}
+                onClick={() =>
+                  onPlayParagraph({
+                    fullText: chapterText,
+                    startIndex,
+                    key: paragraphKey
+                  })
+                }
                 aria-label="Play from here"
                 title="Play from here"
               >
@@ -188,7 +216,7 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, onPlayParagraph]);
+  }, [chapterNumber, chapterText, onPlayParagraph]);
 
   return (
     <div className="text-viewer">
