@@ -355,6 +355,13 @@ body {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.text-viewer-action {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
 .text-viewer-content {
   margin: 0;
   white-space: pre-wrap;
