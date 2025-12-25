@@ -6,3 +6,4 @@ Rules:
 3) Do not paraphrase. Do not summarize. Do not fix typos. Do not add examples.
 4) Do not reorder sentences or lines.
 5) If you are unsure, output the original text unchanged.
+6) Do not add any preamble, commentary, or explanations. Output the cleaned text only.
