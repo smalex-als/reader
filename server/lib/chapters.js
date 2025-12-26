@@ -13,13 +13,21 @@ function formatChapterFilename(chapterNumber) {
   return `chapter${normalized}.txt`;
 }
 
-async function preprocessChapterText(rawText) {
+function formatChapterDebugFilename(chapterNumber) {
+  const normalized = String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0');
+  return `chapter${normalized}_debug.txt`;
+}
+
+async function preprocessChapterText(rawText, debugFilePath) {
   const input = typeof rawText === 'string' ? rawText.trim() : '';
   if (!input) {
     return '';
   }
 
   const prompt = `${CHAPTER_SPLIT_PROMPT}\n\nSOURCE_START\n${input}\nSOURCE_END`;
+  if (debugFilePath) {
+    await fs.writeFile(debugFilePath, prompt, 'utf8');
+  }
   const response = await fetchLlmproxy(LLMPROXY_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -41,6 +49,7 @@ async function preprocessChapterText(rawText) {
   }
 
   const payload = await response.json();
+  console.log('preprocessChapterText LLM response', payload);
   const processed = typeof payload?.response === 'string' ? payload.response.trim() : '';
   return processed || input;
 }
@@ -77,13 +86,16 @@ export async function generateChapterText(bookId, pageStart, pageEnd, chapterNum
   }
 
   const combined = chunks.join('\n\n').trim();
+  const directory = await assertBookDirectory(bookId);
+  const debugFilename = formatChapterDebugFilename(chapterNumber);
+  const debugFilePath = path.join(directory, debugFilename);
+
   let processed = combined;
   try {
-    processed = await preprocessChapterText(combined);
+    processed = await preprocessChapterText(combined, debugFilePath);
   } catch (error) {
     console.warn('Chapter preprocessing failed; saving original text', error);
   }
-  const directory = await assertBookDirectory(bookId);
   const filename = formatChapterFilename(chapterNumber);
   const filePath = path.join(directory, filename);
   await fs.writeFile(filePath, processed, 'utf8');
