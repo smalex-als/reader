@@ -67,7 +67,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const ZOOM_STEP = 0.15;
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
-const STREAM_CHUNK_SIZE = 500;
+const STREAM_CHUNK_SIZE = 1000;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
 const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\([^)]+\)/g;
 
