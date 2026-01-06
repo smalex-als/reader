@@ -172,3 +172,52 @@ export async function addTextChapter(bookId, { title, content }) {
     toc: updated
   };
 }
+
+export async function updateTextChapter(bookId, chapterNumber, content, title) {
+  const bookType = await getBookType(bookId);
+  if (bookType !== 'text') {
+    throw createHttpError(400, 'Chapters can only be edited for text books');
+  }
+  if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
+    throw createHttpError(400, 'Valid chapter number is required');
+  }
+  const rawText = typeof content === 'string' ? content.trim() : '';
+  if (!rawText) {
+    throw createHttpError(400, 'Chapter content is empty');
+  }
+
+  const directory = await assertBookDirectory(bookId);
+  const filename = formatChapterFilename(chapterNumber);
+  const filePath = path.join(directory, filename);
+  await fs.writeFile(filePath, rawText, 'utf8');
+
+  const chapterIndex = chapterNumber - 1;
+  const existing = (await loadRawToc(bookId)).map(normalizeTocEntry).filter(Boolean);
+  const currentEntry = existing.find((entry) => entry.page === chapterIndex);
+  const fallbackTitle = `Chapter ${chapterNumber}`;
+  const cleanedTitle = typeof title === 'string' ? title.trim() : '';
+  const chapterTitle =
+    cleanedTitle ||
+    currentEntry?.title ||
+    extractChapterTitle(rawText, fallbackTitle);
+  const withoutDuplicate = existing.filter((entry) => entry.page !== chapterIndex);
+  const updated = [...withoutDuplicate, { title: chapterTitle, page: chapterIndex }].sort(
+    (a, b) => a.page - b.page
+  );
+  await saveRawToc(bookId, updated);
+
+  const existingMeta = (await loadBookMeta(bookId)) || { type: 'text' };
+  await saveBookMeta(bookId, {
+    ...existingMeta,
+    type: 'text',
+    updatedAt: new Date().toISOString()
+  });
+
+  return {
+    chapterNumber,
+    chapterIndex,
+    chapterTitle,
+    chapterFile: `/data/${bookId}/${filename}`,
+    toc: updated
+  };
+}

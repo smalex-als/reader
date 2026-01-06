@@ -66,7 +66,7 @@ export default function TocModal({
           </div>
           <div className="toc-list">
             {entries.map((entry, index) => (
-              <div key={`${entry.title}-${entry.page}-${index}`} className="toc-row">
+              <div key={index} className="toc-row">
                 <label className="toc-field">
                   Title
                   <input

@@ -401,6 +401,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .text-viewer-label {
@@ -416,14 +418,27 @@ body {
   color: rgba(255, 255, 255, 0.92);
 }
 
+.text-viewer-title-input {
+  width: 100%;
+  max-width: none;
+}
+
 .text-viewer-meta {
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.6);
 }
 
+.text-viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .text-viewer-body {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .text-viewer-regenerate {
@@ -459,6 +474,28 @@ body {
   font-size: 1rem;
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.85);
+}
+
+.text-viewer-editor {
+  margin-top: 0.75rem;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.text-viewer-textarea {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  padding: 0.85rem 0.9rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.5);
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  resize: vertical;
 }
 
 .text-viewer-markdown h1,

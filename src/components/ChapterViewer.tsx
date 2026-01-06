@@ -10,7 +10,9 @@ interface ChapterViewerProps {
   pageRange: { start: number; end: number } | null;
   tocLoading: boolean;
   allowGenerate: boolean;
+  allowEdit: boolean;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
+  onChapterUpdated: (toc: { title: string; page: number }[]) => void;
 }
 
 function formatChapterFilename(chapterNumber: number) {
@@ -46,11 +48,17 @@ export default function ChapterViewer({
   pageRange,
   tocLoading,
   allowGenerate,
-  onPlayParagraph
+  allowEdit,
+  onPlayParagraph,
+  onChapterUpdated
 }: ChapterViewerProps) {
   const [chapterText, setChapterText] = useState('');
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftText, setDraftText] = useState('');
+  const [draftTitle, setDraftTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [missingFile, setMissingFile] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -116,7 +124,15 @@ export default function ChapterViewer({
     };
   }, [bookId, chapterNumber, refreshToken]);
 
+  useEffect(() => {
+    if (!editing) {
+      setDraftText(chapterText);
+      setDraftTitle(chapterTitle ?? '');
+    }
+  }, [chapterText, chapterTitle, editing]);
+
   const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
+  const canEdit = Boolean(allowEdit && bookId && chapterNumber);
 
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !pageRange || generating) {
@@ -145,6 +161,38 @@ export default function ChapterViewer({
       setGenerating(false);
     }
   }, [bookId, canGenerate, chapterNumber, generating, pageRange]);
+
+  const handleSave = useCallback(async () => {
+    if (!canEdit || !bookId || !chapterNumber || saving) {
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: draftText, title: draftTitle })
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Save failed: ${response.status}`);
+      }
+      const payload = (await response.json()) as { toc?: { title: string; page: number }[] };
+      if (Array.isArray(payload.toc)) {
+        onChapterUpdated(payload.toc);
+      }
+      setChapterText(draftText.trim());
+      setEditing(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to save chapter.';
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  }, [bookId, canEdit, chapterNumber, draftText, draftTitle, onChapterUpdated, saving]);
 
   const pageMeta = useMemo(() => {
     if (!pageRange) {
@@ -225,9 +273,51 @@ export default function ChapterViewer({
       <header className="text-viewer-header">
         <div className="text-viewer-title">
           <span className="text-viewer-label">{chapterLabel}</span>
-          <h2 className="text-viewer-heading">{chapterTitle ?? 'No chapter selected'}</h2>
+          {editing ? (
+            <input
+              type="text"
+              className="input text-viewer-title-input"
+              placeholder="Chapter title"
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              disabled={saving}
+            />
+          ) : (
+            <h2 className="text-viewer-heading">{chapterTitle ?? 'No chapter selected'}</h2>
+          )}
         </div>
         {pageMeta ? <div className="text-viewer-meta">{pageMeta}</div> : null}
+        {allowEdit && chapterNumber ? (
+          <div className="text-viewer-actions">
+            {editing ? (
+              <>
+                <button type="button" className="button" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => {
+                    setEditing(false);
+                    setDraftText(chapterText);
+                    setDraftTitle(chapterTitle ?? '');
+                  }}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => setEditing(true)}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+        ) : null}
       </header>
       <section className="text-viewer-body">
         {tocLoading && <p className="text-viewer-status">Loading table of contents…</p>}
@@ -253,14 +343,31 @@ export default function ChapterViewer({
         {!tocLoading && chapterNumber && !loading && !missingFile && error && (
           <p className="text-viewer-status">{error}</p>
         )}
-        {!tocLoading && chapterNumber && !loading && !error && chapterText && (
+        {!tocLoading && chapterNumber && !loading && editing ? (
+          <div className="text-viewer-editor">
+            <textarea
+              className="text-viewer-textarea"
+              value={draftText}
+              onChange={(event) => setDraftText(event.target.value)}
+              disabled={saving}
+            />
+          </div>
+        ) : null}
+        {!tocLoading && chapterNumber && !loading && !error && !editing && chapterText && (
           <div className="text-viewer-markdown">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {chapterText}
             </ReactMarkdown>
           </div>
         )}
-        {!tocLoading && chapterNumber && !loading && !generating && !missingFile && !error && !chapterText && (
+        {!tocLoading &&
+          chapterNumber &&
+          !loading &&
+          !generating &&
+          !missingFile &&
+          !error &&
+          !editing &&
+          !chapterText && (
           <p className="text-viewer-status">Chapter text is empty.</p>
         )}
         {!tocLoading && allowGenerate && chapterNumber && !missingFile ? (

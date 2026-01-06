@@ -1257,6 +1257,8 @@ export default function App() {
                   pageRange={chapterRange}
                   tocLoading={tocLoading}
                   allowGenerate={!isTextBook}
+                  allowEdit={isTextBook}
+                  onChapterUpdated={(nextToc) => setTocEntries(nextToc)}
                   onPlayParagraph={handlePlayChapterParagraph}
               />
             )}

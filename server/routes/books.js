@@ -15,7 +15,12 @@ import {
 import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
 import { generateChapterText } from '../lib/chapters.js';
 import { MAX_UPLOAD_BYTES } from '../config.js';
-import { addTextChapter, createTextBook, getTextChapterCount } from '../lib/textBooks.js';
+import {
+  addTextChapter,
+  createTextBook,
+  getTextChapterCount,
+  updateTextChapter
+} from '../lib/textBooks.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -159,6 +164,15 @@ router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async
   }
   const content = file.buffer.toString('utf8');
   const result = await addTextChapter(bookId, { title: chapterTitle, content });
+  const chapterCount = await getTextChapterCount(bookId);
+  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+}));
+
+router.put('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const { content, title } = req.body || {};
+  const result = await updateTextChapter(bookId, chapterNumber, content, title);
   const chapterCount = await getTextChapterCount(bookId);
   res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));
