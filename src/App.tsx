@@ -189,11 +189,8 @@ export default function App() {
   const { streamState, startStream, stopStream } = useStreamingAudio(showToast);
   const {
     closeTextModal,
-    currentInsights,
     currentText,
-    fetchPageInsights,
     fetchPageText,
-    insightsLoading,
     regeneratedText,
     resetTextState,
     setRegeneratedText,
@@ -729,51 +726,6 @@ export default function App() {
     [showToast, startStreamSequence]
   );
 
-  const handleGenerateInsights = useCallback(
-    async (force = false) => {
-      if (!currentImage) {
-        return;
-      }
-      await fetchPageInsights(force);
-    },
-    [currentImage, fetchPageInsights]
-  );
-
-  const handlePlayNotes = useCallback(async () => {
-    if (!currentImage) {
-      return;
-    }
-    stopAudio();
-    stopStream();
-    stopStreamSequence();
-
-    const insights = currentInsights ?? (await fetchPageInsights());
-    const summary = insights?.summary?.trim() ?? '';
-    if (!summary) {
-      showToast('No notes available to play', 'error');
-      return;
-    }
-
-    const textValue = stripMarkdown(summary);
-    const notesKey = `${currentImage}#notes`;
-    await startStream({ text: textValue, pageKey: notesKey, voice: streamVoice });
-  }, [
-    currentImage,
-    currentInsights,
-    fetchPageInsights,
-    showToast,
-    startStream,
-    stopAudio,
-    stopStream,
-    stopStreamSequence,
-    streamVoice
-  ]);
-
-  const handleStopNotes = useCallback(() => {
-    stopStream();
-    stopStreamSequence();
-  }, [stopStream, stopStreamSequence]);
-
   const handleCopyText = useCallback(async () => {
     if (!currentImage) {
       showToast('No page selected', 'error');
@@ -1214,13 +1166,6 @@ export default function App() {
             open={textModalOpen}
             text={currentText}
             loading={textLoading}
-            insights={currentInsights}
-            insightsLoading={insightsLoading}
-            notesStreamActive={
-              !!currentImage &&
-              streamState.pageKey === `${currentImage}#notes` &&
-              (streamState.status === 'connecting' || streamState.status === 'streaming')
-            }
             onClose={closeTextModal}
             title={currentImage ?? 'Page text'}
             onRegenerate={() => {
@@ -1228,9 +1173,6 @@ export default function App() {
               void fetchPageText(true);
             }}
             regenerated={regeneratedText}
-            onGenerateInsights={handleGenerateInsights}
-            onPlayNotes={handlePlayNotes}
-            onStopNotes={handleStopNotes}
         />
         <TocNavModal
             open={tocOpen}

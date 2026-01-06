@@ -51,7 +51,6 @@ const normalizePromptKey = (value) =>
 
 export const TEXT_PROMPT = readPrompt('text.txt');
 export const TOC_PROMPT = readPrompt('toc.txt');
-export const INSIGHTS_PROMPT = readPrompt('insights.txt');
 export const CHAPTER_SPLIT_PROMPT = readPrompt('chapters.txt');
 export const getTextPrompt = ({ backend, model } = {}) => {
   const cacheKey = `${backend || ''}|${model || ''}`;

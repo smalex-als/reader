@@ -8,7 +8,6 @@ Node/Express server for OCR and PDF tooling.
 - Book picker with page navigation, zoom, rotate, fit, invert, brightness/contrast, and pan.
 - OCR page text modal with regeneration and batch OCR queue.
 - Audio playback (reuse existing MP3s or generate with OpenAI).
-- AI page insights (summary and key points).
 - Streaming audio via WebSocket (external stream server).
 - Bookmarks, table of contents (manual or generated), and print-to-PDF.
 - PDF upload to convert scans into a new book (requires `pdftoppm`).
@@ -94,7 +93,6 @@ Notes:
 - `GET /api/books`
 - `GET /api/books/:id/manifest`
 - `GET /api/page-text?image=/data/...`
-- `GET /api/page-insights?image=/data/...`
 - `POST /api/page-audio`
 - `POST /api/upload/pdf`
 - `POST /api/books/:id/print`

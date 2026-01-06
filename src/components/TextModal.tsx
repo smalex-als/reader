@@ -1,51 +1,35 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { PageInsights, PageText } from '@/types/app';
+import { useEffect, useMemo } from 'react';
+import type { PageText } from '@/types/app';
 
 interface TextModalProps {
   open: boolean;
   text: PageText | null;
   loading: boolean;
-  insights: PageInsights | null;
-  insightsLoading: boolean;
-  notesStreamActive: boolean;
   onClose: () => void;
   title: string;
   onRegenerate: () => void;
   regenerated: boolean;
-  onGenerateInsights: (force?: boolean) => void;
-  onPlayNotes: () => void;
-  onStopNotes: () => void;
 }
 
 export default function TextModal({
   open,
   text,
   loading,
-  insights,
-  insightsLoading,
-  notesStreamActive,
   onClose,
   title,
   onRegenerate,
-  regenerated,
-  onGenerateInsights,
-  onPlayNotes,
-  onStopNotes
+  regenerated
 }: TextModalProps) {
   if (!open) {
     return null;
   }
 
   const generatedMarker = text?.source === 'ai' || regenerated;
-  const hasSummary = Boolean(insights?.summary?.trim());
-  const hasInsights = hasSummary;
-  const [view, setView] = useState<'original' | 'notes'>('original');
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    setView('original');
   }, [open]);
 
   const displayedText = useMemo(() => {
@@ -53,11 +37,7 @@ export default function TextModal({
       return '';
     }
     return text.text || '';
-  }, [text, view]);
-
-  const summaryText = useMemo(() => {
-    return insights?.summary?.trim() || '';
-  }, [insights]);
+  }, [text]);
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -76,56 +56,7 @@ export default function TextModal({
           {!loading && !text && <p className="modal-status">No text available.</p>}
           {!loading && text ? (
             <>
-              <div className="modal-toolbar">
-                <div className="segmented" role="tablist" aria-label="Text view">
-                  <button
-                    type="button"
-                    className={`segmented-item ${view === 'original' ? 'segmented-item-active' : ''}`}
-                    onClick={() => setView('original')}
-                    disabled={loading}
-                    role="tab"
-                    aria-selected={view === 'original'}
-                  >
-                    Extracted
-                  </button>
-                  <button
-                    type="button"
-                    className={`segmented-item ${view === 'notes' ? 'segmented-item-active' : ''}`}
-                    onClick={() => setView('notes')}
-                    disabled={loading}
-                    role="tab"
-                    aria-selected={view === 'notes'}
-                  >
-                    Notes
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => onGenerateInsights(hasInsights)}
-                  disabled={loading || insightsLoading}
-                >
-                  {insightsLoading ? 'Generating…' : hasInsights ? 'Regenerate Notes' : 'Generate Notes'}
-                </button>
-                {view === 'notes' ? (
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={notesStreamActive ? onStopNotes : onPlayNotes}
-                    disabled={loading || insightsLoading}
-                  >
-                    {notesStreamActive ? 'Stop Notes' : 'Play Notes'}
-                  </button>
-                ) : null}
-              </div>
-              {view === 'notes' && !summaryText && !insightsLoading ? (
-                <p className="modal-status">No notes yet. Generate notes to create them.</p>
-              ) : null}
-              {insightsLoading && view === 'notes' ? (
-                <p className="modal-status">Generating notes…</p>
-              ) : null}
-              {view === 'notes' && summaryText ? <p className="modal-prose">{summaryText}</p> : null}
-              {view === 'original' ? <pre className="modal-content">{displayedText}</pre> : null}
+              <pre className="modal-content">{displayedText}</pre>
             </>
           ) : null}
         </section>
