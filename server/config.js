@@ -18,7 +18,7 @@ export const DEFAULT_VOICE = 'santa';
 export const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 
-export const OCR_BACKEND = 'openai_compat'; // 'openai' | 'llmproxy' | 'openai_compat'
+export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai_compat'; // 'openai' | 'llmproxy' | 'openai_compat'
 export const LLMPROXY_ENDPOINT =
   process.env.LLMPROXY_ENDPOINT || 'http://myserver.home:11434/api/generate';
 export const LLMPROXY_MODEL = 'ministral-3:14b';
