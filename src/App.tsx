@@ -135,6 +135,11 @@ export default function App() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorChapterNumber, setEditorChapterNumber] = useState<number | null>(null);
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
+  const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
+    fullText: string;
+    startIndex: number;
+    key: string;
+  } | null>(null);
   const [viewMode, setViewMode] = useState<'pages' | 'text'>('pages');
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
   const [uploadingChapter, setUploadingChapter] = useState(false);
@@ -802,6 +807,22 @@ export default function App() {
   );
 
   const handlePlayStream = useCallback(async () => {
+    if (isTextBook) {
+      if (!bookId || chapterCount === 0) {
+        showToast('No chapter available to stream', 'error');
+        return;
+      }
+      if (!firstChapterParagraph) {
+        showToast('No chapter text available to stream', 'error');
+        return;
+      }
+      await startStreamSequence(
+        firstChapterParagraph.fullText,
+        firstChapterParagraph.startIndex,
+        firstChapterParagraph.key
+      );
+      return;
+    }
     if (!currentImage) {
       return;
     }
@@ -814,7 +835,22 @@ export default function App() {
     stopAudio();
     stopStreamSequence();
     await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
-  }, [currentImage, currentText, fetchPageText, showToast, startStream, stopAudio, stopStreamSequence, streamVoice]);
+  }, [
+    isTextBook,
+    bookId,
+    chapterCount,
+    firstChapterParagraph,
+    currentImage,
+    currentText,
+    fetchPageText,
+    showToast,
+    startStream,
+    startStreamSequence,
+    stopAudio,
+    stopStreamSequence,
+    streamVoice
+  ]);
+
 
   const handlePlayChapterParagraph = useCallback(
     async (payload: { fullText: string; startIndex: number; key: string }) => {
@@ -1389,6 +1425,7 @@ export default function App() {
                     setEditorOpen(true);
                   }}
                   refreshToken={chapterViewRefresh}
+                  onFirstParagraphReady={setFirstChapterParagraph}
                   onPlayParagraph={handlePlayChapterParagraph}
               />
             )}

@@ -13,6 +13,7 @@ interface ChapterViewerProps {
   allowEdit: boolean;
   onEditChapter: () => void;
   refreshToken?: number;
+  onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
 }
 
@@ -52,6 +53,7 @@ export default function ChapterViewer({
   allowEdit,
   onEditChapter,
   refreshToken = 0,
+  onFirstParagraphReady,
   onPlayParagraph,
 }: ChapterViewerProps) {
   const [chapterText, setChapterText] = useState('');
@@ -102,7 +104,8 @@ export default function ChapterViewer({
         if (canceled) {
           return;
         }
-        setChapterText(text.trim());
+        const trimmed = text.trim();
+        setChapterText(trimmed);
       })
       .catch((err: Error & { missingFile?: string }) => {
         if (canceled) {
@@ -122,6 +125,29 @@ export default function ChapterViewer({
       canceled = true;
     };
   }, [bookId, chapterNumber, refreshToken, localRefreshToken]);
+
+  useEffect(() => {
+    if (!chapterText || !chapterNumber) {
+      onFirstParagraphReady(null);
+      return;
+    }
+    const paragraphs = chapterText
+      .split(/\n\s*\n/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (paragraphs.length === 0) {
+      onFirstParagraphReady(null);
+      return;
+    }
+    const firstParagraph = paragraphs[0];
+    const startIndex = chapterText.indexOf(firstParagraph);
+    const paragraphKey = `chapter-${chapterNumber}-${hashText(firstParagraph)}-${startIndex}`;
+    onFirstParagraphReady({
+      fullText: chapterText,
+      startIndex: Math.max(0, startIndex),
+      key: paragraphKey
+    });
+  }, [chapterNumber, chapterText, onFirstParagraphReady]);
   const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !pageRange || generating) {
