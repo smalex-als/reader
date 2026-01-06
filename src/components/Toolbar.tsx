@@ -229,7 +229,7 @@ export default function Toolbar({
             <div className="toolbar-nav-row">
               <button
                 type="button"
-                className="button toolbar-nav-toc"
+                className="button"
                 onClick={onOpenToc}
                 disabled={controlsDisabled}
               >
@@ -255,22 +255,54 @@ export default function Toolbar({
         {viewMode === 'pages' ? (
           <>
             <div className="toolbar-group">
-              <span className="toolbar-group-title">Zoom</span>
-              <button type="button" className="button" onClick={onZoomOut} disabled={controlsDisabled}>
-                Zoom -
-              </button>
-              <button type="button" className="button" onClick={onZoomIn} disabled={controlsDisabled}>
-                Zoom +
-              </button>
-              <button type="button" className="button" onClick={onResetZoom} disabled={controlsDisabled}>
-                Reset
-              </button>
-              <button type="button" className="button" onClick={onFitWidth} disabled={controlsDisabled}>
-                Fit Width
-              </button>
-              <button type="button" className="button" onClick={onFitHeight} disabled={controlsDisabled}>
-                Fit Height
-              </button>
+          <span className="toolbar-group-title">Zoom</span>
+          <div className="toolbar-zoom-row">
+            <button
+              type="button"
+              className="button"
+              onClick={onZoomOut}
+              disabled={controlsDisabled}
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={onZoomIn}
+              disabled={controlsDisabled}
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={onResetZoom}
+              disabled={controlsDisabled}
+              aria-label="Reset zoom"
+            >
+              100%
+            </button>
+          </div>
+          <button
+            type="button"
+            className="button"
+            onClick={onFitWidth}
+            disabled={controlsDisabled}
+            aria-label="Fit width"
+          >
+            ↔
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onFitHeight}
+            disabled={controlsDisabled}
+            aria-label="Fit height"
+          >
+            ↕
+          </button>
               <span className="toolbar-readout">Zoom: {(zoom * 100).toFixed(0)}%</span>
             </div>
 

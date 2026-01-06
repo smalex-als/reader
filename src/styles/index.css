@@ -172,16 +172,23 @@ body {
   width: 100%;
 }
 
+.toolbar-nav-row .button {
+  min-height: 34px;
+  line-height: 1;
+}
+
+.toolbar-zoom-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 
 .toolbar-nav-row-full .toolbar-goto {
   flex: 1;
   min-width: 120px;
 }
 
-.toolbar-nav-toc {
-  min-width: 32px;
-  padding: 0.25rem 0.5rem;
-}
 
 
 .toolbar-nav-actions {
