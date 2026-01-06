@@ -20,7 +20,8 @@ Back end (`server.js`)
 - `GET /api/books`: list immediate subdirectories of `./data` (sorted, case-insensitive, numeric-aware) and return `{ books: string[] }`.
 - `GET /api/books/:id/manifest`: list image files (png/jpg/jpeg/gif/webp) inside the book directory; return `{ book, manifest: string[] }` with `/data/...` URLs.
 - `GET /api/page-text?image=/data/...`: if matching `.txt` file exists and `skipCache` is not set, return `{ source: 'file', text }`. Otherwise generate OCR text, persist `.txt`, and return `{ source: 'ai', text }`.
-- OCR backend: default `llmproxy` that POSTs to `LLMPROXY_ENDPOINT` with `TEXT_PROMPT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`. Alternate backend `openai` runs `gpt-5.2` vision with `TEXT_PROMPT` (requires `OPENAI_API_KEY`).
+- OCR backend: default `llmproxy` that POSTs to `LLMPROXY_ENDPOINT` with `TEXT_PROMPT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`. Alternate backend `openai` runs `gpt-5.2` vision with `TEXT_PROMPT` (requires `OPENAI_API_KEY`). Use `openai_compat` for OpenAI-compatible endpoints with `OCR_OPENAI_BASE_URL` and `OCR_OPENAI_MODEL`.
+- OCR prompts can be model- or backend-specific: add `server/prompts/text.<model>.txt` or `text.<backend>.txt` (normalized to lowercase with non-alphanumerics replaced by `_`). Falls back to `text.txt`.
 - `POST /api/page-audio`: accept JSON `{ image, voice? }`, validate under `/data`, reuse existing `.mp3` or call OpenAI TTS (`gpt-4o-mini-tts`) using a default "santa" profile unless another valid voice is requested. Load or generate the corresponding page text server-side, save generated audio alongside the image, and return `{ source:'ai'|'file', url }`.
 - `POST /api/upload/pdf`: accept multipart PDF uploads, convert to JPEG pages with `pdftoppm`, and create a new book directory.
 - `POST /api/books/:id/print`: accept `{ pages: string[] }`, create a PDF from PNG/JPEG images (max 10 pages).

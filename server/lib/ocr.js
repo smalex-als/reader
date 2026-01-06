@@ -7,15 +7,16 @@ import {
   LLMPROXY_ENDPOINT,
   LLMPROXY_MODEL,
   OCR_BACKEND,
-  TEXT_PROMPT
+  OCR_OPENAI_MODEL,
+  getTextPrompt
 } from '../config.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
 import { fetchLlmproxy } from './llmproxy.js';
 import { resolveDataUrl } from './paths.js';
-import { getOpenAI } from './openai.js';
+import { getOcrOpenAI, getOpenAI } from './openai.js';
 
-async function extractTextFromLlmproxy(absolute) {
+async function extractTextFromLlmproxy(absolute, prompt) {
   const buffer = await fs.readFile(absolute);
   const base64 = buffer.toString('base64');
 
@@ -27,7 +28,7 @@ async function extractTextFromLlmproxy(absolute) {
     },
     body: JSON.stringify({
       model: LLMPROXY_MODEL,
-      prompt: TEXT_PROMPT,
+      prompt,
       images: [base64],
       stream: false
     })
@@ -76,8 +77,18 @@ export async function loadPageText(imageUrl, options = {}) {
   }
 
   let text = '';
+  const prompt = getTextPrompt({
+    backend: OCR_BACKEND,
+    model:
+      OCR_BACKEND === 'llmproxy'
+        ? LLMPROXY_MODEL
+        : OCR_BACKEND === 'openai'
+          ? 'gpt-5.2'
+          : OCR_OPENAI_MODEL
+  });
+
   if (OCR_BACKEND === 'llmproxy') {
-    text = await extractTextFromLlmproxy(absolute);
+    text = await extractTextFromLlmproxy(absolute, prompt);
   } else if (OCR_BACKEND === 'openai') {
     const openai = getOpenAI();
     const buffer = await fs.readFile(absolute);
@@ -91,7 +102,7 @@ export async function loadPageText(imageUrl, options = {}) {
           content: [
             {
               type: 'input_text',
-              text: TEXT_PROMPT
+              text: prompt
             },
             {
               type: 'input_image',
@@ -106,6 +117,28 @@ export async function loadPageText(imageUrl, options = {}) {
       response.output_text?.trim() ||
       response?.output?.[0]?.content?.[0]?.text?.trim() ||
       '';
+  } else if (OCR_BACKEND === 'openai_compat') {
+    const openai = getOcrOpenAI();
+    const buffer = await fs.readFile(absolute);
+    const base64 = buffer.toString('base64');
+
+    const response = await openai.chat.completions.create({
+      model: OCR_OPENAI_MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: { url: `data:${mimeType};base64,${base64}` }
+            }
+          ]
+        }
+      ]
+    });
+
+    text = response?.choices?.[0]?.message?.content?.trim() || '';
   } else {
     throw createHttpError(500, `Unknown OCR backend: ${OCR_BACKEND}`);
   }

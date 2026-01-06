@@ -55,7 +55,6 @@ async function generateInsightsFromText(text) {
 
   const payload = await response.json();
   // eslint-disable-next-line no-console
-  console.log('Insights LLM response', payload);
   const rawResponse = payload?.response;
   const raw = typeof rawResponse === 'string' ? rawResponse.trim() : '';
   const { summary, keyPoints } = parsePlainInsights(raw);

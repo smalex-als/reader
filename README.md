@@ -65,7 +65,10 @@ data/
 Server environment variables:
 
 - `OPENAI_API_KEY` (required for OCR if `OCR_BACKEND` is `openai`, TOC generation,
-  and TTS audio generation)
+  and TTS audio generation; used as a fallback for `openai_compat`)
+- `OCR_OPENAI_BASE_URL` (required for OCR if `OCR_BACKEND` is `openai_compat`)
+- `OCR_OPENAI_MODEL` (default `deepseek-ocr` for `openai_compat`)
+- `OCR_OPENAI_API_KEY` (optional; overrides `OPENAI_API_KEY` for `openai_compat`)
 - `HOST` (default `0.0.0.0`)
 - `PORT` (default `3000`)
 - `HTTPS_KEY_PATH` and `HTTPS_CERT_PATH` to enable HTTPS
@@ -78,7 +81,11 @@ Front-end environment variables:
 Notes:
 
 - OCR backend is configured in `server/config.js` via `OCR_BACKEND`. The default is `llmproxy`, configured
-  via `LLMPROXY_ENDPOINT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`.
+  via `LLMPROXY_ENDPOINT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`. Use `openai` for OpenAI vision, or
+  `openai_compat` for OpenAI-compatible endpoints with `OCR_OPENAI_BASE_URL`.
+- OCR prompt files live in `server/prompts/`. You can add model- or backend-specific prompts using
+  `text.<model>.txt` or `text.<backend>.txt` (sanitized to lowercase; non-alphanumerics become `_`), with
+  `text.txt` as the fallback.
 - Prompt text lives in `server/prompts/` for easy editing and review.
 - PDF upload uses `pdftoppm` from Poppler. Install it before using `/api/upload/pdf`.
 
