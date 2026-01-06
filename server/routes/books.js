@@ -1,6 +1,6 @@
 import express from 'express';
 import { derivePrintFilename, createPdfFromImages } from '../lib/pdf.js';
-import { listBooks, loadManifest } from '../lib/books.js';
+import { deleteBook, listBooks, loadManifest } from '../lib/books.js';
 import { normalizeBookId } from '../lib/paths.js';
 import { createHttpError } from '../lib/errors.js';
 import { asyncHandler } from '../lib/async.js';
@@ -25,6 +25,13 @@ router.get('/api/books/:id/manifest', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const manifest = await loadManifest(bookId);
   res.json({ book: bookId, manifest });
+}));
+
+router.delete('/api/books/:id', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  await deleteBook(bookId);
+  const books = await listBooks();
+  res.json({ book: bookId, books });
 }));
 
 router.post('/api/books/:id/print', asyncHandler(async (req, res) => {

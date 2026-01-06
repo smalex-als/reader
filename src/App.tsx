@@ -499,6 +499,41 @@ export default function App() {
     [bookId, manifest.length, showToast, tocEntries]
   );
 
+  const handleDeleteBook = useCallback(
+    async (targetBookId: string) => {
+      const confirmed = window.confirm(
+        `Delete "${targetBookId}" and all of its files? This cannot be undone.`
+      );
+      if (!confirmed) {
+        return;
+      }
+      try {
+        const data = await fetchJson<{ book: string; books: string[] }>(
+          `/api/books/${encodeURIComponent(targetBookId)}`,
+          { method: 'DELETE' }
+        );
+        setBooks(data.books);
+        showToast(`Deleted ${data.book}`, 'success');
+
+        if (bookId === targetBookId) {
+          if (data.books.length === 0) {
+            setBookId(null);
+            setBookModalOpen(true);
+            showToast('No books found. Add files to /data to begin.', 'info');
+          } else {
+            const fallback = data.books[0];
+            setBookId(fallback);
+            saveLastBook(fallback);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        showToast('Unable to delete book', 'error');
+      }
+    },
+    [bookId, showToast]
+  );
+
   useEffect(() => {
     (async () => {
       try {
@@ -1149,6 +1184,7 @@ export default function App() {
               saveLastBook(nextBook);
               closeBookModal();
             }}
+            onDelete={handleDeleteBook}
             onClose={closeBookModal}
         />
         <HelpModal open={helpOpen} hotkeys={hotkeys} onClose={closeHelp} />

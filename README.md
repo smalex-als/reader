@@ -91,6 +91,7 @@ Notes:
 ## API highlights
 
 - `GET /api/books`
+- `DELETE /api/books/:id`
 - `GET /api/books/:id/manifest`
 - `GET /api/page-text?image=/data/...`
 - `POST /api/page-audio`

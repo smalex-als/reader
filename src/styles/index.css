@@ -966,6 +966,12 @@ body {
   gap: 0.5rem;
 }
 
+.book-select-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .book-select-button {
   width: 100%;
   padding: 0.75rem 0.9rem;
@@ -980,6 +986,10 @@ body {
   cursor: pointer;
 }
 
+.book-select-row .book-select-button {
+  flex: 1;
+}
+
 .book-select-button:hover {
   background: rgba(255, 255, 255, 0.1);
 }
@@ -992,6 +1002,16 @@ body {
 .book-select-marker {
   font-size: 0.85rem;
   color: rgba(0, 200, 120, 0.9);
+}
+
+.book-select-delete {
+  border: 1px solid rgba(255, 120, 120, 0.35);
+  color: rgba(255, 120, 120, 0.9);
+  white-space: nowrap;
+}
+
+.book-select-delete:hover:not(:disabled) {
+  background: rgba(255, 120, 120, 0.12);
 }
 
 .print-options {

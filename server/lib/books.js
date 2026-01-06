@@ -47,3 +47,8 @@ export async function loadManifest(bookId) {
 
   return manifest;
 }
+
+export async function deleteBook(bookId) {
+  const directory = await assertBookDirectory(bookId);
+  await fs.rm(directory, { recursive: true, force: true });
+}

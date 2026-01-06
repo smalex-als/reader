@@ -3,10 +3,18 @@ interface BookSelectModalProps {
   books: string[];
   currentBook: string | null;
   onSelect: (bookId: string) => void;
+  onDelete: (bookId: string) => void;
   onClose: () => void;
 }
 
-export default function BookSelectModal({ open, books, currentBook, onSelect, onClose }: BookSelectModalProps) {
+export default function BookSelectModal({
+  open,
+  books,
+  currentBook,
+  onSelect,
+  onDelete,
+  onClose
+}: BookSelectModalProps) {
   if (!open) {
     return null;
   }
@@ -29,14 +37,24 @@ export default function BookSelectModal({ open, books, currentBook, onSelect, on
                 const active = currentBook === book;
                 return (
                   <li key={book}>
-                    <button
-                      type="button"
-                      className={`book-select-button ${active ? 'book-select-button-active' : ''}`}
-                      onClick={() => onSelect(book)}
-                    >
-                      {book}
-                      {active ? <span className="book-select-marker">Current</span> : null}
-                    </button>
+                    <div className="book-select-row">
+                      <button
+                        type="button"
+                        className={`book-select-button ${active ? 'book-select-button-active' : ''}`}
+                        onClick={() => onSelect(book)}
+                      >
+                        {book}
+                        {active ? <span className="book-select-marker">Current</span> : null}
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-ghost book-select-delete"
+                        onClick={() => onDelete(book)}
+                        aria-label={`Delete ${book}`}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </li>
                 );
               })}
