@@ -35,8 +35,6 @@ interface ToolbarProps {
   streamVoice: string;
   streamVoiceOptions: readonly string[];
   onStreamVoiceChange: (voice: string) => void;
-  onUploadPdf: () => void;
-  uploadingPdf: boolean;
   onPlayStream: () => void;
   onStopStream: () => void;
   gotoInputRef: React.RefObject<HTMLInputElement>;
@@ -91,8 +89,6 @@ export default function Toolbar({
   streamVoice,
   streamVoiceOptions,
   onStreamVoiceChange,
-  onUploadPdf,
-  uploadingPdf,
   onPlayStream,
   onStopStream,
   gotoInputRef,
@@ -161,25 +157,15 @@ export default function Toolbar({
     <div className="toolbar">
       <div className="toolbar-row">
         <div className="toolbar-group">
-          <span className="toolbar-readout">Book: {currentBook ?? 'None selected'}</span>
+          <span className="toolbar-group-title">Library</span>
+          <span className="toolbar-readout">{currentBook ?? 'None selected'}</span>
           <button type="button" className="button" onClick={onOpenBookModal}>
             {currentBook ? 'Change Book' : 'Select Book'}
-          </button>
-          <button type="button" className="button" onClick={onUploadPdf} disabled={uploadingPdf}>
-            {uploadingPdf ? 'Uploading…' : 'Upload PDF'}
           </button>
         </div>
 
         <div className="toolbar-group">
-          <button type="button" className="button" onClick={onPrev} disabled={manifestLength === 0}>
-            Prev
-          </button>
-          <button type="button" className="button" onClick={onNext} disabled={manifestLength === 0}>
-            Next
-          </button>
-          <span className="toolbar-counter">
-            Page {manifestLength === 0 ? 0 : currentPage + 1} / {manifestLength}
-          </span>
+          <span className="toolbar-group-title">Mode</span>
           <div className="segmented" role="tablist" aria-label="Reading mode">
             <button
               type="button"
@@ -202,110 +188,159 @@ export default function Toolbar({
               Text
             </button>
           </div>
-          <label className="toolbar-field toolbar-goto">
-            Go to
-            <input
-              ref={gotoInputRef}
-              min={1}
-              max={Math.max(1, manifestLength)}
-              type="number"
-              className="input"
-              placeholder={manifestLength === 0 ? '—' : String(currentPage + 1)}
-              disabled={manifestLength === 0}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  const desired = Number.parseInt(event.currentTarget.value, 10);
-                  if (Number.isInteger(desired)) {
-                    onGoTo(desired - 1);
-                  }
-                }
-              }}
-            />
-          </label>
-        </div>
-      </div>
-
-      <div className="toolbar-row">
-        <div className="toolbar-group">
-          <button type="button" className="button" onClick={onZoomOut} disabled={controlsDisabled}>
-            Zoom -
-          </button>
-          <button type="button" className="button" onClick={onZoomIn} disabled={controlsDisabled}>
-            Zoom +
-          </button>
-          <button type="button" className="button" onClick={onResetZoom} disabled={controlsDisabled}>
-            Reset
-          </button>
-          <button type="button" className="button" onClick={onFitWidth} disabled={controlsDisabled}>
-            Fit Width
-          </button>
-          <button type="button" className="button" onClick={onFitHeight} disabled={controlsDisabled}>
-            Fit Height
-          </button>
-          <span className="toolbar-readout">Zoom: {(zoom * 100).toFixed(0)}%</span>
         </div>
 
         <div className="toolbar-group">
-          <button type="button" className="button" onClick={onRotate} disabled={controlsDisabled}>
-            Rotate 90°
-          </button>
-          <span className="toolbar-readout">{rotation}°</span>
-          <button
-            type="button"
-            className={`button ${invert ? 'button-active' : ''}`}
-            onClick={onInvert}
-            disabled={controlsDisabled}
-          >
-            Invert
-          </button>
-        </div>
-      </div>
-
-      <div className="toolbar-row">
-        <div className="toolbar-group">
-          <span className="toolbar-field">
-            Brightness
-            <input
-              type="range"
-              className="slider"
-              min={50}
-              max={200}
-              value={brightness}
-              disabled={controlsDisabled}
-              onChange={(event) => onBrightness(Number(event.target.value))}
-            />
-          </span>
-          <span className="toolbar-field">
-            Contrast
-            <input
-              type="range"
-              className="slider"
-              min={50}
-              max={200}
-              value={contrast}
-              disabled={controlsDisabled}
-              onChange={(event) => onContrast(Number(event.target.value))}
-            />
-          </span>
-        </div>
-
-        <div className="toolbar-group">
-          <button
-            type="button"
-            className="button"
-            onClick={audioHandler}
-            disabled={controlsDisabled || audioBusy}
-          >
-            {audioLabel}
-          </button>
-          {showAudioStatus && (
-            <div className="toolbar-status" role="status" aria-live="polite">
-              {audioBusy && <span className="toolbar-spinner" aria-hidden />}
-              <span className="toolbar-status-text">{audioStatusMessage}</span>
+          <span className="toolbar-group-title">Navigation</span>
+          <div className="toolbar-nav toolbar-nav-stack">
+            <div className="toolbar-nav-actions">
+              <button type="button" className="button" onClick={onPrev} disabled={manifestLength === 0}>
+                &lt;
+              </button>
+              <span className="toolbar-counter toolbar-nav-counter">
+                {manifestLength === 0 ? '0 / 0' : `${currentPage + 1} / ${manifestLength}`}
+              </span>
+              <button type="button" className="button" onClick={onNext} disabled={manifestLength === 0}>
+                &gt;
+              </button>
             </div>
-          )}
+            <div className="toolbar-nav-row toolbar-nav-row-full">
+              <label className="toolbar-field toolbar-goto">
+                Go to
+                <input
+                  ref={gotoInputRef}
+                  min={1}
+                  max={Math.max(1, manifestLength)}
+                  type="number"
+                  className="input"
+                  placeholder={manifestLength === 0 ? '—' : String(currentPage + 1)}
+                  disabled={manifestLength === 0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      const desired = Number.parseInt(event.currentTarget.value, 10);
+                      if (Number.isInteger(desired)) {
+                        onGoTo(desired - 1);
+                      }
+                    }
+                }}
+              />
+              </label>
+            </div>
+            <div className="toolbar-nav-row">
+              <button
+                type="button"
+                className="button toolbar-nav-toc"
+                onClick={onOpenToc}
+                disabled={controlsDisabled}
+              >
+                ☰
+              </button>
+              <button
+                type="button"
+                className={`button ${isBookmarked ? 'button-active' : ''}`}
+                onClick={onToggleBookmark}
+                disabled={controlsDisabled}
+              >
+                {isBookmarked ? '★' : '☆'}
+              </button>
+              <button type="button" className="button" onClick={onShowBookmarks} disabled={!currentBook}>
+                ★ ({bookmarksCount})
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="toolbar-row">
+        {viewMode === 'pages' ? (
+          <>
+            <div className="toolbar-group">
+              <span className="toolbar-group-title">Zoom</span>
+              <button type="button" className="button" onClick={onZoomOut} disabled={controlsDisabled}>
+                Zoom -
+              </button>
+              <button type="button" className="button" onClick={onZoomIn} disabled={controlsDisabled}>
+                Zoom +
+              </button>
+              <button type="button" className="button" onClick={onResetZoom} disabled={controlsDisabled}>
+                Reset
+              </button>
+              <button type="button" className="button" onClick={onFitWidth} disabled={controlsDisabled}>
+                Fit Width
+              </button>
+              <button type="button" className="button" onClick={onFitHeight} disabled={controlsDisabled}>
+                Fit Height
+              </button>
+              <span className="toolbar-readout">Zoom: {(zoom * 100).toFixed(0)}%</span>
+            </div>
+
+            <div className="toolbar-group">
+              <span className="toolbar-group-title">Image</span>
+              <button type="button" className="button" onClick={onRotate} disabled={controlsDisabled}>
+                Rotate 90°
+              </button>
+              <span className="toolbar-readout">{rotation}°</span>
+              <button
+                type="button"
+                className={`button ${invert ? 'button-active' : ''}`}
+                onClick={onInvert}
+                disabled={controlsDisabled}
+              >
+                Invert
+              </button>
+              <span className="toolbar-field">
+                Brightness
+                <input
+                  type="range"
+                  className="slider"
+                  min={50}
+                  max={200}
+                  value={brightness}
+                  disabled={controlsDisabled}
+                  onChange={(event) => onBrightness(Number(event.target.value))}
+                />
+              </span>
+              <span className="toolbar-field">
+                Contrast
+                <input
+                  type="range"
+                  className="slider"
+                  min={50}
+                  max={200}
+                  value={contrast}
+                  disabled={controlsDisabled}
+                  onChange={(event) => onContrast(Number(event.target.value))}
+                />
+              </span>
+            </div>
+          </>
+        ) : null}
+      </div>
+
+      <div className="toolbar-row">
+        {false ? (
+          <div className="toolbar-group">
+            <span className="toolbar-group-title">Audio</span>
+            <button
+              type="button"
+              className="button"
+              onClick={audioHandler}
+              disabled={controlsDisabled || audioBusy}
+            >
+              {audioLabel}
+            </button>
+            {showAudioStatus && (
+              <div className="toolbar-status" role="status" aria-live="polite">
+                {audioBusy && <span className="toolbar-spinner" aria-hidden />}
+                <span className="toolbar-status-text">{audioStatusMessage}</span>
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        <div className="toolbar-group">
+          <span className="toolbar-group-title">Stream</span>
           <label className="toolbar-field">
-            Stream Voice
             <select
               className="select"
               value={streamVoice}
@@ -322,6 +357,10 @@ export default function Toolbar({
           <button type="button" className="button" onClick={streamHandler} disabled={controlsDisabled}>
             {streamLabel}
           </button>
+        </div>
+
+        <div className="toolbar-group">
+          <span className="toolbar-group-title">Text & TOC</span>
           <button
             type="button"
             className="button"
@@ -339,20 +378,6 @@ export default function Toolbar({
           >
             ⧉ Copy Text
           </button>
-          <button type="button" className="button" onClick={onOpenToc} disabled={controlsDisabled}>
-            Table of Contents
-          </button>
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={onOpenTocManage}
-            disabled={controlsDisabled}
-          >
-            Edit TOC
-          </button>
-          <button type="button" className="button" onClick={onOpenPrint} disabled={controlsDisabled}>
-            Print PDF
-          </button>
           <button type="button" className="button" onClick={onOpenOcrQueue} disabled={controlsDisabled}>
             Batch OCR
           </button>
@@ -364,20 +389,19 @@ export default function Toolbar({
           )}
           <button
             type="button"
-            className={`button ${isBookmarked ? 'button-active' : ''}`}
-            onClick={onToggleBookmark}
+            className="button button-secondary"
+            onClick={onOpenTocManage}
             disabled={controlsDisabled}
           >
-            {isBookmarked ? 'Bookmarked' : 'Add Bookmark'}
+            Edit TOC
           </button>
-          <button
-            type="button"
-            className="button"
-            onClick={onShowBookmarks}
-            disabled={!currentBook}
-          >
-            Bookmarks ({bookmarksCount})
+          <button type="button" className="button" onClick={onOpenPrint} disabled={controlsDisabled}>
+            Print PDF
           </button>
+        </div>
+
+        <div className="toolbar-group">
+          <span className="toolbar-group-title">System</span>
           <button type="button" className="button" onClick={onOpenHelp}>
             Help / Hotkeys
           </button>

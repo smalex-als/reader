@@ -1113,8 +1113,6 @@ export default function App() {
               streamVoice={streamVoice}
               streamVoiceOptions={STREAM_VOICE_OPTIONS}
               onStreamVoiceChange={handleStreamVoiceChange}
-              onUploadPdf={handleTriggerPdfUpload}
-              uploadingPdf={uploadingPdf}
               onPlayStream={() => void handlePlayStream()}
               onStopStream={handleStopStream}
               gotoInputRef={gotoInputRef}
@@ -1185,6 +1183,8 @@ export default function App() {
               closeBookModal();
             }}
             onDelete={handleDeleteBook}
+            onUploadPdf={handleTriggerPdfUpload}
+            uploadingPdf={uploadingPdf}
             onClose={closeBookModal}
         />
         <HelpModal open={helpOpen} hotkeys={hotkeys} onClose={closeHelp} />

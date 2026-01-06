@@ -135,6 +135,75 @@ body {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.toolbar-group-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin-right: 0.15rem;
+}
+
+.toolbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.toolbar-nav-stack {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.toolbar-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.toolbar-nav-row-full {
+  width: 100%;
+}
+
+
+.toolbar-nav-row-full .toolbar-goto {
+  flex: 1;
+  min-width: 120px;
+}
+
+.toolbar-nav-toc {
+  min-width: 32px;
+  padding: 0.25rem 0.5rem;
+}
+
+
+.toolbar-nav-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toolbar-nav-counter {
+  min-width: 70px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8rem;
+}
+
+.toolbar-nav-actions .button {
+  padding: 0.25rem 0.5rem;
+  min-width: 28px;
 }
 
 .toolbar-status {
@@ -177,6 +246,7 @@ body {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.6);
 }
+
 
 .button {
   padding: 0.45rem 0.9rem;

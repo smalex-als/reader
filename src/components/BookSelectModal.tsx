@@ -4,6 +4,8 @@ interface BookSelectModalProps {
   currentBook: string | null;
   onSelect: (bookId: string) => void;
   onDelete: (bookId: string) => void;
+  onUploadPdf: () => void;
+  uploadingPdf: boolean;
   onClose: () => void;
 }
 
@@ -13,6 +15,8 @@ export default function BookSelectModal({
   currentBook,
   onSelect,
   onDelete,
+  onUploadPdf,
+  uploadingPdf,
   onClose
 }: BookSelectModalProps) {
   if (!open) {
@@ -62,6 +66,9 @@ export default function BookSelectModal({
           )}
         </section>
         <footer className="modal-footer">
+          <button type="button" className="button" onClick={onUploadPdf} disabled={uploadingPdf}>
+            {uploadingPdf ? 'Uploading…' : 'Upload PDF'}
+          </button>
           <button type="button" className="button button-primary" onClick={onClose}>
             Done
           </button>
