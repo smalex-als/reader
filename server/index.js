@@ -27,7 +27,16 @@ export function createApp() {
 
   app.use(express.json({ limit: '5mb' }));
   app.use(express.urlencoded({ extended: true }));
-  app.use('/data', express.static(DATA_DIR));
+  app.use(
+    '/data',
+    express.static(DATA_DIR, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.txt')) {
+          res.setHeader('Cache-Control', 'no-store');
+        }
+      }
+    })
+  );
   app.use('/data', (req, res, next) => {
     if (req.method === 'GET' || req.method === 'HEAD') {
       res.status(404).end();
