@@ -4,7 +4,7 @@ import type { StreamState } from '@/types/app';
 const SAMPLE_RATE = 24_000;
 const SILENT_FRAME_LIMIT = 4;
 const STREAM_SERVER = 'https://myserver.home:3000';
-export const DEFAULT_STREAM_VOICE = 'en-Davis_man';
+export const DEFAULT_STREAM_VOICE = 'en-Mike_man';
 
 const INITIAL_STREAM_STATE: StreamState = {
   status: 'idle',

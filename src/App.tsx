@@ -233,6 +233,7 @@ export default function App() {
         { keys: 'X', action: 'Toggle page text' },
         { keys: 'V', action: 'Toggle view mode' },
         { keys: 'P', action: 'Play/Pause audio' },
+        { keys: 'S', action: 'Play/Stop stream audio' },
         { keys: 'G', action: 'Focus Go To input' },
         { keys: 'F', action: 'Toggle fullscreen' },
         { keys: 'B', action: 'Open book selector' },
@@ -941,6 +942,14 @@ export default function App() {
             void playAudio();
           }
           break;
+        case 's':
+          event.preventDefault();
+          if (streamState.status === 'streaming' || streamState.status === 'connecting') {
+            handleStopStream();
+          } else {
+            void handlePlayStream();
+          }
+          break;
         case 'g':
           event.preventDefault();
           gotoInputRef.current?.focus();
@@ -996,6 +1005,8 @@ export default function App() {
     stopAudio,
     stopStream,
     stopStreamSequence,
+    handlePlayStream,
+    handleStopStream,
     closeTextModal,
     textModalOpen,
     updateRotation,
@@ -1013,6 +1024,7 @@ export default function App() {
     closeBookmarks,
     closePrintModal,
     ocrQueueOpen,
+    streamState.status,
     tocOpen,
     tocManageOpen
   ]);
