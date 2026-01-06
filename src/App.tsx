@@ -1,4 +1,3 @@
-import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toolbar from '@/components/Toolbar';
 import Viewer from '@/components/Viewer';
@@ -118,6 +117,8 @@ export default function App() {
   const [books, setBooks] = useState<string[]>([]);
   const [bookId, setBookId] = useState<string | null>(loadLastBook());
   const [manifest, setManifest] = useState<string[]>([]);
+  const [bookType, setBookType] = useState<'image' | 'text'>('image');
+  const [chapterCount, setChapterCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
   const [bookModalOpen, setBookModalOpen] = useState(false);
@@ -132,6 +133,7 @@ export default function App() {
   const [chapterGeneratingIndex, setChapterGeneratingIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'pages' | 'text'>('pages');
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
+  const [uploadingChapter, setUploadingChapter] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
   const {
@@ -149,12 +151,13 @@ export default function App() {
 
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const gotoInputRef = useRef<HTMLInputElement | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement | null>(null);
 
   const { toast, showToast, dismiss } = useToast();
   const fullscreenControls = useFullscreen(viewerShellRef);
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
+  const isTextBook = bookType === 'text';
+  const navigationCount = isTextBook ? chapterCount : manifest.length;
   const currentImage = manifest[currentPage] ?? null;
   const sortedTocEntries = useMemo(() => {
     return [...tocEntries]
@@ -175,9 +178,10 @@ export default function App() {
   const nextChapterEntry =
     currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex + 1] : null;
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
-  const chapterRange = currentChapterEntry
-    ? { start: currentChapterEntry.page, end: nextChapterEntry?.page ?? manifest.length }
-    : null;
+  const chapterRange =
+    !isTextBook && currentChapterEntry
+      ? { start: currentChapterEntry.page, end: nextChapterEntry?.page ?? manifest.length }
+      : null;
 
   const {
     audioState,
@@ -245,10 +249,10 @@ export default function App() {
 
   const renderPage = useCallback(
       (pageIndex: number) => {
-        if (manifest.length === 0) {
+        if (navigationCount === 0) {
           return;
         }
-        const maxIndex = manifest.length - 1;
+        const maxIndex = navigationCount - 1;
         const nextIndex = clamp(pageIndex, 0, maxIndex);
         setCurrentPage(nextIndex);
         setSettings((prev) => ({
@@ -262,16 +266,25 @@ export default function App() {
         resetAudio();
         stopStream();
       },
-      [bookId, manifest.length, resetAudio, setRegeneratedText, stopStream]
+      [bookId, navigationCount, resetAudio, setRegeneratedText, stopStream]
   );
 
-  const handleViewModeChange = useCallback((mode: 'pages' | 'text') => {
-    setViewMode(mode);
-  }, []);
+  const handleViewModeChange = useCallback(
+    (mode: 'pages' | 'text') => {
+      if (isTextBook && mode === 'pages') {
+        return;
+      }
+      setViewMode(mode);
+    },
+    [isTextBook]
+  );
 
   const toggleViewMode = useCallback(() => {
+    if (isTextBook) {
+      return;
+    }
     setViewMode((prev) => (prev === 'pages' ? 'text' : 'pages'));
-  }, []);
+  }, [isTextBook]);
 
   const goToChapterIndex = useCallback(
     (index: number) => {
@@ -571,6 +584,8 @@ export default function App() {
   useEffect(() => {
     if (!bookId) {
       setManifest([]);
+      setBookType('image');
+      setChapterCount(0);
       closeBookmarks();
       setStreamVoice(getDefaultStreamVoice());
       return;
@@ -595,24 +610,43 @@ export default function App() {
 
     (async () => {
       try {
-        const data = await fetchJson<{ book: string; manifest: string[] }>(
-            `/api/books/${encodeURIComponent(bookId)}/manifest`
-        );
-        setManifest(data.manifest);
+        const data = await fetchJson<{
+          book: string;
+          manifest: string[];
+          bookType?: 'image' | 'text';
+          chapterCount?: number;
+        }>(`/api/books/${encodeURIComponent(bookId)}/manifest`);
+        const nextBookType = data.bookType === 'text' ? 'text' : 'image';
+        const nextChapterCount =
+          typeof data.chapterCount === 'number' && Number.isInteger(data.chapterCount)
+            ? data.chapterCount
+            : 0;
+        const nextManifest = Array.isArray(data.manifest) ? data.manifest : [];
+        setBookType(nextBookType);
+        setChapterCount(nextChapterCount);
+        setManifest(nextManifest);
         const storedPage = loadLastPage(bookId);
         const requestedPage = storedPage ?? pendingPageRef.current ?? 0;
-        if (data.manifest.length > 0) {
-          const safePage = clamp(requestedPage, 0, data.manifest.length - 1);
+        const navCount = nextBookType === 'text' ? nextChapterCount : nextManifest.length;
+        if (navCount > 0) {
+          const safePage = clamp(requestedPage, 0, navCount - 1);
           setCurrentPage(safePage);
           pendingPageRef.current = null;
         } else {
           setCurrentPage(0);
         }
-        showToast(`Loaded ${data.manifest.length} pages`, 'success');
+        if (nextBookType === 'text') {
+          setViewMode('text');
+          showToast(`Loaded ${nextChapterCount} chapters`, 'success');
+        } else {
+          showToast(`Loaded ${nextManifest.length} pages`, 'success');
+        }
       } catch (error) {
         console.error(error);
         showToast('Unable to load book manifest', 'error');
         setManifest([]);
+        setBookType('image');
+        setChapterCount(0);
       } finally {
         setLoading(false);
       }
@@ -806,17 +840,74 @@ export default function App() {
     []
   );
 
-  const handleTriggerPdfUpload = useCallback(() => {
-    pdfInputRef.current?.click();
-  }, []);
-
-  const handlePdfSelected = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      event.target.value = '';
-      if (!file) {
+  const handleUploadChapter = useCallback(
+    async (file: File, details: { bookName: string; chapterTitle: string }) => {
+      const bookName = details.bookName.trim();
+      const chapterTitle = details.chapterTitle.trim();
+      const targetBookId = bookName || bookId || '';
+      if (!targetBookId) {
+        showToast('Book name is required for a new text book', 'error');
         return;
       }
+      if (!bookName && bookId && bookType !== 'text') {
+        showToast('Select a text book or enter a new book name', 'error');
+        return;
+      }
+      const isExisting = books.includes(targetBookId);
+      setUploadingChapter(true);
+      try {
+        const formData = new FormData();
+        if (chapterTitle) {
+          formData.append('chapterTitle', chapterTitle);
+        }
+        formData.append('file', file);
+        let response: Response;
+        if (isExisting) {
+          response = await fetch(`/api/books/${encodeURIComponent(targetBookId)}/chapters`, {
+            method: 'POST',
+            body: formData
+          });
+        } else {
+          formData.append('bookName', bookName);
+          response = await fetch('/api/books/text', { method: 'POST', body: formData });
+        }
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.status}`);
+        }
+        const data = (await response.json()) as {
+          book: string;
+          bookType?: 'text';
+          chapterIndex?: number;
+          chapterCount?: number;
+          toc?: TocEntry[];
+        };
+        const newBookId = data.book;
+        setBooks((prev) => {
+          const next = Array.from(new Set([...prev, newBookId]));
+          next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
+          return next;
+        });
+        setBookId(newBookId);
+        setBookType('text');
+        setChapterCount(Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0);
+        setManifest([]);
+        setTocEntries(Array.isArray(data.toc) ? data.toc : []);
+        setCurrentPage(Number.isInteger(data.chapterIndex) ? (data.chapterIndex as number) : 0);
+        setViewMode('text');
+        setBookModalOpen(false);
+        showToast('Chapter uploaded', 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Failed to upload chapter', 'error');
+      } finally {
+        setUploadingChapter(false);
+      }
+    },
+    [bookId, bookType, books, showToast]
+  );
+
+  const handleUploadPdf = useCallback(
+    async (file: File) => {
       setUploadingPdf(true);
       try {
         const formData = new FormData();
@@ -833,8 +924,12 @@ export default function App() {
           return next;
         });
         setBookId(newBookId);
+        setBookType('image');
+        setChapterCount(0);
         setManifest(Array.isArray(data.manifest) ? data.manifest : []);
+        setTocEntries([]);
         setCurrentPage(0);
+        setViewMode('pages');
         setBookModalOpen(false);
         showToast('Book created from PDF', 'success');
       } catch (error) {
@@ -1078,18 +1173,13 @@ export default function App() {
   return (
       <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
         <aside className="sidebar">
-          <input
-              ref={pdfInputRef}
-              type="file"
-              accept="application/pdf"
-              style={{ display: 'none' }}
-              onChange={handlePdfSelected}
-          />
           <Toolbar
               currentBook={bookId}
-              manifestLength={manifest.length}
+              manifestLength={navigationCount}
               currentPage={currentPage}
               viewMode={viewMode}
+              disablePagesMode={isTextBook}
+              disableImageActions={isTextBook}
               onViewModeChange={handleViewModeChange}
               onOpenBookModal={openBookModal}
               onPrev={handlePrev}
@@ -1166,6 +1256,7 @@ export default function App() {
                   chapterTitle={currentChapterEntry?.title ?? null}
                   pageRange={chapterRange}
                   tocLoading={tocLoading}
+                  allowGenerate={!isTextBook}
                   onPlayParagraph={handlePlayChapterParagraph}
               />
             )}
@@ -1195,7 +1286,9 @@ export default function App() {
               closeBookModal();
             }}
             onDelete={handleDeleteBook}
-            onUploadPdf={handleTriggerPdfUpload}
+            onUploadChapter={handleUploadChapter}
+            uploadingChapter={uploadingChapter}
+            onUploadPdf={handleUploadPdf}
             uploadingPdf={uploadingPdf}
             onClose={closeBookModal}
         />
@@ -1238,8 +1331,9 @@ export default function App() {
             loading={tocLoading}
             generating={tocGenerating}
             saving={tocSaving}
-            manifestLength={manifest.length}
+            manifestLength={isTextBook ? chapterCount : manifest.length}
             chapterGeneratingIndex={chapterGeneratingIndex}
+            allowGenerate={!isTextBook}
             onClose={() => setTocManageOpen(false)}
             onGenerate={handleGenerateToc}
             onSave={handleSaveToc}

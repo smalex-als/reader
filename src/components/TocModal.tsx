@@ -8,6 +8,7 @@ interface TocModalProps {
   saving: boolean;
   manifestLength: number;
   chapterGeneratingIndex: number | null;
+  allowGenerate: boolean;
   onClose: () => void;
   onGenerate: () => void;
   onSave: () => void;
@@ -25,6 +26,7 @@ export default function TocModal({
   saving,
   manifestLength,
   chapterGeneratingIndex,
+  allowGenerate,
   onClose,
   onGenerate,
   onSave,
@@ -58,7 +60,7 @@ export default function TocModal({
             <button type="button" className="button" onClick={onAddEntry} disabled={busy}>
               Add Entry
             </button>
-            <button type="button" className="button" onClick={onGenerate} disabled={busy}>
+            <button type="button" className="button" onClick={onGenerate} disabled={busy || !allowGenerate}>
               {generating ? 'Generating…' : 'Generate from OCR'}
             </button>
           </div>
@@ -99,7 +101,7 @@ export default function TocModal({
                   type="button"
                   className="button button-secondary"
                   onClick={() => onGenerateChapter(index)}
-                  disabled={busy || chapterBusy}
+                  disabled={busy || chapterBusy || !allowGenerate}
                 >
                   {chapterGeneratingIndex === index ? 'Generating…' : 'Generate Text'}
                 </button>

@@ -59,7 +59,7 @@ export function createApp() {
         : err.status || 500;
     const message =
       err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
-        ? `PDF too large (max ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))}MB)`
+        ? `File too large (max ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))}MB)`
         : err.message || 'Internal Server Error';
     // eslint-disable-next-line no-console
     console.error('Error handling request', { status, message, stack: err.stack });

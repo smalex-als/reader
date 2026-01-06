@@ -85,6 +85,8 @@ Notes:
 - OCR prompt files live in `server/prompts/`. You can add model- or backend-specific prompts using
   `text.<model>.txt` or `text.<backend>.txt` (sanitized to lowercase; non-alphanumerics become `_`), with
   `text.txt` as the fallback.
+- Text books can be created by uploading chapter files; chapters are stored as `chapter###.txt` and TOC
+  entries are created automatically.
 - Prompt text lives in `server/prompts/` for easy editing and review.
 - PDF upload uses `pdftoppm` from Poppler. Install it before using `/api/upload/pdf`.
 
@@ -93,6 +95,8 @@ Notes:
 - `GET /api/books`
 - `DELETE /api/books/:id`
 - `GET /api/books/:id/manifest`
+- `POST /api/books/text`
+- `POST /api/books/:id/chapters`
 - `GET /api/page-text?image=/data/...`
 - `POST /api/page-audio`
 - `POST /api/upload/pdf`

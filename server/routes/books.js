@@ -1,6 +1,7 @@
 import express from 'express';
+import multer from 'multer';
 import { derivePrintFilename, createPdfFromImages } from '../lib/pdf.js';
-import { deleteBook, listBooks, loadManifest } from '../lib/books.js';
+import { deleteBook, getBookType, listBooks, loadManifest } from '../lib/books.js';
 import { normalizeBookId } from '../lib/paths.js';
 import { createHttpError } from '../lib/errors.js';
 import { asyncHandler } from '../lib/async.js';
@@ -13,8 +14,11 @@ import {
 } from '../lib/bookmarks.js';
 import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
 import { generateChapterText } from '../lib/chapters.js';
+import { MAX_UPLOAD_BYTES } from '../config.js';
+import { addTextChapter, createTextBook, getTextChapterCount } from '../lib/textBooks.js';
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
 
 router.get('/api/books', asyncHandler(async (_req, res) => {
   const books = await listBooks();
@@ -23,8 +27,14 @@ router.get('/api/books', asyncHandler(async (_req, res) => {
 
 router.get('/api/books/:id/manifest', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
+  const bookType = await getBookType(bookId);
+  if (bookType === 'text') {
+    const chapterCount = await getTextChapterCount(bookId);
+    res.json({ book: bookId, manifest: [], bookType, chapterCount });
+    return;
+  }
   const manifest = await loadManifest(bookId);
-  res.json({ book: bookId, manifest });
+  res.json({ book: bookId, manifest, bookType });
 }));
 
 router.delete('/api/books/:id', asyncHandler(async (req, res) => {
@@ -125,6 +135,32 @@ router.post('/api/books/:id/chapters/generate', asyncHandler(async (req, res) =>
   const chapter = typeof chapterNumber === 'string' ? Number.parseInt(chapterNumber, 10) : chapterNumber;
   const result = await generateChapterText(bookId, start, end, chapter);
   res.json(result);
+}));
+
+router.post('/api/books/text', upload.single('file'), asyncHandler(async (req, res) => {
+  const { bookName, chapterTitle } = req.body || {};
+  const file = req.file;
+  if (!file) {
+    throw createHttpError(400, 'Chapter file is required');
+  }
+  const content = file.buffer.toString('utf8');
+  const bookId = await createTextBook(bookName);
+  const result = await addTextChapter(bookId, { title: chapterTitle, content });
+  const chapterCount = await getTextChapterCount(bookId);
+  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+}));
+
+router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const { chapterTitle } = req.body || {};
+  const file = req.file;
+  if (!file) {
+    throw createHttpError(400, 'Chapter file is required');
+  }
+  const content = file.buffer.toString('utf8');
+  const result = await addTextChapter(bookId, { title: chapterTitle, content });
+  const chapterCount = await getTextChapterCount(bookId);
+  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));
 
 export default router;

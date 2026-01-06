@@ -1,11 +1,22 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { TOC_FILENAME, TOC_PROMPT } from '../config.js';
-import { assertBookDirectory, loadManifest } from './books.js';
+import { assertBookDirectory, getBookType, loadManifest } from './books.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
 import { deriveTextPathsFromImageUrl } from './paths.js';
 import { getOpenAI } from './openai.js';
+import { getTextChapterCount } from './textBooks.js';
+
+async function getTocMaxIndex(bookId) {
+  const bookType = await getBookType(bookId);
+  if (bookType === 'text') {
+    const chapterCount = await getTextChapterCount(bookId);
+    return Math.max(0, chapterCount - 1);
+  }
+  const manifest = await loadManifest(bookId);
+  return Math.max(0, manifest.length - 1);
+}
 
 function sanitizeTocEntry(raw, maxPageIndex) {
   if (!raw || typeof raw !== 'object') {
@@ -39,8 +50,7 @@ export async function loadToc(bookId) {
   } catch {
     // ignore parse failures and fall back to empty list
   }
-  const manifest = await loadManifest(bookId);
-  const maxPageIndex = Math.max(0, manifest.length - 1);
+  const maxPageIndex = await getTocMaxIndex(bookId);
   return parsed
     .map((entry) => sanitizeTocEntry(entry, maxPageIndex))
     .filter(Boolean)
@@ -49,8 +59,7 @@ export async function loadToc(bookId) {
 
 export async function saveToc(bookId, toc) {
   const directory = await assertBookDirectory(bookId);
-  const manifest = await loadManifest(bookId);
-  const maxPageIndex = Math.max(0, manifest.length - 1);
+  const maxPageIndex = await getTocMaxIndex(bookId);
   const normalized = (Array.isArray(toc) ? toc : [])
     .map((entry) => sanitizeTocEntry(entry, maxPageIndex))
     .filter(Boolean)
@@ -79,6 +88,10 @@ function extractJsonArray(text) {
 }
 
 export async function generateTocFromOcr(bookId) {
+  const bookType = await getBookType(bookId);
+  if (bookType === 'text') {
+    throw createHttpError(400, 'TOC generation requires scanned pages');
+  }
   const manifest = await loadManifest(bookId);
   const snippets = [];
   const MAX_SNIPPET_CHARS = 800;

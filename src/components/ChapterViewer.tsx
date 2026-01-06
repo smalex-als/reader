@@ -9,6 +9,7 @@ interface ChapterViewerProps {
   chapterTitle: string | null;
   pageRange: { start: number; end: number } | null;
   tocLoading: boolean;
+  allowGenerate: boolean;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
 }
 
@@ -44,6 +45,7 @@ export default function ChapterViewer({
   chapterTitle,
   pageRange,
   tocLoading,
+  allowGenerate,
   onPlayParagraph
 }: ChapterViewerProps) {
   const [chapterText, setChapterText] = useState('');
@@ -114,7 +116,7 @@ export default function ChapterViewer({
     };
   }, [bookId, chapterNumber, refreshToken]);
 
-  const canGenerate = Boolean(bookId && chapterNumber && pageRange);
+  const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
 
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !pageRange || generating) {
@@ -235,7 +237,7 @@ export default function ChapterViewer({
         {!tocLoading && chapterNumber && loading && (
           <p className="text-viewer-status">Loading chapter text…</p>
         )}
-        {!tocLoading && chapterNumber && !loading && missingFile && (
+        {!tocLoading && allowGenerate && chapterNumber && !loading && missingFile && (
           <div className="text-viewer-action">
             <p className="text-viewer-status">{missingFile} is missing. Generate it now?</p>
             <button
@@ -261,7 +263,7 @@ export default function ChapterViewer({
         {!tocLoading && chapterNumber && !loading && !generating && !missingFile && !error && !chapterText && (
           <p className="text-viewer-status">Chapter text is empty.</p>
         )}
-        {!tocLoading && chapterNumber && !missingFile ? (
+        {!tocLoading && allowGenerate && chapterNumber && !missingFile ? (
           <div className="text-viewer-regenerate">
             <button
               type="button"

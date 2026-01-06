@@ -8,6 +8,7 @@ const collator = new Intl.Collator('en', {
   sensitivity: 'base',
   numeric: true
 });
+const BOOK_META_FILENAME = 'book.json';
 
 export function getBookDirectory(bookId) {
   return path.join(DATA_DIR, bookId);
@@ -46,6 +47,33 @@ export async function loadManifest(bookId) {
   }
 
   return manifest;
+}
+
+export async function loadBookMeta(bookId) {
+  const directory = await assertBookDirectory(bookId);
+  const metaPath = path.join(directory, BOOK_META_FILENAME);
+  const stat = await safeStat(metaPath);
+  if (!stat?.isFile()) {
+    return null;
+  }
+  try {
+    const raw = await fs.readFile(metaPath, 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveBookMeta(bookId, meta) {
+  const directory = await assertBookDirectory(bookId);
+  const metaPath = path.join(directory, BOOK_META_FILENAME);
+  await fs.writeFile(metaPath, JSON.stringify(meta ?? {}, null, 2), 'utf8');
+  return meta ?? {};
+}
+
+export async function getBookType(bookId) {
+  const meta = await loadBookMeta(bookId);
+  return meta?.type === 'text' ? 'text' : 'image';
 }
 
 export async function deleteBook(bookId) {

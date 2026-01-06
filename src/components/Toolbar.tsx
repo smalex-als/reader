@@ -5,6 +5,8 @@ interface ToolbarProps {
   manifestLength: number;
   currentPage: number;
   viewMode: 'pages' | 'text';
+  disablePagesMode: boolean;
+  disableImageActions: boolean;
   onViewModeChange: (mode: 'pages' | 'text') => void;
   onOpenBookModal: () => void;
   onPrev: () => void;
@@ -59,6 +61,8 @@ export default function Toolbar({
   manifestLength,
   currentPage,
   viewMode,
+  disablePagesMode,
+  disableImageActions,
   onViewModeChange,
   onOpenBookModal,
   onPrev,
@@ -171,7 +175,7 @@ export default function Toolbar({
               type="button"
               className={`segmented-item ${viewMode === 'pages' ? 'segmented-item-active' : ''}`}
               onClick={() => onViewModeChange('pages')}
-              disabled={manifestLength === 0}
+              disabled={manifestLength === 0 || disablePagesMode}
               role="tab"
               aria-selected={viewMode === 'pages'}
             >
@@ -397,7 +401,7 @@ export default function Toolbar({
             type="button"
             className="button"
             onClick={onToggleTextModal}
-            disabled={controlsDisabled}
+            disabled={controlsDisabled || disableImageActions}
           >
             Page Text
           </button>
@@ -405,12 +409,17 @@ export default function Toolbar({
             type="button"
             className="button"
             onClick={onCopyText}
-            disabled={controlsDisabled}
+            disabled={controlsDisabled || disableImageActions}
             title="Copy OCR text"
           >
             ⧉ Copy Text
           </button>
-          <button type="button" className="button" onClick={onOpenOcrQueue} disabled={controlsDisabled}>
+          <button
+            type="button"
+            className="button"
+            onClick={onOpenOcrQueue}
+            disabled={controlsDisabled || disableImageActions}
+          >
             Batch OCR
           </button>
           {showOcrStatus && (
@@ -427,7 +436,12 @@ export default function Toolbar({
           >
             Edit TOC
           </button>
-          <button type="button" className="button" onClick={onOpenPrint} disabled={controlsDisabled}>
+          <button
+            type="button"
+            className="button"
+            onClick={onOpenPrint}
+            disabled={controlsDisabled || disableImageActions}
+          >
             Print PDF
           </button>
         </div>
