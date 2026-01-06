@@ -141,12 +141,12 @@ export default function BookSelectModal({
             <button
               type="button"
               className="button"
-                onClick={handleTriggerUpload}
-                disabled={uploadingChapter}
-              >
-                {uploadingChapter ? 'Uploading…' : 'Upload Chapter'}
-              </button>
-            </div>
+              onClick={handleTriggerUpload}
+              disabled={uploadingChapter}
+            >
+              {uploadingChapter ? 'Uploading…' : 'Upload Chapter'}
+            </button>
+          </div>
             <input
               ref={fileInputRef}
               type="file"

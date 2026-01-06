@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Toolbar from '@/components/Toolbar';
 import Viewer from '@/components/Viewer';
 import ChapterViewer from '@/components/ChapterViewer';
+import ChapterEditor from '@/components/ChapterEditor';
 import Toast from '@/components/Toast';
 import TextModal from '@/components/TextModal';
 import BookmarksModal from '@/components/BookmarksModal';
@@ -131,6 +132,9 @@ export default function App() {
   const [tocGenerating, setTocGenerating] = useState(false);
   const [tocSaving, setTocSaving] = useState(false);
   const [chapterGeneratingIndex, setChapterGeneratingIndex] = useState<number | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorChapterNumber, setEditorChapterNumber] = useState<number | null>(null);
+  const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
   const [viewMode, setViewMode] = useState<'pages' | 'text'>('pages');
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
   const [uploadingChapter, setUploadingChapter] = useState(false);
@@ -165,6 +169,9 @@ export default function App() {
       .sort((a, b) => a.page - b.page);
   }, [tocEntries]);
   const currentChapterIndex = useMemo(() => {
+    if (isTextBook) {
+      return navigationCount > 0 ? currentPage : null;
+    }
     if (sortedTocEntries.length === 0) {
       return null;
     }
@@ -173,10 +180,27 @@ export default function App() {
       return sortedTocEntries.length - 1;
     }
     return Math.max(0, nextIndex - 1);
-  }, [currentPage, sortedTocEntries]);
-  const currentChapterEntry = currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
+  }, [currentPage, isTextBook, navigationCount, sortedTocEntries]);
+  const currentChapterEntry = useMemo(() => {
+    if (isTextBook) {
+      return sortedTocEntries.find((entry) => entry.page === currentPage) ?? null;
+    }
+    return currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
+  }, [currentChapterIndex, currentPage, isTextBook, sortedTocEntries]);
+  const editorChapterTitle = useMemo(() => {
+    if (!editorChapterNumber) {
+      return currentChapterEntry?.title ?? null;
+    }
+    return (
+      sortedTocEntries.find((entry) => entry.page === editorChapterNumber - 1)?.title ??
+      currentChapterEntry?.title ??
+      null
+    );
+  }, [currentChapterEntry, editorChapterNumber, sortedTocEntries]);
   const nextChapterEntry =
-    currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex + 1] : null;
+    !isTextBook && currentChapterIndex !== null
+      ? sortedTocEntries[currentChapterIndex + 1]
+      : null;
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
   const chapterRange =
     !isTextBook && currentChapterEntry
@@ -299,6 +323,10 @@ export default function App() {
 
   const handlePrev = useCallback(() => {
     if (viewMode === 'text') {
+      if (isTextBook) {
+        renderPage(currentPage - 1);
+        return;
+      }
       if (currentChapterIndex === null) {
         renderPage(currentPage - 1);
         return;
@@ -310,10 +338,14 @@ export default function App() {
       return;
     }
     renderPage(currentPage - 1);
-  }, [currentChapterIndex, currentPage, goToChapterIndex, renderPage, viewMode]);
+  }, [currentChapterIndex, currentPage, goToChapterIndex, isTextBook, renderPage, viewMode]);
 
   const handleNext = useCallback(() => {
     if (viewMode === 'text') {
+      if (isTextBook) {
+        renderPage(currentPage + 1);
+        return;
+      }
       if (currentChapterIndex === null) {
         renderPage(currentPage + 1);
         return;
@@ -325,7 +357,7 @@ export default function App() {
       return;
     }
     renderPage(currentPage + 1);
-  }, [currentChapterIndex, currentPage, goToChapterIndex, renderPage, sortedTocEntries.length, viewMode]);
+  }, [currentChapterIndex, currentPage, goToChapterIndex, isTextBook, renderPage, sortedTocEntries.length, viewMode]);
 
   const {
     bookmarks,
@@ -906,6 +938,75 @@ export default function App() {
     [bookId, bookType, books, showToast]
   );
 
+  const handleCreateChapter = useCallback(
+    async (details: { bookName: string; chapterTitle: string }) => {
+      const bookName = details.bookName.trim();
+      const chapterTitle = details.chapterTitle.trim();
+      const targetBookId = bookName || bookId || '';
+      if (!targetBookId) {
+        showToast('Book name is required for a new text book', 'error');
+        return;
+      }
+      if (!bookName && bookId && bookType !== 'text') {
+        showToast('Select a text book or enter a new book name', 'error');
+        return;
+      }
+      const isExisting = books.includes(targetBookId);
+      setUploadingChapter(true);
+      try {
+        let response: Response;
+        if (isExisting) {
+          response = await fetch(`/api/books/${encodeURIComponent(targetBookId)}/chapters/empty`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chapterTitle })
+          });
+        } else {
+          response = await fetch('/api/books/text/empty', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookName, chapterTitle })
+          });
+        }
+        if (!response.ok) {
+          throw new Error(`Create failed: ${response.status}`);
+        }
+        const data = (await response.json()) as {
+          book: string;
+          bookType?: 'text';
+          chapterIndex?: number;
+          chapterCount?: number;
+          toc?: TocEntry[];
+        };
+        const newBookId = data.book;
+        setBooks((prev) => {
+          const next = Array.from(new Set([...prev, newBookId]));
+          next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
+          return next;
+        });
+        setBookId(newBookId);
+        setBookType('text');
+        setChapterCount(Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0);
+        setManifest([]);
+        setTocEntries(Array.isArray(data.toc) ? data.toc : []);
+        setCurrentPage(Number.isInteger(data.chapterIndex) ? (data.chapterIndex as number) : 0);
+        setEditorChapterNumber(
+          Number.isInteger(data.chapterIndex) ? (data.chapterIndex as number) + 1 : null
+        );
+        setEditorOpen(true);
+        setViewMode('text');
+        setBookModalOpen(false);
+        showToast('Chapter created', 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Failed to create chapter', 'error');
+      } finally {
+        setUploadingChapter(false);
+      }
+    },
+    [bookId, bookType, books, showToast]
+  );
+
   const handleUploadPdf = useCallback(
     async (file: File) => {
       setUploadingPdf(true);
@@ -1217,6 +1318,13 @@ export default function App() {
               onStreamVoiceChange={handleStreamVoiceChange}
               onPlayStream={() => void handlePlayStream()}
               onStopStream={handleStopStream}
+              onCreateChapter={() => {
+                if (!isTextBook) {
+                  showToast('Select a text book to add chapters', 'error');
+                  return;
+                }
+                void handleCreateChapter({ bookName: '', chapterTitle: '' });
+              }}
               gotoInputRef={gotoInputRef}
               onToggleBookmark={toggleBookmark}
               onShowBookmarks={showBookmarks}
@@ -1249,6 +1357,24 @@ export default function App() {
                   onMetricsChange={handleMetricsChange}
                   rotation={settings.rotation}
               />
+            ) : editorOpen ? (
+              <ChapterEditor
+                  bookId={bookId}
+                  chapterNumber={editorChapterNumber ?? chapterNumber}
+                  chapterTitle={editorChapterTitle}
+                  onClose={() => {
+                    setEditorOpen(false);
+                    setEditorChapterNumber(null);
+                  }}
+                  onSaved={(nextToc) => {
+                    if (nextToc) {
+                      setTocEntries(nextToc);
+                    }
+                    setEditorOpen(false);
+                    setEditorChapterNumber(null);
+                    setChapterViewRefresh((prev) => prev + 1);
+                  }}
+              />
             ) : (
               <ChapterViewer
                   bookId={bookId}
@@ -1258,7 +1384,11 @@ export default function App() {
                   tocLoading={tocLoading}
                   allowGenerate={!isTextBook}
                   allowEdit={isTextBook}
-                  onChapterUpdated={(nextToc) => setTocEntries(nextToc)}
+                  onEditChapter={() => {
+                    setEditorChapterNumber(chapterNumber);
+                    setEditorOpen(true);
+                  }}
+                  refreshToken={chapterViewRefresh}
                   onPlayParagraph={handlePlayChapterParagraph}
               />
             )}

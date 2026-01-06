@@ -173,6 +173,13 @@ export async function addTextChapter(bookId, { title, content }) {
   };
 }
 
+export async function createEmptyTextChapter(bookId, title) {
+  const cleanedTitle = typeof title === 'string' ? title.trim() : '';
+  const header = cleanedTitle ? `# ${cleanedTitle}` : '# Chapter';
+  const content = `${header}\n\n`;
+  return addTextChapter(bookId, { title: cleanedTitle, content });
+}
+
 export async function updateTextChapter(bookId, chapterNumber, content, title) {
   const bookType = await getBookType(bookId);
   if (bookType !== 'text') {

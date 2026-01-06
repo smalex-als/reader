@@ -18,6 +18,7 @@ import { MAX_UPLOAD_BYTES } from '../config.js';
 import {
   addTextChapter,
   createTextBook,
+  createEmptyTextChapter,
   getTextChapterCount,
   updateTextChapter
 } from '../lib/textBooks.js';
@@ -155,6 +156,14 @@ router.post('/api/books/text', upload.single('file'), asyncHandler(async (req, r
   res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));
 
+router.post('/api/books/text/empty', asyncHandler(async (req, res) => {
+  const { bookName, chapterTitle } = req.body || {};
+  const bookId = await createTextBook(bookName);
+  const result = await createEmptyTextChapter(bookId, chapterTitle);
+  const chapterCount = await getTextChapterCount(bookId);
+  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+}));
+
 router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const { chapterTitle } = req.body || {};
@@ -164,6 +173,14 @@ router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async
   }
   const content = file.buffer.toString('utf8');
   const result = await addTextChapter(bookId, { title: chapterTitle, content });
+  const chapterCount = await getTextChapterCount(bookId);
+  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+}));
+
+router.post('/api/books/:id/chapters/empty', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const { chapterTitle } = req.body || {};
+  const result = await createEmptyTextChapter(bookId, chapterTitle);
   const chapterCount = await getTextChapterCount(bookId);
   res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));

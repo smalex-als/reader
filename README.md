@@ -96,7 +96,9 @@ Notes:
 - `DELETE /api/books/:id`
 - `GET /api/books/:id/manifest`
 - `POST /api/books/text`
+- `POST /api/books/text/empty`
 - `POST /api/books/:id/chapters`
+- `POST /api/books/:id/chapters/empty`
 - `GET /api/page-text?image=/data/...`
 - `POST /api/page-audio`
 - `POST /api/upload/pdf`

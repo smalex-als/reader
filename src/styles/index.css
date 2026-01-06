@@ -476,18 +476,53 @@ body {
   color: rgba(255, 255, 255, 0.85);
 }
 
-.text-viewer-editor {
-  margin-top: 0.75rem;
+.chapter-editor {
   flex: 1;
   display: flex;
-  min-height: 0;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem 1.75rem;
+  overflow: hidden;
 }
 
-.text-viewer-textarea {
+.chapter-editor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chapter-editor-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-editor-title-input {
+  width: 100%;
+}
+
+.chapter-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chapter-editor-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chapter-editor-textarea {
   width: 100%;
   flex: 1;
   min-height: 0;
-  height: 100%;
   padding: 0.85rem 0.9rem;
   border-radius: 0.8rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -495,7 +530,7 @@ body {
   color: inherit;
   font-size: 1rem;
   line-height: 1.6;
-  resize: vertical;
+  resize: none;
 }
 
 .text-viewer-markdown h1,
@@ -699,6 +734,7 @@ body {
   border-radius: 1rem;
   overflow: hidden;
 }
+
 
 .modal-header,
 .modal-footer {

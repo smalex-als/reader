@@ -39,6 +39,7 @@ interface ToolbarProps {
   onStreamVoiceChange: (voice: string) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
+  onCreateChapter: () => void;
   gotoInputRef: React.RefObject<HTMLInputElement>;
   onToggleBookmark: () => void;
   onShowBookmarks: () => void;
@@ -95,6 +96,7 @@ export default function Toolbar({
   onStreamVoiceChange,
   onPlayStream,
   onStopStream,
+  onCreateChapter,
   gotoInputRef,
   onToggleBookmark,
   onShowBookmarks,
@@ -435,6 +437,14 @@ export default function Toolbar({
             disabled={controlsDisabled}
           >
             Edit TOC
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onCreateChapter}
+            disabled={controlsDisabled || !disableImageActions}
+          >
+            New Chapter
           </button>
           <button
             type="button"
