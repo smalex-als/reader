@@ -67,6 +67,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const ZOOM_STEP = 0.15;
 const PAN_STEP = 40;
+const PAN_PAGE_STEP = 1000;
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 const STREAM_CHUNK_SIZE = 1000;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
@@ -257,7 +258,9 @@ export default function App() {
     () => [
       { keys: 'Arrow keys', action: 'Pan image' },
       { keys: 'PageUp', action: 'Previous page' },
-      { keys: 'PageDown / Space', action: 'Next page' },
+      { keys: 'PageDown', action: 'Next page' },
+      { keys: 'Space', action: 'Pan up' },
+      { keys: 'Shift + Space', action: 'Pan down' },
       { keys: '+ / =', action: 'Zoom in' },
       { keys: '-', action: 'Zoom out' },
       { keys: '0', action: 'Reset zoom/rotation' },
@@ -1151,9 +1154,18 @@ export default function App() {
           handlePrev();
           break;
         case 'pagedown':
-        case ' ':
           event.preventDefault();
           handleNext();
+          break;
+        case ' ':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
+          event.preventDefault();
+          updatePan({
+            x: settings.pan.x,
+            y: settings.pan.y + (event.shiftKey ? PAN_PAGE_STEP : -PAN_PAGE_STEP)
+          });
           break;
         case '+':
         case '=':
