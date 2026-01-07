@@ -66,6 +66,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const ZOOM_STEP = 0.15;
+const PAN_STEP = 40;
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 const STREAM_CHUNK_SIZE = 1000;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
@@ -253,25 +254,27 @@ export default function App() {
   } = usePrintOptions({ bookId, manifest, currentPage, showToast });
 
   const hotkeys = useMemo(
-      () => [
-        { keys: '← / ↑ / PageUp', action: 'Previous page' },
-        { keys: '→ / ↓ / PageDown / Space', action: 'Next page' },
-        { keys: '+ / =', action: 'Zoom in' },
-        { keys: '-', action: 'Zoom out' },
-        { keys: '0', action: 'Reset zoom/rotation' },
+    () => [
+      { keys: 'Arrow keys', action: 'Pan image' },
+      { keys: 'PageUp', action: 'Previous page' },
+      { keys: 'PageDown / Space', action: 'Next page' },
+      { keys: '+ / =', action: 'Zoom in' },
+      { keys: '-', action: 'Zoom out' },
+      { keys: '0', action: 'Reset zoom/rotation' },
         { keys: 'W', action: 'Fit width' },
         { keys: 'H', action: 'Fit height' },
         { keys: 'R', action: 'Rotate 90°' },
         { keys: 'I', action: 'Invert colors' },
         { keys: 'X', action: 'Toggle page text' },
-        { keys: 'V', action: 'Toggle view mode' },
-        { keys: 'P', action: 'Play/Pause audio' },
-        { keys: 'S', action: 'Play/Stop stream audio' },
-        { keys: 'G', action: 'Focus Go To input' },
-        { keys: 'F', action: 'Toggle fullscreen' },
-        { keys: 'B', action: 'Open book selector' },
-        { keys: 'Esc', action: 'Close dialogs' },
-        { keys: 'Shift + /', action: 'Open help' }
+      { keys: 'V', action: 'Toggle view mode' },
+      { keys: 'P', action: 'Play/Pause audio' },
+      { keys: 'S', action: 'Play/Stop stream audio' },
+      { keys: 'G', action: 'Focus Go To input' },
+      { keys: 'F', action: 'Toggle fullscreen' },
+      { keys: 'T', action: 'Open TOC' },
+      { keys: 'B', action: 'Open book selector' },
+      { keys: 'Esc', action: 'Close dialogs' },
+      { keys: 'Shift + /', action: 'Open help' }
       ],
       []
   );
@@ -1116,13 +1119,37 @@ export default function App() {
           setHelpOpen(true);
           break;
         case 'arrowleft':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
+          event.preventDefault();
+          updatePan({ x: settings.pan.x + PAN_STEP, y: settings.pan.y });
+          break;
+        case 'arrowright':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
+          event.preventDefault();
+          updatePan({ x: settings.pan.x - PAN_STEP, y: settings.pan.y });
+          break;
         case 'arrowup':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
+          event.preventDefault();
+          updatePan({ x: settings.pan.x, y: settings.pan.y + PAN_STEP });
+          break;
+        case 'arrowdown':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
+          event.preventDefault();
+          updatePan({ x: settings.pan.x, y: settings.pan.y - PAN_STEP });
+          break;
         case 'pageup':
           event.preventDefault();
           handlePrev();
           break;
-        case 'arrowright':
-        case 'arrowdown':
         case 'pagedown':
         case ' ':
           event.preventDefault();
@@ -1186,6 +1213,10 @@ export default function App() {
           event.preventDefault();
           gotoInputRef.current?.focus();
           break;
+        case 't':
+          event.preventDefault();
+          setTocOpen(true);
+          break;
         case 'b':
           event.preventDefault();
           openBookModal();
@@ -1232,7 +1263,10 @@ export default function App() {
     audioState.status,
     playAudio,
     resetTransform,
+    updatePan,
     settings.invert,
+    settings.pan.x,
+    settings.pan.y,
     settings.zoom,
     stopAudio,
     stopStream,
@@ -1257,6 +1291,8 @@ export default function App() {
     closePrintModal,
     ocrQueueOpen,
     streamState.status,
+    viewMode,
+    currentImage,
     tocOpen,
     tocManageOpen
   ]);
