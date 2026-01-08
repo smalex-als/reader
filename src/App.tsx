@@ -12,28 +12,22 @@ import BookSelectModal from '@/components/BookSelectModal';
 import OcrQueueModal from '@/components/OcrQueueModal';
 import TocModal from '@/components/TocModal';
 import TocNavModal from '@/components/TocNavModal';
-import { useToast } from '@/hooks/useToast';
-import { useFullscreen } from '@/hooks/useFullscreen';
 import { useAudioController } from '@/hooks/useAudioController';
+import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
+import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { DEFAULT_STREAM_VOICE, useStreamingAudio } from '@/hooks/useStreamingAudio';
+import { useFullscreen } from '@/hooks/useFullscreen';
 import { useHotkeys } from '@/hooks/useHotkeys';
+import { useToast } from '@/hooks/useToast';
+import { useTocManager } from '@/hooks/useTocManager';
 import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
-import {
-  loadLastBook,
-  loadLastPage,
-  loadSettingsForBook,
-  loadStreamVoiceForBook,
-  saveLastBook,
-  saveLastPage,
-  saveSettingsForBook,
-  saveStreamVoiceForBook
-} from '@/lib/storage';
+import { saveLastPage } from '@/lib/storage';
 import type { AppSettings, TocEntry } from '@/types/app';
 
 const STREAM_VOICE_OPTIONS = [
@@ -67,26 +61,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   pan: { x: 0, y: 0 }
 };
 
-const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
-const STREAM_CHUNK_SIZE = 1000;
-const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
-const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\([^)]+\)/g;
-
-function stripMarkdown(text: string) {
-  let output = text;
-  output = output.replace(/```[\s\S]*?```/g, '');
-  output = output.replace(/`[^`]*`/g, '');
-  output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
-  output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
-  output = output.replace(/[•●◦▪]/g, '-');
-  output = output.replace(/^\s{0,3}#{1,6}\s+/gm, '');
-  output = output.replace(/^\s{0,3}>\s?/gm, '');
-  output = output.replace(/^\s{0,3}[-*+]\s+/gm, '');
-  output = output.replace(/^\s{0,3}---+\s*$/gm, '');
-  output = output.replace(/\n{3,}/g, '\n\n');
-  return output.trim();
-}
-
 function createDefaultSettings(): AppSettings {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as AppSettings;
 }
@@ -99,32 +73,9 @@ function getDefaultStreamVoice(): StreamVoice {
   return isStreamVoice(DEFAULT_STREAM_VOICE) ? DEFAULT_STREAM_VOICE : STREAM_VOICE_OPTIONS[0];
 }
 
-async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-  return (await response.json()) as T;
-}
-
 export default function App() {
-  const [books, setBooks] = useState<string[]>([]);
-  const [bookId, setBookId] = useState<string | null>(loadLastBook());
-  const [manifest, setManifest] = useState<string[]>([]);
-  const [bookType, setBookType] = useState<'image' | 'text'>('image');
-  const [chapterCount, setChapterCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [bookModalOpen, setBookModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [ocrQueueOpen, setOcrQueueOpen] = useState(false);
-  const [tocOpen, setTocOpen] = useState(false);
-  const [tocManageOpen, setTocManageOpen] = useState(false);
-  const [tocEntries, setTocEntries] = useState<TocEntry[]>([]);
-  const [tocLoading, setTocLoading] = useState(false);
-  const [tocGenerating, setTocGenerating] = useState(false);
-  const [tocSaving, setTocSaving] = useState(false);
-  const [chapterGeneratingIndex, setChapterGeneratingIndex] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorChapterNumber, setEditorChapterNumber] = useState<number | null>(null);
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
@@ -133,11 +84,7 @@ export default function App() {
     startIndex: number;
     key: string;
   } | null>(null);
-  const [viewMode, setViewMode] = useState<'pages' | 'text'>('pages');
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
-  const [uploadingChapter, setUploadingChapter] = useState(false);
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  const pendingPageRef = useRef<number | null>(null);
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const {
@@ -160,14 +107,69 @@ export default function App() {
   const fullscreenControls = useFullscreen(viewerShellRef);
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
+  const tocEntriesRef = useRef<React.Dispatch<React.SetStateAction<TocEntry[]>> | null>(null);
+  const {
+    books,
+    bookId,
+    setBookId,
+    manifest,
+    bookType,
+    chapterCount,
+    currentPage,
+    setCurrentPage,
+    viewMode,
+    setViewMode,
+    loading,
+    bookModalOpen,
+    setBookModalOpen,
+    uploadingChapter,
+    uploadingPdf,
+    handleUploadChapter,
+    handleCreateChapter,
+    handleUploadPdf,
+    handleDeleteBook
+  } = useBookSession({
+    settings,
+    setSettings,
+    setMetrics,
+    showToast,
+    setEditorOpen,
+    setEditorChapterNumber,
+    onUpdateTocEntries: (entries) => tocEntriesRef.current?.(entries),
+    streamVoice,
+    setStreamVoice,
+    isStreamVoice,
+    getDefaultStreamVoice,
+    createDefaultSettings
+  });
   const isTextBook = bookType === 'text';
   const navigationCount = isTextBook ? chapterCount : manifest.length;
   const currentImage = manifest[currentPage] ?? null;
-  const sortedTocEntries = useMemo(() => {
-    return [...tocEntries]
-      .filter((entry) => Number.isInteger(entry.page))
-      .sort((a, b) => a.page - b.page);
-  }, [tocEntries]);
+  const {
+    tocOpen,
+    setTocOpen,
+    tocManageOpen,
+    setTocManageOpen,
+    tocEntries,
+    setTocEntries,
+    sortedTocEntries,
+    tocLoading,
+    tocGenerating,
+    tocSaving,
+    chapterGeneratingIndex,
+    handleGenerateToc,
+    handleSaveToc,
+    handleAddTocEntry,
+    handleRemoveTocEntry,
+    handleUpdateTocEntry,
+    handleGenerateChapter
+  } = useTocManager({
+    bookId,
+    manifestLength: isTextBook ? chapterCount : manifest.length,
+    viewMode,
+    showToast
+  });
+  tocEntriesRef.current = setTocEntries;
   const currentChapterIndex = useMemo(() => {
     if (isTextBook) {
       return navigationCount > 0 ? currentPage : null;
@@ -226,6 +228,28 @@ export default function App() {
     textModalOpen,
     toggleTextModal
   } = usePageText(currentImage, showToast);
+  const {
+    handlePlayStream,
+    handlePlayChapterParagraph,
+    handleStopStream,
+    handleToggleStreamPause
+  } = useStreamSequence({
+    isTextBook,
+    bookId,
+    chapterCount,
+    firstChapterParagraph,
+    currentImage,
+    currentText,
+    fetchPageText,
+    showToast,
+    streamState,
+    startStream,
+    stopStream,
+    pauseStream,
+    resumeStream,
+    stopAudio,
+    streamVoice
+  });
   const {
     jobs: ocrJobs,
     paused: ocrPaused,
@@ -416,6 +440,14 @@ export default function App() {
     showToast
   });
 
+  useEffect(() => {
+    closeBookmarks();
+    resetTextState();
+    resetAudioCache();
+    stopAudio();
+    stopStream();
+  }, [bookId, closeBookmarks, resetAudioCache, resetTextState, stopAudio, stopStream]);
+
   const applyFilters = useCallback((filters: Partial<Pick<AppSettings, 'brightness' | 'contrast' | 'invert'>>) => {
     setSettings((prev) => ({
       ...prev,
@@ -450,457 +482,10 @@ export default function App() {
     [ocrPaused, ocrProgress]
   );
 
-  const loadToc = useCallback(async () => {
-    if (!bookId) {
-      return;
-    }
-    setTocLoading(true);
-    try {
-      const data = await fetchJson<{ toc: TocEntry[] }>(
-        `/api/books/${encodeURIComponent(bookId)}/toc`
-      );
-      setTocEntries(Array.isArray(data.toc) ? data.toc : []);
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to load table of contents', 'error');
-    } finally {
-      setTocLoading(false);
-    }
-  }, [bookId, showToast]);
-
-  const handleGenerateToc = useCallback(async () => {
-    if (!bookId) {
-      return;
-    }
-    setTocGenerating(true);
-    try {
-      const response = await fetchJson<{ toc: TocEntry[] }>(
-        `/api/books/${encodeURIComponent(bookId)}/toc/generate`,
-        { method: 'POST' }
-      );
-      setTocEntries(Array.isArray(response.toc) ? response.toc : []);
-      showToast('Table of contents generated', 'success');
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to generate table of contents', 'error');
-    } finally {
-      setTocGenerating(false);
-    }
-  }, [bookId, showToast]);
-
-  const handleSaveToc = useCallback(async () => {
-    if (!bookId) {
-      return;
-    }
-    setTocSaving(true);
-    try {
-      const response = await fetchJson<{ toc: TocEntry[] }>(
-        `/api/books/${encodeURIComponent(bookId)}/toc`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ toc: tocEntries })
-        }
-      );
-      setTocEntries(Array.isArray(response.toc) ? response.toc : []);
-      showToast('Table of contents saved', 'success');
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to save table of contents', 'error');
-    } finally {
-      setTocSaving(false);
-    }
-  }, [bookId, showToast, tocEntries]);
-
-  const handleAddTocEntry = useCallback(() => {
-    setTocEntries((prev) => [...prev, { title: '', page: currentPage }]);
-  }, [currentPage]);
-
-  const handleRemoveTocEntry = useCallback((index: number) => {
-    setTocEntries((prev) => prev.filter((_, idx) => idx !== index));
-  }, []);
-
-  const handleUpdateTocEntry = useCallback((index: number, next: TocEntry) => {
-    setTocEntries((prev) => prev.map((entry, idx) => (idx === index ? next : entry)));
-  }, []);
-
-  const handleGenerateChapter = useCallback(
-    async (index: number) => {
-      if (!bookId) {
-        return;
-      }
-      const entry = tocEntries[index];
-      if (!entry) {
-        showToast('Chapter entry not found', 'error');
-        return;
-      }
-      const pageStart = entry.page;
-      const sortedPages = tocEntries
-        .map((tocEntry) => tocEntry.page)
-        .filter((page) => Number.isInteger(page))
-        .sort((a, b) => a - b);
-      const chapterNumber = sortedPages.indexOf(pageStart) + 1;
-      if (chapterNumber <= 0) {
-        showToast('Chapter order could not be determined', 'error');
-        return;
-      }
-      const nextPageCandidates = tocEntries
-        .map((tocEntry) => tocEntry.page)
-        .filter((page) => Number.isInteger(page) && page > pageStart)
-        .sort((a, b) => a - b);
-      const pageEnd = nextPageCandidates[0] ?? manifest.length;
-
-      if (pageStart < 0 || pageStart >= manifest.length) {
-        showToast('Chapter start page is out of range', 'error');
-        return;
-      }
-      if (!Number.isInteger(pageEnd) || pageEnd <= pageStart || pageEnd > manifest.length) {
-        showToast('Chapter end page is invalid', 'error');
-        return;
-      }
-
-      setChapterGeneratingIndex(index);
-      try {
-        const result = await fetchJson<{ file: string }>(
-          `/api/books/${encodeURIComponent(bookId)}/chapters/generate`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pageStart,
-              pageEnd,
-              chapterNumber
-            })
-          }
-        );
-        showToast(`Chapter text saved: ${result.file}`, 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Unable to generate chapter text', 'error');
-      } finally {
-        setChapterGeneratingIndex(null);
-      }
-    },
-    [bookId, manifest.length, showToast, tocEntries]
-  );
-
-  const handleDeleteBook = useCallback(
-    async (targetBookId: string) => {
-      const confirmed = window.confirm(
-        `Delete "${targetBookId}" and all of its files? This cannot be undone.`
-      );
-      if (!confirmed) {
-        return;
-      }
-      try {
-        const data = await fetchJson<{ book: string; books: string[] }>(
-          `/api/books/${encodeURIComponent(targetBookId)}`,
-          { method: 'DELETE' }
-        );
-        setBooks(data.books);
-        showToast(`Deleted ${data.book}`, 'success');
-
-        if (bookId === targetBookId) {
-          if (data.books.length === 0) {
-            setBookId(null);
-            setBookModalOpen(true);
-            showToast('No books found. Add files to /data to begin.', 'info');
-          } else {
-            const fallback = data.books[0];
-            setBookId(fallback);
-            saveLastBook(fallback);
-          }
-        }
-      } catch (error) {
-        console.error(error);
-        showToast('Unable to delete book', 'error');
-      }
-    },
-    [bookId, showToast]
-  );
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await fetchJson<{ books: string[] }>('/api/books');
-        setBooks(data.books);
-        if (data.books.length === 0) {
-          setBookId(null);
-          showToast('No books found. Add files to /data to begin.', 'info');
-          return;
-        }
-        if (bookId && data.books.includes(bookId)) {
-          return;
-        }
-        if (!bookId) {
-          setBookModalOpen(true);
-          return;
-        }
-        const fallback = data.books[0];
-        setBookId(fallback);
-        saveLastBook(fallback);
-      } catch (error) {
-        console.error(error);
-        showToast('Unable to load books', 'error');
-      }
-    })();
-  }, [bookId, showToast]);
-
-  useEffect(() => {
-    if (bookId) {
-      saveLastBook(bookId);
-    }
-  }, [bookId]);
-
-  useEffect(() => {
-    if (!bookId) {
-      setManifest([]);
-      setBookType('image');
-      setChapterCount(0);
-      closeBookmarks();
-      setStreamVoice(getDefaultStreamVoice());
-      return;
-    }
-    const storedSettings = loadSettingsForBook(bookId);
-    setSettings(storedSettings ?? createDefaultSettings());
-    const storedVoice = loadStreamVoiceForBook(bookId);
-    if (storedVoice && isStreamVoice(storedVoice)) {
-      setStreamVoice(storedVoice);
-    } else {
-      setStreamVoice(getDefaultStreamVoice());
-    }
-    pendingPageRef.current = loadLastPage(bookId);
-    setLoading(true);
-    resetTextState();
-    resetAudioCache();
-    setMetrics(null);
-    setManifest([]);
-    setCurrentPage(0);
-    stopAudio();
-    stopStream();
-
-    (async () => {
-      try {
-        const data = await fetchJson<{
-          book: string;
-          manifest: string[];
-          bookType?: 'image' | 'text';
-          chapterCount?: number;
-        }>(`/api/books/${encodeURIComponent(bookId)}/manifest`);
-        const nextBookType = data.bookType === 'text' ? 'text' : 'image';
-        const nextChapterCount =
-          typeof data.chapterCount === 'number' && Number.isInteger(data.chapterCount)
-            ? data.chapterCount
-            : 0;
-        const nextManifest = Array.isArray(data.manifest) ? data.manifest : [];
-        setBookType(nextBookType);
-        setChapterCount(nextChapterCount);
-        setManifest(nextManifest);
-        const storedPage = loadLastPage(bookId);
-        const requestedPage = storedPage ?? pendingPageRef.current ?? 0;
-        const navCount = nextBookType === 'text' ? nextChapterCount : nextManifest.length;
-        if (navCount > 0) {
-          const safePage = clamp(requestedPage, 0, navCount - 1);
-          setCurrentPage(safePage);
-          pendingPageRef.current = null;
-        } else {
-          setCurrentPage(0);
-        }
-        if (nextBookType === 'text') {
-          setViewMode('text');
-          showToast(`Loaded ${nextChapterCount} chapters`, 'success');
-        } else {
-          showToast(`Loaded ${nextManifest.length} pages`, 'success');
-        }
-      } catch (error) {
-        console.error(error);
-        showToast('Unable to load book manifest', 'error');
-        setManifest([]);
-        setBookType('image');
-        setChapterCount(0);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [bookId, closeBookmarks, resetAudioCache, resetTextState, showToast, stopAudio, stopStream]);
-
   useEffect(() => {
     resetQueue();
     setOcrQueueOpen(false);
   }, [bookId, resetQueue]);
-
-  useEffect(() => {
-    setTocEntries([]);
-    setTocOpen(false);
-    setTocManageOpen(false);
-  }, [bookId]);
-
-  useEffect(() => {
-    if (tocOpen || tocManageOpen || viewMode === 'text') {
-      void loadToc();
-    }
-  }, [loadToc, tocManageOpen, tocOpen, viewMode]);
-
-  useEffect(() => {
-    if (!bookId) {
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      saveSettingsForBook(bookId, settings);
-    }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [bookId, settings]);
-
-  useEffect(() => {
-    if (!bookId) {
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      saveStreamVoiceForBook(bookId, streamVoice);
-    }, 150);
-    return () => window.clearTimeout(timeout);
-  }, [bookId, streamVoice]);
-
-  const streamSequenceRef = useRef<{
-    chunks: string[];
-    index: number;
-    baseKey: string;
-  } | null>(null);
-  const pendingStreamSequenceRef = useRef<{
-    fullText: string;
-    startIndex: number;
-    baseKey: string;
-  } | null>(null);
-  const [streamSequenceActive, setStreamSequenceActive] = useState(false);
-
-  const stopStreamSequence = useCallback(() => {
-    streamSequenceRef.current = null;
-    setStreamSequenceActive(false);
-  }, []);
-
-  const splitStreamChunks = useCallback((text: string, startIndex: number) => {
-    const input = stripMarkdown(text.slice(Math.max(0, startIndex)));
-    const chunks: string[] = [];
-    let cursor = 0;
-    while (cursor < input.length) {
-      const slice = input.slice(cursor, cursor + STREAM_CHUNK_SIZE);
-      if (cursor + STREAM_CHUNK_SIZE >= input.length) {
-        chunks.push(slice.trim());
-        break;
-      }
-      const breakWindow = slice.slice(Math.max(0, slice.length - 200));
-      let breakIndex = breakWindow.lastIndexOf('\n\n');
-      if (breakIndex === -1) {
-        breakIndex = breakWindow.lastIndexOf('\n');
-      }
-      if (breakIndex === -1) {
-        breakIndex = breakWindow.lastIndexOf(' ');
-      }
-      if (breakIndex === -1) {
-        breakIndex = slice.length;
-      } else {
-        breakIndex += Math.max(0, slice.length - 200);
-      }
-      const chunk = input.slice(cursor, cursor + breakIndex);
-      chunks.push(chunk.trim());
-      cursor += Math.max(1, breakIndex);
-    }
-    return chunks.filter((chunk) => chunk.length > 0);
-  }, []);
-
-  const startStreamSequence = useCallback(
-    async (fullText: string, startIndex: number, baseKey: string) => {
-      if (
-        streamState.status === 'connecting' ||
-        streamState.status === 'streaming' ||
-        streamState.status === 'paused'
-      ) {
-        pendingStreamSequenceRef.current = { fullText, startIndex, baseKey };
-        stopStream();
-        stopStreamSequence();
-        return;
-      }
-      const chunks = splitStreamChunks(fullText, startIndex);
-      if (chunks.length === 0) {
-        showToast('No text available to stream', 'error');
-        return;
-      }
-      stopAudio();
-      stopStream();
-      stopStreamSequence();
-      streamSequenceRef.current = { chunks, index: 0, baseKey };
-      setStreamSequenceActive(true);
-      await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice: streamVoice });
-    },
-    [
-      showToast,
-      splitStreamChunks,
-      startStream,
-      stopAudio,
-      stopStream,
-      stopStreamSequence,
-      streamState.status,
-      streamVoice
-    ]
-  );
-
-  const handlePlayStream = useCallback(async () => {
-    if (isTextBook) {
-      if (!bookId || chapterCount === 0) {
-        showToast('No chapter available to stream', 'error');
-        return;
-      }
-      if (!firstChapterParagraph) {
-        showToast('No chapter text available to stream', 'error');
-        return;
-      }
-      await startStreamSequence(
-        firstChapterParagraph.fullText,
-        firstChapterParagraph.startIndex,
-        firstChapterParagraph.key
-      );
-      return;
-    }
-    if (!currentImage) {
-      return;
-    }
-    const pageText = currentText ?? (await fetchPageText());
-    const textValue = stripMarkdown(pageText?.text || '');
-    if (!textValue) {
-      showToast('No page text available to stream', 'error');
-      return;
-    }
-    stopAudio();
-    stopStreamSequence();
-    await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
-  }, [
-    isTextBook,
-    bookId,
-    chapterCount,
-    firstChapterParagraph,
-    currentImage,
-    currentText,
-    fetchPageText,
-    showToast,
-    startStream,
-    startStreamSequence,
-    stopAudio,
-    stopStreamSequence,
-    streamVoice
-  ]);
-
-
-  const handlePlayChapterParagraph = useCallback(
-    async (payload: { fullText: string; startIndex: number; key: string }) => {
-      const trimmed = payload.fullText.trim();
-      if (!trimmed) {
-        showToast('No paragraph text available to stream', 'error');
-        return;
-      }
-      await startStreamSequence(payload.fullText, payload.startIndex, payload.key);
-    },
-    [showToast, startStreamSequence]
-  );
 
   const handleCopyText = useCallback(async () => {
     if (!currentImage) {
@@ -945,192 +530,6 @@ export default function App() {
     },
     []
   );
-
-  const handleUploadChapter = useCallback(
-    async (file: File, details: { bookName: string; chapterTitle: string }) => {
-      const bookName = details.bookName.trim();
-      const chapterTitle = details.chapterTitle.trim();
-      const targetBookId = bookName || bookId || '';
-      if (!targetBookId) {
-        showToast('Book name is required for a new text book', 'error');
-        return;
-      }
-      if (!bookName && bookId && bookType !== 'text') {
-        showToast('Select a text book or enter a new book name', 'error');
-        return;
-      }
-      const isExisting = books.includes(targetBookId);
-      setUploadingChapter(true);
-      try {
-        const formData = new FormData();
-        if (chapterTitle) {
-          formData.append('chapterTitle', chapterTitle);
-        }
-        formData.append('file', file);
-        let response: Response;
-        if (isExisting) {
-          response = await fetch(`/api/books/${encodeURIComponent(targetBookId)}/chapters`, {
-            method: 'POST',
-            body: formData
-          });
-        } else {
-          formData.append('bookName', bookName);
-          response = await fetch('/api/books/text', { method: 'POST', body: formData });
-        }
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.status}`);
-        }
-        const data = (await response.json()) as {
-          book: string;
-          bookType?: 'text';
-          chapterIndex?: number;
-          chapterCount?: number;
-          toc?: TocEntry[];
-        };
-        const newBookId = data.book;
-        setBooks((prev) => {
-          const next = Array.from(new Set([...prev, newBookId]));
-          next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
-          return next;
-        });
-        setBookId(newBookId);
-        setBookType('text');
-        setChapterCount(Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0);
-        setManifest([]);
-        setTocEntries(Array.isArray(data.toc) ? data.toc : []);
-        setCurrentPage(Number.isInteger(data.chapterIndex) ? (data.chapterIndex as number) : 0);
-        setViewMode('text');
-        setBookModalOpen(false);
-        showToast('Chapter uploaded', 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Failed to upload chapter', 'error');
-      } finally {
-        setUploadingChapter(false);
-      }
-    },
-    [bookId, bookType, books, showToast]
-  );
-
-  const handleCreateChapter = useCallback(
-    async (details: { bookName: string; chapterTitle: string }) => {
-      const bookName = details.bookName.trim();
-      const chapterTitle = details.chapterTitle.trim();
-      const targetBookId = bookName || bookId || '';
-      if (!targetBookId) {
-        showToast('Book name is required for a new text book', 'error');
-        return;
-      }
-      if (!bookName && bookId && bookType !== 'text') {
-        showToast('Select a text book or enter a new book name', 'error');
-        return;
-      }
-      const isExisting = books.includes(targetBookId);
-      setUploadingChapter(true);
-      try {
-        let response: Response;
-        if (isExisting) {
-          response = await fetch(`/api/books/${encodeURIComponent(targetBookId)}/chapters/empty`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chapterTitle })
-          });
-        } else {
-          response = await fetch('/api/books/text/empty', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ bookName, chapterTitle })
-          });
-        }
-        if (!response.ok) {
-          throw new Error(`Create failed: ${response.status}`);
-        }
-        const data = (await response.json()) as {
-          book: string;
-          bookType?: 'text';
-          chapterIndex?: number;
-          chapterCount?: number;
-          toc?: TocEntry[];
-        };
-        const newBookId = data.book;
-        setBooks((prev) => {
-          const next = Array.from(new Set([...prev, newBookId]));
-          next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
-          return next;
-        });
-        setBookId(newBookId);
-        setBookType('text');
-        setChapterCount(Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0);
-        setManifest([]);
-        setTocEntries(Array.isArray(data.toc) ? data.toc : []);
-        setCurrentPage(Number.isInteger(data.chapterIndex) ? (data.chapterIndex as number) : 0);
-        setEditorChapterNumber(
-          Number.isInteger(data.chapterIndex) ? (data.chapterIndex as number) + 1 : null
-        );
-        setEditorOpen(true);
-        setViewMode('text');
-        setBookModalOpen(false);
-        showToast('Chapter created', 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Failed to create chapter', 'error');
-      } finally {
-        setUploadingChapter(false);
-      }
-    },
-    [bookId, bookType, books, showToast]
-  );
-
-  const handleUploadPdf = useCallback(
-    async (file: File) => {
-      setUploadingPdf(true);
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload/pdf', { method: 'POST', body: formData });
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.status}`);
-        }
-        const data = (await response.json()) as { book: string; manifest?: string[] };
-        const newBookId = data.book;
-        setBooks((prev) => {
-          const next = Array.from(new Set([...prev, newBookId]));
-          next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
-          return next;
-        });
-        setBookId(newBookId);
-        setBookType('image');
-        setChapterCount(0);
-        setManifest(Array.isArray(data.manifest) ? data.manifest : []);
-        setTocEntries([]);
-        setCurrentPage(0);
-        setViewMode('pages');
-        setBookModalOpen(false);
-        showToast('Book created from PDF', 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Failed to upload PDF', 'error');
-      } finally {
-        setUploadingPdf(false);
-      }
-    },
-    [showToast]
-  );
-
-  const handleStopStream = useCallback(() => {
-    stopStream();
-    stopStreamSequence();
-  }, [stopStream, stopStreamSequence]);
-
-  const handleToggleStreamPause = useCallback(async () => {
-    if (streamState.status === 'paused') {
-      await resumeStream();
-      return;
-    }
-    if (streamState.status === 'streaming') {
-      await pauseStream();
-    }
-  }, [pauseStream, resumeStream, streamState.status]);
 
   const openHelp = useCallback(() => setHelpOpen(true), []);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
@@ -1188,39 +587,6 @@ export default function App() {
     closeHelp,
     openBookModal
   });
-
-  useEffect(() => {
-    if (!streamSequenceActive || streamState.status !== 'idle') {
-      return;
-    }
-    const sequence = streamSequenceRef.current;
-    if (!sequence) {
-      setStreamSequenceActive(false);
-      return;
-    }
-    if (sequence.index >= sequence.chunks.length - 1) {
-      stopStreamSequence();
-      return;
-    }
-    sequence.index += 1;
-    void startStream({
-      text: sequence.chunks[sequence.index],
-      pageKey: `${sequence.baseKey}#chunk-${sequence.index}`,
-      voice: streamVoice
-    });
-  }, [startStream, stopStreamSequence, streamSequenceActive, streamState.status, streamVoice]);
-
-  useEffect(() => {
-    if (streamState.status !== 'idle') {
-      return;
-    }
-    const pending = pendingStreamSequenceRef.current;
-    if (!pending) {
-      return;
-    }
-    pendingStreamSequenceRef.current = null;
-    void startStreamSequence(pending.fullText, pending.startIndex, pending.baseKey);
-  }, [startStreamSequence, streamState.status]);
   const hasBooks = books.length > 0;
   const footerMessage =
     viewMode === 'text'
@@ -1423,7 +789,6 @@ export default function App() {
             currentBook={bookId}
             onSelect={(nextBook) => {
               setBookId(nextBook);
-              saveLastBook(nextBook);
               closeBookModal();
             }}
             onDelete={handleDeleteBook}
@@ -1478,7 +843,7 @@ export default function App() {
             onClose={() => setTocManageOpen(false)}
             onGenerate={handleGenerateToc}
             onSave={handleSaveToc}
-            onAddEntry={handleAddTocEntry}
+            onAddEntry={() => handleAddTocEntry(currentPage)}
             onRemoveEntry={handleRemoveTocEntry}
             onUpdateEntry={handleUpdateTocEntry}
             onGenerateChapter={handleGenerateChapter}
