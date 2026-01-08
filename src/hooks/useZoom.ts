@@ -67,7 +67,7 @@ export function useZoom(initialSettings: AppSettings) {
         nextZoom = 1;
       }
 
-      updateTransform({ zoom: nextZoom, zoomMode: mode, pan: { x: 0, y: 0 } });
+      updateTransform({ zoom: nextZoom, zoomMode: mode, pan: settings.pan });
     },
     [metrics, settings.rotation, settings.zoom, updateTransform]
   );

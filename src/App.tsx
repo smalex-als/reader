@@ -21,7 +21,7 @@ import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { DEFAULT_STREAM_VOICE, useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useZoom } from '@/hooks/useZoom';
-import { clamp } from '@/lib/math';
+import { clamp, clampPan } from '@/lib/math';
 import {
   loadLastBook,
   loadLastPage,
@@ -147,6 +147,8 @@ export default function App() {
   const [uploadingChapter, setUploadingChapter] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
+  const pendingAlignTopRef = useRef(false);
+  const lastImageRef = useRef<string | null>(null);
   const {
     settings,
     setSettings,
@@ -258,7 +260,9 @@ export default function App() {
     () => [
       { keys: 'Arrow keys', action: 'Pan image' },
       { keys: 'PageUp', action: 'Previous page' },
+      { keys: 'K', action: 'Previous page' },
       { keys: 'PageDown', action: 'Next page' },
+      { keys: 'J', action: 'Next page' },
       { keys: 'Space', action: 'Pan up' },
       { keys: 'Shift + Space', action: 'Pan down' },
       { keys: '+ / =', action: 'Zoom in' },
@@ -290,10 +294,7 @@ export default function App() {
         const maxIndex = navigationCount - 1;
         const nextIndex = clamp(pageIndex, 0, maxIndex);
         setCurrentPage(nextIndex);
-        setSettings((prev) => ({
-          ...prev,
-          pan: { x: 0, y: 0 }
-        }));
+        pendingAlignTopRef.current = viewMode === 'pages';
         setRegeneratedText(false);
         if (bookId) {
           saveLastPage(bookId, nextIndex);
@@ -301,8 +302,44 @@ export default function App() {
         resetAudio();
         stopStream();
       },
-      [bookId, navigationCount, resetAudio, setRegeneratedText, stopStream]
+      [bookId, navigationCount, resetAudio, setRegeneratedText, stopStream, viewMode]
   );
+
+  useEffect(() => {
+    if (
+      !pendingAlignTopRef.current ||
+      !metrics ||
+      viewMode !== 'pages' ||
+      metrics.naturalHeight === 0 ||
+      metrics.scale !== settings.zoom
+    ) {
+      return;
+    }
+    const scaledHeight = metrics.naturalHeight * metrics.scale;
+    const limitY = Math.max(0, (scaledHeight - metrics.containerHeight) / 2);
+    const targetPan = clampPan({ x: 0, y: limitY }, metrics);
+    if (settings.pan.x !== targetPan.x || settings.pan.y !== targetPan.y) {
+      setSettings((prev) => {
+        if (prev.pan.x === targetPan.x && prev.pan.y === targetPan.y) {
+          return prev;
+        }
+        return { ...prev, pan: targetPan };
+      });
+      return;
+    }
+    pendingAlignTopRef.current = false;
+  }, [metrics, setSettings, settings.pan.x, settings.pan.y, settings.zoom, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== 'pages') {
+      lastImageRef.current = currentImage;
+      return;
+    }
+    if (currentImage && lastImageRef.current !== currentImage) {
+      pendingAlignTopRef.current = true;
+    }
+    lastImageRef.current = currentImage;
+  }, [currentImage, viewMode]);
 
   const handleViewModeChange = useCallback(
     (mode: 'pages' | 'text') => {
@@ -1094,6 +1131,15 @@ export default function App() {
   const closeHelp = useCallback(() => setHelpOpen(false), []);
   const openBookModal = useCallback(() => setBookModalOpen(true), []);
   const closeBookModal = useCallback(() => setBookModalOpen(false), []);
+  const applyZoomModeWithAlign = useCallback(
+    (mode: 'fit-width' | 'fit-height') => {
+      applyZoomMode(mode);
+      if (viewMode === 'pages') {
+        pendingAlignTopRef.current = true;
+      }
+    },
+    [applyZoomMode, viewMode]
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1150,10 +1196,12 @@ export default function App() {
           updatePan({ x: settings.pan.x, y: settings.pan.y - PAN_STEP });
           break;
         case 'pageup':
+        case 'k':
           event.preventDefault();
           handlePrev();
           break;
         case 'pagedown':
+        case 'j':
           event.preventDefault();
           handleNext();
           break;
@@ -1182,11 +1230,11 @@ export default function App() {
           break;
         case 'w':
           event.preventDefault();
-          applyZoomMode('fit-width');
+          applyZoomModeWithAlign('fit-width');
           break;
         case 'h':
           event.preventDefault();
-          applyZoomMode('fit-height');
+          applyZoomModeWithAlign('fit-height');
           break;
         case 'r':
           event.preventDefault();
@@ -1271,7 +1319,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     applyFilters,
-    applyZoomMode,
+    applyZoomModeWithAlign,
     audioState.status,
     playAudio,
     resetTransform,
@@ -1373,8 +1421,8 @@ export default function App() {
               onZoomIn={() => updateZoom(settings.zoom + ZOOM_STEP)}
               onZoomOut={() => updateZoom(settings.zoom - ZOOM_STEP)}
               onResetZoom={resetTransform}
-              onFitWidth={() => applyZoomMode('fit-width')}
-              onFitHeight={() => applyZoomMode('fit-height')}
+              onFitWidth={() => applyZoomModeWithAlign('fit-width')}
+              onFitHeight={() => applyZoomModeWithAlign('fit-height')}
               onRotate={updateRotation}
               onInvert={() => applyFilters({ invert: !settings.invert })}
               invert={settings.invert}

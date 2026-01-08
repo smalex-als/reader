@@ -53,8 +53,8 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
     const nextMetrics: ViewerMetrics = {
       containerWidth: rect.width,
       containerHeight: rect.height,
-      naturalWidth: image.naturalWidth || rect.width,
-      naturalHeight: image.naturalHeight || rect.height,
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
       scale: settings.zoom
     };
     setMetrics(nextMetrics);
