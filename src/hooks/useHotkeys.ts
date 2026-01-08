@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useMemo, type RefObject } from 'react';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
 import type { AppSettings, AudioState, StreamState, ViewerPan } from '@/types/app';
 
@@ -97,6 +97,36 @@ export function useHotkeys({
   closeHelp,
   openBookModal
 }: HotkeysOptions) {
+  const hotkeys = useMemo(
+    () => [
+      { keys: 'Arrow keys', action: 'Pan image' },
+      { keys: 'PageUp', action: 'Previous page' },
+      { keys: 'K', action: 'Previous page' },
+      { keys: 'PageDown', action: 'Next page' },
+      { keys: 'J', action: 'Next page' },
+      { keys: 'Space', action: 'Pan up' },
+      { keys: 'Shift + Space', action: 'Pan down' },
+      { keys: '+ / =', action: 'Zoom in' },
+      { keys: '-', action: 'Zoom out' },
+      { keys: '0', action: 'Reset zoom/rotation' },
+      { keys: 'W', action: 'Fit width' },
+      { keys: 'H', action: 'Fit height' },
+      { keys: 'R', action: 'Rotate 90°' },
+      { keys: 'I', action: 'Invert colors' },
+      { keys: 'X', action: 'Toggle page text' },
+      { keys: 'V', action: 'Toggle view mode' },
+      { keys: 'P', action: 'Play/Pause audio' },
+      { keys: 'S', action: 'Play/Stop stream audio' },
+      { keys: 'G', action: 'Focus Go To input' },
+      { keys: 'F', action: 'Toggle fullscreen' },
+      { keys: 'T', action: 'Open TOC' },
+      { keys: 'B', action: 'Open book selector' },
+      { keys: 'Esc', action: 'Close dialogs' },
+      { keys: 'Shift + /', action: 'Open help' }
+    ],
+    []
+  );
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
@@ -318,4 +348,6 @@ export function useHotkeys({
     toggleTextModal,
     gotoInputRef
   ]);
+
+  return { hotkeys };
 }

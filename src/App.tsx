@@ -271,36 +271,6 @@ export default function App() {
     setPrintSelection
   } = usePrintOptions({ bookId, manifest, currentPage, showToast });
 
-  const hotkeys = useMemo(
-    () => [
-      { keys: 'Arrow keys', action: 'Pan image' },
-      { keys: 'PageUp', action: 'Previous page' },
-      { keys: 'K', action: 'Previous page' },
-      { keys: 'PageDown', action: 'Next page' },
-      { keys: 'J', action: 'Next page' },
-      { keys: 'Space', action: 'Pan up' },
-      { keys: 'Shift + Space', action: 'Pan down' },
-      { keys: '+ / =', action: 'Zoom in' },
-      { keys: '-', action: 'Zoom out' },
-      { keys: '0', action: 'Reset zoom/rotation' },
-        { keys: 'W', action: 'Fit width' },
-        { keys: 'H', action: 'Fit height' },
-        { keys: 'R', action: 'Rotate 90°' },
-        { keys: 'I', action: 'Invert colors' },
-        { keys: 'X', action: 'Toggle page text' },
-      { keys: 'V', action: 'Toggle view mode' },
-      { keys: 'P', action: 'Play/Pause audio' },
-      { keys: 'S', action: 'Play/Stop stream audio' },
-      { keys: 'G', action: 'Focus Go To input' },
-      { keys: 'F', action: 'Toggle fullscreen' },
-      { keys: 'T', action: 'Open TOC' },
-      { keys: 'B', action: 'Open book selector' },
-      { keys: 'Esc', action: 'Close dialogs' },
-      { keys: 'Shift + /', action: 'Open help' }
-      ],
-      []
-  );
-
   const renderPage = useCallback(
       (pageIndex: number) => {
         if (navigationCount === 0) {
@@ -545,7 +515,7 @@ export default function App() {
     [applyZoomMode, viewMode]
   );
 
-  useHotkeys({
+  const { hotkeys } = useHotkeys({
     viewMode,
     currentImage,
     settings,
