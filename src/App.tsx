@@ -172,7 +172,9 @@ export default function App() {
     viewMode,
     showToast
   });
-  tocEntriesRef.current = setTocEntries;
+  useEffect(() => {
+    tocEntriesRef.current = setTocEntries;
+  }, [setTocEntries]);
   const currentChapterIndex = useMemo(() => {
     if (isTextBook) {
       return navigationCount > 0 ? currentPage : null;
