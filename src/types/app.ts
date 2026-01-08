@@ -77,7 +77,7 @@ export interface AudioState {
 }
 
 export interface StreamState {
-  status: 'idle' | 'connecting' | 'streaming' | 'error';
+  status: 'idle' | 'connecting' | 'streaming' | 'paused' | 'error';
   pageKey: string | null;
   playbackSeconds: number;
   modelSeconds: number;

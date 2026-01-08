@@ -117,7 +117,10 @@ export default function Toolbar({
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
   const audioHandler = audioState.status === 'playing' ? onStopAudio : onPlayAudio;
   const audioLabel = audioState.status === 'playing' ? 'Stop Audio' : 'Play Audio';
-  const streamActive = streamState.status === 'streaming' || streamState.status === 'connecting';
+  const streamActive =
+    streamState.status === 'streaming' ||
+    streamState.status === 'connecting' ||
+    streamState.status === 'paused';
   const streamHandler = streamActive ? onStopStream : onPlayStream;
   const streamLabel = streamActive ? 'Stop Stream' : 'Play Stream';
   const formattedSource = audioState.source ? (audioState.source === 'ai' ? 'AI' : 'file') : null;

@@ -223,7 +223,7 @@ export default function App() {
     resetAudioCache,
     stopAudio
   } = useAudioController(currentImage, showToast);
-  const { streamState, startStream, stopStream } = useStreamingAudio(showToast);
+  const { streamState, startStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
   const {
     closeTextModal,
     currentText,
@@ -819,7 +819,11 @@ export default function App() {
 
   const startStreamSequence = useCallback(
     async (fullText: string, startIndex: number, baseKey: string) => {
-      if (streamState.status === 'connecting' || streamState.status === 'streaming') {
+      if (
+        streamState.status === 'connecting' ||
+        streamState.status === 'streaming' ||
+        streamState.status === 'paused'
+      ) {
         pendingStreamSequenceRef.current = { fullText, startIndex, baseKey };
         stopStream();
         stopStreamSequence();
@@ -1127,6 +1131,16 @@ export default function App() {
     stopStreamSequence();
   }, [stopStream, stopStreamSequence]);
 
+  const handleToggleStreamPause = useCallback(async () => {
+    if (streamState.status === 'paused') {
+      await resumeStream();
+      return;
+    }
+    if (streamState.status === 'streaming') {
+      await pauseStream();
+    }
+  }, [pauseStream, resumeStream, streamState.status]);
+
   const openHelp = useCallback(() => setHelpOpen(true), []);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
   const openBookModal = useCallback(() => setBookModalOpen(true), []);
@@ -1263,7 +1277,11 @@ export default function App() {
           break;
         case 's':
           event.preventDefault();
-          if (streamState.status === 'streaming' || streamState.status === 'connecting') {
+          if (
+            streamState.status === 'streaming' ||
+            streamState.status === 'connecting' ||
+            streamState.status === 'paused'
+          ) {
             handleStopStream();
           } else {
             void handlePlayStream();
@@ -1333,6 +1351,7 @@ export default function App() {
     stopStreamSequence,
     handlePlayStream,
     handleStopStream,
+    handleToggleStreamPause,
     closeTextModal,
     textModalOpen,
     updateRotation,
@@ -1527,6 +1546,50 @@ export default function App() {
             )}
             {loading && <div className="viewer-status">Loading…</div>}
           </div>
+          {(streamState.status === 'streaming' ||
+            streamState.status === 'paused' ||
+            streamState.status === 'connecting') && (
+            <button
+              type="button"
+              className={`stream-bubble ${
+                streamState.status === 'paused'
+                  ? 'stream-bubble-paused'
+                  : streamState.status === 'connecting'
+                  ? 'stream-bubble-connecting'
+                  : ''
+              }`}
+              onClick={() => void handleToggleStreamPause()}
+              disabled={streamState.status === 'connecting'}
+              aria-label={
+                streamState.status === 'paused'
+                  ? 'Resume stream audio'
+                  : streamState.status === 'connecting'
+                  ? 'Connecting stream audio'
+                  : 'Pause stream audio'
+              }
+              title={
+                streamState.status === 'paused'
+                  ? 'Resume stream'
+                  : streamState.status === 'connecting'
+                  ? 'Connecting stream'
+                  : 'Pause stream'
+              }
+            >
+              {streamState.status === 'paused' ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M8 5v14l11-7-11-7z" />
+                </svg>
+              ) : streamState.status === 'connecting' ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M12 4a8 8 0 1 1-5.7 13.6l1.4-1.4A6 6 0 1 0 12 6v2l3-3-3-3v2z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+                </svg>
+              )}
+            </button>
+          )}
           <div className="page-footer">
             <span className="page-path">{footerMessage}</span>
           </div>

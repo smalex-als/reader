@@ -172,7 +172,11 @@ export function useStreamingAudio(
         showToast('No text available to stream', 'error');
         return;
       }
-      if (streamState.status === 'connecting' || streamState.status === 'streaming') {
+      if (
+        streamState.status === 'connecting' ||
+        streamState.status === 'streaming' ||
+        streamState.status === 'paused'
+      ) {
         showToast('Audio stream already running', 'info');
         return;
       }
@@ -267,6 +271,40 @@ export function useStreamingAudio(
     [appendAudio, createAudioChain, finalizeStream, showToast, streamState.status]
   );
 
+  const pauseStream = useCallback(async () => {
+    if (streamState.status !== 'streaming') {
+      return;
+    }
+    stopPlaybackTimer();
+    const ctx = audioCtxRef.current;
+    if (ctx && ctx.state === 'running') {
+      try {
+        await ctx.suspend();
+      } catch {
+        // ignore suspend errors
+      }
+    }
+    setStreamState((prev) => ({ ...prev, status: 'paused' }));
+  }, [stopPlaybackTimer, streamState.status]);
+
+  const resumeStream = useCallback(async () => {
+    if (streamState.status !== 'paused') {
+      return;
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx && ctx.state !== 'running') {
+      try {
+        await ctx.resume();
+      } catch {
+        // ignore resume errors
+      }
+    }
+    if (hasStartedPlaybackRef.current) {
+      startPlaybackTimer();
+    }
+    setStreamState((prev) => ({ ...prev, status: 'streaming' }));
+  }, [startPlaybackTimer, streamState.status]);
+
   const stopStream = useCallback(() => {
     stopRequestedRef.current = true;
     socketClosedRef.current = true;
@@ -292,6 +330,8 @@ export function useStreamingAudio(
   return {
     streamState,
     startStream,
+    pauseStream,
+    resumeStream,
     stopStream
   };
 }
