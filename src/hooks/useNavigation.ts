@@ -131,14 +131,18 @@ export function useNavigation({
       if (chapterNumber && currentChapterEntry) {
         return `Chapter ${chapterNumber}: ${currentChapterEntry.title}`;
       }
-      return hasBooks
-        ? 'Open the TOC to create chapters for text view.'
-        : 'No books found. Add files to /data to begin.';
+      if (hasBooks) {
+        return 'Open the TOC to create chapters for text view.';
+      }
+      return 'No books found. Add files to /data to begin.';
     }
     if (currentImage) {
       return currentImage;
     }
-    return hasBooks ? 'Choose a book to begin reading.' : 'No books found. Add files to /data to begin.';
+    if (hasBooks) {
+      return 'Choose a book to begin reading.';
+    }
+    return 'No books found. Add files to /data to begin.';
   }, [chapterNumber, currentChapterEntry, currentImage, hasBooks, viewMode]);
 
   return { renderPage, handlePrev, handleNext, footerMessage };
