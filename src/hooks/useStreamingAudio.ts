@@ -261,7 +261,7 @@ export function useStreamingAudio(
           }
         };
         socketRef.current = socket;
-        showToast('Starting audio stream…', 'info');
+        // No toast on start.
         await audioCtxRef.current?.resume();
       } catch (error) {
         console.error('Unable to start stream', error);

@@ -26,6 +26,10 @@ type StreamSequenceOptions = {
   streamVoice: string;
 };
 
+type StreamSource =
+  | { type: 'sequence'; fullText: string; startIndex: number; baseKey: string }
+  | { type: 'single'; text: string; pageKey: string };
+
 export function useStreamSequence({
   isTextBook,
   bookId,
@@ -53,6 +57,8 @@ export function useStreamSequence({
     startIndex: number;
     baseKey: string;
   } | null>(null);
+  const pendingSingleStreamRef = useRef<{ text: string; pageKey: string } | null>(null);
+  const lastStreamSourceRef = useRef<StreamSource | null>(null);
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
 
   const stopStreamSequence = useCallback(() => {
@@ -62,6 +68,7 @@ export function useStreamSequence({
 
   const startStreamSequenceFromText = useCallback(
     async (fullText: string, startIndex: number, baseKey: string) => {
+      lastStreamSourceRef.current = { type: 'sequence', fullText, startIndex, baseKey };
       if (
         streamState.status === 'connecting' ||
         streamState.status === 'streaming' ||
@@ -112,18 +119,16 @@ export function useStreamSequence({
       );
       return;
     }
-    if (!currentImage) {
-      return;
-    }
-    const pageText = currentText ?? (await fetchPageText());
+      if (!currentImage) {
+        return;
+      }
+      const pageText = currentText ?? (await fetchPageText());
     const textValue = stripMarkdown(pageText?.text || '');
     if (!textValue) {
       showToast('No page text available to stream', 'error');
       return;
     }
-    stopAudio();
-    stopStreamSequence();
-    await startStream({ text: textValue, pageKey: currentImage, voice: streamVoice });
+    await startStreamSequenceFromText(textValue, 0, currentImage);
   }, [
     isTextBook,
     bookId,
@@ -133,10 +138,7 @@ export function useStreamSequence({
     currentText,
     fetchPageText,
     showToast,
-    startStream,
     startStreamSequenceFromText,
-    stopAudio,
-    stopStreamSequence,
     streamVoice
   ]);
 
@@ -147,6 +149,12 @@ export function useStreamSequence({
         showToast('No paragraph text available to stream', 'error');
         return;
       }
+      lastStreamSourceRef.current = {
+        type: 'sequence',
+        fullText: payload.fullText,
+        startIndex: payload.startIndex,
+        baseKey: payload.key
+      };
       await startStreamSequenceFromText(payload.fullText, payload.startIndex, payload.key);
     },
     [showToast, startStreamSequenceFromText]
@@ -199,6 +207,20 @@ export function useStreamSequence({
     pendingStreamSequenceRef.current = null;
     void startStreamSequenceFromText(pending.fullText, pending.startIndex, pending.baseKey);
   }, [startStreamSequenceFromText, streamState.status]);
+
+  useEffect(() => {
+    if (streamState.status !== 'idle') {
+      return;
+    }
+    const pending = pendingSingleStreamRef.current;
+    if (!pending) {
+      return;
+    }
+    pendingSingleStreamRef.current = null;
+    stopAudio();
+    stopStreamSequence();
+    void startStream({ text: pending.text, pageKey: pending.pageKey, voice: streamVoice });
+  }, [startStream, stopAudio, stopStreamSequence, streamState.status, streamVoice]);
 
   return {
     startStreamSequence,

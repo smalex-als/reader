@@ -238,7 +238,8 @@ export default function App() {
     startStreamSequence,
     handlePlayChapterParagraph,
     handleStopStream,
-    handleToggleStreamPause
+    handleToggleStreamPause,
+    handleRewindStream
   } = useStreamSequence({
     isTextBook,
     bookId,
@@ -728,8 +729,12 @@ export default function App() {
               />
             )}
             {loading && <div className="viewer-status">Loading…</div>}
+            <StreamBubble
+              streamState={streamState}
+              onTogglePause={() => void handleToggleStreamPause()}
+              onStopStream={handleStopStream}
+            />
           </div>
-          <StreamBubble streamState={streamState} onTogglePause={() => void handleToggleStreamPause()} />
           <div className="page-footer">
             <span className="page-path">{footerMessage}</span>
           </div>

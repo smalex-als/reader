@@ -680,19 +680,31 @@ body {
   top: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
-  width: 46px;
-  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: linear-gradient(145deg, rgba(32, 32, 32, 0.92), rgba(12, 12, 12, 0.92));
   color: #f8f8f8;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  z-index: 20;
+}
+
+.stream-bubble-main {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  z-index: 20;
+  transition: transform 0.2s ease;
 }
 
 .stream-bubble svg {
@@ -707,9 +719,19 @@ body {
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6);
 }
 
-.stream-bubble:focus-visible {
+.stream-bubble-main:focus-visible {
   outline: 2px solid rgba(96, 160, 255, 0.85);
   outline-offset: 3px;
+}
+
+.stream-bubble-time {
+  min-width: 3.2rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .stream-bubble-paused {
@@ -722,8 +744,43 @@ body {
   opacity: 0.7;
 }
 
-.stream-bubble-connecting svg {
+.stream-bubble-connecting .stream-bubble-main svg {
   animation: spin 1.1s linear infinite;
+}
+
+.stream-bubble-stop {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.stream-bubble-stop:focus-visible {
+  outline: 2px solid rgba(255, 120, 120, 0.9);
+  outline-offset: 2px;
+}
+
+.stream-bubble-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.stream-bubble-stop-icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2px;
+  stroke-linecap: round;
 }
 
 .page-path {
@@ -1391,7 +1448,26 @@ body {
 
   .stream-bubble {
     top: 1rem;
-    width: 42px;
-    height: 42px;
   }
+
+  .stream-bubble-main,
+  .stream-bubble-stop {
+    width: 30px;
+    height: 30px;
+  }
+
+  .stream-bubble-time {
+    min-width: 2.8rem;
+    font-size: 0.85rem;
+  }
+
+  .stream-bubble-divider {
+    height: 18px;
+  }
+
+  .stream-bubble-stop-icon {
+    width: 20px;
+    height: 20px;
+  }
+
 }
