@@ -336,7 +336,7 @@ export default function App() {
       }
       setViewMode(mode);
     },
-    [isTextBook]
+    [isTextBook, setViewMode]
   );
 
   const toggleViewMode = useCallback(() => {
@@ -344,7 +344,7 @@ export default function App() {
       return;
     }
     setViewMode((prev) => (prev === 'pages' ? 'text' : 'pages'));
-  }, [isTextBook]);
+  }, [isTextBook, setViewMode]);
 
   const {
     bookmarks,
@@ -372,12 +372,15 @@ export default function App() {
     stopStream();
   }, [bookId, closeBookmarks, resetAudioCache, resetTextState, stopAudio, stopStream]);
 
-  const applyFilters = useCallback((filters: Partial<Pick<AppSettings, 'brightness' | 'contrast' | 'invert'>>) => {
-    setSettings((prev) => ({
-      ...prev,
-      ...filters
-    }));
-  }, []);
+  const applyFilters = useCallback(
+    (filters: Partial<Pick<AppSettings, 'brightness' | 'contrast' | 'invert'>>) => {
+      setSettings((prev) => ({
+        ...prev,
+        ...filters
+      }));
+    },
+    [setSettings]
+  );
 
   const queueAllPages = useCallback(() => {
     const pages = manifest.map((_, index) => index);
@@ -452,11 +455,11 @@ export default function App() {
         setStreamVoice(voice);
       }
     },
-    []
+    [isStreamVoice, setStreamVoice]
   );
 
-  const openBookModal = useCallback(() => setBookModalOpen(true), []);
-  const closeBookModal = useCallback(() => setBookModalOpen(false), []);
+  const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
+  const closeBookModal = useCallback(() => setBookModalOpen(false), [setBookModalOpen]);
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
       applyZoomMode(mode);
