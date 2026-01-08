@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Toolbar from '@/components/Toolbar';
-import Viewer from '@/components/Viewer';
-import ChapterViewer from '@/components/ChapterViewer';
+import AppModals from '@/components/AppModals';
+import AppSidebar from '@/components/AppSidebar';
 import ChapterEditor from '@/components/ChapterEditor';
-import Toast from '@/components/Toast';
-import TextModal from '@/components/TextModal';
-import BookmarksModal from '@/components/BookmarksModal';
-import PrintModal from '@/components/PrintModal';
-import HelpModal from '@/components/HelpModal';
-import BookSelectModal from '@/components/BookSelectModal';
-import OcrQueueModal from '@/components/OcrQueueModal';
-import TocModal from '@/components/TocModal';
-import TocNavModal from '@/components/TocNavModal';
+import ChapterViewer from '@/components/ChapterViewer';
+import StreamBubble from '@/components/StreamBubble';
+import Viewer from '@/components/Viewer';
 import { useAudioController } from '@/hooks/useAudioController';
 import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
+import { useModalState } from '@/hooks/useModalState';
+import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
@@ -26,8 +21,7 @@ import { useToast } from '@/hooks/useToast';
 import { useTocManager } from '@/hooks/useTocManager';
 import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
-import { clamp, clampPan } from '@/lib/math';
-import { saveLastPage } from '@/lib/storage';
+import { clampPan } from '@/lib/math';
 import type { AppSettings, TocEntry } from '@/types/app';
 
 const STREAM_VOICE_OPTIONS = [
@@ -74,10 +68,19 @@ function getDefaultStreamVoice(): StreamVoice {
 }
 
 export default function App() {
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [ocrQueueOpen, setOcrQueueOpen] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editorChapterNumber, setEditorChapterNumber] = useState<number | null>(null);
+  const {
+    helpOpen,
+    openHelp,
+    closeHelp,
+    ocrQueueOpen,
+    setOcrQueueOpen,
+    openOcrQueue,
+    closeOcrQueue,
+    editorOpen,
+    setEditorOpen,
+    editorChapterNumber,
+    setEditorChapterNumber
+  } = useModalState();
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
   const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
     fullText: string;
@@ -208,6 +211,7 @@ export default function App() {
     !isTextBook && currentChapterEntry
       ? { start: currentChapterEntry.page, end: nextChapterEntry?.page ?? manifest.length }
       : null;
+  const hasBooks = books.length > 0;
 
   const {
     audioState,
@@ -270,25 +274,24 @@ export default function App() {
     selectedPrintOption,
     setPrintSelection
   } = usePrintOptions({ bookId, manifest, currentPage, showToast });
-
-  const renderPage = useCallback(
-      (pageIndex: number) => {
-        if (navigationCount === 0) {
-          return;
-        }
-        const maxIndex = navigationCount - 1;
-        const nextIndex = clamp(pageIndex, 0, maxIndex);
-        setCurrentPage(nextIndex);
-        pendingAlignTopRef.current = viewMode === 'pages';
-        setRegeneratedText(false);
-        if (bookId) {
-          saveLastPage(bookId, nextIndex);
-        }
-        resetAudio();
-        stopStream();
-      },
-      [bookId, navigationCount, resetAudio, setRegeneratedText, stopStream, viewMode]
-  );
+  const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
+    navigationCount,
+    currentPage,
+    viewMode,
+    isTextBook,
+    currentChapterIndex,
+    sortedTocEntries,
+    bookId,
+    setCurrentPage,
+    setRegeneratedText,
+    pendingAlignTopRef,
+    resetAudio,
+    stopStream,
+    currentImage,
+    hasBooks,
+    chapterNumber,
+    currentChapterEntry
+  });
 
   useEffect(() => {
     if (
@@ -342,55 +345,6 @@ export default function App() {
     }
     setViewMode((prev) => (prev === 'pages' ? 'text' : 'pages'));
   }, [isTextBook]);
-
-  const goToChapterIndex = useCallback(
-    (index: number) => {
-      const entry = sortedTocEntries[index];
-      if (!entry) {
-        return;
-      }
-      renderPage(entry.page);
-    },
-    [renderPage, sortedTocEntries]
-  );
-
-  const handlePrev = useCallback(() => {
-    if (viewMode === 'text') {
-      if (isTextBook) {
-        renderPage(currentPage - 1);
-        return;
-      }
-      if (currentChapterIndex === null) {
-        renderPage(currentPage - 1);
-        return;
-      }
-      if (currentChapterIndex <= 0) {
-        return;
-      }
-      goToChapterIndex(currentChapterIndex - 1);
-      return;
-    }
-    renderPage(currentPage - 1);
-  }, [currentChapterIndex, currentPage, goToChapterIndex, isTextBook, renderPage, viewMode]);
-
-  const handleNext = useCallback(() => {
-    if (viewMode === 'text') {
-      if (isTextBook) {
-        renderPage(currentPage + 1);
-        return;
-      }
-      if (currentChapterIndex === null) {
-        renderPage(currentPage + 1);
-        return;
-      }
-      if (currentChapterIndex >= sortedTocEntries.length - 1) {
-        return;
-      }
-      goToChapterIndex(currentChapterIndex + 1);
-      return;
-    }
-    renderPage(currentPage + 1);
-  }, [currentChapterIndex, currentPage, goToChapterIndex, isTextBook, renderPage, sortedTocEntries.length, viewMode]);
 
   const {
     bookmarks,
@@ -454,8 +408,8 @@ export default function App() {
 
   useEffect(() => {
     resetQueue();
-    setOcrQueueOpen(false);
-  }, [bookId, resetQueue]);
+    closeOcrQueue();
+  }, [bookId, closeOcrQueue, resetQueue]);
 
   const handleCopyText = useCallback(async () => {
     if (!currentImage) {
@@ -501,8 +455,6 @@ export default function App() {
     []
   );
 
-  const openHelp = useCallback(() => setHelpOpen(true), []);
-  const closeHelp = useCallback(() => setHelpOpen(false), []);
   const openBookModal = useCallback(() => setBookModalOpen(true), []);
   const closeBookModal = useCallback(() => setBookModalOpen(false), []);
   const applyZoomModeWithAlign = useCallback(
@@ -557,91 +509,168 @@ export default function App() {
     closeHelp,
     openBookModal
   });
-  const hasBooks = books.length > 0;
-  const footerMessage =
-    viewMode === 'text'
-      ? chapterNumber && currentChapterEntry
-        ? `Chapter ${chapterNumber}: ${currentChapterEntry.title}`
-        : hasBooks
-        ? 'Open the TOC to create chapters for text view.'
-        : 'No books found. Add files to /data to begin.'
-      : currentImage
-      ? currentImage
-      : hasBooks
-      ? 'Choose a book to begin reading.'
-      : 'No books found. Add files to /data to begin.';
+
+  const toolbarProps = {
+    currentBook: bookId,
+    manifestLength: navigationCount,
+    currentPage,
+    viewMode,
+    disablePagesMode: isTextBook,
+    disableImageActions: isTextBook,
+    onViewModeChange: handleViewModeChange,
+    onOpenBookModal: openBookModal,
+    onPrev: handlePrev,
+    onNext: handleNext,
+    onGoTo: (page: number) => renderPage(page),
+    onZoomIn: () => updateZoom(settings.zoom + ZOOM_STEP),
+    onZoomOut: () => updateZoom(settings.zoom - ZOOM_STEP),
+    onResetZoom: resetTransform,
+    onFitWidth: () => applyZoomModeWithAlign('fit-width'),
+    onFitHeight: () => applyZoomModeWithAlign('fit-height'),
+    onRotate: updateRotation,
+    onInvert: () => applyFilters({ invert: !settings.invert }),
+    invert: settings.invert,
+    zoom: settings.zoom,
+    rotation: settings.rotation,
+    brightness: settings.brightness,
+    contrast: settings.contrast,
+    onBrightness: (value: number) => applyFilters({ brightness: value }),
+    onContrast: (value: number) => applyFilters({ contrast: value }),
+    onToggleTextModal: () => {
+      toggleTextModal();
+    },
+    onCopyText: handleCopyText,
+    onToggleFullscreen: () => void toggleFullscreen(),
+    fullscreen: isFullscreen,
+    audioState,
+    onPlayAudio: () => {
+      stopStream();
+      void playAudio();
+    },
+    onStopAudio: stopAudio,
+    streamState,
+    streamVoice,
+    streamVoiceOptions: STREAM_VOICE_OPTIONS,
+    onStreamVoiceChange: handleStreamVoiceChange,
+    onPlayStream: () => void startStreamSequence(),
+    onStopStream: handleStopStream,
+    onCreateChapter: () => {
+      if (!isTextBook) {
+        showToast('Select a text book to add chapters', 'error');
+        return;
+      }
+      void handleCreateChapter({ bookName: '', chapterTitle: '' });
+    },
+    gotoInputRef,
+    onToggleBookmark: toggleBookmark,
+    onShowBookmarks: showBookmarks,
+    isBookmarked,
+    bookmarksCount: bookmarks.length,
+    onOpenPrint: openPrintModal,
+    onOpenHelp: openHelp,
+    onOpenOcrQueue: openOcrQueue,
+    onOpenToc: () => setTocOpen(true),
+    onOpenTocManage: () => setTocManageOpen(true),
+    ocrQueueTotal: ocrQueueState.total,
+    ocrQueueProcessed: ocrQueueState.processed,
+    ocrQueueFailed: ocrQueueState.failed,
+    ocrQueueRunning: ocrQueueState.running,
+    ocrQueuePaused: ocrQueueState.paused
+  };
+
+  const modalProps = {
+    toastProps: { toast, onDismiss: dismiss },
+    printModalProps: {
+      open: printModalOpen,
+      options: printOptions,
+      selectedId: selectedPrintOption?.id ?? null,
+      onSelect: setPrintSelection,
+      onClose: closePrintModal,
+      onConfirm: () => void createPrintPdf(),
+      loading: printLoading
+    },
+    bookSelectModalProps: {
+      open: bookModalOpen,
+      books,
+      currentBook: bookId,
+      onSelect: (nextBook: string | null) => {
+        setBookId(nextBook);
+        closeBookModal();
+      },
+      onDelete: handleDeleteBook,
+      onUploadChapter: handleUploadChapter,
+      uploadingChapter,
+      onUploadPdf: handleUploadPdf,
+      uploadingPdf,
+      onClose: closeBookModal
+    },
+    helpModalProps: { open: helpOpen, hotkeys, onClose: closeHelp },
+    bookmarksModalProps: {
+      open: bookmarksOpen,
+      bookmarks,
+      loading: bookmarksLoading,
+      currentBook: bookId,
+      currentPage,
+      onClose: closeBookmarks,
+      onSelect: handleSelectBookmark,
+      onRemove: handleRemoveBookmarkFromList
+    },
+    textModalProps: {
+      open: textModalOpen,
+      text: currentText,
+      loading: textLoading,
+      onClose: closeTextModal,
+      title: currentImage ?? 'Page text',
+      onRegenerate: () => {
+        setRegeneratedText(true);
+        void fetchPageText(true);
+      },
+      regenerated: regeneratedText
+    },
+    tocNavModalProps: {
+      open: tocOpen,
+      entries: tocEntries,
+      loading: tocLoading,
+      onClose: () => setTocOpen(false),
+      onGoToPage: (pageIndex: number) => {
+        setTocOpen(false);
+        renderPage(pageIndex);
+      }
+    },
+    tocModalProps: {
+      open: tocManageOpen,
+      entries: tocEntries,
+      loading: tocLoading,
+      generating: tocGenerating,
+      saving: tocSaving,
+      manifestLength: isTextBook ? chapterCount : manifest.length,
+      chapterGeneratingIndex,
+      allowGenerate: !isTextBook,
+      onClose: () => setTocManageOpen(false),
+      onGenerate: handleGenerateToc,
+      onSave: handleSaveToc,
+      onAddEntry: () => handleAddTocEntry(currentPage),
+      onRemoveEntry: handleRemoveTocEntry,
+      onUpdateEntry: handleUpdateTocEntry,
+      onGenerateChapter: handleGenerateChapter
+    },
+    ocrQueueModalProps: {
+      open: ocrQueueOpen,
+      onClose: closeOcrQueue,
+      jobs: ocrJobs,
+      paused: ocrPaused,
+      onTogglePause: togglePause,
+      onQueueAll: queueAllPages,
+      onQueueRemaining: queueRemainingPages,
+      onQueueCurrent: queueCurrentPage,
+      onRetryFailed: retryFailed,
+      onClearQueue: clearQueue
+    }
+  };
 
   return (
       <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
-        <aside className="sidebar">
-          <Toolbar
-              currentBook={bookId}
-              manifestLength={navigationCount}
-              currentPage={currentPage}
-              viewMode={viewMode}
-              disablePagesMode={isTextBook}
-              disableImageActions={isTextBook}
-              onViewModeChange={handleViewModeChange}
-              onOpenBookModal={openBookModal}
-              onPrev={handlePrev}
-              onNext={handleNext}
-              onGoTo={(page) => renderPage(page)}
-              onZoomIn={() => updateZoom(settings.zoom + ZOOM_STEP)}
-              onZoomOut={() => updateZoom(settings.zoom - ZOOM_STEP)}
-              onResetZoom={resetTransform}
-              onFitWidth={() => applyZoomModeWithAlign('fit-width')}
-              onFitHeight={() => applyZoomModeWithAlign('fit-height')}
-              onRotate={updateRotation}
-              onInvert={() => applyFilters({ invert: !settings.invert })}
-              invert={settings.invert}
-              zoom={settings.zoom}
-              rotation={settings.rotation}
-              brightness={settings.brightness}
-              contrast={settings.contrast}
-              onBrightness={(value) => applyFilters({ brightness: value })}
-              onContrast={(value) => applyFilters({ contrast: value })}
-              onToggleTextModal={() => {
-                toggleTextModal();
-              }}
-              onCopyText={handleCopyText}
-              onToggleFullscreen={() => void toggleFullscreen()}
-              fullscreen={isFullscreen}
-              audioState={audioState}
-              onPlayAudio={() => {
-                stopStream();
-                void playAudio();
-              }}
-              onStopAudio={stopAudio}
-              streamState={streamState}
-              streamVoice={streamVoice}
-              streamVoiceOptions={STREAM_VOICE_OPTIONS}
-              onStreamVoiceChange={handleStreamVoiceChange}
-              onPlayStream={() => void startStreamSequence()}
-              onStopStream={handleStopStream}
-              onCreateChapter={() => {
-                if (!isTextBook) {
-                  showToast('Select a text book to add chapters', 'error');
-                  return;
-                }
-                void handleCreateChapter({ bookName: '', chapterTitle: '' });
-              }}
-              gotoInputRef={gotoInputRef}
-              onToggleBookmark={toggleBookmark}
-              onShowBookmarks={showBookmarks}
-              isBookmarked={isBookmarked}
-              bookmarksCount={bookmarks.length}
-              onOpenPrint={openPrintModal}
-              onOpenHelp={openHelp}
-              onOpenOcrQueue={() => setOcrQueueOpen(true)}
-              onOpenToc={() => setTocOpen(true)}
-              onOpenTocManage={() => setTocManageOpen(true)}
-              ocrQueueTotal={ocrQueueState.total}
-              ocrQueueProcessed={ocrQueueState.processed}
-              ocrQueueFailed={ocrQueueState.failed}
-              ocrQueueRunning={ocrQueueState.running}
-              ocrQueuePaused={ocrQueueState.paused}
-          />
-        </aside>
+        <AppSidebar toolbarProps={toolbarProps} />
         <main className="main">
           <div
             ref={viewerShellRef}
@@ -695,141 +724,12 @@ export default function App() {
             )}
             {loading && <div className="viewer-status">Loading…</div>}
           </div>
-          {(streamState.status === 'streaming' ||
-            streamState.status === 'paused' ||
-            streamState.status === 'connecting') && (
-            <button
-              type="button"
-              className={`stream-bubble ${
-                streamState.status === 'paused'
-                  ? 'stream-bubble-paused'
-                  : streamState.status === 'connecting'
-                  ? 'stream-bubble-connecting'
-                  : ''
-              }`}
-              onClick={() => void handleToggleStreamPause()}
-              disabled={streamState.status === 'connecting'}
-              aria-label={
-                streamState.status === 'paused'
-                  ? 'Resume stream audio'
-                  : streamState.status === 'connecting'
-                  ? 'Connecting stream audio'
-                  : 'Pause stream audio'
-              }
-              title={
-                streamState.status === 'paused'
-                  ? 'Resume stream'
-                  : streamState.status === 'connecting'
-                  ? 'Connecting stream'
-                  : 'Pause stream'
-              }
-            >
-              {streamState.status === 'paused' ? (
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M8 5v14l11-7-11-7z" />
-                </svg>
-              ) : streamState.status === 'connecting' ? (
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M12 4a8 8 0 1 1-5.7 13.6l1.4-1.4A6 6 0 1 0 12 6v2l3-3-3-3v2z" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-                </svg>
-              )}
-            </button>
-          )}
+          <StreamBubble streamState={streamState} onTogglePause={() => void handleToggleStreamPause()} />
           <div className="page-footer">
             <span className="page-path">{footerMessage}</span>
           </div>
         </main>
-        <Toast toast={toast} onDismiss={dismiss} />
-        <PrintModal
-            open={printModalOpen}
-            options={printOptions}
-            selectedId={selectedPrintOption?.id ?? null}
-            onSelect={setPrintSelection}
-            onClose={closePrintModal}
-            onConfirm={() => void createPrintPdf()}
-            loading={printLoading}
-        />
-        <BookSelectModal
-            open={bookModalOpen}
-            books={books}
-            currentBook={bookId}
-            onSelect={(nextBook) => {
-              setBookId(nextBook);
-              closeBookModal();
-            }}
-            onDelete={handleDeleteBook}
-            onUploadChapter={handleUploadChapter}
-            uploadingChapter={uploadingChapter}
-            onUploadPdf={handleUploadPdf}
-            uploadingPdf={uploadingPdf}
-            onClose={closeBookModal}
-        />
-        <HelpModal open={helpOpen} hotkeys={hotkeys} onClose={closeHelp} />
-        <BookmarksModal
-            open={bookmarksOpen}
-            bookmarks={bookmarks}
-            loading={bookmarksLoading}
-            currentBook={bookId}
-            currentPage={currentPage}
-            onClose={closeBookmarks}
-            onSelect={handleSelectBookmark}
-            onRemove={handleRemoveBookmarkFromList}
-        />
-        <TextModal
-            open={textModalOpen}
-            text={currentText}
-            loading={textLoading}
-            onClose={closeTextModal}
-            title={currentImage ?? 'Page text'}
-            onRegenerate={() => {
-              setRegeneratedText(true);
-              void fetchPageText(true);
-            }}
-            regenerated={regeneratedText}
-        />
-        <TocNavModal
-            open={tocOpen}
-            entries={tocEntries}
-            loading={tocLoading}
-            onClose={() => setTocOpen(false)}
-            onGoToPage={(pageIndex) => {
-              setTocOpen(false);
-              renderPage(pageIndex);
-            }}
-        />
-        <TocModal
-            open={tocManageOpen}
-            entries={tocEntries}
-            loading={tocLoading}
-            generating={tocGenerating}
-            saving={tocSaving}
-            manifestLength={isTextBook ? chapterCount : manifest.length}
-            chapterGeneratingIndex={chapterGeneratingIndex}
-            allowGenerate={!isTextBook}
-            onClose={() => setTocManageOpen(false)}
-            onGenerate={handleGenerateToc}
-            onSave={handleSaveToc}
-            onAddEntry={() => handleAddTocEntry(currentPage)}
-            onRemoveEntry={handleRemoveTocEntry}
-            onUpdateEntry={handleUpdateTocEntry}
-            onGenerateChapter={handleGenerateChapter}
-        />
-        <OcrQueueModal
-            open={ocrQueueOpen}
-            onClose={() => setOcrQueueOpen(false)}
-            jobs={ocrJobs}
-            paused={ocrPaused}
-            onTogglePause={togglePause}
-            onQueueAll={queueAllPages}
-            onQueueRemaining={queueRemainingPages}
-            onQueueCurrent={queueCurrentPage}
-            onRetryFailed={retryFailed}
-            onClearQueue={clearQueue}
-        />
+        <AppModals {...modalProps} />
       </div>
   );
 }
