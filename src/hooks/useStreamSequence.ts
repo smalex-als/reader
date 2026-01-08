@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { splitStreamChunks, stripMarkdown } from '@/lib/streamText';
 import type { PageText, StreamState, ToastMessage } from '@/types/app';
-
-const STREAM_CHUNK_SIZE = 1000;
-const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
-const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\([^)]+\)/g;
 
 type ChapterParagraph = {
   fullText: string;
@@ -28,21 +25,6 @@ type StreamSequenceOptions = {
   stopAudio: () => void;
   streamVoice: string;
 };
-
-function stripMarkdown(text: string) {
-  let output = text;
-  output = output.replace(/```[\s\S]*?```/g, '');
-  output = output.replace(/`[^`]*`/g, '');
-  output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
-  output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
-  output = output.replace(/[•●◦▪]/g, '-');
-  output = output.replace(/^\s{0,3}#{1,6}\s+/gm, '');
-  output = output.replace(/^\s{0,3}>\s?/gm, '');
-  output = output.replace(/^\s{0,3}[-*+]\s+/gm, '');
-  output = output.replace(/^\s{0,3}---+\s*$/gm, '');
-  output = output.replace(/\n{3,}/g, '\n\n');
-  return output.trim();
-}
 
 export function useStreamSequence({
   isTextBook,
@@ -78,37 +60,7 @@ export function useStreamSequence({
     setStreamSequenceActive(false);
   }, []);
 
-  const splitStreamChunks = useCallback((text: string, startIndex: number) => {
-    const input = stripMarkdown(text.slice(Math.max(0, startIndex)));
-    const chunks: string[] = [];
-    let cursor = 0;
-    while (cursor < input.length) {
-      const slice = input.slice(cursor, cursor + STREAM_CHUNK_SIZE);
-      if (cursor + STREAM_CHUNK_SIZE >= input.length) {
-        chunks.push(slice.trim());
-        break;
-      }
-      const breakWindow = slice.slice(Math.max(0, slice.length - 200));
-      let breakIndex = breakWindow.lastIndexOf('\n\n');
-      if (breakIndex === -1) {
-        breakIndex = breakWindow.lastIndexOf('\n');
-      }
-      if (breakIndex === -1) {
-        breakIndex = breakWindow.lastIndexOf(' ');
-      }
-      if (breakIndex === -1) {
-        breakIndex = slice.length;
-      } else {
-        breakIndex += Math.max(0, slice.length - 200);
-      }
-      const chunk = input.slice(cursor, cursor + breakIndex);
-      chunks.push(chunk.trim());
-      cursor += Math.max(1, breakIndex);
-    }
-    return chunks.filter((chunk) => chunk.length > 0);
-  }, []);
-
-  const startStreamSequence = useCallback(
+  const startStreamSequenceFromText = useCallback(
     async (fullText: string, startIndex: number, baseKey: string) => {
       if (
         streamState.status === 'connecting' ||
@@ -134,7 +86,6 @@ export function useStreamSequence({
     },
     [
       showToast,
-      splitStreamChunks,
       startStream,
       stopAudio,
       stopStream,
@@ -144,7 +95,7 @@ export function useStreamSequence({
     ]
   );
 
-  const handlePlayStream = useCallback(async () => {
+  const startStreamSequence = useCallback(async () => {
     if (isTextBook) {
       if (!bookId || chapterCount === 0) {
         showToast('No chapter available to stream', 'error');
@@ -154,7 +105,7 @@ export function useStreamSequence({
         showToast('No chapter text available to stream', 'error');
         return;
       }
-      await startStreamSequence(
+      await startStreamSequenceFromText(
         firstChapterParagraph.fullText,
         firstChapterParagraph.startIndex,
         firstChapterParagraph.key
@@ -183,7 +134,7 @@ export function useStreamSequence({
     fetchPageText,
     showToast,
     startStream,
-    startStreamSequence,
+    startStreamSequenceFromText,
     stopAudio,
     stopStreamSequence,
     streamVoice
@@ -196,9 +147,9 @@ export function useStreamSequence({
         showToast('No paragraph text available to stream', 'error');
         return;
       }
-      await startStreamSequence(payload.fullText, payload.startIndex, payload.key);
+      await startStreamSequenceFromText(payload.fullText, payload.startIndex, payload.key);
     },
-    [showToast, startStreamSequence]
+    [showToast, startStreamSequenceFromText]
   );
 
   const handleStopStream = useCallback(() => {
@@ -246,11 +197,11 @@ export function useStreamSequence({
       return;
     }
     pendingStreamSequenceRef.current = null;
-    void startStreamSequence(pending.fullText, pending.startIndex, pending.baseKey);
-  }, [startStreamSequence, streamState.status]);
+    void startStreamSequenceFromText(pending.fullText, pending.startIndex, pending.baseKey);
+  }, [startStreamSequenceFromText, streamState.status]);
 
   return {
-    handlePlayStream,
+    startStreamSequence,
     handlePlayChapterParagraph,
     handleStopStream,
     handleToggleStreamPause

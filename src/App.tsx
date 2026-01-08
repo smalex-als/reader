@@ -229,7 +229,7 @@ export default function App() {
     toggleTextModal
   } = usePageText(currentImage, showToast);
   const {
-    handlePlayStream,
+    startStreamSequence,
     handlePlayChapterParagraph,
     handleStopStream,
     handleToggleStreamPause
@@ -535,7 +535,7 @@ export default function App() {
     stopStream,
     streamStatus: streamState.status,
     handleStopStream,
-    handlePlayStream,
+    startStreamSequence,
     gotoInputRef,
     toggleFullscreen,
     textModalOpen,
@@ -616,7 +616,7 @@ export default function App() {
               streamVoice={streamVoice}
               streamVoiceOptions={STREAM_VOICE_OPTIONS}
               onStreamVoiceChange={handleStreamVoiceChange}
-              onPlayStream={() => void handlePlayStream()}
+              onPlayStream={() => void startStreamSequence()}
               onStopStream={handleStopStream}
               onCreateChapter={() => {
                 if (!isTextBook) {
