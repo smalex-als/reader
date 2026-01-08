@@ -487,7 +487,7 @@ export default function App() {
     stopStream,
     streamStatus: streamState.status,
     handleStopStream,
-    startStreamSequence,
+    handlePlayStream: startStreamSequence,
     gotoInputRef,
     toggleFullscreen,
     textModalOpen,
