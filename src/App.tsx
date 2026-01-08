@@ -56,7 +56,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 function createDefaultSettings(): AppSettings {
-  return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as AppSettings;
+  return { ...DEFAULT_SETTINGS, pan: { ...DEFAULT_SETTINGS.pan } };
 }
 
 function isStreamVoice(value: string): value is StreamVoice {
