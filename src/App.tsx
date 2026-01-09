@@ -19,6 +19,7 @@ import { useFullscreen } from '@/hooks/useFullscreen';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToast } from '@/hooks/useToast';
 import { useTocManager } from '@/hooks/useTocManager';
+import { useWakeLock } from '@/hooks/useWakeLock';
 import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clampPan } from '@/lib/math';
@@ -223,6 +224,8 @@ export default function App() {
     stopAudio
   } = useAudioController(currentImage, showToast);
   const { streamState, startStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
+  const isListening = audioState.status === 'playing' || streamState.status === 'streaming';
+  useWakeLock(isFullscreen && isListening);
   const {
     closeTextModal,
     currentText,
