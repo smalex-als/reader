@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import { ZOOM_STEP } from '@/lib/hotkeys';
 import type { AppSettings, ViewerMetrics, ViewerPan } from '@/types/app';
 
 interface ViewerProps {
   imageUrl: string | null;
   settings: AppSettings;
   onPan: (pan: ViewerPan) => void;
+  onZoom: (zoom: number) => void;
   onMetricsChange: (metrics: ViewerMetrics) => void;
   rotation: number;
 }
@@ -119,14 +121,22 @@ export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rot
   const handleWheel = useCallback(
       (event: React.WheelEvent<HTMLDivElement>) => {
         event.preventDefault();
-        const factor = event.ctrlKey || event.metaKey ? 0.1 : 1;
+        if (event.ctrlKey || event.metaKey) {
+          if (event.deltaY === 0) {
+            return;
+          }
+          const direction = Math.sign(event.deltaY);
+          const nextZoom = settings.zoom - direction * ZOOM_STEP;
+          onZoom(nextZoom);
+          return;
+        }
         const nextPan = {
-          x: settings.pan.x - event.deltaX * factor,
-          y: settings.pan.y - event.deltaY * factor
+          x: settings.pan.x - event.deltaX,
+          y: settings.pan.y - event.deltaY
         };
         onPan(nextPan);
       },
-      [onPan, settings.pan.x, settings.pan.y]
+      [onPan, onZoom, settings.pan.x, settings.pan.y, settings.zoom]
   );
 
   useEffect(() => {
