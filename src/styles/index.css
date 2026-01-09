@@ -325,11 +325,13 @@ body {
   position: absolute;
   inset: 0;
   z-index: 120;
+  pointer-events: none;
 }
 
 .modal-portal .modal-backdrop {
   position: absolute;
   inset: 0;
+  pointer-events: auto;
 }
 
 .viewer-shell-loading::after {
