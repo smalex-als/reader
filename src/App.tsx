@@ -835,6 +835,7 @@ export default function App() {
                   refreshToken={chapterViewRefresh}
                   onFirstParagraphReady={setFirstChapterParagraph}
                   onPlayParagraph={handlePlayChapterParagraph}
+                  streamState={streamState}
               />
             )}
             {loading && <div className="viewer-status">Loading…</div>}

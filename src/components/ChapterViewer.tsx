@@ -2,6 +2,8 @@ import { isValidElement, useCallback, useEffect, useMemo, useState } from 'react
 import type { CSSProperties, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { stripMarkdown } from '@/lib/streamText';
+import type { StreamState } from '@/types/app';
 
 interface ChapterViewerProps {
   bookId: string | null;
@@ -27,6 +29,7 @@ interface ChapterViewerProps {
   refreshToken?: number;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
+  streamState: StreamState;
 }
 
 function formatChapterFilename(chapterNumber: number) {
@@ -71,6 +74,7 @@ export default function ChapterViewer({
   refreshToken = 0,
   onFirstParagraphReady,
   onPlayParagraph,
+  streamState,
 }: ChapterViewerProps) {
   const [chapterText, setChapterText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -235,6 +239,21 @@ export default function ChapterViewer({
     return `Pages ${start}-${end}`;
   }, [pageRange]);
 
+  const streamOffset = useMemo(() => {
+    if (!streamState.pageKey) {
+      return null;
+    }
+    const match = streamState.pageKey.match(/@(\d+)$/);
+    if (!match) {
+      return null;
+    }
+    return Number.parseInt(match[1], 10);
+  }, [streamState.pageKey]);
+
+  const streamActive =
+    streamOffset !== null &&
+    (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused');
+
   const markdownComponents = useMemo(() => {
     const resolveStartIndex = (textValue: string, node?: any) => {
       if (!chapterText) {
@@ -262,8 +281,10 @@ export default function ChapterViewer({
         const paragraphKey = chapterNumber
           ? `chapter-${chapterNumber}-${hashText(textValue)}-${startIndex}`
           : '';
+        const strippedStartIndex = stripMarkdown(chapterText.slice(0, Math.max(0, startIndex))).length;
+        const isPlayed = streamActive && streamOffset !== null && strippedStartIndex <= streamOffset;
         return (
-          <Tag className="text-viewer-block">
+          <Tag className={`text-viewer-block${isPlayed ? ' text-viewer-block-streamed' : ''}`}>
             {children}
             {textValue ? (
               <button
@@ -298,7 +319,7 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, chapterText, onPlayParagraph]);
+  }, [chapterNumber, chapterText, onPlayParagraph, streamActive, streamOffset]);
 
   return (
     <div className="text-viewer" style={textStyle}>

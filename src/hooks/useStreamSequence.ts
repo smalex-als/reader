@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { splitStreamChunks, stripMarkdown } from '@/lib/streamText';
+import type { StreamChunk } from '@/lib/streamText';
 import type { PageText, StreamState, ToastMessage } from '@/types/app';
 
 type ChapterParagraph = {
@@ -50,9 +51,10 @@ export function useStreamSequence({
   onSequenceComplete
 }: StreamSequenceOptions) {
   const streamSequenceRef = useRef<{
-    chunks: string[];
+    chunks: StreamChunk[];
     index: number;
     baseKey: string;
+    prefixOffset: number;
   } | null>(null);
   const pendingStreamSequenceRef = useRef<{
     fullText: string;
@@ -89,12 +91,18 @@ export function useStreamSequence({
         showToast('No text available to stream', 'error');
         return;
       }
+      const prefixOffset = stripMarkdown(fullText.slice(0, Math.max(0, startIndex))).length;
       stopAudio();
       stopStream();
       stopStreamSequence();
-      streamSequenceRef.current = { chunks, index: 0, baseKey };
+      streamSequenceRef.current = { chunks, index: 0, baseKey, prefixOffset };
       setStreamSequenceActive(true);
-      await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice: streamVoice });
+      const initialOffset = prefixOffset + chunks[0].offset;
+      await startStream({
+        text: chunks[0].text,
+        pageKey: `${baseKey}#chunk-0@${initialOffset}`,
+        voice: streamVoice
+      });
     },
     [
       showToast,
@@ -198,9 +206,11 @@ export function useStreamSequence({
       return;
     }
     sequence.index += 1;
+    const chunk = sequence.chunks[sequence.index];
+    const chunkOffset = sequence.prefixOffset + chunk.offset;
     void startStream({
-      text: sequence.chunks[sequence.index],
-      pageKey: `${sequence.baseKey}#chunk-${sequence.index}`,
+      text: chunk.text,
+      pageKey: `${sequence.baseKey}#chunk-${sequence.index}@${chunkOffset}`,
       voice: streamVoice
     });
   }, [startStream, stopStreamSequence, streamSequenceActive, streamState.status, streamVoice]);
