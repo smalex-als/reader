@@ -1,4 +1,4 @@
-import { isValidElement, useCallback, useEffect, useMemo, useState } from 'react';
+import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -79,6 +79,11 @@ export default function ChapterViewer({
   const [missingFile, setMissingFile] = useState<string | null>(null);
   const [localRefreshToken, setLocalRefreshToken] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const onPlayParagraphRef = useRef(onPlayParagraph);
+
+  useEffect(() => {
+    onPlayParagraphRef.current = onPlayParagraph;
+  }, [onPlayParagraph]);
 
   const FONT_SIZE_OPTIONS = [
     { label: 'Compact', value: 18 },
@@ -270,7 +275,7 @@ export default function ChapterViewer({
                 type="button"
                 className="text-paragraph-stream"
                 onClick={() =>
-                  onPlayParagraph({
+                  onPlayParagraphRef.current({
                     fullText: chapterText,
                     startIndex,
                     key: paragraphKey
@@ -298,7 +303,7 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, chapterText, onPlayParagraph]);
+  }, [chapterNumber, chapterText]);
 
   return (
     <div className="text-viewer" style={textStyle}>
