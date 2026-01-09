@@ -691,6 +691,7 @@ export default function App() {
                   imageUrl={currentImage}
                   settings={settings}
                   onPan={updatePan}
+                  onZoom={updateZoom}
                   onMetricsChange={handleMetricsChange}
                   rotation={settings.rotation}
               />
