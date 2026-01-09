@@ -865,19 +865,10 @@ body {
 }
 
 .text-viewer-block-streamed {
-  padding-left: 1rem;
-}
-
-.text-viewer-block-streamed::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.35rem;
-  bottom: 0.35rem;
-  width: 4px;
-  border-radius: 999px;
-  background: var(--text-viewer-accent);
-  opacity: 0.75;
+  background-image: linear-gradient(to right, var(--text-viewer-accent), var(--text-viewer-accent));
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 4px 100%;
 }
 
 .text-viewer-markdown p.text-viewer-block {
