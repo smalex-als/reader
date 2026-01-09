@@ -232,9 +232,11 @@ export default function App() {
     fetchPageText,
     regeneratedText,
     resetTextState,
+    savePageText,
     setRegeneratedText,
     textLoading,
     textModalOpen,
+    textSaving,
     toggleTextModal
   } = usePageText(currentImage, showToast);
   const {
@@ -633,7 +635,11 @@ export default function App() {
         setRegeneratedText(true);
         void fetchPageText(true);
       },
-      regenerated: regeneratedText
+      regenerated: regeneratedText,
+      saving: textSaving,
+      onSave: (nextText: string) => {
+        void savePageText(nextText);
+      }
     },
     tocNavModalProps: {
       open: tocOpen,

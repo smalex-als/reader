@@ -13,7 +13,7 @@ import {
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
 import { fetchLlmproxy } from './llmproxy.js';
-import { resolveDataUrl } from './paths.js';
+import { deriveTextPathsFromImageUrl, resolveDataUrl } from './paths.js';
 import { getOcrOpenAI, getOpenAI } from './openai.js';
 
 async function extractTextFromLlmproxy(absolute, prompt) {
@@ -50,10 +50,8 @@ async function extractTextFromLlmproxy(absolute, prompt) {
 
 export async function loadPageText(imageUrl, options = {}) {
   const { skipCache = false } = options;
-  const { absolute, relative } = resolveDataUrl(imageUrl);
-  const baseName = relative.replace(/\.[^.]+$/, '');
-  const textRelative = `${baseName}.txt`;
-  const textAbsolute = path.join(DATA_DIR, textRelative);
+  const { absolute } = resolveDataUrl(imageUrl);
+  const { textRelative, textAbsolute } = deriveTextPathsFromImageUrl(imageUrl);
 
   const textStat = await safeStat(textAbsolute);
   if (textStat?.isFile() && !skipCache) {
@@ -152,6 +150,29 @@ export async function loadPageText(imageUrl, options = {}) {
 
   return {
     source: 'ai',
+    text,
+    url: `/data/${textRelative}`,
+    absolutePath: textAbsolute
+  };
+}
+
+export async function savePageText(imageUrl, text) {
+  if (typeof text !== 'string') {
+    throw createHttpError(400, 'Text content is required');
+  }
+  const { absolute } = resolveDataUrl(imageUrl);
+  const { textRelative, textAbsolute } = deriveTextPathsFromImageUrl(imageUrl);
+
+  const imageStat = await safeStat(absolute);
+  if (!imageStat?.isFile()) {
+    throw createHttpError(404, 'Image not found');
+  }
+
+  await fs.mkdir(path.dirname(textAbsolute), { recursive: true });
+  await fs.writeFile(textAbsolute, text, 'utf8');
+
+  return {
+    source: 'file',
     text,
     url: `/data/${textRelative}`,
     absolutePath: textAbsolute

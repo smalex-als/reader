@@ -16,6 +16,7 @@ export function usePageText(
   const [textModalOpen, setTextModalOpen] = useState(false);
   const [textCache, setTextCache] = useState<Record<string, PageText>>({});
   const [textLoading, setTextLoading] = useState(false);
+  const [textSaving, setTextSaving] = useState(false);
   const [regeneratedText, setRegeneratedText] = useState(false);
 
   const fetchPageText = useCallback(
@@ -68,10 +69,42 @@ export function usePageText(
 
   const closeTextModal = useCallback(() => setTextModalOpen(false), []);
 
+  const savePageText = useCallback(
+    async (nextText: string): Promise<PageText | null> => {
+      if (!currentImage) {
+        return null;
+      }
+      setTextSaving(true);
+      try {
+        const data = await fetchJson<{ source: 'file' | 'ai'; text: string }>(`/api/page-text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: currentImage, text: nextText })
+        });
+        const entry: PageText = {
+          text: data.text,
+          source: data.source
+        };
+        setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
+        setRegeneratedText(false);
+        showToast('Page text saved', 'success');
+        return entry;
+      } catch (error) {
+        console.error(error);
+        showToast('Unable to save page text', 'error');
+        return null;
+      } finally {
+        setTextSaving(false);
+      }
+    },
+    [currentImage, showToast]
+  );
+
   const resetTextState = useCallback(() => {
     setTextCache({});
     setTextModalOpen(false);
     setTextLoading(false);
+    setTextSaving(false);
     setRegeneratedText(false);
   }, []);
 
@@ -85,10 +118,12 @@ export function usePageText(
     fetchPageText,
     regeneratedText,
     resetTextState,
+    savePageText,
     setRegeneratedText,
     textCache,
     textLoading,
     textModalOpen,
+    textSaving,
     toggleTextModal
   };
 }
