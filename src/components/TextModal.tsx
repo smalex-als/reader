@@ -31,6 +31,7 @@ export default function TextModal({
   }
 
   const [draftText, setDraftText] = useState('');
+  const [copied, setCopied] = useState(false);
   const generatedMarker = text?.source === 'ai' || regenerated;
 
   useEffect(() => {
@@ -39,6 +40,14 @@ export default function TextModal({
     }
     setDraftText(text?.text ?? '');
   }, [open, text?.text]);
+
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setCopied(false), 1500);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
 
   const displayedText = useMemo(() => {
     if (!text) {
@@ -57,11 +66,11 @@ export default function TextModal({
             {title}
             {generatedMarker ? <span className="modal-marker">• Generated</span> : null}
           </h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button type="button" className="button button-ghost" onClick={onClose} aria-label="Close">
+            X
           </button>
         </header>
-        <section className="modal-body">
+        <section className="modal-body modal-body-text">
           {loading && <p className="modal-status">Loading page text…</p>}
           {!loading && !text && <p className="modal-status">No text available.</p>}
           {!loading && text ? (
@@ -72,18 +81,20 @@ export default function TextModal({
                 onChange={(event) => setDraftText(event.target.value)}
                 disabled={saving}
               />
-              {isDirty ? <p className="modal-status">Unsaved changes.</p> : null}
             </>
           ) : null}
         </section>
-        <footer className="modal-footer">
+        <footer className="modal-footer modal-footer-right">
           <button
             type="button"
-            className="button button-secondary"
-            onClick={() => onCopyText(draftText)}
+            className={`button button-secondary ${copied ? 'button-active' : ''}`}
+            onClick={() => {
+              onCopyText(draftText);
+              setCopied(true);
+            }}
             disabled={loading || saving || !canCopy}
           >
-            Copy Text
+            {copied ? 'Copied' : 'Copy Text'}
           </button>
           <button
             type="button"
@@ -100,14 +111,6 @@ export default function TextModal({
             disabled={loading || saving || !isDirty}
           >
             {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            className="button button-primary"
-            onClick={onClose}
-            disabled={loading || saving}
-          >
-            Done
           </button>
         </footer>
       </div>

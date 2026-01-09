@@ -131,6 +131,7 @@ export default function App() {
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
+  const modalHostRef = useRef<HTMLDivElement | null>(null);
   const {
     settings,
     setSettings,
@@ -680,6 +681,7 @@ export default function App() {
   };
 
   const modalProps = {
+    portalTarget: isFullscreen ? modalHostRef.current : null,
     toastProps: { toast, onDismiss: dismiss },
     printModalProps: {
       open: printModalOpen,
@@ -841,6 +843,7 @@ export default function App() {
               onTogglePause={() => void handleToggleStreamPause()}
               onStopStream={handleStopStream}
             />
+            <div ref={modalHostRef} className="modal-portal" />
           </div>
           <div className="page-footer">
             <span className="page-path">{footerMessage}</span>

@@ -95,7 +95,7 @@ export function useHotkeys({
   setTocManageOpen,
   openHelp,
   closeHelp,
-  openBookModal
+  openBookModal,
 }: HotkeysOptions) {
   const hotkeys = useMemo(
     () => [
@@ -113,13 +113,13 @@ export function useHotkeys({
       { keys: 'H', action: 'Fit height' },
       { keys: 'R', action: 'Rotate 90°' },
       { keys: 'I', action: 'Invert colors' },
-      { keys: 'X', action: 'Toggle page text' },
+      { keys: 'T', action: 'Toggle page text' },
       { keys: 'V', action: 'Toggle view mode' },
       { keys: 'P', action: 'Play/Pause audio' },
       { keys: 'S', action: 'Play/Stop stream audio' },
       { keys: 'G', action: 'Focus Go To input' },
       { keys: 'F', action: 'Toggle fullscreen' },
-      { keys: 'T', action: 'Open TOC' },
+      { keys: 'C', action: 'Open TOC' },
       { keys: 'B', action: 'Open book selector' },
       { keys: 'Esc', action: 'Close dialogs' },
       { keys: 'Shift + /', action: 'Open help' }
@@ -230,10 +230,6 @@ export function useHotkeys({
           event.preventDefault();
           applyFilters({ invert: !settings.invert });
           break;
-        case 'x':
-          event.preventDefault();
-          toggleTextModal();
-          break;
         case 'v':
           event.preventDefault();
           toggleViewMode();
@@ -260,6 +256,10 @@ export function useHotkeys({
           gotoInputRef.current?.focus();
           break;
         case 't':
+          event.preventDefault();
+          toggleTextModal();
+          break;
+        case 'c':
           event.preventDefault();
           setTocOpen(true);
           break;

@@ -321,6 +321,17 @@ body {
   width: 100%;
 }
 
+.modal-portal {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+}
+
+.modal-portal .modal-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
 .viewer-shell-loading::after {
   content: '';
   position: absolute;
@@ -1114,8 +1125,8 @@ body {
   justify-content: center;
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
-  z-index: 10;
-  padding: 2rem;
+  z-index: 200;
+  padding: 1rem;
 }
 
 .modal {
@@ -1131,7 +1142,8 @@ body {
 
 .modal-wide {
   width: min(900px, 100%);
-  max-height: min(88vh, 720px);
+  height: min(92vh, 900px);
+  max-height: min(92vh, 900px);
 }
 
 .modal-header,
@@ -1141,6 +1153,10 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.modal-footer-right {
+  justify-content: flex-end;
 }
 
 .modal-title {
@@ -1160,6 +1176,11 @@ body {
   padding: 0 1.25rem 1.25rem;
   overflow: auto;
   flex: 1;
+}
+
+.modal-body-text {
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-toolbar {
@@ -1223,6 +1244,12 @@ body {
   font-size: 0.9rem;
   line-height: 1.5;
   resize: vertical;
+}
+
+.modal-body-text .modal-textarea {
+  flex: 1;
+  min-height: 0;
+  resize: none;
 }
 
 .modal-textarea:disabled {

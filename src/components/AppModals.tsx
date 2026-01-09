@@ -1,4 +1,5 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import Toast from '@/components/Toast';
 import TextModal from '@/components/TextModal';
 import BookmarksModal from '@/components/BookmarksModal';
@@ -20,6 +21,7 @@ type TocModalProps = ComponentProps<typeof TocModal>;
 type OcrQueueModalProps = ComponentProps<typeof OcrQueueModal>;
 
 interface AppModalsProps {
+  portalTarget?: HTMLElement | null;
   toastProps: ToastProps;
   printModalProps: PrintModalProps;
   bookSelectModalProps: BookSelectModalProps;
@@ -31,7 +33,15 @@ interface AppModalsProps {
   ocrQueueModalProps: OcrQueueModalProps;
 }
 
+function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
+  if (!portalTarget) {
+    return content;
+  }
+  return createPortal(content, portalTarget);
+}
+
 export default function AppModals({
+  portalTarget,
   toastProps,
   printModalProps,
   bookSelectModalProps,
@@ -47,11 +57,11 @@ export default function AppModals({
       <Toast {...toastProps} />
       <PrintModal {...printModalProps} />
       <BookSelectModal {...bookSelectModalProps} />
-      <HelpModal {...helpModalProps} />
+      {renderInPortal(<HelpModal {...helpModalProps} />, portalTarget)}
       <BookmarksModal {...bookmarksModalProps} />
-      <TextModal {...textModalProps} />
-      <TocNavModal {...tocNavModalProps} />
-      <TocModal {...tocModalProps} />
+      {renderInPortal(<TextModal {...textModalProps} />, portalTarget)}
+      {renderInPortal(<TocNavModal {...tocNavModalProps} />, portalTarget)}
+      {renderInPortal(<TocModal {...tocModalProps} />, portalTarget)}
       <OcrQueueModal {...ocrQueueModalProps} />
     </>
   );
