@@ -377,7 +377,197 @@ body {
 }
 
 .viewer-shell-text {
-  background: rgba(12, 20, 32, 0.95);
+  --text-viewer-shell-bg: #1b2632;
+  --text-viewer-panel-bg: #202d3b;
+  --text-viewer-input-bg: #1d2a38;
+  --text-viewer-input-border: rgba(213, 229, 242, 0.12);
+  --text-viewer-fg: rgba(188, 202, 214, 0.86);
+  --text-viewer-strong: rgba(204, 218, 230, 0.92);
+  --text-viewer-muted: rgba(188, 202, 214, 0.68);
+  --text-viewer-subtle: rgba(188, 202, 214, 0.52);
+  --text-viewer-border: rgba(198, 212, 224, 0.22);
+  --text-viewer-border-soft: rgba(188, 200, 212, 0.12);
+  --text-viewer-bg-soft: rgba(188, 200, 212, 0.1);
+  --text-viewer-bg-faint: rgba(188, 200, 212, 0.05);
+  --text-viewer-button-bg: rgba(198, 212, 224, 0.12);
+  --text-viewer-button-border: rgba(198, 212, 224, 0.2);
+  --text-viewer-button-text: rgba(214, 226, 236, 0.95);
+  --text-viewer-button-hover: rgba(198, 212, 224, 0.2);
+  --text-viewer-button-secondary-bg: rgba(198, 212, 224, 0.16);
+  --text-viewer-button-primary-text: #f1f6fb;
+  --text-viewer-accent: rgba(120, 180, 226, 0.9);
+  --text-viewer-code-bg: rgba(22, 32, 44, 0.65);
+  --text-viewer-pre-bg: rgba(20, 30, 42, 0.7);
+  background: var(--text-viewer-shell-bg);
+  color: var(--text-viewer-fg);
+}
+
+.viewer-shell-text.theme-light {
+  --text-viewer-shell-bg: #ffffff;
+  --text-viewer-panel-bg: #ffffff;
+  --text-viewer-input-bg: #ffffff;
+  --text-viewer-input-border: rgba(40, 50, 60, 0.18);
+  --text-viewer-fg: rgba(30, 40, 50, 0.9);
+  --text-viewer-strong: rgba(20, 28, 36, 0.92);
+  --text-viewer-muted: rgba(30, 40, 50, 0.65);
+  --text-viewer-subtle: rgba(30, 40, 50, 0.5);
+  --text-viewer-border: rgba(40, 50, 60, 0.24);
+  --text-viewer-border-soft: rgba(40, 50, 60, 0.16);
+  --text-viewer-bg-soft: rgba(40, 50, 60, 0.08);
+  --text-viewer-bg-faint: rgba(40, 50, 60, 0.06);
+  --text-viewer-button-bg: rgba(20, 30, 40, 0.06);
+  --text-viewer-button-border: rgba(20, 30, 40, 0.18);
+  --text-viewer-button-text: rgba(20, 30, 40, 0.9);
+  --text-viewer-button-hover: rgba(20, 30, 40, 0.12);
+  --text-viewer-button-secondary-bg: rgba(20, 30, 40, 0.1);
+  --text-viewer-button-primary-text: #f9fbff;
+  --text-viewer-accent: rgba(36, 76, 116, 0.85);
+  --text-viewer-code-bg: rgba(40, 50, 60, 0.08);
+  --text-viewer-pre-bg: rgba(40, 50, 60, 0.06);
+}
+
+.viewer-shell-text.theme-dracula {
+  --text-viewer-shell-bg: #282a36;
+  --text-viewer-panel-bg: #2f3140;
+  --text-viewer-input-bg: #2b2d3a;
+  --text-viewer-input-border: rgba(248, 248, 242, 0.16);
+  --text-viewer-fg: rgba(228, 228, 220, 0.88);
+  --text-viewer-strong: rgba(242, 242, 235, 0.94);
+  --text-viewer-muted: rgba(228, 228, 220, 0.68);
+  --text-viewer-subtle: rgba(228, 228, 220, 0.52);
+  --text-viewer-border: rgba(248, 248, 242, 0.2);
+  --text-viewer-border-soft: rgba(248, 248, 242, 0.12);
+  --text-viewer-bg-soft: rgba(248, 248, 242, 0.1);
+  --text-viewer-bg-faint: rgba(248, 248, 242, 0.08);
+  --text-viewer-button-bg: rgba(248, 248, 242, 0.12);
+  --text-viewer-button-border: rgba(248, 248, 242, 0.2);
+  --text-viewer-button-text: rgba(240, 240, 232, 0.94);
+  --text-viewer-button-hover: rgba(248, 248, 242, 0.2);
+  --text-viewer-button-secondary-bg: rgba(248, 248, 242, 0.16);
+  --text-viewer-button-primary-text: #f8f8f2;
+  --text-viewer-accent: rgba(189, 147, 249, 0.9);
+  --text-viewer-code-bg: rgba(35, 37, 49, 0.7);
+  --text-viewer-pre-bg: rgba(33, 35, 47, 0.75);
+}
+
+.viewer-shell-text.theme-nord {
+  --text-viewer-shell-bg: #2e3440;
+  --text-viewer-panel-bg: #353c4a;
+  --text-viewer-input-bg: #323949;
+  --text-viewer-input-border: rgba(236, 239, 244, 0.14);
+  --text-viewer-fg: rgba(216, 222, 233, 0.88);
+  --text-viewer-strong: rgba(236, 239, 244, 0.94);
+  --text-viewer-muted: rgba(216, 222, 233, 0.68);
+  --text-viewer-subtle: rgba(216, 222, 233, 0.52);
+  --text-viewer-border: rgba(236, 239, 244, 0.2);
+  --text-viewer-border-soft: rgba(236, 239, 244, 0.12);
+  --text-viewer-bg-soft: rgba(236, 239, 244, 0.1);
+  --text-viewer-bg-faint: rgba(236, 239, 244, 0.08);
+  --text-viewer-button-bg: rgba(236, 239, 244, 0.12);
+  --text-viewer-button-border: rgba(236, 239, 244, 0.2);
+  --text-viewer-button-text: rgba(236, 239, 244, 0.92);
+  --text-viewer-button-hover: rgba(236, 239, 244, 0.2);
+  --text-viewer-button-secondary-bg: rgba(236, 239, 244, 0.16);
+  --text-viewer-button-primary-text: #eceff4;
+  --text-viewer-accent: rgba(129, 161, 193, 0.9);
+  --text-viewer-code-bg: rgba(44, 51, 63, 0.7);
+  --text-viewer-pre-bg: rgba(42, 49, 61, 0.75);
+}
+
+.viewer-shell-text.theme-gruvbox {
+  --text-viewer-shell-bg: #282828;
+  --text-viewer-panel-bg: #32302f;
+  --text-viewer-input-bg: #2b2a29;
+  --text-viewer-input-border: rgba(235, 219, 178, 0.18);
+  --text-viewer-fg: rgba(235, 219, 178, 0.88);
+  --text-viewer-strong: rgba(251, 241, 199, 0.94);
+  --text-viewer-muted: rgba(235, 219, 178, 0.68);
+  --text-viewer-subtle: rgba(235, 219, 178, 0.52);
+  --text-viewer-border: rgba(235, 219, 178, 0.2);
+  --text-viewer-border-soft: rgba(235, 219, 178, 0.12);
+  --text-viewer-bg-soft: rgba(235, 219, 178, 0.1);
+  --text-viewer-bg-faint: rgba(235, 219, 178, 0.08);
+  --text-viewer-button-bg: rgba(235, 219, 178, 0.12);
+  --text-viewer-button-border: rgba(235, 219, 178, 0.2);
+  --text-viewer-button-text: rgba(251, 241, 199, 0.94);
+  --text-viewer-button-hover: rgba(235, 219, 178, 0.2);
+  --text-viewer-button-secondary-bg: rgba(235, 219, 178, 0.16);
+  --text-viewer-button-primary-text: #fbf1c7;
+  --text-viewer-accent: rgba(250, 189, 47, 0.9);
+  --text-viewer-code-bg: rgba(50, 48, 47, 0.75);
+  --text-viewer-pre-bg: rgba(47, 45, 44, 0.8);
+}
+
+
+.viewer-shell-text.theme-solarized {
+  --text-viewer-shell-bg: #002b36;
+  --text-viewer-panel-bg: #073642;
+  --text-viewer-input-bg: #003847;
+  --text-viewer-input-border: rgba(147, 161, 161, 0.2);
+  --text-viewer-fg: rgba(147, 161, 161, 0.88);
+  --text-viewer-strong: rgba(181, 194, 194, 0.94);
+  --text-viewer-muted: rgba(147, 161, 161, 0.68);
+  --text-viewer-subtle: rgba(147, 161, 161, 0.52);
+  --text-viewer-border: rgba(147, 161, 161, 0.22);
+  --text-viewer-border-soft: rgba(147, 161, 161, 0.12);
+  --text-viewer-bg-soft: rgba(147, 161, 161, 0.1);
+  --text-viewer-bg-faint: rgba(147, 161, 161, 0.08);
+  --text-viewer-button-bg: rgba(147, 161, 161, 0.12);
+  --text-viewer-button-border: rgba(147, 161, 161, 0.2);
+  --text-viewer-button-text: rgba(181, 194, 194, 0.94);
+  --text-viewer-button-hover: rgba(147, 161, 161, 0.2);
+  --text-viewer-button-secondary-bg: rgba(147, 161, 161, 0.16);
+  --text-viewer-button-primary-text: #b5c2c2;
+  --text-viewer-accent: rgba(38, 139, 210, 0.9);
+  --text-viewer-code-bg: rgba(7, 54, 66, 0.75);
+  --text-viewer-pre-bg: rgba(6, 49, 59, 0.8);
+}
+.viewer-shell-text.theme-obsidian {
+  --text-viewer-shell-bg: #18202b;
+  --text-viewer-panel-bg: #1d2632;
+  --text-viewer-input-bg: #1a2330;
+  --text-viewer-input-border: rgba(200, 212, 224, 0.14);
+  --text-viewer-fg: rgba(192, 206, 218, 0.86);
+  --text-viewer-strong: rgba(210, 222, 234, 0.92);
+  --text-viewer-muted: rgba(192, 206, 218, 0.68);
+  --text-viewer-subtle: rgba(192, 206, 218, 0.52);
+  --text-viewer-border: rgba(206, 220, 232, 0.22);
+  --text-viewer-border-soft: rgba(206, 220, 232, 0.14);
+  --text-viewer-bg-soft: rgba(206, 220, 232, 0.1);
+  --text-viewer-bg-faint: rgba(206, 220, 232, 0.08);
+  --text-viewer-button-bg: rgba(206, 220, 232, 0.12);
+  --text-viewer-button-border: rgba(206, 220, 232, 0.2);
+  --text-viewer-button-text: rgba(224, 234, 244, 0.95);
+  --text-viewer-button-hover: rgba(206, 220, 232, 0.22);
+  --text-viewer-button-secondary-bg: rgba(206, 220, 232, 0.16);
+  --text-viewer-button-primary-text: #f4f9ff;
+  --text-viewer-accent: rgba(132, 204, 196, 0.9);
+  --text-viewer-code-bg: rgba(18, 24, 34, 0.7);
+  --text-viewer-pre-bg: rgba(16, 22, 32, 0.75);
+}
+
+.viewer-shell-text.theme-warm {
+  --text-viewer-shell-bg: #fbf3e6;
+  --text-viewer-panel-bg: #f2e8da;
+  --text-viewer-input-bg: #fff8ee;
+  --text-viewer-input-border: rgba(70, 54, 42, 0.22);
+  --text-viewer-fg: rgba(64, 48, 36, 0.9);
+  --text-viewer-strong: rgba(54, 40, 30, 0.94);
+  --text-viewer-muted: rgba(64, 48, 36, 0.65);
+  --text-viewer-subtle: rgba(64, 48, 36, 0.5);
+  --text-viewer-border: rgba(74, 58, 44, 0.24);
+  --text-viewer-border-soft: rgba(74, 58, 44, 0.16);
+  --text-viewer-bg-soft: rgba(74, 58, 44, 0.08);
+  --text-viewer-bg-faint: rgba(74, 58, 44, 0.06);
+  --text-viewer-button-bg: rgba(64, 48, 36, 0.08);
+  --text-viewer-button-border: rgba(64, 48, 36, 0.2);
+  --text-viewer-button-text: rgba(64, 48, 36, 0.92);
+  --text-viewer-button-hover: rgba(64, 48, 36, 0.14);
+  --text-viewer-button-secondary-bg: rgba(64, 48, 36, 0.12);
+  --text-viewer-button-primary-text: #fff9f1;
+  --text-viewer-accent: rgba(145, 94, 58, 0.85);
+  --text-viewer-code-bg: rgba(74, 58, 44, 0.1);
+  --text-viewer-pre-bg: rgba(74, 58, 44, 0.08);
 }
 
 .text-viewer {
@@ -388,6 +578,7 @@ body {
   padding: 1.75rem 2rem;
   gap: 1.5rem;
   overflow: auto;
+  color: var(--text-viewer-fg);
 }
 
 .text-viewer-header {
@@ -410,13 +601,13 @@ body {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.18rem;
-  color: rgba(213, 229, 242, 0.5);
+  color: var(--text-viewer-subtle);
 }
 
 .text-viewer-heading {
   margin: 0;
   font-size: 1.4rem;
-  color: rgba(213, 229, 242, 0.92);
+  color: var(--text-viewer-strong);
 }
 
 .text-viewer-title-input {
@@ -426,13 +617,101 @@ body {
 
 .text-viewer-meta {
   font-size: 0.8rem;
-  color: rgba(213, 229, 242, 0.6);
+  color: var(--text-viewer-muted);
 }
 
 .text-viewer-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.text-viewer-settings {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--text-viewer-border-soft);
+  background: var(--text-viewer-panel-bg);
+}
+
+.text-viewer-setting {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.text-viewer-setting-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12rem;
+  color: var(--text-viewer-subtle);
+}
+
+.text-viewer-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.text-viewer-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--text-viewer-muted);
+}
+
+.text-viewer-radio input {
+  accent-color: var(--text-viewer-accent);
+}
+
+.text-viewer .button {
+  background: var(--text-viewer-button-bg);
+  border-color: var(--text-viewer-button-border);
+  color: var(--text-viewer-button-text);
+}
+
+.text-viewer .button:hover:not(:disabled) {
+  background: var(--text-viewer-button-hover);
+}
+
+.text-viewer .button-secondary {
+  background: var(--text-viewer-button-secondary-bg);
+}
+
+.text-viewer .button-primary {
+  color: var(--text-viewer-button-primary-text);
+}
+
+.viewer-shell-text .chapter-editor {
+  color: var(--text-viewer-fg);
+}
+
+.viewer-shell-text .chapter-editor .input {
+  background: var(--text-viewer-input-bg);
+  border-color: var(--text-viewer-input-border);
+  color: var(--text-viewer-fg);
+}
+
+.viewer-shell-text .chapter-editor .button {
+  background: var(--text-viewer-button-bg);
+  border-color: var(--text-viewer-button-border);
+  color: var(--text-viewer-button-text);
+}
+
+.viewer-shell-text .chapter-editor .button:hover:not(:disabled) {
+  background: var(--text-viewer-button-hover);
+}
+
+.viewer-shell-text .chapter-editor .button-secondary {
+  background: var(--text-viewer-button-secondary-bg);
+}
+
+.viewer-shell-text .chapter-editor .button-primary {
+  color: var(--text-viewer-button-primary-text);
 }
 
 .text-viewer-body {
@@ -446,14 +725,14 @@ body {
   margin-top: 1.5rem;
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid rgba(213, 229, 242, 0.08);
+  border-top: 1px solid var(--text-viewer-border-soft);
   padding-top: 1rem;
 }
 
 .text-viewer-status {
   margin: 0;
   font-size: 0.95rem;
-  color: rgba(213, 229, 242, 0.7);
+  color: var(--text-viewer-muted);
 }
 
 .text-viewer-action {
@@ -466,15 +745,15 @@ body {
 .text-viewer-content {
   margin: 0;
   white-space: pre-wrap;
-  font-size: 1rem;
+  font-size: var(--text-viewer-font-size, 1rem);
   line-height: 1.7;
-  color: rgba(213, 229, 242, 0.85);
+  color: var(--text-viewer-fg);
 }
 
 .text-viewer-markdown {
-  font-size: 1rem;
+  font-size: var(--text-viewer-font-size, 1rem);
   line-height: 1.7;
-  color: rgba(213, 229, 242, 0.85);
+  color: var(--text-viewer-fg);
 }
 
 .chapter-editor {
@@ -534,6 +813,12 @@ body {
   resize: none;
 }
 
+.viewer-shell-text .chapter-editor-textarea {
+  border-color: var(--text-viewer-input-border);
+  background: var(--text-viewer-input-bg);
+  color: var(--text-viewer-fg);
+}
+
 .text-viewer-markdown h1,
 .text-viewer-markdown h2,
 .text-viewer-markdown h3,
@@ -541,7 +826,7 @@ body {
 .text-viewer-markdown h5,
 .text-viewer-markdown h6 {
   margin: 1.6rem 0 0.75rem;
-  color: rgba(213, 229, 242, 0.92);
+  color: var(--text-viewer-strong);
   line-height: 1.2;
 }
 
@@ -578,9 +863,9 @@ body {
   height: 28px;
   padding: 0;
   border-radius: 0.5rem;
-  border: 1px solid rgba(213, 229, 242, 0.2);
-  background: rgba(10, 18, 28, 0.6);
-  color: rgba(213, 229, 242, 0.85);
+  border: 1px solid var(--text-viewer-border);
+  background: var(--text-viewer-panel-bg);
+  color: var(--text-viewer-fg);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -604,7 +889,7 @@ body {
 }
 
 .text-paragraph-stream:hover:not(:disabled) {
-  background: rgba(213, 229, 242, 0.18);
+  background: var(--text-viewer-bg-soft);
 }
 
 .text-viewer-markdown ul,
@@ -620,14 +905,14 @@ body {
 .text-viewer-markdown blockquote {
   margin: 0 0 1rem;
   padding: 0.75rem 1rem;
-  border-left: 3px solid rgba(213, 229, 242, 0.2);
-  background: rgba(213, 229, 242, 0.05);
-  color: rgba(213, 229, 242, 0.75);
+  border-left: 3px solid var(--text-viewer-border);
+  background: var(--text-viewer-bg-faint);
+  color: var(--text-viewer-muted);
 }
 
 .text-viewer-markdown code {
   font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  background: rgba(10, 18, 28, 0.45);
+  background: var(--text-viewer-code-bg);
   padding: 0.1rem 0.3rem;
   border-radius: 0.35rem;
 }
@@ -636,7 +921,7 @@ body {
   margin: 0 0 1rem;
   padding: 0.9rem 1rem;
   border-radius: 0.65rem;
-  background: rgba(8, 16, 24, 0.6);
+  background: var(--text-viewer-pre-bg);
   overflow: auto;
 }
 
@@ -653,18 +938,18 @@ body {
 
 .text-viewer-markdown th,
 .text-viewer-markdown td {
-  border: 1px solid rgba(213, 229, 242, 0.12);
+  border: 1px solid var(--text-viewer-border-soft);
   padding: 0.45rem 0.6rem;
   text-align: left;
 }
 
 .text-viewer-markdown th {
-  background: rgba(213, 229, 242, 0.06);
+  background: var(--text-viewer-bg-soft);
 }
 
 .text-viewer-markdown hr {
   border: none;
-  border-top: 1px solid rgba(213, 229, 242, 0.15);
+  border-top: 1px solid var(--text-viewer-border);
   margin: 1.5rem 0;
 }
 

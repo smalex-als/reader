@@ -42,6 +42,16 @@ export interface AppSettings {
   brightness: number;
   contrast: number;
   pan: ViewerPan;
+  textFontSize: number;
+  textTheme:
+    | 'dark'
+    | 'dracula'
+    | 'obsidian'
+    | 'nord'
+    | 'gruvbox'
+    | 'solarized'
+    | 'light'
+    | 'warm';
 }
 
 export interface AppState {

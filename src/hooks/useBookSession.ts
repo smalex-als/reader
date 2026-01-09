@@ -106,8 +106,16 @@ export function useBookSession<StreamVoice extends string>({
       setStreamVoice(getDefaultStreamVoice());
       return;
     }
+    const baseSettings = createDefaultSettings();
     const storedSettings = loadSettingsForBook(bookId);
-    setSettings(storedSettings ?? createDefaultSettings());
+    const nextSettings = storedSettings
+      ? {
+          ...baseSettings,
+          ...storedSettings,
+          pan: { ...baseSettings.pan, ...storedSettings.pan }
+        }
+      : baseSettings;
+    setSettings(nextSettings);
     const storedVoice = loadStreamVoiceForBook(bookId);
     if (storedVoice && isStreamVoice(storedVoice)) {
       setStreamVoice(storedVoice);

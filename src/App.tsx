@@ -22,7 +22,7 @@ import { useTocManager } from '@/hooks/useTocManager';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
-import { clampPan } from '@/lib/math';
+import { clamp, clampPan } from '@/lib/math';
 import type { AppSettings, TocEntry } from '@/types/app';
 
 const STREAM_VOICE_OPTIONS = [
@@ -46,6 +46,21 @@ const STREAM_VOICE_OPTIONS = [
 ] as const;
 type StreamVoice = (typeof STREAM_VOICE_OPTIONS)[number];
 
+const TEXT_FONT_SIZE_OPTIONS = [18, 20, 24, 26, 28, 30, 34];
+const TEXT_THEME_OPTIONS = [
+  'dark',
+  'dracula',
+  'obsidian',
+  'nord',
+  'gruvbox',
+  'solarized',
+  'light',
+  'warm'
+] as const;
+type TextTheme = (typeof TEXT_THEME_OPTIONS)[number];
+const TEXT_FONT_SIZE_MIN = TEXT_FONT_SIZE_OPTIONS[0];
+const TEXT_FONT_SIZE_MAX = TEXT_FONT_SIZE_OPTIONS[TEXT_FONT_SIZE_OPTIONS.length - 1];
+
 const DEFAULT_SETTINGS: AppSettings = {
   zoom: 1,
   zoomMode: 'fit-width',
@@ -53,8 +68,33 @@ const DEFAULT_SETTINGS: AppSettings = {
   invert: false,
   brightness: 100,
   contrast: 100,
-  pan: { x: 0, y: 0 }
+  pan: { x: 0, y: 0 },
+  textFontSize: TEXT_FONT_SIZE_OPTIONS[0],
+  textTheme: 'dark'
 };
+
+function normalizeTextFontSize(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_SETTINGS.textFontSize;
+  }
+  let closest = TEXT_FONT_SIZE_OPTIONS[0];
+  let smallestDelta = Math.abs(value - closest);
+  for (const option of TEXT_FONT_SIZE_OPTIONS) {
+    const delta = Math.abs(value - option);
+    if (delta < smallestDelta) {
+      smallestDelta = delta;
+      closest = option;
+    }
+  }
+  return closest;
+}
+
+function normalizeTextTheme(value: string): TextTheme {
+  if (value === 'slate') {
+    return 'dracula';
+  }
+  return TEXT_THEME_OPTIONS.includes(value as TextTheme) ? (value as TextTheme) : 'dark';
+}
 
 function createDefaultSettings(): AppSettings {
   return { ...DEFAULT_SETTINGS, pan: { ...DEFAULT_SETTINGS.pan } };
@@ -334,6 +374,30 @@ export default function App() {
     lastImageRef.current = currentImage;
   }, [currentImage, viewMode]);
 
+  useEffect(() => {
+    const normalized = normalizeTextFontSize(settings.textFontSize);
+    if (normalized !== settings.textFontSize) {
+      setSettings((prev) => {
+        if (prev.textFontSize === normalized) {
+          return prev;
+        }
+        return { ...prev, textFontSize: normalized };
+      });
+    }
+  }, [settings.textFontSize, setSettings]);
+
+  useEffect(() => {
+    const normalized = normalizeTextTheme(settings.textTheme);
+    if (normalized !== settings.textTheme) {
+      setSettings((prev) => {
+        if (prev.textTheme === normalized) {
+          return prev;
+        }
+        return { ...prev, textTheme: normalized };
+      });
+    }
+  }, [settings.textTheme, setSettings]);
+
   const handleViewModeChange = useCallback(
     (mode: 'pages' | 'text') => {
       if (isTextBook && mode === 'pages') {
@@ -383,6 +447,33 @@ export default function App() {
         ...prev,
         ...filters
       }));
+    },
+    [setSettings]
+  );
+
+  const updateTextFontSize = useCallback(
+    (value: number) => {
+      const clamped = clamp(value, TEXT_FONT_SIZE_MIN, TEXT_FONT_SIZE_MAX);
+      const nextSize = normalizeTextFontSize(clamped);
+      setSettings((prev) => {
+        if (prev.textFontSize === nextSize) {
+          return prev;
+        }
+        return { ...prev, textFontSize: nextSize };
+      });
+    },
+    [setSettings]
+  );
+
+  const updateTextTheme = useCallback(
+    (value: string) => {
+      const nextTheme = normalizeTextTheme(value);
+      setSettings((prev) => {
+        if (prev.textTheme === nextTheme) {
+          return prev;
+        }
+        return { ...prev, textTheme: nextTheme };
+      });
     },
     [setSettings]
   );
@@ -683,7 +774,7 @@ export default function App() {
           <div
             ref={viewerShellRef}
             className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''} ${
-              viewMode === 'text' ? 'viewer-shell-text' : ''
+              viewMode === 'text' ? `viewer-shell-text theme-${settings.textTheme}` : ''
             }`}
           >
             {viewMode === 'pages' ? (
@@ -726,6 +817,10 @@ export default function App() {
                     setEditorChapterNumber(chapterNumber);
                     setEditorOpen(true);
                   }}
+                  textFontSize={settings.textFontSize}
+                  onTextFontSizeChange={updateTextFontSize}
+                  textTheme={settings.textTheme}
+                  onTextThemeChange={updateTextTheme}
                   refreshToken={chapterViewRefresh}
                   onFirstParagraphReady={setFirstChapterParagraph}
                   onPlayParagraph={handlePlayChapterParagraph}
