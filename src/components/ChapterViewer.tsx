@@ -1,5 +1,5 @@
 import { isValidElement, useCallback, useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { stripMarkdown } from '@/lib/streamText';
@@ -254,6 +254,22 @@ export default function ChapterViewer({
     streamOffset !== null &&
     (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused');
 
+  const handlePlayParagraphClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>, payload: { fullText: string; startIndex: number; key: string }) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const scrollElement = document.scrollingElement;
+      const scrollTop = scrollElement?.scrollTop ?? 0;
+      onPlayParagraph(payload);
+      if (scrollElement) {
+        requestAnimationFrame(() => {
+          scrollElement.scrollTop = scrollTop;
+        });
+      }
+    },
+    [onPlayParagraph]
+  );
+
   const markdownComponents = useMemo(() => {
     const resolveStartIndex = (textValue: string, node?: any) => {
       if (!chapterText) {
@@ -290,8 +306,8 @@ export default function ChapterViewer({
               <button
                 type="button"
                 className="text-paragraph-stream"
-                onClick={() =>
-                  onPlayParagraph({
+                onClick={(event) =>
+                  handlePlayParagraphClick(event, {
                     fullText: chapterText,
                     startIndex,
                     key: paragraphKey
@@ -319,7 +335,7 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, chapterText, onPlayParagraph, streamActive, streamOffset]);
+  }, [chapterNumber, chapterText, handlePlayParagraphClick, streamActive, streamOffset]);
 
   return (
     <div className="text-viewer" style={textStyle}>

@@ -865,10 +865,19 @@ body {
 }
 
 .text-viewer-block-streamed {
-  background-image: linear-gradient(to right, var(--text-viewer-accent), var(--text-viewer-accent));
-  background-repeat: no-repeat;
-  background-position: left center;
-  background-size: 4px 100%;
+  position: relative;
+}
+
+.text-viewer-block-streamed::before {
+  content: '';
+  position: absolute;
+  left: -0.8rem;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--text-viewer-accent);
+  opacity: 0.75;
 }
 
 .text-viewer-markdown p.text-viewer-block {
