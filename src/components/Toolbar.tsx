@@ -415,7 +415,7 @@ export default function Toolbar({
             className="button"
             onClick={onCopyText}
             disabled={controlsDisabled || disableImageActions}
-            title="Copy OCR text"
+            title="Copy page text"
           >
             ⧉ Copy Text
           </button>
