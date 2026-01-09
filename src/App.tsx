@@ -280,6 +280,24 @@ export default function App() {
     textSaving,
     toggleTextModal
   } = usePageText(currentImage, showToast);
+  const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
+    navigationCount,
+    currentPage,
+    viewMode,
+    isTextBook,
+    currentChapterIndex,
+    sortedTocEntries,
+    bookId,
+    setCurrentPage,
+    setRegeneratedText,
+    pendingAlignTopRef,
+    resetAudio,
+    stopStream,
+    currentImage,
+    hasBooks,
+    chapterNumber,
+    currentChapterEntry
+  });
   const {
     startStreamSequence,
     handlePlayChapterParagraph,
@@ -300,7 +318,8 @@ export default function App() {
     pauseStream,
     resumeStream,
     stopAudio,
-    streamVoice
+    streamVoice,
+    onSequenceComplete: () => handleNext()
   });
   const {
     jobs: ocrJobs,
@@ -322,25 +341,6 @@ export default function App() {
     selectedPrintOption,
     setPrintSelection
   } = usePrintOptions({ bookId, manifest, currentPage, showToast });
-  const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
-    navigationCount,
-    currentPage,
-    viewMode,
-    isTextBook,
-    currentChapterIndex,
-    sortedTocEntries,
-    bookId,
-    setCurrentPage,
-    setRegeneratedText,
-    pendingAlignTopRef,
-    resetAudio,
-    stopStream,
-    currentImage,
-    hasBooks,
-    chapterNumber,
-    currentChapterEntry
-  });
-
   useEffect(() => {
     if (
       !pendingAlignTopRef.current ||
