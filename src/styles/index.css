@@ -865,9 +865,19 @@ body {
 }
 
 .text-viewer-block-streamed {
-  border-radius: 0.85rem;
-  background: var(--text-viewer-bg-faint);
-  box-shadow: inset 0 0 0 1px var(--text-viewer-border-soft);
+  padding-left: 1rem;
+}
+
+.text-viewer-block-streamed::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--text-viewer-accent);
+  opacity: 0.75;
 }
 
 .text-viewer-markdown p.text-viewer-block {
