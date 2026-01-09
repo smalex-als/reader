@@ -20,7 +20,7 @@ const INITIAL_METRICS: ViewerMetrics = {
   scale: 1
 };
 
-export default function Viewer({ imageUrl, settings, onPan, onMetricsChange, rotation }: ViewerProps) {
+export default function Viewer({ imageUrl, settings, onPan, onZoom, onMetricsChange, rotation }: ViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointerState = useRef<{ active: boolean; startX: number; startY: number; pan: ViewerPan }>({
