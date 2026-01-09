@@ -3,7 +3,7 @@ import multer from 'multer';
 import { DEFAULT_VOICE, MAX_UPLOAD_BYTES, voiceProfiles } from '../config.js';
 import { createHttpError } from '../lib/errors.js';
 import { asyncHandler } from '../lib/async.js';
-import { loadPageText } from '../lib/ocr.js';
+import { loadPageText, savePageText } from '../lib/ocr.js';
 import { handlePageAudio } from '../lib/audio.js';
 import { createBookFromPdf } from '../lib/pdf.js';
 
@@ -20,6 +20,15 @@ router.get('/api/page-text', asyncHandler(async (req, res) => {
       ? skipCacheParam.some((value) => ['1', 'true', 'yes'].includes(String(value).toLowerCase()))
       : false;
   const result = await loadPageText(image, { skipCache });
+  res.json({ source: result.source, text: result.text });
+}));
+
+router.post('/api/page-text', asyncHandler(async (req, res) => {
+  const { image, text } = req.body || {};
+  if (!image) {
+    throw createHttpError(400, 'Image is required');
+  }
+  const result = await savePageText(image, text);
   res.json({ source: result.source, text: result.text });
 }));
 

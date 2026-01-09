@@ -1,36 +1,42 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { PageText } from '@/types/app';
 
 interface TextModalProps {
   open: boolean;
   text: PageText | null;
   loading: boolean;
+  saving: boolean;
   onClose: () => void;
   title: string;
   onRegenerate: () => void;
   regenerated: boolean;
+  onSave: (nextText: string) => void;
 }
 
 export default function TextModal({
   open,
   text,
   loading,
+  saving,
   onClose,
   title,
   onRegenerate,
-  regenerated
+  regenerated,
+  onSave
 }: TextModalProps) {
   if (!open) {
     return null;
   }
 
+  const [draftText, setDraftText] = useState('');
   const generatedMarker = text?.source === 'ai' || regenerated;
 
   useEffect(() => {
     if (!open) {
       return;
     }
-  }, [open]);
+    setDraftText(text?.text ?? '');
+  }, [open, text?.text]);
 
   const displayedText = useMemo(() => {
     if (!text) {
@@ -38,6 +44,7 @@ export default function TextModal({
     }
     return text.text || '';
   }, [text]);
+  const isDirty = draftText !== displayedText;
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
@@ -56,7 +63,13 @@ export default function TextModal({
           {!loading && !text && <p className="modal-status">No text available.</p>}
           {!loading && text ? (
             <>
-              <pre className="modal-content">{displayedText}</pre>
+              <textarea
+                className="modal-textarea"
+                value={draftText}
+                onChange={(event) => setDraftText(event.target.value)}
+                disabled={saving}
+              />
+              {isDirty ? <p className="modal-status">Unsaved changes.</p> : null}
             </>
           ) : null}
         </section>
@@ -65,11 +78,24 @@ export default function TextModal({
             type="button"
             className="button button-secondary"
             onClick={onRegenerate}
-            disabled={loading}
+            disabled={loading || saving}
           >
             Regenerate
           </button>
-          <button type="button" className="button button-primary" onClick={onClose} disabled={loading}>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => onSave(draftText)}
+            disabled={loading || saving || !isDirty}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={onClose}
+            disabled={loading || saving}
+          >
             Done
           </button>
         </footer>
