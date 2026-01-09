@@ -24,10 +24,11 @@ type StreamSequenceOptions = {
   resumeStream: () => Promise<void>;
   stopAudio: () => void;
   streamVoice: string;
+  onSequenceComplete?: (source: 'page' | 'chapter') => void;
 };
 
 type StreamSource =
-  | { type: 'sequence'; fullText: string; startIndex: number; baseKey: string }
+  | { type: 'page' | 'chapter' | 'paragraph'; fullText: string; startIndex: number; baseKey: string }
   | { type: 'single'; text: string; pageKey: string };
 
 export function useStreamSequence({
@@ -45,7 +46,8 @@ export function useStreamSequence({
   pauseStream,
   resumeStream,
   stopAudio,
-  streamVoice
+  streamVoice,
+  onSequenceComplete
 }: StreamSequenceOptions) {
   const streamSequenceRef = useRef<{
     chunks: string[];
@@ -56,10 +58,12 @@ export function useStreamSequence({
     fullText: string;
     startIndex: number;
     baseKey: string;
+    source: 'page' | 'chapter' | 'paragraph';
   } | null>(null);
   const pendingSingleStreamRef = useRef<{ text: string; pageKey: string } | null>(null);
   const lastStreamSourceRef = useRef<StreamSource | null>(null);
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
+  const autoAdvanceRef = useRef(false);
 
   const stopStreamSequence = useCallback(() => {
     streamSequenceRef.current = null;
@@ -67,14 +71,15 @@ export function useStreamSequence({
   }, []);
 
   const startStreamSequenceFromText = useCallback(
-    async (fullText: string, startIndex: number, baseKey: string) => {
-      lastStreamSourceRef.current = { type: 'sequence', fullText, startIndex, baseKey };
+    async (fullText: string, startIndex: number, baseKey: string, source: 'page' | 'chapter' | 'paragraph') => {
+      lastStreamSourceRef.current = { type: source, fullText, startIndex, baseKey };
+      autoAdvanceRef.current = source === 'page' || source === 'chapter';
       if (
         streamState.status === 'connecting' ||
         streamState.status === 'streaming' ||
         streamState.status === 'paused'
       ) {
-        pendingStreamSequenceRef.current = { fullText, startIndex, baseKey };
+        pendingStreamSequenceRef.current = { fullText, startIndex, baseKey, source };
         stopStream();
         stopStreamSequence();
         return;
@@ -115,7 +120,8 @@ export function useStreamSequence({
       await startStreamSequenceFromText(
         firstChapterParagraph.fullText,
         firstChapterParagraph.startIndex,
-        firstChapterParagraph.key
+        firstChapterParagraph.key,
+        'chapter'
       );
       return;
     }
@@ -128,7 +134,7 @@ export function useStreamSequence({
       showToast('No page text available to stream', 'error');
       return;
     }
-    await startStreamSequenceFromText(textValue, 0, currentImage);
+    await startStreamSequenceFromText(textValue, 0, currentImage, 'page');
   }, [
     isTextBook,
     bookId,
@@ -149,18 +155,13 @@ export function useStreamSequence({
         showToast('No paragraph text available to stream', 'error');
         return;
       }
-      lastStreamSourceRef.current = {
-        type: 'sequence',
-        fullText: payload.fullText,
-        startIndex: payload.startIndex,
-        baseKey: payload.key
-      };
-      await startStreamSequenceFromText(payload.fullText, payload.startIndex, payload.key);
+      await startStreamSequenceFromText(payload.fullText, payload.startIndex, payload.key, 'paragraph');
     },
     [showToast, startStreamSequenceFromText]
   );
 
   const handleStopStream = useCallback(() => {
+    autoAdvanceRef.current = false;
     stopStream();
     stopStreamSequence();
   }, [stopStream, stopStreamSequence]);
@@ -185,6 +186,14 @@ export function useStreamSequence({
       return;
     }
     if (sequence.index >= sequence.chunks.length - 1) {
+      if (autoAdvanceRef.current) {
+        const source = lastStreamSourceRef.current;
+        if (source && (source.type === 'page' || source.type === 'chapter')) {
+          onSequenceComplete?.(source.type);
+        }
+        autoAdvanceRef.current = false;
+        lastStreamSourceRef.current = null;
+      }
       stopStreamSequence();
       return;
     }
@@ -205,7 +214,7 @@ export function useStreamSequence({
       return;
     }
     pendingStreamSequenceRef.current = null;
-    void startStreamSequenceFromText(pending.fullText, pending.startIndex, pending.baseKey);
+    void startStreamSequenceFromText(pending.fullText, pending.startIndex, pending.baseKey, pending.source);
   }, [startStreamSequenceFromText, streamState.status]);
 
   useEffect(() => {
