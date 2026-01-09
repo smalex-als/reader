@@ -238,8 +238,7 @@ export default function App() {
     startStreamSequence,
     handlePlayChapterParagraph,
     handleStopStream,
-    handleToggleStreamPause,
-    handleRewindStream
+    handleToggleStreamPause
   } = useStreamSequence({
     isTextBook,
     bookId,
