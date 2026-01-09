@@ -1207,6 +1207,24 @@ body {
   color: rgba(213, 229, 242, 0.85);
 }
 
+.modal-textarea {
+  width: 100%;
+  min-height: 280px;
+  padding: 0.75rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(213, 229, 242, 0.15);
+  background: rgba(10, 18, 28, 0.4);
+  color: rgba(213, 229, 242, 0.9);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.modal-textarea:disabled {
+  opacity: 0.6;
+}
+
 .modal-prose {
   margin: 0;
   white-space: pre-wrap;
