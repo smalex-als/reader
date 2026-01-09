@@ -512,15 +512,15 @@ export default function App() {
     closeOcrQueue();
   }, [bookId, closeOcrQueue, resetQueue]);
 
-  const handleCopyText = useCallback(async () => {
-    if (!currentImage) {
+  const handleCopyText = useCallback(async (overrideText?: string) => {
+    if (!overrideText && !currentImage) {
       showToast('No page selected', 'error');
       return;
     }
-    const pageText = currentText ?? (await fetchPageText());
-    const textValue = (pageText?.text || '').trim();
+    const pageText = overrideText ? null : currentText ?? (await fetchPageText());
+    const textValue = (overrideText ?? pageText?.text ?? '').trim();
     if (!textValue) {
-      showToast('No OCR text available to copy', 'error');
+      showToast('No text available to copy', 'error');
       return;
     }
     try {
@@ -540,7 +540,7 @@ export default function App() {
           throw new Error('copy failed');
         }
       }
-      showToast('Copied OCR text to clipboard', 'success');
+      showToast('Copied page text to clipboard', 'success');
     } catch (error) {
       console.error(error);
       showToast('Unable to copy text', 'error');
@@ -730,6 +730,9 @@ export default function App() {
       saving: textSaving,
       onSave: (nextText: string) => {
         void savePageText(nextText);
+      },
+      onCopyText: (textValue: string) => {
+        void handleCopyText(textValue);
       }
     },
     tocNavModalProps: {

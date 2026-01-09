@@ -11,6 +11,7 @@ interface TextModalProps {
   onRegenerate: () => void;
   regenerated: boolean;
   onSave: (nextText: string) => void;
+  onCopyText: (textValue: string) => void;
 }
 
 export default function TextModal({
@@ -22,7 +23,8 @@ export default function TextModal({
   title,
   onRegenerate,
   regenerated,
-  onSave
+  onSave,
+  onCopyText
 }: TextModalProps) {
   if (!open) {
     return null;
@@ -45,10 +47,11 @@ export default function TextModal({
     return text.text || '';
   }, [text]);
   const isDirty = draftText !== displayedText;
+  const canCopy = Boolean(draftText.trim());
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+      <div className="modal modal-wide">
         <header className="modal-header">
           <h2 className="modal-title">
             {title}
@@ -74,6 +77,14 @@ export default function TextModal({
           ) : null}
         </section>
         <footer className="modal-footer">
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => onCopyText(draftText)}
+            disabled={loading || saving || !canCopy}
+          >
+            Copy Text
+          </button>
           <button
             type="button"
             className="button button-secondary"

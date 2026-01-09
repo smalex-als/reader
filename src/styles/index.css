@@ -1129,6 +1129,10 @@ body {
   overflow: hidden;
 }
 
+.modal-wide {
+  width: min(900px, 100%);
+  max-height: min(88vh, 720px);
+}
 
 .modal-header,
 .modal-footer {
@@ -1209,7 +1213,7 @@ body {
 
 .modal-textarea {
   width: 100%;
-  min-height: 280px;
+  min-height: 360px;
   padding: 0.75rem;
   border-radius: 0.7rem;
   border: 1px solid rgba(213, 229, 242, 0.15);
