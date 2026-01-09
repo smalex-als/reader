@@ -73,8 +73,8 @@ export function useZoom(initialSettings: AppSettings) {
   );
 
   const updateZoom = useCallback(
-    (nextZoom: number, mode: ZoomMode = 'custom') => {
-      updateTransform({ zoom: nextZoom, zoomMode: mode });
+    (nextZoom: number, mode: ZoomMode = 'custom', pan?: ViewerPan) => {
+      updateTransform({ zoom: nextZoom, zoomMode: mode, pan });
     },
     [updateTransform]
   );

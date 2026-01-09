@@ -7,7 +7,7 @@ interface ViewerProps {
   imageUrl: string | null;
   settings: AppSettings;
   onPan: (pan: ViewerPan) => void;
-  onZoom: (zoom: number) => void;
+  onZoom: (zoom: number, mode?: AppSettings['zoomMode'], pan?: ViewerPan) => void;
   onMetricsChange: (metrics: ViewerMetrics) => void;
   rotation: number;
 }
@@ -19,6 +19,9 @@ const INITIAL_METRICS: ViewerMetrics = {
   naturalHeight: 0,
   scale: 1
 };
+
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 6;
 
 export default function Viewer({ imageUrl, settings, onPan, onZoom, onMetricsChange, rotation }: ViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -126,8 +129,22 @@ export default function Viewer({ imageUrl, settings, onPan, onZoom, onMetricsCha
             return;
           }
           const direction = Math.sign(event.deltaY);
-          const nextZoom = settings.zoom - direction * ZOOM_STEP;
-          onZoom(nextZoom);
+          const rawZoom = settings.zoom - direction * ZOOM_STEP;
+          const nextZoom = Math.min(Math.max(rawZoom, ZOOM_MIN), ZOOM_MAX);
+          const container = containerRef.current;
+          if (!container || settings.zoom === nextZoom) {
+            onZoom(nextZoom);
+            return;
+          }
+          const rect = container.getBoundingClientRect();
+          const cursorX = event.clientX - rect.left - rect.width / 2;
+          const cursorY = event.clientY - rect.top - rect.height / 2;
+          const zoomRatio = nextZoom / settings.zoom;
+          const nextPan = {
+            x: settings.pan.x + (1 - zoomRatio) * cursorX,
+            y: settings.pan.y + (1 - zoomRatio) * cursorY
+          };
+          onZoom(nextZoom, 'custom', nextPan);
           return;
         }
         const nextPan = {
