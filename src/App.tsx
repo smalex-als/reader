@@ -126,6 +126,7 @@ export default function App() {
   const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
     fullText: string;
     startIndex: number;
+    strippedStartIndex: number;
     key: string;
   } | null>(null);
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
@@ -833,6 +834,7 @@ export default function App() {
                   textTheme={settings.textTheme}
                   onTextThemeChange={updateTextTheme}
                   refreshToken={chapterViewRefresh}
+                  streamState={streamState}
                   onFirstParagraphReady={setFirstChapterParagraph}
                   onPlayParagraph={handlePlayChapterParagraph}
               />

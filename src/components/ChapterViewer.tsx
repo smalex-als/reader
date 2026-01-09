@@ -2,6 +2,8 @@ import { isValidElement, useCallback, useEffect, useMemo, useState } from 'react
 import type { CSSProperties, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { stripMarkdown } from '@/lib/streamText';
+import type { StreamState } from '@/types/app';
 
 interface ChapterViewerProps {
   bookId: string | null;
@@ -25,8 +27,19 @@ interface ChapterViewerProps {
     | 'warm';
   onTextThemeChange: (value: string) => void;
   refreshToken?: number;
-  onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
-  onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
+  streamState: StreamState;
+  onFirstParagraphReady: (payload: {
+    fullText: string;
+    startIndex: number;
+    strippedStartIndex: number;
+    key: string;
+  } | null) => void;
+  onPlayParagraph: (payload: {
+    fullText: string;
+    startIndex: number;
+    strippedStartIndex: number;
+    key: string;
+  }) => void;
 }
 
 function formatChapterFilename(chapterNumber: number) {
@@ -69,6 +82,7 @@ export default function ChapterViewer({
   textTheme,
   onTextThemeChange,
   refreshToken = 0,
+  streamState,
   onFirstParagraphReady,
   onPlayParagraph,
 }: ChapterViewerProps) {
@@ -175,6 +189,81 @@ export default function ChapterViewer({
     };
   }, [bookId, chapterNumber, refreshToken, localRefreshToken]);
 
+  const paragraphMeta = useMemo(() => {
+    if (!chapterText || !chapterNumber) {
+      return [];
+    }
+    const paragraphs = chapterText
+      .split(/\n\s*\n/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const strippedText = stripMarkdown(chapterText);
+    let cursor = 0;
+    let strippedCursor = 0;
+    return paragraphs.map((paragraph) => {
+      const startIndex = chapterText.indexOf(paragraph, cursor);
+      const safeStartIndex = startIndex === -1 ? cursor : startIndex;
+      cursor = Math.max(cursor, safeStartIndex + paragraph.length);
+      const strippedParagraph = stripMarkdown(paragraph);
+      let strippedStartIndex = strippedParagraph
+        ? strippedText.indexOf(strippedParagraph, strippedCursor)
+        : strippedCursor;
+      if (strippedStartIndex === -1) {
+        strippedStartIndex = strippedCursor;
+      }
+      strippedCursor = Math.max(strippedCursor, strippedStartIndex + strippedParagraph.length);
+      return {
+        text: paragraph,
+        startIndex: safeStartIndex,
+        strippedStartIndex,
+        key: `chapter-${chapterNumber}-${hashText(stripMarkdown(paragraph))}-${safeStartIndex}`
+      };
+    });
+  }, [chapterNumber, chapterText]);
+
+  const paragraphIndexByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    paragraphMeta.forEach((item, index) => {
+      map.set(item.key, index);
+    });
+    return map;
+  }, [paragraphMeta]);
+
+  const paragraphMetaByKey = useMemo(() => {
+    const map = new Map<string, (typeof paragraphMeta)[number]>();
+    paragraphMeta.forEach((item) => {
+      map.set(item.key, item);
+    });
+    return map;
+  }, [paragraphMeta]);
+
+  const streamProgress = useMemo(() => {
+    const pageKey = streamState.pageKey;
+    if (!pageKey || paragraphMeta.length === 0) {
+      return { activeIndex: null, playedIndex: null, startIndex: null, isMatch: false };
+    }
+    const [baseKey, chunkMeta] = pageKey.split('#chunk-');
+    const startIndex = paragraphIndexByKey.get(baseKey);
+    const match = startIndex !== undefined;
+    if (!match) {
+      return { activeIndex: null, playedIndex: null, startIndex: null, isMatch: false };
+    }
+    const offsetPart = chunkMeta?.split('@')[1];
+    const chunkStartIndex = offsetPart ? Number(offsetPart) : Number.NaN;
+    if (Number.isNaN(chunkStartIndex)) {
+      return { activeIndex: startIndex ?? null, playedIndex: startIndex ?? null, startIndex, isMatch: true };
+    }
+    let activeIndex = startIndex ?? 0;
+    for (let index = startIndex ?? 0; index < paragraphMeta.length; index += 1) {
+      if (paragraphMeta[index].strippedStartIndex <= chunkStartIndex) {
+        activeIndex = index;
+      } else {
+        break;
+      }
+    }
+    return { activeIndex, playedIndex: activeIndex, startIndex, isMatch: true };
+  }, [paragraphIndexByKey, paragraphMeta, streamState.pageKey]);
+
   useEffect(() => {
     if (!chapterText || !chapterNumber) {
       onFirstParagraphReady(null);
@@ -188,15 +277,18 @@ export default function ChapterViewer({
       onFirstParagraphReady(null);
       return;
     }
-    const firstParagraph = paragraphs[0];
-    const startIndex = chapterText.indexOf(firstParagraph);
-    const paragraphKey = `chapter-${chapterNumber}-${hashText(firstParagraph)}-${startIndex}`;
+    const firstParagraphMeta = paragraphMeta[0];
+    if (!firstParagraphMeta) {
+      onFirstParagraphReady(null);
+      return;
+    }
     onFirstParagraphReady({
       fullText: chapterText,
-      startIndex: Math.max(0, startIndex),
-      key: paragraphKey
+      startIndex: Math.max(0, firstParagraphMeta.startIndex),
+      strippedStartIndex: Math.max(0, firstParagraphMeta.strippedStartIndex),
+      key: firstParagraphMeta.key
     });
-  }, [chapterNumber, chapterText, onFirstParagraphReady]);
+  }, [chapterNumber, chapterText, onFirstParagraphReady, paragraphMeta]);
   const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !pageRange || generating) {
@@ -262,8 +354,28 @@ export default function ChapterViewer({
         const paragraphKey = chapterNumber
           ? `chapter-${chapterNumber}-${hashText(textValue)}-${startIndex}`
           : '';
+        const paragraphIndex = paragraphIndexByKey.get(paragraphKey);
+        const paragraphInfo = paragraphMetaByKey.get(paragraphKey);
+        const isStreamMatch = streamProgress.isMatch && streamState.status !== 'idle';
+        const isPlayed =
+          isStreamMatch &&
+          paragraphIndex !== undefined &&
+          streamProgress.playedIndex !== null &&
+          streamProgress.startIndex !== null
+          ? paragraphIndex >= streamProgress.startIndex && paragraphIndex <= streamProgress.playedIndex
+          : false;
+        const isActive = isStreamMatch && paragraphIndex !== undefined && streamProgress.activeIndex !== null
+          ? paragraphIndex === streamProgress.activeIndex
+          : false;
+        const blockClassName = [
+          'text-viewer-block',
+          isPlayed ? 'text-viewer-block-played' : '',
+          isActive ? 'text-viewer-block-active' : ''
+        ]
+          .filter(Boolean)
+          .join(' ');
         return (
-          <Tag className="text-viewer-block">
+          <Tag className={blockClassName}>
             {children}
             {textValue ? (
               <button
@@ -273,6 +385,7 @@ export default function ChapterViewer({
                   onPlayParagraph({
                     fullText: chapterText,
                     startIndex,
+                    strippedStartIndex: paragraphInfo?.strippedStartIndex ?? 0,
                     key: paragraphKey
                   })
                 }
@@ -298,7 +411,18 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, chapterText, onPlayParagraph]);
+  }, [
+    chapterNumber,
+    chapterText,
+    onPlayParagraph,
+    paragraphIndexByKey,
+    paragraphMetaByKey,
+    streamProgress.activeIndex,
+    streamProgress.isMatch,
+    streamProgress.playedIndex,
+    streamProgress.startIndex,
+    streamState.status
+  ]);
 
   return (
     <div className="text-viewer" style={textStyle}>

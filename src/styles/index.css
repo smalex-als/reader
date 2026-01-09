@@ -862,10 +862,22 @@ body {
 .text-viewer-block {
   position: relative;
   padding-right: 3.4rem;
+  border-radius: 0.6rem;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .text-viewer-markdown p.text-viewer-block {
   margin: 0 0 1rem;
+}
+
+.text-viewer-block-played {
+  background: var(--text-viewer-bg-faint);
+  box-shadow: inset 0 0 0 1px var(--text-viewer-border-soft);
+}
+
+.text-viewer-block-active {
+  background: var(--text-viewer-bg-soft);
+  box-shadow: inset 0 0 0 1px var(--text-viewer-border);
 }
 
 .text-paragraph-stream {

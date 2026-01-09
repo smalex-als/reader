@@ -18,13 +18,16 @@ export function stripMarkdown(text: string) {
 }
 
 export function splitStreamChunks(text: string, startIndex: number) {
-  const input = stripMarkdown(text.slice(Math.max(0, startIndex)));
-  const chunks: string[] = [];
-  let cursor = 0;
+  const input = stripMarkdown(text);
+  const chunks: { text: string; startIndex: number }[] = [];
+  let cursor = Math.max(0, startIndex);
   while (cursor < input.length) {
     const slice = input.slice(cursor, cursor + STREAM_CHUNK_SIZE);
     if (cursor + STREAM_CHUNK_SIZE >= input.length) {
-      chunks.push(slice.trim());
+      const textValue = slice.trim();
+      if (textValue) {
+        chunks.push({ text: textValue, startIndex: cursor });
+      }
       break;
     }
     const breakWindow = slice.slice(Math.max(0, slice.length - 200));
@@ -40,9 +43,11 @@ export function splitStreamChunks(text: string, startIndex: number) {
     } else {
       breakIndex += Math.max(0, slice.length - 200);
     }
-    const chunk = input.slice(cursor, cursor + breakIndex);
-    chunks.push(chunk.trim());
+    const chunk = input.slice(cursor, cursor + breakIndex).trim();
+    if (chunk) {
+      chunks.push({ text: chunk, startIndex: cursor });
+    }
     cursor += Math.max(1, breakIndex);
   }
-  return chunks.filter((chunk) => chunk.length > 0);
+  return chunks;
 }
