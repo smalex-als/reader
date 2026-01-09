@@ -9,7 +9,7 @@ type HotkeysOptions = {
   currentImage: string | null;
   settings: AppSettings;
   updatePan: (pan: ViewerPan) => void;
-  updateZoom: (zoom: number) => void;
+  updateZoom: (zoom: number, mode?: AppSettings['zoomMode']) => void;
   resetTransform: () => void;
   applyZoomModeWithAlign: (mode: 'fit-width' | 'fit-height') => void;
   updateRotation: () => void;
