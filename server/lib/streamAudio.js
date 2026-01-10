@@ -11,6 +11,7 @@ const SAMPLE_RATE = 24_000;
 const CHANNEL_COUNT = 1;
 const BIT_DEPTH = 16;
 const CHAPTER_PAD_LENGTH = 3;
+const STREAM_TEXT_LIMIT = 8000;
 
 function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
@@ -159,6 +160,40 @@ async function streamTextToPcm(text, voice) {
   });
 }
 
+function splitTextForStreaming(input) {
+  const text = input.trim();
+  if (text.length <= STREAM_TEXT_LIMIT) {
+    return [text];
+  }
+  const paragraphs = text.split(/\n\s*\n/).filter(Boolean);
+  const chunks = [];
+  let buffer = '';
+  for (const paragraph of paragraphs) {
+    const candidate = buffer ? `${buffer}\n\n${paragraph}` : paragraph;
+    if (candidate.length <= STREAM_TEXT_LIMIT) {
+      buffer = candidate;
+      continue;
+    }
+    if (buffer) {
+      chunks.push(buffer);
+      buffer = '';
+    }
+    if (paragraph.length <= STREAM_TEXT_LIMIT) {
+      buffer = paragraph;
+      continue;
+    }
+    let cursor = 0;
+    while (cursor < paragraph.length) {
+      chunks.push(paragraph.slice(cursor, cursor + STREAM_TEXT_LIMIT));
+      cursor += STREAM_TEXT_LIMIT;
+    }
+  }
+  if (buffer) {
+    chunks.push(buffer);
+  }
+  return chunks.filter((chunk) => chunk.length > 0);
+}
+
 export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
@@ -188,10 +223,16 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
     throw createHttpError(400, 'No text available for audio generation');
   }
 
-  const pcmBuffer = await streamTextToPcm(cleaned, voice);
-  if (!pcmBuffer.length) {
-    throw createHttpError(502, 'No audio returned from streaming service');
+  const textChunks = splitTextForStreaming(cleaned);
+  const pcmParts = [];
+  for (const chunk of textChunks) {
+    const pcmBuffer = await streamTextToPcm(chunk, voice);
+    if (!pcmBuffer.length) {
+      throw createHttpError(502, 'No audio returned from streaming service');
+    }
+    pcmParts.push(pcmBuffer);
   }
+  const pcmBuffer = Buffer.concat(pcmParts);
 
   const header = buildWavHeader(pcmBuffer.length);
   const wavBuffer = Buffer.concat([header, pcmBuffer]);
