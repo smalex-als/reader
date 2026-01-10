@@ -15,6 +15,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends poppler-utils curl \
