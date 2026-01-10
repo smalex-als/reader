@@ -18,7 +18,7 @@ ENV PORT=3000
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends poppler-utils curl \
+  && apt-get install -y --no-install-recommends poppler-utils curl lame \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json ./
