@@ -1,5 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { WebSocket } from 'undici';
 import { STREAM_SERVER, STREAM_VOICE } from '../config.js';
 import { assertBookDirectory } from './books.js';
@@ -11,7 +13,8 @@ const SAMPLE_RATE = 24_000;
 const CHANNEL_COUNT = 1;
 const BIT_DEPTH = 16;
 const CHAPTER_PAD_LENGTH = 3;
-const STREAM_TEXT_LIMIT = 8000;
+const STREAM_TEXT_LIMIT = 2000;
+const execFileAsync = promisify(execFile);
 
 function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
@@ -19,6 +22,14 @@ function formatChapterFilename(chapterNumber) {
 
 function formatNarrationFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.narration.txt`;
+}
+
+async function encodeMp3(wavPath, mp3Path) {
+  try {
+    await execFileAsync('lame', ['--silent', '-h', wavPath, mp3Path]);
+  } catch {
+    throw createHttpError(502, 'Failed to encode MP3 audio');
+  }
 }
 
 function buildWavHeader(dataLength) {
@@ -209,11 +220,13 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
   }
   const audioFilename = chapterFilename.replace(/\.txt$/i, '.wav');
   const audioPath = path.join(directory, audioFilename);
-  const existingAudio = await safeStat(audioPath);
-  if (existingAudio?.isFile()) {
+  const mp3Filename = audioFilename.replace(/\.wav$/i, '.mp3');
+  const mp3Path = path.join(directory, mp3Filename);
+  const existingMp3 = await safeStat(mp3Path);
+  if (existingMp3?.isFile()) {
     return {
       source: 'file',
-      url: `/data/${bookId}/${audioFilename}`
+      url: `/data/${bookId}/${mp3Filename}`
     };
   }
 
@@ -237,9 +250,11 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
   const header = buildWavHeader(pcmBuffer.length);
   const wavBuffer = Buffer.concat([header, pcmBuffer]);
   await fs.writeFile(audioPath, wavBuffer);
+  await encodeMp3(audioPath, mp3Path);
+  await fs.unlink(audioPath);
 
   return {
     source: 'stream',
-    url: `/data/${bookId}/${audioFilename}`
+    url: `/data/${bookId}/${mp3Filename}`
   };
 }
