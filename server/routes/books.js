@@ -14,6 +14,7 @@ import {
 } from '../lib/bookmarks.js';
 import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
 import { generateChapterText } from '../lib/chapters.js';
+import { generateChapterAudio } from '../lib/streamAudio.js';
 import { MAX_UPLOAD_BYTES } from '../config.js';
 import {
   addTextChapter,
@@ -141,6 +142,14 @@ router.post('/api/books/:id/chapters/generate', asyncHandler(async (req, res) =>
   const chapter = typeof chapterNumber === 'string' ? Number.parseInt(chapterNumber, 10) : chapterNumber;
   const result = await generateChapterText(bookId, start, end, chapter);
   res.json(result);
+}));
+
+router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const { voice } = req.body || {};
+  const result = await generateChapterAudio({ bookId, chapterNumber, voice });
+  res.json({ book: bookId, chapterNumber, ...result });
 }));
 
 router.post('/api/books/text', upload.single('file'), asyncHandler(async (req, res) => {

@@ -71,6 +71,8 @@ Server environment variables:
 - `HOST` (default `0.0.0.0`)
 - `PORT` (default `3000`)
 - `HTTPS_KEY_PATH` and `HTTPS_CERT_PATH` to enable HTTPS
+- `STREAM_SERVER` (WebSocket server for streaming audio; defaults to `VITE_STREAM_SERVER`)
+- `STREAM_VOICE` (default stream voice id; defaults to `VITE_STREAM_VOICE`)
 
 Front-end environment variables:
 
@@ -99,6 +101,7 @@ Notes:
 - `POST /api/books/text/empty`
 - `POST /api/books/:id/chapters`
 - `POST /api/books/:id/chapters/empty`
+- `POST /api/books/:id/chapters/:chapter/audio`
 - `GET /api/page-text?image=/data/...`
 - `POST /api/page-audio`
 - `POST /api/upload/pdf`

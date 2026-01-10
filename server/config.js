@@ -17,6 +17,9 @@ export const TOC_FILENAME = 'toc.json';
 export const DEFAULT_VOICE = 'santa';
 export const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
+export const STREAM_SERVER =
+  process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'https://myserver.home:3000';
+export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
 
 export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai_compat'; // 'openai' | 'llmproxy' | 'openai_compat'
 export const LLMPROXY_ENDPOINT =
