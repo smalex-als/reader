@@ -832,6 +832,7 @@ export default function App() {
                   onTextFontSizeChange={updateTextFontSize}
                   textTheme={settings.textTheme}
                   onTextThemeChange={updateTextTheme}
+                  streamVoice={streamVoice}
                   refreshToken={chapterViewRefresh}
                   onFirstParagraphReady={setFirstChapterParagraph}
                   onPlayParagraph={handlePlayChapterParagraph}

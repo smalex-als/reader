@@ -24,6 +24,7 @@ interface ChapterViewerProps {
     | 'light'
     | 'warm';
   onTextThemeChange: (value: string) => void;
+  streamVoice: string;
   refreshToken?: number;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
@@ -68,6 +69,7 @@ export default function ChapterViewer({
   onTextFontSizeChange,
   textTheme,
   onTextThemeChange,
+  streamVoice,
   refreshToken = 0,
   onFirstParagraphReady,
   onPlayParagraph,
@@ -79,6 +81,8 @@ export default function ChapterViewer({
   const [missingFile, setMissingFile] = useState<string | null>(null);
   const [localRefreshToken, setLocalRefreshToken] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [audioGenerating, setAudioGenerating] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const onPlayParagraphRef = useRef(onPlayParagraph);
 
   useEffect(() => {
@@ -130,6 +134,8 @@ export default function ChapterViewer({
       setError(null);
       setMissingFile(null);
       setLoading(false);
+      setAudioGenerating(false);
+      setAudioError(null);
       return;
     }
 
@@ -203,6 +209,7 @@ export default function ChapterViewer({
     });
   }, [chapterNumber, chapterText, onFirstParagraphReady]);
   const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
+  const canGenerateAudio = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !pageRange || generating) {
       return;
@@ -230,6 +237,31 @@ export default function ChapterViewer({
       setGenerating(false);
     }
   }, [bookId, canGenerate, chapterNumber, generating, pageRange]);
+  const handleGenerateAudio = useCallback(async () => {
+    if (!canGenerateAudio || !bookId || !chapterNumber || audioGenerating) {
+      return;
+    }
+    setAudioGenerating(true);
+    setAudioError(null);
+    try {
+      const response = await fetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/audio`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ voice: streamVoice })
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Audio generation failed: ${response.status}`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to generate chapter audio.';
+      setAudioError(message);
+    } finally {
+      setAudioGenerating(false);
+    }
+  }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, streamVoice]);
 
   const pageMeta = useMemo(() => {
     if (!pageRange) {
@@ -322,6 +354,14 @@ export default function ChapterViewer({
             aria-controls="text-viewer-settings"
           >
             {settingsOpen ? 'Hide settings' : 'Text settings'}
+          </button>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={handleGenerateAudio}
+            disabled={!canGenerateAudio || audioGenerating}
+          >
+            {audioGenerating ? 'Generating audio…' : 'Generate Audio'}
           </button>
           {allowEdit && chapterNumber ? (
             <button
@@ -432,6 +472,7 @@ export default function ChapterViewer({
             </button>
           </div>
         ) : null}
+        {audioError ? <p className="text-viewer-status">{audioError}</p> : null}
       </section>
     </div>
   );
