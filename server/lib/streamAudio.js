@@ -16,6 +16,10 @@ function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
 }
 
+function formatNarrationFilename(chapterNumber) {
+  return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.narration.txt`;
+}
+
 function buildWavHeader(dataLength) {
   const blockAlign = (CHANNEL_COUNT * BIT_DEPTH) / 8;
   const byteRate = SAMPLE_RATE * blockAlign;
@@ -158,10 +162,11 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
 
   const directory = await assertBookDirectory(bookId);
   const chapterFilename = formatChapterFilename(chapterNumber);
-  const chapterPath = path.join(directory, chapterFilename);
-  const chapterStat = await safeStat(chapterPath);
-  if (!chapterStat?.isFile()) {
-    throw createHttpError(404, 'Chapter file not found');
+  const narrationFilename = formatNarrationFilename(chapterNumber);
+  const narrationPath = path.join(directory, narrationFilename);
+  const narrationStat = await safeStat(narrationPath);
+  if (!narrationStat?.isFile()) {
+    throw createHttpError(404, 'Narration file not found');
   }
   const audioFilename = chapterFilename.replace(/\.txt$/i, '.wav');
   const audioPath = path.join(directory, audioFilename);
@@ -173,7 +178,7 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
     };
   }
 
-  const rawText = await fs.readFile(chapterPath, 'utf8');
+  const rawText = await fs.readFile(narrationPath, 'utf8');
   const cleaned = stripMarkdown(rawText).trim();
   if (!cleaned) {
     throw createHttpError(400, 'No text available for audio generation');

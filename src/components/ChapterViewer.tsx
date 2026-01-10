@@ -83,6 +83,9 @@ export default function ChapterViewer({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioGenerating, setAudioGenerating] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [narrationGenerating, setNarrationGenerating] = useState(false);
+  const [narrationError, setNarrationError] = useState<string | null>(null);
+  const [narrationStatus, setNarrationStatus] = useState<string | null>(null);
   const onPlayParagraphRef = useRef(onPlayParagraph);
 
   useEffect(() => {
@@ -136,6 +139,9 @@ export default function ChapterViewer({
       setLoading(false);
       setAudioGenerating(false);
       setAudioError(null);
+      setNarrationGenerating(false);
+      setNarrationError(null);
+      setNarrationStatus(null);
       return;
     }
 
@@ -147,6 +153,9 @@ export default function ChapterViewer({
     setLoading(true);
     setError(null);
     setMissingFile(null);
+    setNarrationGenerating(false);
+    setNarrationError(null);
+    setNarrationStatus(null);
 
     fetch(url)
       .then(async (response) => {
@@ -210,6 +219,7 @@ export default function ChapterViewer({
   }, [chapterNumber, chapterText, onFirstParagraphReady]);
   const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
   const canGenerateAudio = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
+  const canGenerateNarration = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !pageRange || generating) {
       return;
@@ -262,6 +272,32 @@ export default function ChapterViewer({
       setAudioGenerating(false);
     }
   }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, streamVoice]);
+  const handleGenerateNarration = useCallback(async () => {
+    if (!canGenerateNarration || !bookId || !chapterNumber || narrationGenerating) {
+      return;
+    }
+    setNarrationGenerating(true);
+    setNarrationError(null);
+    setNarrationStatus(null);
+    try {
+      const response = await fetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/narration`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Narration generation failed: ${response.status}`);
+      }
+      setNarrationStatus('Narration saved.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to generate narration.';
+      setNarrationError(message);
+    } finally {
+      setNarrationGenerating(false);
+    }
+  }, [bookId, canGenerateNarration, chapterNumber, narrationGenerating]);
 
   const pageMeta = useMemo(() => {
     if (!pageRange) {
@@ -362,6 +398,14 @@ export default function ChapterViewer({
             disabled={!canGenerateAudio || audioGenerating}
           >
             {audioGenerating ? 'Generating audio…' : 'Generate Audio'}
+          </button>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={handleGenerateNarration}
+            disabled={!canGenerateNarration || narrationGenerating}
+          >
+            {narrationGenerating ? 'Generating narration…' : 'Adapt for narration'}
           </button>
           {allowEdit && chapterNumber ? (
             <button
@@ -473,6 +517,8 @@ export default function ChapterViewer({
           </div>
         ) : null}
         {audioError ? <p className="text-viewer-status">{audioError}</p> : null}
+        {narrationError ? <p className="text-viewer-status">{narrationError}</p> : null}
+        {narrationStatus ? <p className="text-viewer-status">{narrationStatus}</p> : null}
       </section>
     </div>
   );

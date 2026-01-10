@@ -15,6 +15,7 @@ import {
 import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
 import { generateChapterText } from '../lib/chapters.js';
 import { generateChapterAudio } from '../lib/streamAudio.js';
+import { generateChapterNarration } from '../lib/narration.js';
 import { MAX_UPLOAD_BYTES } from '../config.js';
 import {
   addTextChapter,
@@ -149,6 +150,13 @@ router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, r
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const { voice } = req.body || {};
   const result = await generateChapterAudio({ bookId, chapterNumber, voice });
+  res.json({ book: bookId, chapterNumber, ...result });
+}));
+
+router.post('/api/books/:id/chapters/:chapter/narration', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const result = await generateChapterNarration({ bookId, chapterNumber });
   res.json({ book: bookId, chapterNumber, ...result });
 }));
 
