@@ -36,7 +36,7 @@ export const LLMPROXY_CONNECT_TIMEOUT_MS = Number.parseInt(
   10
 );
 export const OCR_OPENAI_BASE_URL = process.env.OCR_OPENAI_BASE_URL || 'http://myserver.home:8000';
-export const OCR_OPENAI_MODEL = process.env.OCR_OPENAI_MODEL || 'deepseek-ocr';
+export const OCR_OPENAI_MODEL = process.env.OCR_OPENAI_MODEL || 'ministral-3-14b';
 export const OCR_OPENAI_API_KEY = process.env.OCR_OPENAI_API_KEY || '';
 
 const PROMPTS_DIR = path.join(ROOT_DIR, 'server', 'prompts');

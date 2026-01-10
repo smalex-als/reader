@@ -8,6 +8,10 @@ export function stripMarkdown(text: string) {
   output = output.replace(/`[^`]*`/g, '');
   output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
   output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
+  output = output.replace(/\*\*(.*?)\*\*/g, '$1');
+  output = output.replace(/\*(.*?)\*/g, '$1');
+  output = output.replace(/__(.*?)__/g, '$1');
+  output = output.replace(/_(.*?)_/g, '$1');
   output = output.replace(/[•●◦▪]/g, '-');
   output = output.replace(/^\s{0,3}#{1,6}\s+/gm, '');
   output = output.replace(/^\s{0,3}>\s?/gm, '');

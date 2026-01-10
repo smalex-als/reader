@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StreamState } from '@/types/app';
+import { stripMarkdown } from '@/lib/streamText';
 
 const SAMPLE_RATE = 24_000;
 const SILENT_FRAME_LIMIT = 4;
@@ -167,7 +168,7 @@ export function useStreamingAudio(
 
   const startStream = useCallback(
     async ({ text, pageKey, voice }: { text: string; pageKey: string; voice?: string }) => {
-      const cleaned = text.trim();
+      const cleaned = stripMarkdown(text).trim();
       if (!cleaned) {
         showToast('No text available to stream', 'error');
         return;
