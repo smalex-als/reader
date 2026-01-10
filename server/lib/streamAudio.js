@@ -52,14 +52,20 @@ async function streamTextToPcm(text, voice) {
   params.set('steps', '5');
 
   const wsUrl = new URL('/stream', STREAM_SERVER);
-  wsUrl.protocol = wsUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+  if (wsUrl.protocol === 'https:') {
+    wsUrl.protocol = 'wss:';
+  } else if (wsUrl.protocol === 'http:') {
+    wsUrl.protocol = 'ws:';
+  } else if (wsUrl.protocol !== 'ws:' && wsUrl.protocol !== 'wss:') {
+    wsUrl.protocol = 'ws:';
+  }
   wsUrl.search = params.toString();
-
   return await new Promise((resolve, reject) => {
     const chunks = [];
     let closed = false;
     let finished = false;
     const socket = new WebSocket(wsUrl);
+    socket.binaryType = 'arraybuffer';
 
     const finalize = (error) => {
       if (finished) {
@@ -80,8 +86,41 @@ async function streamTextToPcm(text, voice) {
       resolve(Buffer.concat(chunks));
     };
 
-    socket.addEventListener('message', (event) => {
+    socket.addEventListener('message', async (event) => {
       if (typeof event.data === 'string') {
+        try {
+          const payload = JSON.parse(event.data);
+
+          const audioCandidates = [
+            payload?.audio,
+            payload?.data?.audio,
+            payload?.data?.audio_b64,
+            payload?.data?.pcm,
+            payload?.data?.pcm_b64,
+            payload?.data?.chunk,
+            payload?.data?.chunk_b64,
+            payload?.data?.payload
+          ];
+          const audioValue = audioCandidates.find((value) => typeof value === 'string' && value.length > 0);
+          if (audioValue) {
+            const decoded = Buffer.from(audioValue, 'base64');
+            chunks.push(decoded);
+          } else if (Array.isArray(payload?.data?.audio)) {
+            const decoded = Buffer.from(payload.data.audio);
+            chunks.push(decoded);
+          }
+        } catch {
+          // ignore malformed payloads
+        }
+        return;
+      }
+      if (event.data instanceof Blob) {
+        try {
+          const buffer = await event.data.arrayBuffer();
+          chunks.push(Buffer.from(buffer));
+        } catch {
+          // ignore malformed payloads
+        }
         return;
       }
       if (event.data instanceof ArrayBuffer) {
@@ -90,10 +129,12 @@ async function streamTextToPcm(text, voice) {
       }
       if (ArrayBuffer.isView(event.data)) {
         chunks.push(Buffer.from(event.data.buffer));
+        console.log('[stream-audio] message-arraybufferview', { bytes: event.data.byteLength });
         return;
       }
       try {
         chunks.push(Buffer.from(event.data));
+        console.log('[stream-audio] message-buffer', { bytes: event.data.length });
       } catch {
         // ignore unknown payloads
       }
@@ -122,7 +163,6 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
   if (!chapterStat?.isFile()) {
     throw createHttpError(404, 'Chapter file not found');
   }
-
   const audioFilename = chapterFilename.replace(/\.txt$/i, '.wav');
   const audioPath = path.join(directory, audioFilename);
   const existingAudio = await safeStat(audioPath);

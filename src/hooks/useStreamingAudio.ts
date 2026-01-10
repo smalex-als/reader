@@ -212,7 +212,13 @@ export function useStreamingAudio(
       params.set('steps', '5');
 
       const wsUrl = new URL('/stream', STREAM_SERVER);
-      wsUrl.protocol = wsUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+      if (wsUrl.protocol === 'https:') {
+        wsUrl.protocol = 'wss:';
+      } else if (wsUrl.protocol === 'http:') {
+        wsUrl.protocol = 'ws:';
+      } else if (wsUrl.protocol !== 'ws:' && wsUrl.protocol !== 'wss:') {
+        wsUrl.protocol = 'ws:';
+      }
       wsUrl.search = params.toString();
 
       try {
