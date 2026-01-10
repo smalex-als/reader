@@ -46,6 +46,7 @@ async function streamTextToPcm(text, voice) {
   if (!STREAM_SERVER) {
     throw createHttpError(500, 'Streaming server is not configured');
   }
+  console.log('[stream-audio] stream-server', STREAM_SERVER);
   const params = new URLSearchParams();
   params.set('text', text);
   const selectedVoice = typeof voice === 'string' && voice.trim() ? voice.trim() : STREAM_VOICE;
@@ -64,6 +65,7 @@ async function streamTextToPcm(text, voice) {
     wsUrl.protocol = 'ws:';
   }
   wsUrl.search = params.toString();
+  console.log('[stream-audio] websocket-url', wsUrl.toString());
   return await new Promise((resolve, reject) => {
     const chunks = [];
     let closed = false;
@@ -144,11 +146,13 @@ async function streamTextToPcm(text, voice) {
       }
     });
 
-    socket.addEventListener('error', () => {
+    socket.addEventListener('error', (event) => {
+      console.log('[stream-audio] websocket-error', event);
       finalize(createHttpError(502, 'Streaming audio connection failed'));
     });
 
     socket.addEventListener('close', () => {
+      console.log('[stream-audio] websocket-close');
       closed = true;
       finalize();
     });
