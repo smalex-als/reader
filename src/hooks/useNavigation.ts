@@ -127,14 +127,11 @@ export function useNavigation({
   ]);
 
   const footerMessage = useMemo(() => {
-    if (viewMode === 'text' || viewMode === 'audio') {
-      if (chapterNumber && currentChapterEntry) {
-        return `Chapter ${chapterNumber}: ${currentChapterEntry.title}`;
-      }
-      if (hasBooks) {
-        return 'Open the TOC to create chapters.';
-      }
-      return 'No books found. Add files to /data to begin.';
+    if (viewMode === 'audio') {
+      return '';
+    }
+    if (viewMode === 'text') {
+      return '';
     }
     if (currentImage) {
       return currentImage;
