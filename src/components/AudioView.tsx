@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { TocEntry, ToastMessage } from '@/types/app';
 
 interface AudioViewProps {
@@ -8,6 +8,7 @@ interface AudioViewProps {
   streamVoice: string;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   onOpenChapterText: (pageIndex: number) => void;
+  onPlayAudio: (payload: { title: string; url: string }) => void;
 }
 
 type ChapterStatus = {
@@ -38,7 +39,8 @@ export default function AudioView({
   tocLoading,
   streamVoice,
   showToast,
-  onOpenChapterText
+  onOpenChapterText,
+  onPlayAudio
 }: AudioViewProps) {
   const [statusMap, setStatusMap] = useState<Record<number, ChapterStatus>>({});
   const [statusLoading, setStatusLoading] = useState(false);
@@ -46,8 +48,6 @@ export default function AudioView({
   const [audioBusy, setAudioBusy] = useState<Record<number, boolean>>({});
   const [errorMap, setErrorMap] = useState<Record<number, string | null>>({});
   const [chapters, setChapters] = useState<AudioChapter[]>([]);
-  const [playingChapter, setPlayingChapter] = useState<number | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const loadAudioStatus = useCallback(async () => {
     if (!bookId) {
@@ -89,14 +89,6 @@ export default function AudioView({
     }
     void loadAudioStatus();
   }, [bookId, loadAudioStatus, tocEntries.length]);
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
-  }, []);
 
   const handleGenerateNarration = useCallback(
     async (chapterNumber: number) => {
@@ -156,42 +148,6 @@ export default function AudioView({
     [audioBusy, bookId, loadAudioStatus, showToast, streamVoice]
   );
 
-  const handlePlayAudio = useCallback(
-    async (chapterNumber: number) => {
-      if (!bookId) {
-        return;
-      }
-      const entry = chapters.find((item) => item.chapterNumber === chapterNumber);
-      const audioUrl = entry?.audio?.url;
-      if (!audioUrl) {
-        showToast('Audio file not found', 'error');
-        return;
-      }
-      let audio = audioRef.current;
-      if (!audio) {
-        audio = new Audio();
-        audioRef.current = audio;
-      }
-      if (playingChapter === chapterNumber && !audio.paused) {
-        audio.pause();
-        setPlayingChapter(null);
-        return;
-      }
-      audio.pause();
-      audio.src = audioUrl;
-      audio.onended = () => setPlayingChapter(null);
-      try {
-        await audio.play();
-        setPlayingChapter(chapterNumber);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unable to play audio.';
-        showToast(message, 'error');
-        setPlayingChapter(null);
-      }
-    },
-    [bookId, chapters, playingChapter, showToast]
-  );
-
   return (
     <div className="audio-viewer">
       <header className="audio-viewer-header">
@@ -219,33 +175,18 @@ export default function AudioView({
               const narrationReady = chapterStatus?.narrationReady ?? false;
               const audioReady = chapterStatus?.audioReady ?? false;
               const canGenerateAudio = narrationReady;
-              const playLabel = playingChapter === entry.chapterNumber ? 'Stop' : 'Play';
-              const playDisabled = !audioReady || audioBusy[entry.chapterNumber];
-              const actionLabel = audioReady
-                ? playLabel
-                : narrationReady
+              const showAction = !audioReady;
+              const actionLabel = narrationReady
                 ? audioBusy[entry.chapterNumber]
                   ? 'Generating…'
                   : 'Generate audio'
                 : narrationBusy[entry.chapterNumber]
                 ? 'Generating…'
                 : 'Generate narration';
-              const actionDisabled =
-                (audioReady && playDisabled) ||
-                (!audioReady && narrationReady && (audioBusy[entry.chapterNumber] || !canGenerateAudio)) ||
-                (!audioReady && !narrationReady && narrationBusy[entry.chapterNumber]);
-              const durationSeconds = entry.audio?.durationSeconds;
-              const durationLabel =
-                typeof durationSeconds === 'number' && Number.isFinite(durationSeconds)
-                  ? `${Math.floor(durationSeconds / 60)}:${String(
-                      Math.floor(durationSeconds % 60)
-                    ).padStart(2, '0')}`
-                  : null;
+              const actionDisabled = narrationReady
+                ? audioBusy[entry.chapterNumber] || !canGenerateAudio
+                : narrationBusy[entry.chapterNumber];
               const handleAction = () => {
-                if (audioReady) {
-                  void handlePlayAudio(entry.chapterNumber);
-                  return;
-                }
                 if (narrationReady) {
                   void handleGenerateAudio(entry.chapterNumber);
                   return;
@@ -267,19 +208,30 @@ export default function AudioView({
                     </div>
                   </div>
                   <div className="audio-row-actions">
-                    <button
-                      type="button"
-                      className="button"
-                      onClick={handleAction}
-                      disabled={actionDisabled}
-                      title={!narrationReady && !audioReady ? 'Generate narration first' : undefined}
-                    >
-                      {actionLabel}
-                    </button>
-                    {durationLabel ? (
-                      <span className="audio-row-duration" aria-label={`Duration ${durationLabel}`}>
-                        {durationLabel}
-                      </span>
+                    {showAction ? (
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={handleAction}
+                        disabled={actionDisabled}
+                      >
+                        {actionLabel}
+                      </button>
+                    ) : null}
+                    {audioReady && entry.audio?.url ? (
+                      <button
+                        type="button"
+                        className="button audio-native-play"
+                        onClick={() =>
+                          onPlayAudio({
+                            title: entry.title,
+                            subtitle: `Chapter ${entry.chapterNumber}`,
+                            url: entry.audio.url
+                          })
+                        }
+                      >
+                        ▶ Play
+                      </button>
                     ) : null}
                   </div>
                   {errorMap[entry.chapterNumber] ? (

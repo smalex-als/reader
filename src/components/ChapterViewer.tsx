@@ -28,6 +28,7 @@ interface ChapterViewerProps {
   refreshToken?: number;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
+  onPlayAudio: (payload: { title: string; url: string }) => void;
 }
 
 function formatChapterFilename(chapterNumber: number) {
@@ -56,6 +57,7 @@ function hashText(input: string) {
   return Math.abs(hash).toString(36);
 }
 
+
 export default function ChapterViewer({
   bookId,
   chapterNumber,
@@ -73,6 +75,7 @@ export default function ChapterViewer({
   refreshToken = 0,
   onFirstParagraphReady,
   onPlayParagraph,
+  onPlayAudio,
 }: ChapterViewerProps) {
   const [chapterText, setChapterText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -88,8 +91,6 @@ export default function ChapterViewer({
   const [chapterAudioReady, setChapterAudioReady] = useState(false);
   const [chapterNarrationReady, setChapterNarrationReady] = useState(false);
   const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
-  const [chapterAudioPlaying, setChapterAudioPlaying] = useState(false);
-  const chapterAudioRef = useRef<HTMLAudioElement | null>(null);
   const onPlayParagraphRef = useRef(onPlayParagraph);
 
   useEffect(() => {
@@ -148,7 +149,6 @@ export default function ChapterViewer({
       setChapterAudioReady(false);
       setChapterNarrationReady(false);
       setChapterAudioUrl(null);
-      setChapterAudioPlaying(false);
       return;
     }
 
@@ -217,7 +217,7 @@ export default function ChapterViewer({
         chapters?: Array<{
           chapterNumber: number;
           narration?: { ready?: boolean };
-          audio?: { ready?: boolean; url?: string };
+          audio?: { ready?: boolean; url?: string; durationSeconds?: number | null };
         }>;
       };
       const entry = Array.isArray(payload.chapters)
@@ -260,7 +260,6 @@ export default function ChapterViewer({
   const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
   const canGenerateNarration = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
   const canGenerateAudio = Boolean(canGenerateNarration && chapterNarrationReady);
-  const canPlayAudio = Boolean(chapterAudioReady && chapterAudioUrl);
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !pageRange || generating) {
       return;
@@ -288,33 +287,6 @@ export default function ChapterViewer({
       setGenerating(false);
     }
   }, [bookId, canGenerate, chapterNumber, generating, pageRange]);
-  const handlePlayChapterAudio = useCallback(async () => {
-    if (!canPlayAudio || !chapterAudioUrl) {
-      return;
-    }
-    let audio = chapterAudioRef.current;
-    if (!audio) {
-      audio = new Audio();
-      chapterAudioRef.current = audio;
-    }
-    if (chapterAudioPlaying) {
-      audio.pause();
-      setChapterAudioPlaying(false);
-      return;
-    }
-    audio.pause();
-    audio.src = chapterAudioUrl;
-    audio.onended = () => setChapterAudioPlaying(false);
-    try {
-      await audio.play();
-      setChapterAudioPlaying(true);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to play chapter audio.';
-      setAudioError(message);
-      setChapterAudioPlaying(false);
-    }
-  }, [canPlayAudio, chapterAudioPlaying, chapterAudioUrl]);
-
   const handleGenerateAudio = useCallback(async () => {
     if (!canGenerateAudio || !bookId || !chapterNumber || audioGenerating) {
       return;
@@ -372,40 +344,23 @@ export default function ChapterViewer({
     }
   }, [bookId, canGenerateNarration, chapterNumber, loadChapterAudioStatus, narrationGenerating]);
 
-  const audioActionLabel = chapterAudioReady
-    ? chapterAudioPlaying
-      ? 'Stop Audio'
-      : 'Play Audio'
-    : chapterNarrationReady
+  const audioActionLabel = chapterNarrationReady
     ? audioGenerating
       ? 'Generating…'
       : 'Generate Audio'
     : narrationGenerating
     ? 'Generating…'
     : 'Generate Narration';
-  const audioActionDisabled =
-    (chapterAudioReady && !canPlayAudio) ||
-    (!chapterAudioReady && chapterNarrationReady && !canGenerateAudio) ||
-    (!chapterAudioReady && !chapterNarrationReady && !canGenerateNarration) ||
-    audioGenerating ||
-    narrationGenerating;
+  const audioActionDisabled = chapterNarrationReady
+    ? !canGenerateAudio || audioGenerating
+    : !canGenerateNarration || narrationGenerating;
   const handleAudioAction = useCallback(() => {
-    if (chapterAudioReady) {
-      void handlePlayChapterAudio();
-      return;
-    }
     if (chapterNarrationReady) {
       void handleGenerateAudio();
       return;
     }
     void handleGenerateNarration();
-  }, [
-    chapterAudioReady,
-    chapterNarrationReady,
-    handleGenerateAudio,
-    handleGenerateNarration,
-    handlePlayChapterAudio
-  ]);
+  }, [chapterNarrationReady, handleGenerateAudio, handleGenerateNarration]);
 
   const pageMeta = useMemo(() => {
     if (!pageRange) {
@@ -499,15 +454,29 @@ export default function ChapterViewer({
           >
             {settingsOpen ? 'Hide settings' : 'Text settings'}
           </button>
-          {chapterNumber ? (
+          {chapterNumber && !chapterAudioReady ? (
             <button
               type="button"
               className="button button-secondary"
               onClick={handleAudioAction}
               disabled={audioActionDisabled}
-              title={!chapterNarrationReady && !chapterAudioReady ? 'Generate narration first' : undefined}
             >
               {audioActionLabel}
+            </button>
+          ) : null}
+          {chapterAudioReady && chapterAudioUrl ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() =>
+                onPlayAudio({
+                  title: chapterTitle ?? `Chapter ${chapterNumber}`,
+                  subtitle: chapterNumber ? `Chapter ${chapterNumber}` : undefined,
+                  url: chapterAudioUrl
+                })
+              }
+            >
+              ▶ Play
             </button>
           ) : null}
           {allowEdit && chapterNumber ? (

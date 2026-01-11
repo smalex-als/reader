@@ -3,6 +3,7 @@ import AppModals from '@/components/AppModals';
 import AppSidebar from '@/components/AppSidebar';
 import ChapterEditor from '@/components/ChapterEditor';
 import AudioView from '@/components/AudioView';
+import FloatingAudioPlayer, { type FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import ChapterViewer from '@/components/ChapterViewer';
 import StreamBubble from '@/components/StreamBubble';
 import Viewer from '@/components/Viewer';
@@ -281,6 +282,16 @@ export default function App() {
     textSaving,
     toggleTextModal
   } = usePageText(currentImage, showToast);
+  const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
+  const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
+    setFloatingAudio(payload);
+  }, []);
+  const handleCloseFloatingAudio = useCallback(() => {
+    setFloatingAudio(null);
+  }, []);
+  useEffect(() => {
+    setFloatingAudio(null);
+  }, [bookId]);
   const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
     navigationCount,
     currentPage,
@@ -840,6 +851,7 @@ export default function App() {
                     refreshToken={chapterViewRefresh}
                     onFirstParagraphReady={setFirstChapterParagraph}
                     onPlayParagraph={handlePlayChapterParagraph}
+                    onPlayAudio={handlePlayFloatingAudio}
                 />
               )
             ) : (
@@ -853,6 +865,7 @@ export default function App() {
                   setViewMode('text');
                   renderPage(pageIndex);
                 }}
+                onPlayAudio={handlePlayFloatingAudio}
               />
             )}
             {loading && <div className="viewer-status">Loading…</div>}
@@ -868,6 +881,7 @@ export default function App() {
           </div>
         </main>
         <AppModals {...modalProps} />
+        <FloatingAudioPlayer track={floatingAudio} onClose={handleCloseFloatingAudio} />
       </div>
   );
 }
