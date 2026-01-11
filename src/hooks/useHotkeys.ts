@@ -147,6 +147,9 @@ export function useHotkeys({
       if (isTextInput(event.target) && event.key !== 'Escape') {
         return;
       }
+      if (event.metaKey || event.ctrlKey) {
+        return;
+      }
       const key = event.key.toLowerCase();
       switch (key) {
         case '?':
@@ -260,6 +263,9 @@ export function useHotkeys({
           toggleTextModal();
           break;
         case 'c':
+          if (event.metaKey || event.ctrlKey) {
+            return;
+          }
           event.preventDefault();
           setTocOpen(true);
           break;
@@ -268,6 +274,9 @@ export function useHotkeys({
           openBookModal();
           break;
         case 'f':
+          if (event.metaKey || event.ctrlKey) {
+            return;
+          }
           event.preventDefault();
           void toggleFullscreen();
           break;
