@@ -874,6 +874,7 @@ export default function App() {
               onTogglePause={() => void handleToggleStreamPause()}
               onStopStream={handleStopStream}
             />
+            <FloatingAudioPlayer track={floatingAudio} onClose={handleCloseFloatingAudio} />
             <div ref={modalHostRef} className="modal-portal" />
           </div>
           <div className="page-footer">
@@ -881,7 +882,6 @@ export default function App() {
           </div>
         </main>
         <AppModals {...modalProps} />
-        <FloatingAudioPlayer track={floatingAudio} onClose={handleCloseFloatingAudio} />
       </div>
   );
 }

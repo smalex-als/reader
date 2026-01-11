@@ -2,6 +2,7 @@ import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { CSSProperties, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 
 interface ChapterViewerProps {
   bookId: string | null;
@@ -28,7 +29,7 @@ interface ChapterViewerProps {
   refreshToken?: number;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
-  onPlayAudio: (payload: { title: string; url: string }) => void;
+  onPlayAudio: (payload: FloatingAudioTrack) => void;
 }
 
 function formatChapterFilename(chapterNumber: number) {

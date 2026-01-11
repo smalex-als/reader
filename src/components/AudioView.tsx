@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { TocEntry, ToastMessage } from '@/types/app';
+import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 
 interface AudioViewProps {
   bookId: string | null;
@@ -8,7 +9,7 @@ interface AudioViewProps {
   streamVoice: string;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   onOpenChapterText: (pageIndex: number) => void;
-  onPlayAudio: (payload: { title: string; url: string }) => void;
+  onPlayAudio: (payload: FloatingAudioTrack) => void;
 }
 
 type ChapterStatus = {
