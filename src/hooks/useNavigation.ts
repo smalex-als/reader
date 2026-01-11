@@ -7,7 +7,7 @@ import type { TocEntry } from '@/types/app';
 interface UseNavigationParams {
   navigationCount: number;
   currentPage: number;
-  viewMode: 'pages' | 'text';
+  viewMode: 'pages' | 'text' | 'audio';
   isTextBook: boolean;
   currentChapterIndex: number | null;
   sortedTocEntries: TocEntry[];
@@ -81,7 +81,7 @@ export function useNavigation({
   );
 
   const handlePrev = useCallback(() => {
-    if (viewMode === 'text') {
+    if (viewMode === 'text' || viewMode === 'audio') {
       if (isTextBook) {
         renderPage(currentPage - 1);
         return;
@@ -100,7 +100,7 @@ export function useNavigation({
   }, [currentChapterIndex, currentPage, goToChapterIndex, isTextBook, renderPage, viewMode]);
 
   const handleNext = useCallback(() => {
-    if (viewMode === 'text') {
+    if (viewMode === 'text' || viewMode === 'audio') {
       if (isTextBook) {
         renderPage(currentPage + 1);
         return;
@@ -127,12 +127,12 @@ export function useNavigation({
   ]);
 
   const footerMessage = useMemo(() => {
-    if (viewMode === 'text') {
+    if (viewMode === 'text' || viewMode === 'audio') {
       if (chapterNumber && currentChapterEntry) {
         return `Chapter ${chapterNumber}: ${currentChapterEntry.title}`;
       }
       if (hasBooks) {
-        return 'Open the TOC to create chapters for text view.';
+        return 'Open the TOC to create chapters.';
       }
       return 'No books found. Add files to /data to begin.';
     }

@@ -12,7 +12,7 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 type TocManagerOptions = {
   bookId: string | null;
   manifestLength: number;
-  viewMode: 'pages' | 'text';
+  viewMode: 'pages' | 'text' | 'audio';
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
 };
 
@@ -172,7 +172,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
   }, [bookId]);
 
   useEffect(() => {
-    if (tocOpen || tocManageOpen || viewMode === 'text') {
+    if (tocOpen || tocManageOpen || viewMode === 'text' || viewMode === 'audio') {
       void loadToc();
     }
   }, [loadToc, tocManageOpen, tocOpen, viewMode]);

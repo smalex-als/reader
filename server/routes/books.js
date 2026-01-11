@@ -1,10 +1,14 @@
 import express from 'express';
+import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import multer from 'multer';
 import { derivePrintFilename, createPdfFromImages } from '../lib/pdf.js';
 import { deleteBook, getBookType, listBooks, loadManifest } from '../lib/books.js';
 import { normalizeBookId } from '../lib/paths.js';
 import { createHttpError } from '../lib/errors.js';
 import { asyncHandler } from '../lib/async.js';
+import { safeStat } from '../lib/fs.js';
 import {
   deriveBookmarkLabelFromImage,
   deriveBookmarkLabelFromText,
@@ -16,7 +20,7 @@ import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
 import { generateChapterText } from '../lib/chapters.js';
 import { generateChapterAudio } from '../lib/streamAudio.js';
 import { generateChapterNarration } from '../lib/narration.js';
-import { MAX_UPLOAD_BYTES } from '../config.js';
+import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
 import {
   addTextChapter,
   createTextBook,
@@ -27,6 +31,32 @@ import {
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
+const CHAPTER_PAD_LENGTH = 3;
+const execFileAsync = promisify(execFile);
+
+function formatChapterSuffix(chapterNumber) {
+  return String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0');
+}
+
+async function getAudioDurationSeconds(filePath) {
+  try {
+    const { stdout } = await execFileAsync('ffprobe', [
+      '-v',
+      'error',
+      '-select_streams',
+      'a:0',
+      '-show_entries',
+      'format=duration',
+      '-of',
+      'default=noprint_wrappers=1:nokey=1',
+      filePath
+    ]);
+    const value = Number.parseFloat(String(stdout).trim());
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 router.get('/api/books', asyncHandler(async (_req, res) => {
   const books = await listBooks();
@@ -43,6 +73,47 @@ router.get('/api/books/:id/manifest', asyncHandler(async (req, res) => {
   }
   const manifest = await loadManifest(bookId);
   res.json({ book: bookId, manifest, bookType });
+}));
+
+router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const toc = await loadToc(bookId);
+  const chapters = await Promise.all(
+    toc.map(async (entry, index) => {
+      const chapterNumber = index + 1;
+      const suffix = formatChapterSuffix(chapterNumber);
+      const narrationFilename = `chapter${suffix}.narration.txt`;
+      const audioFilename = `chapter${suffix}.mp3`;
+      const narrationPath = path.join(DATA_DIR, bookId, narrationFilename);
+      const audioPath = path.join(DATA_DIR, bookId, audioFilename);
+      const [narrationStat, audioStat] = await Promise.all([
+        safeStat(narrationPath),
+        safeStat(audioPath)
+      ]);
+      const narrationSize = narrationStat?.isFile?.() ? narrationStat.size : null;
+      const audioSize = audioStat?.isFile?.() ? audioStat.size : null;
+      const audioDurationSeconds = audioStat?.isFile?.()
+        ? await getAudioDurationSeconds(audioPath)
+        : null;
+      return {
+        chapterNumber,
+        title: entry.title,
+        page: entry.page,
+        narration: {
+          ready: Boolean(narrationStat?.isFile?.()),
+          url: `/data/${bookId}/${narrationFilename}`,
+          bytes: narrationSize
+        },
+        audio: {
+          ready: Boolean(audioStat?.isFile?.()),
+          url: `/data/${bookId}/${audioFilename}`,
+          bytes: audioSize,
+          durationSeconds: audioDurationSeconds
+        }
+      };
+    })
+  );
+  res.json({ book: bookId, chapters });
 }));
 
 router.delete('/api/books/:id', asyncHandler(async (req, res) => {

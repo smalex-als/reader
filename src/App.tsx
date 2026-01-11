@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppModals from '@/components/AppModals';
 import AppSidebar from '@/components/AppSidebar';
 import ChapterEditor from '@/components/ChapterEditor';
+import AudioView from '@/components/AudioView';
 import ChapterViewer from '@/components/ChapterViewer';
 import StreamBubble from '@/components/StreamBubble';
 import Viewer from '@/components/Viewer';
@@ -402,7 +403,7 @@ export default function App() {
   }, [settings.textTheme, setSettings]);
 
   const handleViewModeChange = useCallback(
-    (mode: 'pages' | 'text') => {
+    (mode: 'pages' | 'text' | 'audio') => {
       if (isTextBook && mode === 'pages') {
         return;
       }
@@ -785,7 +786,9 @@ export default function App() {
           <div
             ref={viewerShellRef}
             className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''} ${
-              viewMode === 'text' ? `viewer-shell-text theme-${settings.textTheme}` : ''
+              viewMode === 'text' || viewMode === 'audio'
+                ? `viewer-shell-text theme-${settings.textTheme}`
+                : ''
             }`}
           >
             {viewMode === 'pages' ? (
@@ -797,45 +800,59 @@ export default function App() {
                   onMetricsChange={handleMetricsChange}
                   rotation={settings.rotation}
               />
-            ) : editorOpen ? (
-              <ChapterEditor
-                  bookId={bookId}
-                  chapterNumber={editorChapterNumber ?? chapterNumber}
-                  chapterTitle={editorChapterTitle}
-                  onClose={() => {
-                    setEditorOpen(false);
-                    setEditorChapterNumber(null);
-                  }}
-                  onSaved={(nextToc) => {
-                    if (nextToc) {
-                      setTocEntries(nextToc);
-                    }
-                    setEditorOpen(false);
-                    setEditorChapterNumber(null);
-                    setChapterViewRefresh((prev) => prev + 1);
-                  }}
-              />
+            ) : viewMode === 'text' ? (
+              editorOpen ? (
+                <ChapterEditor
+                    bookId={bookId}
+                    chapterNumber={editorChapterNumber ?? chapterNumber}
+                    chapterTitle={editorChapterTitle}
+                    onClose={() => {
+                      setEditorOpen(false);
+                      setEditorChapterNumber(null);
+                    }}
+                    onSaved={(nextToc) => {
+                      if (nextToc) {
+                        setTocEntries(nextToc);
+                      }
+                      setEditorOpen(false);
+                      setEditorChapterNumber(null);
+                      setChapterViewRefresh((prev) => prev + 1);
+                    }}
+                />
+              ) : (
+                <ChapterViewer
+                    bookId={bookId}
+                    chapterNumber={chapterNumber}
+                    chapterTitle={currentChapterEntry?.title ?? null}
+                    pageRange={chapterRange}
+                    tocLoading={tocLoading}
+                    allowGenerate={!isTextBook}
+                    allowEdit={isTextBook}
+                    onEditChapter={() => {
+                      setEditorChapterNumber(chapterNumber);
+                      setEditorOpen(true);
+                    }}
+                    textFontSize={settings.textFontSize}
+                    onTextFontSizeChange={updateTextFontSize}
+                    textTheme={settings.textTheme}
+                    onTextThemeChange={updateTextTheme}
+                    streamVoice={streamVoice}
+                    refreshToken={chapterViewRefresh}
+                    onFirstParagraphReady={setFirstChapterParagraph}
+                    onPlayParagraph={handlePlayChapterParagraph}
+                />
+              )
             ) : (
-              <ChapterViewer
-                  bookId={bookId}
-                  chapterNumber={chapterNumber}
-                  chapterTitle={currentChapterEntry?.title ?? null}
-                  pageRange={chapterRange}
-                  tocLoading={tocLoading}
-                  allowGenerate={!isTextBook}
-                  allowEdit={isTextBook}
-                  onEditChapter={() => {
-                    setEditorChapterNumber(chapterNumber);
-                    setEditorOpen(true);
-                  }}
-                  textFontSize={settings.textFontSize}
-                  onTextFontSizeChange={updateTextFontSize}
-                  textTheme={settings.textTheme}
-                  onTextThemeChange={updateTextTheme}
-                  streamVoice={streamVoice}
-                  refreshToken={chapterViewRefresh}
-                  onFirstParagraphReady={setFirstChapterParagraph}
-                  onPlayParagraph={handlePlayChapterParagraph}
+              <AudioView
+                bookId={bookId}
+                tocEntries={sortedTocEntries}
+                tocLoading={tocLoading}
+                streamVoice={streamVoice}
+                showToast={showToast}
+                onOpenChapterText={(pageIndex) => {
+                  setViewMode('text');
+                  renderPage(pageIndex);
+                }}
               />
             )}
             {loading && <div className="viewer-status">Loading…</div>}

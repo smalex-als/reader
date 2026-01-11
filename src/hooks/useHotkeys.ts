@@ -2,7 +2,7 @@ import { useEffect, useMemo, type RefObject } from 'react';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
 import type { AppSettings, AudioState, StreamState, ViewerPan } from '@/types/app';
 
-type ViewMode = 'pages' | 'text';
+type ViewMode = 'pages' | 'text' | 'audio';
 
 type HotkeysOptions = {
   viewMode: ViewMode;

@@ -4,10 +4,10 @@ interface ToolbarProps {
   currentBook: string | null;
   manifestLength: number;
   currentPage: number;
-  viewMode: 'pages' | 'text';
+  viewMode: 'pages' | 'text' | 'audio';
   disablePagesMode: boolean;
   disableImageActions: boolean;
-  onViewModeChange: (mode: 'pages' | 'text') => void;
+  onViewModeChange: (mode: 'pages' | 'text' | 'audio') => void;
   onOpenBookModal: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -195,6 +195,16 @@ export default function Toolbar({
               aria-selected={viewMode === 'text'}
             >
               Text
+            </button>
+            <button
+              type="button"
+              className={`segmented-item ${viewMode === 'audio' ? 'segmented-item-active' : ''}`}
+              onClick={() => onViewModeChange('audio')}
+              disabled={manifestLength === 0}
+              role="tab"
+              aria-selected={viewMode === 'audio'}
+            >
+              Audio
             </button>
           </div>
         </div>

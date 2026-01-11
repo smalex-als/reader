@@ -13,7 +13,7 @@ import type { AppSettings, TocEntry, ToastMessage, ViewerMetrics } from '@/types
 
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 
-type ViewMode = 'pages' | 'text';
+type ViewMode = 'pages' | 'text' | 'audio';
 
 type BookSessionOptions<StreamVoice extends string> = {
   settings: AppSettings;
