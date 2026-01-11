@@ -12,6 +12,7 @@ services:
       PORT: 3000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OCR_OPENAI_API_KEY: ${OCR_OPENAI_API_KEY:-}
+      OCR_OPENAI_BASE_URL: ${OCR_OPENAI_BASE_URL:-}
       STREAM_SERVER: https://host.docker.internal:3000
       NODE_TLS_REJECT_UNAUTHORIZED: '0'
     volumes:
