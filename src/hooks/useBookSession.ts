@@ -38,6 +38,12 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return (await response.json()) as T;
 }
 
+function getBookFromLocation(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const book = params.get('book')?.trim();
+  return book ? book : null;
+}
+
 export function useBookSession<StreamVoice extends string>({
   settings,
   setSettings,
@@ -53,7 +59,7 @@ export function useBookSession<StreamVoice extends string>({
   createDefaultSettings
 }: BookSessionOptions<StreamVoice>) {
   const [books, setBooks] = useState<string[]>([]);
-  const [bookId, setBookId] = useState<string | null>(loadLastBook());
+  const [bookId, setBookId] = useState<string | null>(() => getBookFromLocation() ?? loadLastBook());
   const [manifest, setManifest] = useState<string[]>([]);
   const [bookType, setBookType] = useState<'image' | 'text'>('image');
   const [chapterCount, setChapterCount] = useState(0);
@@ -97,6 +103,36 @@ export function useBookSession<StreamVoice extends string>({
       saveLastBook(bookId);
     }
   }, [bookId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const currentParam = params.get('book');
+    if ((bookId ?? '') === (currentParam ?? '')) {
+      return;
+    }
+    if (bookId) {
+      params.set('book', bookId);
+    } else {
+      params.delete('book');
+    }
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${
+      window.location.hash
+    }`;
+    window.history.replaceState(null, '', nextUrl);
+  }, [bookId]);
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setBookId(getBookFromLocation());
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (!bookId) {
