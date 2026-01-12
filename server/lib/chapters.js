@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { assertBookDirectory, loadManifest } from './books.js';
-import { CHAPTER_SPLIT_PROMPT, LLMPROXY_AUTH, LLMPROXY_ENDPOINT, LLMPROXY_MODEL } from '../config.js';
+import { CHAPTER_SPLIT_PROMPT, OCR_OPENAI_MODEL } from '../config.js';
 import { createHttpError } from './errors.js';
-import { fetchLlmproxy } from './llmproxy.js';
+import { getOcrOpenAI } from './openai.js';
 import { loadPageText } from './ocr.js';
 
 const CHAPTER_PAD_LENGTH = 3;
@@ -24,33 +24,19 @@ async function preprocessChapterText(rawText, debugFilePath) {
     return '';
   }
 
-  const prompt = `${CHAPTER_SPLIT_PROMPT}\n\nSOURCE_START\n${input}\nSOURCE_END`;
+  const prompt = `${CHAPTER_SPLIT_PROMPT}\n\n${userContent}`;
   if (debugFilePath) {
     await fs.writeFile(debugFilePath, prompt, 'utf8');
   }
-  const response = await fetchLlmproxy(LLMPROXY_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${LLMPROXY_AUTH}`
-    },
-    body: JSON.stringify({
-      model: LLMPROXY_MODEL,
-      prompt,
-      stream: false
-    })
+  const openai = getOcrOpenAI();
+  const response = await openai.chat.completions.create({
+    model: OCR_OPENAI_MODEL,
+    messages: [
+      { role: 'system', content: CHAPTER_SPLIT_PROMPT },
+      { role: 'user', content: input }
+    ]
   });
-
-  if (!response.ok) {
-    throw createHttpError(
-      502,
-      `Chapter preprocessing failed (${response.status} ${response.statusText})`
-    );
-  }
-
-  const payload = await response.json();
-  console.log('preprocessChapterText LLM response', payload);
-  const processed = typeof payload?.response === 'string' ? payload.response.trim() : '';
+  const processed = response?.choices?.[0]?.message?.content?.trim() || '';
   return processed || input;
 }
 
