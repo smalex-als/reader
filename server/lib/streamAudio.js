@@ -205,7 +205,7 @@ function splitTextForStreaming(input) {
   return chunks.filter((chunk) => chunk.length > 0);
 }
 
-export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
+export async function prepareChapterAudio({ bookId, chapterNumber }) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
   }
@@ -225,8 +225,7 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
   const existingMp3 = await safeStat(mp3Path);
   if (existingMp3?.isFile()) {
     return {
-      source: 'file',
-      url: `/data/${bookId}/${mp3Filename}`
+      existingAudioUrl: `/data/${bookId}/${mp3Filename}`
     };
   }
 
@@ -236,15 +235,19 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
     throw createHttpError(400, 'No text available for audio generation');
   }
 
-  const textChunks = splitTextForStreaming(cleaned);
-  const pcmParts = [];
-  for (const chunk of textChunks) {
-    const pcmBuffer = await streamTextToPcm(chunk, voice);
-    if (!pcmBuffer.length) {
-      throw createHttpError(502, 'No audio returned from streaming service');
-    }
-    pcmParts.push(pcmBuffer);
-  }
+  return {
+    audioPath,
+    mp3Path,
+    mp3Url: `/data/${bookId}/${mp3Filename}`,
+    textChunks: splitTextForStreaming(cleaned)
+  };
+}
+
+export async function streamChapterAudioChunk(text, voice) {
+  return streamTextToPcm(text, voice);
+}
+
+export async function finalizeChapterAudio({ audioPath, mp3Path, pcmParts }) {
   const pcmBuffer = Buffer.concat(pcmParts);
 
   const header = buildWavHeader(pcmBuffer.length);
@@ -252,9 +255,33 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
   await fs.writeFile(audioPath, wavBuffer);
   await encodeMp3(audioPath, mp3Path);
   await fs.unlink(audioPath);
+}
+
+export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
+  const preparation = await prepareChapterAudio({ bookId, chapterNumber });
+  if ('existingAudioUrl' in preparation) {
+    return {
+      source: 'file',
+      url: preparation.existingAudioUrl
+    };
+  }
+
+  const pcmParts = [];
+  for (const chunk of preparation.textChunks) {
+    const pcmBuffer = await streamChapterAudioChunk(chunk, voice);
+    if (!pcmBuffer.length) {
+      throw createHttpError(502, 'No audio returned from streaming service');
+    }
+    pcmParts.push(pcmBuffer);
+  }
+  await finalizeChapterAudio({
+    audioPath: preparation.audioPath,
+    mp3Path: preparation.mp3Path,
+    pcmParts
+  });
 
   return {
     source: 'stream',
-    url: `/data/${bookId}/${mp3Filename}`
+    url: preparation.mp3Url
   };
 }

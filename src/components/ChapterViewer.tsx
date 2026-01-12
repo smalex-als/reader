@@ -32,6 +32,12 @@ interface ChapterViewerProps {
   onPlayAudio: (payload: FloatingAudioTrack) => void;
 }
 
+type AudioJobStatus = {
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
+  error?: string | null;
+  audioUrl?: string | null;
+};
+
 function formatChapterFilename(chapterNumber: number) {
   return `chapter${String(chapterNumber).padStart(3, '0')}.txt`;
 }
@@ -92,6 +98,10 @@ export default function ChapterViewer({
   const [chapterAudioReady, setChapterAudioReady] = useState(false);
   const [chapterNarrationReady, setChapterNarrationReady] = useState(false);
   const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
+  const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
+  const audioPollTimers = useRef<Map<number, number>>(new Map());
+  const audioPollAttempts = useRef<Map<number, number>>(new Map());
+  const audioPollRef = useRef<(chapterNumber: number) => void>();
   const onPlayParagraphRef = useRef(onPlayParagraph);
 
   useEffect(() => {
@@ -150,6 +160,7 @@ export default function ChapterViewer({
       setChapterAudioReady(false);
       setChapterNarrationReady(false);
       setChapterAudioUrl(null);
+      setAudioJob(null);
       return;
     }
 
@@ -237,6 +248,78 @@ export default function ChapterViewer({
   }, [loadChapterAudioStatus]);
 
   useEffect(() => {
+    setAudioJob(null);
+    clearAudioPoll();
+  }, [bookId, chapterNumber, clearAudioPoll]);
+
+  const clearAudioPoll = useCallback(() => {
+    audioPollTimers.current.forEach((timer) => window.clearTimeout(timer));
+    audioPollTimers.current.clear();
+    audioPollAttempts.current.clear();
+  }, []);
+
+  const scheduleAudioPoll = useCallback(
+    (currentChapter: number) => {
+      const attempt = (audioPollAttempts.current.get(currentChapter) ?? 0) + 1;
+      audioPollAttempts.current.set(currentChapter, attempt);
+      const delay = Math.min(1000 * 2 ** (attempt - 1), 10000);
+      const timer = window.setTimeout(() => {
+        audioPollRef.current?.(currentChapter);
+      }, delay);
+      audioPollTimers.current.set(currentChapter, timer);
+    },
+    []
+  );
+
+  const pollAudioJobStatus = useCallback(
+    async (currentChapter: number) => {
+      if (!bookId || !currentChapter) {
+        return;
+      }
+      try {
+        const response = await fetch(
+          `/api/books/${encodeURIComponent(bookId)}/chapters/${currentChapter}/audio/status`
+        );
+        if (!response.ok) {
+          throw new Error(`Audio status failed: ${response.status}`);
+        }
+        const payload = (await response.json()) as {
+          job?: { status?: AudioJobStatus['status']; error?: string | null; audioUrl?: string | null };
+        };
+        const job = payload?.job;
+        if (!job?.status) {
+          clearAudioPoll();
+          return;
+        }
+        setAudioJob({
+          status: job.status,
+          error: job.error ?? null,
+          audioUrl: job.audioUrl ?? null
+        });
+        if (job.status === 'completed') {
+          clearAudioPoll();
+          await loadChapterAudioStatus();
+          return;
+        }
+        if (job.status === 'failed' || job.status === 'canceled') {
+          clearAudioPoll();
+          return;
+        }
+        scheduleAudioPoll(currentChapter);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to poll audio status.';
+        setAudioError(message);
+        scheduleAudioPoll(currentChapter);
+      }
+    },
+    [bookId, clearAudioPoll, loadChapterAudioStatus, scheduleAudioPoll]
+  );
+
+  useEffect(() => {
+    audioPollRef.current = pollAudioJobStatus;
+  }, [pollAudioJobStatus]);
+
+  useEffect(() => {
     if (!chapterText || !chapterNumber) {
       onFirstParagraphReady(null);
       return;
@@ -307,15 +390,27 @@ export default function ChapterViewer({
       if (!response.ok) {
         throw new Error(`Audio generation failed: ${response.status}`);
       }
-      setNarrationStatus('Audio generated.');
-      await loadChapterAudioStatus();
+      const payload = (await response.json()) as {
+        job?: { status?: AudioJobStatus['status']; error?: string | null; audioUrl?: string | null };
+      };
+      if (payload?.job?.status) {
+        setAudioJob({
+          status: payload.job.status,
+          error: payload.job.error ?? null,
+          audioUrl: payload.job.audioUrl ?? null
+        });
+        scheduleAudioPoll(chapterNumber);
+      } else {
+        setNarrationStatus('Audio job queued.');
+        scheduleAudioPoll(chapterNumber);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to generate chapter audio.';
       setAudioError(message);
     } finally {
       setAudioGenerating(false);
     }
-  }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, loadChapterAudioStatus, streamVoice]);
+  }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, scheduleAudioPoll, streamVoice]);
 
   const handleGenerateNarration = useCallback(async () => {
     if (!canGenerateNarration || !bookId || !chapterNumber || narrationGenerating) {
@@ -345,15 +440,46 @@ export default function ChapterViewer({
     }
   }, [bookId, canGenerateNarration, chapterNumber, loadChapterAudioStatus, narrationGenerating]);
 
+  const handleCancelAudioJob = useCallback(async () => {
+    if (!bookId || !chapterNumber) {
+      return;
+    }
+    clearAudioPoll();
+    try {
+      const response = await fetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/audio/cancel`,
+        { method: 'POST' }
+      );
+      if (!response.ok) {
+        throw new Error(`Audio cancel failed: ${response.status}`);
+      }
+      setAudioJob({ status: 'canceled', error: null, audioUrl: null });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to cancel chapter audio.';
+      setAudioError(message);
+    }
+  }, [bookId, chapterNumber, clearAudioPoll]);
+
+  useEffect(() => {
+    return () => {
+      clearAudioPoll();
+    };
+  }, [clearAudioPoll]);
+
+  const isAudioJobActive = audioJob?.status === 'queued' || audioJob?.status === 'running';
   const audioActionLabel = chapterNarrationReady
-    ? audioGenerating
-      ? 'Generating…'
+    ? isAudioJobActive
+      ? audioJob?.status === 'queued'
+        ? 'Queued…'
+        : 'Generating…'
+      : audioGenerating
+      ? 'Starting…'
       : 'Generate Audio'
     : narrationGenerating
     ? 'Generating…'
     : 'Generate Narration';
   const audioActionDisabled = chapterNarrationReady
-    ? !canGenerateAudio || audioGenerating
+    ? !canGenerateAudio || audioGenerating || isAudioJobActive
     : !canGenerateNarration || narrationGenerating;
   const handleAudioAction = useCallback(() => {
     if (chapterNarrationReady) {
@@ -463,6 +589,15 @@ export default function ChapterViewer({
               disabled={audioActionDisabled}
             >
               {audioActionLabel}
+            </button>
+          ) : null}
+          {chapterNumber && isAudioJobActive ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={handleCancelAudioJob}
+            >
+              Cancel
             </button>
           ) : null}
           {chapterAudioReady && chapterAudioUrl ? (
@@ -590,6 +725,11 @@ export default function ChapterViewer({
           </div>
         ) : null}
         {audioError ? <p className="text-viewer-status">{audioError}</p> : null}
+        {audioJob?.status === 'failed' ? (
+          <p className="text-viewer-status">
+            {audioJob.error ?? 'Audio generation failed.'}
+          </p>
+        ) : null}
         {narrationStatus ? <p className="text-viewer-status">{narrationStatus}</p> : null}
       </section>
     </div>
