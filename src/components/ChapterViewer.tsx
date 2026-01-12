@@ -247,16 +247,16 @@ export default function ChapterViewer({
     void loadChapterAudioStatus();
   }, [loadChapterAudioStatus]);
 
-  useEffect(() => {
-    setAudioJob(null);
-    clearAudioPoll();
-  }, [bookId, chapterNumber, clearAudioPoll]);
-
   const clearAudioPoll = useCallback(() => {
     audioPollTimers.current.forEach((timer) => window.clearTimeout(timer));
     audioPollTimers.current.clear();
     audioPollAttempts.current.clear();
   }, []);
+
+  useEffect(() => {
+    setAudioJob(null);
+    clearAudioPoll();
+  }, [bookId, chapterNumber, clearAudioPoll]);
 
   const scheduleAudioPoll = useCallback(
     (currentChapter: number) => {

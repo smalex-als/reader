@@ -116,6 +116,7 @@ async function finalizeFailure(bookId, chapterNumber, error) {
 
 async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
   const key = getJobKey(bookId, chapterNumber);
+  let preparation = null;
   try {
     await updateJob(bookId, chapterNumber, {
       status: 'running',
@@ -129,7 +130,7 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
       return;
     }
 
-    const preparation = await prepareChapterAudio({ bookId, chapterNumber });
+    preparation = await prepareChapterAudio({ bookId, chapterNumber });
     if ('existingAudioUrl' in preparation) {
       await updateJob(bookId, chapterNumber, {
         status: 'completed',
@@ -139,24 +140,44 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
       return;
     }
 
-    const pcmParts = [];
-    for (const chunk of preparation.textChunks) {
-      if (signal?.canceled) {
-        await updateJob(bookId, chapterNumber, { status: 'canceled' });
-        return;
+    const pcmHandle = await fs.open(preparation.pcmPath, 'w');
+    let pcmLength = 0;
+    let canceled = false;
+    try {
+      for (const chunk of preparation.textChunks) {
+        if (signal?.canceled) {
+          canceled = true;
+          break;
+        }
+        const pcmBuffer = await streamChapterAudioChunk(chunk, voice);
+        if (!pcmBuffer.length) {
+          throw createHttpError(502, 'No audio returned from streaming service');
+        }
+        await pcmHandle.write(pcmBuffer);
+        pcmLength += pcmBuffer.length;
+        await updateJob(bookId, chapterNumber, { status: 'running' });
       }
-      const pcmBuffer = await streamChapterAudioChunk(chunk, voice);
-      if (!pcmBuffer.length) {
-        throw createHttpError(502, 'No audio returned from streaming service');
+    } finally {
+      await pcmHandle.close();
+    }
+
+    if (canceled) {
+      try {
+        await fs.unlink(preparation.pcmPath);
+      } catch (error) {
+        if (error?.code !== 'ENOENT') {
+          console.warn('Failed to delete canceled PCM file', error);
+        }
       }
-      pcmParts.push(pcmBuffer);
-      await updateJob(bookId, chapterNumber, { status: 'running' });
+      await updateJob(bookId, chapterNumber, { status: 'canceled' });
+      return;
     }
 
     await finalizeChapterAudio({
       audioPath: preparation.audioPath,
       mp3Path: preparation.mp3Path,
-      pcmParts
+      pcmPath: preparation.pcmPath,
+      pcmLength
     });
 
     const mp3Stat = await safeStat(preparation.mp3Path);
@@ -169,6 +190,15 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
       error: null
     });
   } catch (error) {
+    if (preparation?.pcmPath) {
+      try {
+        await fs.unlink(preparation.pcmPath);
+      } catch (cleanupError) {
+        if (cleanupError?.code !== 'ENOENT') {
+          console.warn('Failed to delete PCM file after error', cleanupError);
+        }
+      }
+    }
     await finalizeFailure(bookId, chapterNumber, error);
   } finally {
     activeSignals.delete(key);
