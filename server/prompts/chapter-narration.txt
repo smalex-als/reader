@@ -1,1 +1,2 @@
 Revise the content for narration by removing step-by-step exercise instructions, while preserving all other material.
+Remove markdown or any special symbols formatting.
