@@ -1,10 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { assertBookDirectory, loadManifest } from './books.js';
-import { CHAPTER_SPLIT_PROMPT, OCR_OPENAI_MODEL } from '../config.js';
-import { createHttpError } from './errors.js';
-import { getOcrOpenAI } from './openai.js';
-import { loadPageText } from './ocr.js';
+import {assertBookDirectory, loadManifest} from './books.js';
+import {CHAPTER_SPLIT_PROMPT, OCR_OPENAI_MODEL} from '../config.js';
+import {createHttpError} from './errors.js';
+import {getOcrOpenAI} from './openai.js';
+import {loadPageText} from './ocr.js';
 
 const CHAPTER_PAD_LENGTH = 3;
 
@@ -24,10 +24,6 @@ async function preprocessChapterText(rawText, debugFilePath) {
     return '';
   }
 
-  const prompt = `${CHAPTER_SPLIT_PROMPT}\n\n${userContent}`;
-  if (debugFilePath) {
-    await fs.writeFile(debugFilePath, prompt, 'utf8');
-  }
   const openai = getOcrOpenAI();
   const response = await openai.chat.completions.create({
     model: OCR_OPENAI_MODEL,
@@ -73,12 +69,10 @@ export async function generateChapterText(bookId, pageStart, pageEnd, chapterNum
 
   const combined = chunks.join('\n\n').trim();
   const directory = await assertBookDirectory(bookId);
-  const debugFilename = formatChapterDebugFilename(chapterNumber);
-  const debugFilePath = path.join(directory, debugFilename);
 
   let processed = combined;
   try {
-    processed = await preprocessChapterText(combined, debugFilePath);
+    processed = await preprocessChapterText(combined);
   } catch (error) {
     console.warn('Chapter preprocessing failed; saving original text', error);
   }
