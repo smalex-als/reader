@@ -137,24 +137,25 @@ export default function AudioView({
           job?: { status?: AudioJobStatus['status']; error?: string | null; audioUrl?: string | null };
         };
         const job = payload?.job;
-        if (!job?.status) {
+        const status = job?.status;
+        if (!status) {
           clearPoll(chapterNumber);
           return;
         }
         setAudioJobs((prev) => ({
           ...prev,
           [chapterNumber]: {
-            status: job.status,
+            status,
             error: job.error ?? null,
             audioUrl: job.audioUrl ?? null
           }
         }));
-        if (job.status === 'completed') {
+        if (status === 'completed') {
           clearPoll(chapterNumber);
           await loadAudioStatus();
           return;
         }
-        if (job.status === 'failed' || job.status === 'canceled') {
+        if (status === 'failed' || status === 'canceled') {
           clearPoll(chapterNumber);
           return;
         }
@@ -222,11 +223,12 @@ export default function AudioView({
           job?: { status?: AudioJobStatus['status']; error?: string | null; audioUrl?: string | null };
         };
         const job = payload?.job;
-        if (job?.status) {
+        const status = job?.status;
+        if (status) {
           setAudioJobs((prev) => ({
             ...prev,
             [chapterNumber]: {
-              status: job.status,
+              status,
               error: job.error ?? null,
               audioUrl: job.audioUrl ?? null
             }
