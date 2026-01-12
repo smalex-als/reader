@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {assertBookDirectory, loadManifest} from './books.js';
-import {CHAPTER_SPLIT_PROMPT, OCR_OPENAI_MODEL} from '../config.js';
+import {CHAPTER_SPLIT_PROMPT} from '../config.js';
 import {createHttpError} from './errors.js';
-import {getOcrOpenAI} from './openai.js';
+import {getOpenAI} from './openai.js';
 import {loadPageText} from './ocr.js';
 
 const CHAPTER_PAD_LENGTH = 3;
@@ -24,15 +24,24 @@ async function preprocessChapterText(rawText, debugFilePath) {
     return '';
   }
 
-  const openai = getOcrOpenAI();
-  const response = await openai.chat.completions.create({
-    model: OCR_OPENAI_MODEL,
-    messages: [
-      { role: 'system', content: CHAPTER_SPLIT_PROMPT },
-      { role: 'user', content: input }
+  const openai = getOpenAI();
+  const response = await openai.responses.create({
+    model: 'gpt-5.2',
+    input: [
+      {
+        role: 'system',
+        content: [{ type: 'input_text', text: CHAPTER_SPLIT_PROMPT }]
+      },
+      {
+        role: 'user',
+        content: [{ type: 'input_text', text: input }]
+      }
     ]
   });
-  const processed = response?.choices?.[0]?.message?.content?.trim() || '';
+  const processed =
+    response.output_text?.trim() ||
+    response?.output?.[0]?.content?.[0]?.text?.trim() ||
+    '';
   return processed || input;
 }
 
