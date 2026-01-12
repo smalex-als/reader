@@ -28,35 +28,16 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
   const [seeking, setSeeking] = useState(false);
 
   useEffect(() => {
-    if (!track) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      setPlaying(false);
-      setCurrentTime(0);
-      setDuration(0);
-      return;
-    }
     if (!audioRef.current) {
       audioRef.current = new Audio();
     }
     const audio = audioRef.current;
-    audio.preload = 'metadata';
-    audio.currentTime = 0;
-    audio.src = track.url;
-    audio.load();
-    audio.play().catch(() => {
-      setPlaying(false);
-    });
-  }, [track?.url]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) {
-      return;
-    }
     const handleLoaded = () => {
-      const nextDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const nextDuration = Number.isFinite(audio.duration)
+        ? audio.duration
+        : audio.seekable?.length
+          ? audio.seekable.end(0)
+          : 0;
       setDuration(nextDuration);
       if (!seeking) {
         setCurrentTime(audio.currentTime || 0);
@@ -88,6 +69,33 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
       audio.removeEventListener('ended', handleEnded);
     };
   }, [seeking]);
+
+  useEffect(() => {
+    if (!track) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      return;
+    }
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    }
+    const audio = audioRef.current;
+    audio.preload = 'metadata';
+    audio.currentTime = 0;
+    audio.src = track.url;
+    audio.load();
+    const nextDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    if (nextDuration) {
+      setDuration(nextDuration);
+    }
+    audio.play().catch(() => {
+      setPlaying(false);
+    });
+  }, [track?.url]);
 
   const togglePlayback = useCallback(async () => {
     const audio = audioRef.current;
