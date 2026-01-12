@@ -18,7 +18,11 @@ import {
 } from '../lib/bookmarks.js';
 import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
 import { generateChapterText } from '../lib/chapters.js';
-import { generateChapterAudio } from '../lib/streamAudio.js';
+import {
+  cancelChapterAudioJob,
+  enqueueChapterAudioJob,
+  getChapterAudioJob
+} from '../lib/chapterAudioJobs.js';
 import { generateChapterNarration } from '../lib/narration.js';
 import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
 import {
@@ -56,6 +60,14 @@ async function getAudioDurationSeconds(filePath) {
   } catch {
     return null;
   }
+}
+
+async function resolveChapterAudioUrl(bookId, chapterNumber) {
+  const suffix = formatChapterSuffix(chapterNumber);
+  const audioFilename = `chapter${suffix}.mp3`;
+  const audioPath = path.join(DATA_DIR, bookId, audioFilename);
+  const audioStat = await safeStat(audioPath);
+  return audioStat?.isFile?.() ? `/data/${bookId}/${audioFilename}` : null;
 }
 
 router.get('/api/books', asyncHandler(async (_req, res) => {
@@ -220,8 +232,48 @@ router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, r
   const bookId = normalizeBookId(req.params.id);
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const { voice } = req.body || {};
-  const result = await generateChapterAudio({ bookId, chapterNumber, voice });
-  res.json({ book: bookId, chapterNumber, ...result });
+  const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice });
+  res.json({ book: bookId, chapterNumber, job });
+}));
+
+router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const job = await getChapterAudioJob(bookId, chapterNumber);
+  const audioUrl = await resolveChapterAudioUrl(bookId, chapterNumber);
+  if (!job && audioUrl) {
+    res.json({
+      book: bookId,
+      chapterNumber,
+      job: {
+        bookId,
+        chapterNumber,
+        status: 'completed',
+        startedAt: null,
+        updatedAt: new Date().toISOString(),
+        error: null,
+        audioUrl
+      }
+    });
+    return;
+  }
+  res.json({
+    book: bookId,
+    chapterNumber,
+    job: job
+      ? {
+          ...job,
+          audioUrl: job.audioUrl ?? audioUrl
+        }
+      : null
+  });
+}));
+
+router.post('/api/books/:id/chapters/:chapter/audio/cancel', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const job = await cancelChapterAudioJob(bookId, chapterNumber);
+  res.json({ book: bookId, chapterNumber, job });
 }));
 
 router.post('/api/books/:id/chapters/:chapter/narration', asyncHandler(async (req, res) => {

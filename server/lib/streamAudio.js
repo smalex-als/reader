@@ -1,7 +1,9 @@
 import fs from 'node:fs/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { pipeline } from 'node:stream/promises';
 import { WebSocket } from 'undici';
 import { STREAM_SERVER, STREAM_VOICE } from '../config.js';
 import { assertBookDirectory } from './books.js';
@@ -205,7 +207,7 @@ function splitTextForStreaming(input) {
   return chunks.filter((chunk) => chunk.length > 0);
 }
 
-export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
+export async function prepareChapterAudio({ bookId, chapterNumber }) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
   }
@@ -220,13 +222,14 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
   }
   const audioFilename = chapterFilename.replace(/\.txt$/i, '.wav');
   const audioPath = path.join(directory, audioFilename);
+  const pcmFilename = audioFilename.replace(/\.wav$/i, '.pcm');
+  const pcmPath = path.join(directory, pcmFilename);
   const mp3Filename = audioFilename.replace(/\.wav$/i, '.mp3');
   const mp3Path = path.join(directory, mp3Filename);
   const existingMp3 = await safeStat(mp3Path);
   if (existingMp3?.isFile()) {
     return {
-      source: 'file',
-      url: `/data/${bookId}/${mp3Filename}`
+      existingAudioUrl: `/data/${bookId}/${mp3Filename}`
     };
   }
 
@@ -236,25 +239,25 @@ export async function generateChapterAudio({ bookId, chapterNumber, voice }) {
     throw createHttpError(400, 'No text available for audio generation');
   }
 
-  const textChunks = splitTextForStreaming(cleaned);
-  const pcmParts = [];
-  for (const chunk of textChunks) {
-    const pcmBuffer = await streamTextToPcm(chunk, voice);
-    if (!pcmBuffer.length) {
-      throw createHttpError(502, 'No audio returned from streaming service');
-    }
-    pcmParts.push(pcmBuffer);
-  }
-  const pcmBuffer = Buffer.concat(pcmParts);
+  return {
+    audioPath,
+    pcmPath,
+    mp3Path,
+    mp3Url: `/data/${bookId}/${mp3Filename}`,
+    textChunks: splitTextForStreaming(cleaned)
+  };
+}
 
-  const header = buildWavHeader(pcmBuffer.length);
-  const wavBuffer = Buffer.concat([header, pcmBuffer]);
-  await fs.writeFile(audioPath, wavBuffer);
+export async function streamChapterAudioChunk(text, voice) {
+  return streamTextToPcm(text, voice);
+}
+
+export async function finalizeChapterAudio({ audioPath, mp3Path, pcmPath, pcmLength }) {
+  const header = buildWavHeader(pcmLength);
+  const wavStream = createWriteStream(audioPath);
+  wavStream.write(header);
+  await pipeline(createReadStream(pcmPath), wavStream);
   await encodeMp3(audioPath, mp3Path);
   await fs.unlink(audioPath);
-
-  return {
-    source: 'stream',
-    url: `/data/${bookId}/${mp3Filename}`
-  };
+  await fs.unlink(pcmPath);
 }
