@@ -42,8 +42,12 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
     }
     const audio = audioRef.current;
     audio.preload = 'metadata';
+    audio.currentTime = 0;
     audio.src = track.url;
-    audio.play().catch(() => {});
+    audio.load();
+    audio.play().catch(() => {
+      setPlaying(false);
+    });
   }, [track?.url]);
 
   useEffect(() => {
@@ -54,6 +58,9 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
     const handleLoaded = () => {
       const nextDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
       setDuration(nextDuration);
+      if (!seeking) {
+        setCurrentTime(audio.currentTime || 0);
+      }
     };
     const handleTime = () => {
       if (seeking) {
@@ -65,12 +72,16 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
     const handlePause = () => setPlaying(false);
     const handleEnded = () => setPlaying(false);
     audio.addEventListener('loadedmetadata', handleLoaded);
+    audio.addEventListener('durationchange', handleLoaded);
+    audio.addEventListener('loadeddata', handleLoaded);
     audio.addEventListener('timeupdate', handleTime);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('ended', handleEnded);
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoaded);
+      audio.removeEventListener('durationchange', handleLoaded);
+      audio.removeEventListener('loadeddata', handleLoaded);
       audio.removeEventListener('timeupdate', handleTime);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
