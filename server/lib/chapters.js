@@ -42,6 +42,12 @@ async function preprocessChapterText(rawText, debugFilePath) {
     response.output_text?.trim() ||
     response?.output?.[0]?.content?.[0]?.text?.trim() ||
     '';
+  if (!processed) {
+    console.warn('Chapter preprocessing returned empty text', {
+      responseId: response?.id,
+      model: response?.model
+    });
+  }
   return processed || input;
 }
 
