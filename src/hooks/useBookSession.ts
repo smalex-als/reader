@@ -44,6 +44,28 @@ function getBookFromLocation(): string | null {
   return book ? book : null;
 }
 
+function getPageFromLocation(): number | null {
+  const params = new URLSearchParams(window.location.search);
+  const rawPage = params.get('page');
+  if (!rawPage) {
+    return null;
+  }
+  const parsed = Number.parseInt(rawPage, 10);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return null;
+  }
+  return parsed - 1;
+}
+
+function getViewModeFromLocation(): ViewMode | null {
+  const params = new URLSearchParams(window.location.search);
+  const rawView = params.get('view');
+  if (rawView === 'pages' || rawView === 'text' || rawView === 'audio') {
+    return rawView;
+  }
+  return null;
+}
+
 export function useBookSession<StreamVoice extends string>({
   settings,
   setSettings,
@@ -107,7 +129,17 @@ export function useBookSession<StreamVoice extends string>({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const currentParam = params.get('book');
-    if ((bookId ?? '') === (currentParam ?? '')) {
+    const currentPageParam = params.get('page');
+    const currentViewParam = params.get('view');
+    const navCount = bookType === 'text' ? chapterCount : manifest.length;
+    const shouldSyncPosition = Boolean(bookId) && navCount > 0;
+    const nextPageParam = shouldSyncPosition ? String(currentPage + 1) : null;
+    const nextViewParam = shouldSyncPosition ? viewMode : null;
+    if (
+      (bookId ?? '') === (currentParam ?? '') &&
+      (!shouldSyncPosition || (nextPageParam ?? '') === (currentPageParam ?? '')) &&
+      (!shouldSyncPosition || (nextViewParam ?? '') === (currentViewParam ?? ''))
+    ) {
       return;
     }
     if (bookId) {
@@ -115,12 +147,22 @@ export function useBookSession<StreamVoice extends string>({
     } else {
       params.delete('book');
     }
+    if (nextPageParam) {
+      params.set('page', nextPageParam);
+    } else if (!bookId) {
+      params.delete('page');
+    }
+    if (nextViewParam) {
+      params.set('view', nextViewParam);
+    } else if (!bookId) {
+      params.delete('view');
+    }
     const nextSearch = params.toString();
     const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${
       window.location.hash
     }`;
     window.history.replaceState(null, '', nextUrl);
-  }, [bookId]);
+  }, [bookId, bookType, chapterCount, currentPage, manifest.length, viewMode]);
 
   useEffect(() => {
     const handleLocationChange = () => {
@@ -166,6 +208,8 @@ export function useBookSession<StreamVoice extends string>({
 
     (async () => {
       try {
+        const requestedPageFromLocation = getPageFromLocation();
+        const requestedViewFromLocation = getViewModeFromLocation();
         const data = await fetchJson<{
           book: string;
           manifest: string[];
@@ -182,7 +226,7 @@ export function useBookSession<StreamVoice extends string>({
         setChapterCount(nextChapterCount);
         setManifest(nextManifest);
         const storedPage = loadLastPage(bookId);
-        const requestedPage = storedPage ?? pendingPageRef.current ?? 0;
+        const requestedPage = requestedPageFromLocation ?? storedPage ?? pendingPageRef.current ?? 0;
         const navCount = nextBookType === 'text' ? nextChapterCount : nextManifest.length;
         if (navCount > 0) {
           const safePage = clamp(requestedPage, 0, navCount - 1);
@@ -191,10 +235,12 @@ export function useBookSession<StreamVoice extends string>({
         } else {
           setCurrentPage(0);
         }
+        const requestedView = requestedViewFromLocation;
         if (nextBookType === 'text') {
-          setViewMode('text');
+          setViewMode(requestedView && requestedView !== 'pages' ? requestedView : 'text');
           showToast(`Loaded ${nextChapterCount} chapters`, 'success');
         } else {
+          setViewMode(requestedView ?? 'pages');
           showToast(`Loaded ${nextManifest.length} pages`, 'success');
         }
       } catch (error) {

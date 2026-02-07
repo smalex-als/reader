@@ -25,6 +25,7 @@ import { useWakeLock } from '@/hooks/useWakeLock';
 import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
+import { trackEvent } from '@/lib/analytics';
 import type { AppSettings, TocEntry } from '@/types/app';
 
 const STREAM_VOICE_OPTIONS = [
@@ -134,6 +135,7 @@ export default function App() {
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
+  const shareOpenedTrackedRef = useRef(false);
   const {
     settings,
     setSettings,
@@ -560,6 +562,69 @@ export default function App() {
     }
   }, [currentImage, currentText, fetchPageText, showToast]);
 
+  const handleShareLink = useCallback(async () => {
+    if (!bookId || navigationCount === 0) {
+      showToast('Select a book before sharing', 'error');
+      return;
+    }
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set('book', bookId);
+    shareUrl.searchParams.set('page', String(currentPage + 1));
+    shareUrl.searchParams.set('view', viewMode);
+    shareUrl.searchParams.set('src', 'share');
+    const shareMessage = `Read ${bookId} at page ${currentPage + 1}`;
+    try {
+      if (navigator?.share) {
+        await navigator.share({ title: 'Scanned Book Reader', text: shareMessage, url: shareUrl.toString() });
+      } else if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl.toString());
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = shareUrl.toString();
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!copied) {
+          throw new Error('copy failed');
+        }
+      }
+      trackEvent('share_clicked', {
+        book: bookId,
+        page: currentPage + 1,
+        view: viewMode
+      });
+      showToast('Share link ready', 'success');
+    } catch (error) {
+      const aborted = error instanceof Error && error.name === 'AbortError';
+      if (aborted) {
+        return;
+      }
+      console.error(error);
+      showToast('Unable to share link', 'error');
+    }
+  }, [bookId, currentPage, navigationCount, showToast, viewMode]);
+
+  useEffect(() => {
+    if (shareOpenedTrackedRef.current || !bookId || navigationCount === 0) {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('src') !== 'share') {
+      return;
+    }
+    shareOpenedTrackedRef.current = true;
+    trackEvent('share_opened', {
+      book: bookId,
+      page: currentPage + 1,
+      view: viewMode,
+      source: 'share'
+    });
+  }, [bookId, currentPage, navigationCount, viewMode]);
+
   const handleStreamVoiceChange = useCallback(
     (voice: string) => {
       if (isStreamVoice(voice)) {
@@ -681,6 +746,7 @@ export default function App() {
     isBookmarked,
     bookmarksCount: bookmarks.length,
     onOpenPrint: openPrintModal,
+    onShareLink: () => void handleShareLink(),
     onOpenHelp: openHelp,
     onOpenOcrQueue: openOcrQueue,
     onOpenToc: () => setTocOpen(true),

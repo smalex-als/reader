@@ -46,6 +46,7 @@ interface ToolbarProps {
   isBookmarked: boolean;
   bookmarksCount: number;
   onOpenPrint: () => void;
+  onShareLink: () => void;
   onOpenHelp: () => void;
   onOpenOcrQueue: () => void;
   onOpenToc: () => void;
@@ -103,6 +104,7 @@ export default function Toolbar({
   isBookmarked,
   bookmarksCount,
   onOpenPrint,
+  onShareLink,
   onOpenHelp,
   onOpenOcrQueue,
   onOpenToc,
@@ -471,6 +473,9 @@ export default function Toolbar({
 
         <div className="toolbar-group">
           <span className="toolbar-group-title">System</span>
+          <button type="button" className="button" onClick={onShareLink} disabled={controlsDisabled}>
+            Share Link
+          </button>
           <button type="button" className="button" onClick={onOpenHelp}>
             Help / Hotkeys
           </button>

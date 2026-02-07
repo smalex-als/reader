@@ -7,6 +7,7 @@ import { DATA_DIR, HTTPS_CERT_PATH, HTTPS_KEY_PATH, HOST, MAX_UPLOAD_BYTES, PORT
 import booksRouter from './routes/books.js';
 import mediaRouter from './routes/media.js';
 import healthRouter from './routes/health.js';
+import eventsRouter from './routes/events.js';
 
 export function createApp() {
   const app = express();
@@ -49,6 +50,7 @@ export function createApp() {
   app.use(booksRouter);
   app.use(mediaRouter);
   app.use(healthRouter);
+  app.use(eventsRouter);
 
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) {
