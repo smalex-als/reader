@@ -73,6 +73,7 @@ Server environment variables:
 - `HTTPS_KEY_PATH` and `HTTPS_CERT_PATH` to enable HTTPS
 - `STREAM_SERVER` (WebSocket server for streaming audio; defaults to `VITE_STREAM_SERVER`)
 - `STREAM_VOICE` (default stream voice id; defaults to `VITE_STREAM_VOICE`)
+- `MAX_UPLOAD_MB` (max upload size for multipart uploads like PDF import; default `300`)
 
 Front-end environment variables:
 

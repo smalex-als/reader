@@ -105,4 +105,6 @@ Pause: Brief pauses after each option and statement to allow for processing and 
 
 export const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 export const PDF_EXTENSIONS = new Set(['.pdf']);
-export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+const maxUploadMbRaw = Number.parseInt(process.env.MAX_UPLOAD_MB || '300', 10);
+const maxUploadMb = Number.isFinite(maxUploadMbRaw) && maxUploadMbRaw > 0 ? maxUploadMbRaw : 300;
+export const MAX_UPLOAD_BYTES = maxUploadMb * 1024 * 1024;
