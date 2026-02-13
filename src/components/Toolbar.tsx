@@ -118,7 +118,7 @@ export default function Toolbar({
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
   const audioHandler = audioState.status === 'playing' ? onStopAudio : onPlayAudio;
-  const audioLabel = audioState.status === 'playing' ? 'Stop Audio' : 'Play Audio';
+  const audioLabel = audioState.status === 'playing' ? 'Stop OpenAI TTS' : 'Play OpenAI TTS';
   const streamActive =
     streamState.status === 'streaming' ||
     streamState.status === 'connecting' ||
@@ -131,11 +131,11 @@ export default function Toolbar({
       case 'loading':
         return 'Loading audio…';
       case 'generating':
-        return 'Generating audio…';
+        return 'Streaming OpenAI audio…';
       case 'playing':
-        return `Playing audio${formattedSource ? ` (${formattedSource})` : ''}`;
+        return `Playing OpenAI audio${formattedSource ? ` (${formattedSource})` : ''}`;
       case 'paused':
-        return `Audio paused${formattedSource ? ` (${formattedSource})` : ''}`;
+        return `OpenAI audio paused${formattedSource ? ` (${formattedSource})` : ''}`;
       case 'error':
         return audioState.error ?? 'Audio unavailable';
       default:
@@ -371,9 +371,9 @@ export default function Toolbar({
       </div>
 
       <div className="toolbar-row">
-        {false ? (
+        {true ? (
           <div className="toolbar-group">
-            <span className="toolbar-group-title">Audio</span>
+            <span className="toolbar-group-title">OpenAI TTS</span>
             <button
               type="button"
               className="button"

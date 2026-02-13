@@ -77,9 +77,6 @@ export function useAudioController(
       }
 
       if (!entry) {
-        const requestBody = {
-          image: currentImage
-        };
         setAudioState((prev) => ({
           ...prev,
           status: 'generating',
@@ -87,24 +84,23 @@ export function useAudioController(
           source: null,
           currentPageKey: currentImage
         }));
-        showToast('Generating audio…', 'info');
-        const response = await fetch('/api/page-audio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
-        });
-        if (!response.ok) {
-          throw new Error('Failed to generate audio');
-        }
-        const data = (await response.json()) as AudioCacheEntry;
-        entry = data;
+        showToast('Streaming audio…', 'info');
+        const params = new URLSearchParams();
+        params.set('image', currentImage);
+        params.set('t', String(Date.now()));
+        entry = {
+          url: `/api/page-audio/stream?${params.toString()}`,
+          source: 'ai'
+        };
       }
 
       if (!entry?.url) {
         throw new Error('Audio URL missing');
       }
 
-      setAudioCache((prev) => ({ ...prev, [currentImage]: entry! }));
+      if (entry.source === 'file') {
+        setAudioCache((prev) => ({ ...prev, [currentImage]: entry! }));
+      }
       if (audio.src !== entry.url) {
         audio.src = entry.url;
       }
