@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import AppModals from '@/components/AppModals';
 import AppSidebar from '@/components/AppSidebar';
-import ChapterEditor from '@/components/ChapterEditor';
-import AudioView from '@/components/AudioView';
-import FloatingAudioPlayer, { type FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
-import ChapterViewer from '@/components/ChapterViewer';
-import StreamBubble from '@/components/StreamBubble';
-import Viewer from '@/components/Viewer';
+import { type FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import ReaderMainContent from '@/components/ReaderMainContent';
+import ReaderModalLayer from '@/components/ReaderModalLayer';
 import { useAudioController } from '@/hooks/useAudioController';
 import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
@@ -856,98 +852,90 @@ export default function App() {
     }
   };
 
+  const mainContentProps = {
+    viewerShellRef,
+    modalHostRef,
+    isFullscreen,
+    loading,
+    viewMode,
+    textTheme: settings.textTheme,
+    editorOpen,
+    footerMessage,
+    viewerProps: {
+      imageUrl: currentImage,
+      settings,
+      onPan: updatePan,
+      onZoom: updateZoom,
+      onMetricsChange: handleMetricsChange,
+      rotation: settings.rotation
+    },
+    chapterEditorProps: {
+      bookId,
+      chapterNumber: editorChapterNumber ?? chapterNumber,
+      chapterTitle: editorChapterTitle,
+      onClose: () => {
+        setEditorOpen(false);
+        setEditorChapterNumber(null);
+      },
+      onSaved: (nextToc: TocEntry[] | null) => {
+        if (nextToc) {
+          setTocEntries(nextToc);
+        }
+        setEditorOpen(false);
+        setEditorChapterNumber(null);
+        setChapterViewRefresh((prev) => prev + 1);
+      }
+    },
+    chapterViewerProps: {
+      bookId,
+      chapterNumber,
+      chapterTitle: currentChapterEntry?.title ?? null,
+      pageRange: chapterRange,
+      tocLoading,
+      allowGenerate: !isTextBook,
+      allowEdit: isTextBook,
+      onEditChapter: () => {
+        setEditorChapterNumber(chapterNumber);
+        setEditorOpen(true);
+      },
+      textFontSize: settings.textFontSize,
+      onTextFontSizeChange: updateTextFontSize,
+      textTheme: settings.textTheme,
+      onTextThemeChange: updateTextTheme,
+      streamVoice,
+      refreshToken: chapterViewRefresh,
+      onFirstParagraphReady: setFirstChapterParagraph,
+      onPlayParagraph: handlePlayChapterParagraph,
+      onPlayAudio: handlePlayFloatingAudio
+    },
+    audioViewProps: {
+      bookId,
+      tocEntries: sortedTocEntries,
+      tocLoading,
+      streamVoice,
+      showToast,
+      onOpenChapterText: (pageIndex: number) => {
+        setViewMode('text');
+        renderPage(pageIndex);
+      },
+      onPlayAudio: handlePlayFloatingAudio
+    },
+    streamBubbleProps: {
+      streamState,
+      onTogglePause: () => void handleToggleStreamPause(),
+      onStopStream: handleStopStream
+    },
+    floatingAudioPlayerProps: {
+      track: floatingAudio,
+      onClose: handleCloseFloatingAudio
+    }
+  };
+
   return (
-      <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
-        <AppSidebar toolbarProps={toolbarProps} />
-        <main className="main">
-          <div
-            ref={viewerShellRef}
-            className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''} ${
-              viewMode === 'text' || viewMode === 'audio'
-                ? `viewer-shell-text theme-${settings.textTheme}`
-                : ''
-            }`}
-          >
-            {viewMode === 'pages' ? (
-              <Viewer
-                  imageUrl={currentImage}
-                  settings={settings}
-                  onPan={updatePan}
-                  onZoom={updateZoom}
-                  onMetricsChange={handleMetricsChange}
-                  rotation={settings.rotation}
-              />
-            ) : viewMode === 'text' ? (
-              editorOpen ? (
-                <ChapterEditor
-                    bookId={bookId}
-                    chapterNumber={editorChapterNumber ?? chapterNumber}
-                    chapterTitle={editorChapterTitle}
-                    onClose={() => {
-                      setEditorOpen(false);
-                      setEditorChapterNumber(null);
-                    }}
-                    onSaved={(nextToc) => {
-                      if (nextToc) {
-                        setTocEntries(nextToc);
-                      }
-                      setEditorOpen(false);
-                      setEditorChapterNumber(null);
-                      setChapterViewRefresh((prev) => prev + 1);
-                    }}
-                />
-              ) : (
-                <ChapterViewer
-                    bookId={bookId}
-                    chapterNumber={chapterNumber}
-                    chapterTitle={currentChapterEntry?.title ?? null}
-                    pageRange={chapterRange}
-                    tocLoading={tocLoading}
-                    allowGenerate={!isTextBook}
-                    allowEdit={isTextBook}
-                    onEditChapter={() => {
-                      setEditorChapterNumber(chapterNumber);
-                      setEditorOpen(true);
-                    }}
-                    textFontSize={settings.textFontSize}
-                    onTextFontSizeChange={updateTextFontSize}
-                    textTheme={settings.textTheme}
-                    onTextThemeChange={updateTextTheme}
-                    streamVoice={streamVoice}
-                    refreshToken={chapterViewRefresh}
-                    onFirstParagraphReady={setFirstChapterParagraph}
-                    onPlayParagraph={handlePlayChapterParagraph}
-                    onPlayAudio={handlePlayFloatingAudio}
-                />
-              )
-            ) : (
-              <AudioView
-                bookId={bookId}
-                tocEntries={sortedTocEntries}
-                tocLoading={tocLoading}
-                streamVoice={streamVoice}
-                showToast={showToast}
-                onOpenChapterText={(pageIndex) => {
-                  setViewMode('text');
-                  renderPage(pageIndex);
-                }}
-                onPlayAudio={handlePlayFloatingAudio}
-              />
-            )}
-            {loading && <div className="viewer-status">Loading…</div>}
-            <StreamBubble
-              streamState={streamState}
-              onTogglePause={() => void handleToggleStreamPause()}
-              onStopStream={handleStopStream}
-            />
-            <FloatingAudioPlayer track={floatingAudio} onClose={handleCloseFloatingAudio} />
-            <div ref={modalHostRef} className="modal-portal" />
-          </div>
-          <div className="page-footer">
-            <span className="page-path">{footerMessage}</span>
-          </div>
-        </main>
-        <AppModals {...modalProps} />
-      </div>
+    <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
+      <AppSidebar toolbarProps={toolbarProps} />
+      <ReaderMainContent {...mainContentProps} />
+      <ReaderModalLayer {...modalProps} />
+    </div>
   );
 }
