@@ -14,6 +14,7 @@ services:
       OCR_OPENAI_API_KEY: ${OCR_OPENAI_API_KEY:-}
       OCR_OPENAI_BASE_URL: ${OCR_OPENAI_BASE_URL:-}
       STREAM_SERVER: https://host.docker.internal:3000
+      OCR_DEEPSEEK_HOST: http://host.docker.internal:11434
       NODE_TLS_REJECT_UNAUTHORIZED: '0'
     volumes:
       - ./data:/app/data

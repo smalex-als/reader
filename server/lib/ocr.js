@@ -143,7 +143,7 @@ export async function loadPageText(imageUrl, options = {}) {
         OCR_BACKEND === 'llmproxy'
           ? LLMPROXY_MODEL
           : OCR_BACKEND === 'openai'
-            ? 'gpt-5.2'
+            ? 'gpt-5.4'
             : OCR_OPENAI_MODEL
     });
 
@@ -155,7 +155,7 @@ export async function loadPageText(imageUrl, options = {}) {
       const base64 = buffer.toString('base64');
 
       const response = await openai.responses.create({
-        model: 'gpt-5.2',
+        model: 'gpt-5.4',
         input: [
           {
             role: 'user',
