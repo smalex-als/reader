@@ -22,7 +22,7 @@ import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
-import type { AppSettings, TocEntry } from '@/types/app';
+import type { AppSettings, PageTextOcrEngine, TocEntry } from '@/types/app';
 
 const STREAM_VOICE_OPTIONS = [
   'en-Breeze_woman',
@@ -280,6 +280,7 @@ export default function App() {
     textSaving,
     toggleTextModal
   } = usePageText(currentImage, showToast);
+  const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('openai_compact');
   const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
   const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
     setFloatingAudio(payload);
@@ -806,9 +807,11 @@ export default function App() {
       loading: textLoading,
       onClose: closeTextModal,
       title: currentImage ?? 'Page text',
-      onRegenerate: () => {
+      ocrEngine: pageTextOcrEngine,
+      onOcrEngineChange: setPageTextOcrEngine,
+      onRegenerate: (engine: PageTextOcrEngine) => {
         setRegeneratedText(true);
-        void fetchPageText({ force: true });
+        void fetchPageText({ force: true, engine });
       },
       regenerated: regeneratedText,
       saving: textSaving,

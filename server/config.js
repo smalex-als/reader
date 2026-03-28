@@ -26,6 +26,10 @@ export const LLMPROXY_ENDPOINT =
   process.env.LLMPROXY_ENDPOINT || 'http://myserver.home:11434/api/generate';
 export const LLMPROXY_MODEL = 'ministral-3:14b';
 export const LLMPROXY_AUTH = 'dummy';
+export const OCR_DEEPSEEK_HOST = process.env.OCR_DEEPSEEK_HOST || 'http://myserver.home:11434';
+export const OCR_DEEPSEEK_MODEL = process.env.OCR_DEEPSEEK_MODEL || 'deepseek-ocr';
+export const OCR_DEEPSEEK_PROMPT =
+  process.env.OCR_DEEPSEEK_PROMPT || '<|grounding|>Convert the document to markdown.';
 export const LLMPROXY_HEADERS_TIMEOUT_MS = Number.parseInt(
   process.env.LLMPROXY_HEADERS_TIMEOUT_MS || '900000',
   10

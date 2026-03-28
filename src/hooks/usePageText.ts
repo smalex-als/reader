@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { parseOcrLayout } from '@/lib/ocrLayout';
-import type { PageText } from '@/types/app';
+import type { PageText, PageTextOcrEngine } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
@@ -21,8 +21,8 @@ export function usePageText(
   const [regeneratedText, setRegeneratedText] = useState(false);
 
   const fetchPageText = useCallback(
-    async (options: { force?: boolean; silent?: boolean } = {}): Promise<PageText | null> => {
-      const { force = false, silent = false } = options;
+    async (options: { force?: boolean; silent?: boolean; engine?: PageTextOcrEngine } = {}): Promise<PageText | null> => {
+      const { force = false, silent = false, engine } = options;
       if (!currentImage) {
         return null;
       }
@@ -36,6 +36,9 @@ export function usePageText(
         const params = new URLSearchParams({ image: currentImage });
         if (force) {
           params.set('skipCache', '1');
+        }
+        if (engine) {
+          params.set('engine', engine);
         }
         const data = await fetchJson<{ source: 'file' | 'ai'; text: string }>(
           `/api/page-text?${params.toString()}`

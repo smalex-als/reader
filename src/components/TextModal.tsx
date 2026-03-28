@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { PageText } from '@/types/app';
+import type { PageText, PageTextOcrEngine } from '@/types/app';
 
 interface TextModalProps {
   open: boolean;
@@ -8,7 +8,9 @@ interface TextModalProps {
   saving: boolean;
   onClose: () => void;
   title: string;
-  onRegenerate: () => void;
+  ocrEngine: PageTextOcrEngine;
+  onOcrEngineChange: (engine: PageTextOcrEngine) => void;
+  onRegenerate: (engine: PageTextOcrEngine) => void;
   regenerated: boolean;
   onSave: (nextText: string) => void;
   onCopyText: (textValue: string) => void;
@@ -21,6 +23,8 @@ export default function TextModal({
   saving,
   onClose,
   title,
+  ocrEngine,
+  onOcrEngineChange,
   onRegenerate,
   regenerated,
   onSave,
@@ -71,6 +75,28 @@ export default function TextModal({
           </button>
         </header>
         <section className="modal-body modal-body-text">
+          <div className="modal-toolbar">
+            <div className="segmented" role="radiogroup" aria-label="OCR engine">
+              <button
+                type="button"
+                className={`segmented-item ${ocrEngine === 'deepseek_ocr' ? 'segmented-item-active' : ''}`}
+                onClick={() => onOcrEngineChange('deepseek_ocr')}
+                aria-pressed={ocrEngine === 'deepseek_ocr'}
+                disabled={loading || saving}
+              >
+                Deepseek OCR
+              </button>
+              <button
+                type="button"
+                className={`segmented-item ${ocrEngine === 'openai_compact' ? 'segmented-item-active' : ''}`}
+                onClick={() => onOcrEngineChange('openai_compact')}
+                aria-pressed={ocrEngine === 'openai_compact'}
+                disabled={loading || saving}
+              >
+                OpenAI compact
+              </button>
+            </div>
+          </div>
           {loading && <p className="modal-status">Loading page text…</p>}
           {!loading && !text && <p className="modal-status">No text available.</p>}
           {!loading && text ? (
@@ -99,7 +125,7 @@ export default function TextModal({
           <button
             type="button"
             className="button button-secondary"
-            onClick={onRegenerate}
+            onClick={() => onRegenerate(ocrEngine)}
             disabled={loading || saving}
           >
             Regenerate

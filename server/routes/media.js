@@ -30,6 +30,7 @@ function toNodeReadableStream(streamBody) {
 
 router.get('/api/page-text', asyncHandler(async (req, res) => {
   const image = req.query.image;
+  const engine = typeof req.query.engine === 'string' ? req.query.engine : null;
   const skipCacheParam = req.query.skipCache;
   const skipCache =
     typeof skipCacheParam === 'string'
@@ -37,7 +38,7 @@ router.get('/api/page-text', asyncHandler(async (req, res) => {
       : Array.isArray(skipCacheParam)
       ? skipCacheParam.some((value) => ['1', 'true', 'yes'].includes(String(value).toLowerCase()))
       : false;
-  const result = await loadPageText(image, { skipCache });
+  const result = await loadPageText(image, { skipCache, engine });
   res.json({ source: result.source, text: result.text });
 }));
 
