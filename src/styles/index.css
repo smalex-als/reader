@@ -359,8 +359,45 @@ body {
 
 .viewer-image {
   max-width: none;
+  display: block;
   will-change: transform;
   pointer-events: none;
+}
+
+.viewer-stage {
+  position: relative;
+  flex: 0 0 auto;
+  will-change: transform;
+}
+
+.viewer-image-map {
+  position: absolute;
+  inset: 0;
+}
+
+.viewer-hotspot {
+  position: absolute;
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: 1px solid rgba(120, 180, 226, 0.45);
+  background: rgba(120, 180, 226, 0.14);
+  opacity: 1;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.12s ease-out, border-color 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+
+.viewer-hotspot:hover {
+  background: rgba(120, 180, 226, 0.22);
+  border-color: rgba(120, 180, 226, 0.65);
+}
+
+.viewer-hotspot:focus-visible {
+  opacity: 1;
+  outline: 2px solid rgba(120, 180, 226, 0.9);
+  outline-offset: -1px;
+  background: rgba(120, 180, 226, 0.28);
 }
 
 .viewer-empty {

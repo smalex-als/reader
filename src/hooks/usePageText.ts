@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { parseOcrLayout } from '@/lib/ocrLayout';
 import type { PageText } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -20,7 +21,8 @@ export function usePageText(
   const [regeneratedText, setRegeneratedText] = useState(false);
 
   const fetchPageText = useCallback(
-    async (force = false): Promise<PageText | null> => {
+    async (options: { force?: boolean; silent?: boolean } = {}): Promise<PageText | null> => {
+      const { force = false, silent = false } = options;
       if (!currentImage) {
         return null;
       }
@@ -38,17 +40,24 @@ export function usePageText(
         const data = await fetchJson<{ source: 'file' | 'ai'; text: string }>(
           `/api/page-text?${params.toString()}`
         );
+        const parsed = parseOcrLayout(data.text);
         const entry: PageText = {
           text: data.text,
+          plainText: parsed.plainText,
+          blocks: parsed.blocks,
           source: data.source
         };
         setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
         setRegeneratedText(data.source === 'ai' || force);
-        showToast(`Page text ${data.source === 'ai' ? 'generated' : 'loaded'}`, 'success');
+        if (!silent) {
+          showToast(`Page text ${data.source === 'ai' ? 'generated' : 'loaded'}`, 'success');
+        }
         return entry;
       } catch (error) {
         console.error(error);
-        showToast('Unable to load page text', 'error');
+        if (!silent) {
+          showToast('Unable to load page text', 'error');
+        }
         return null;
       } finally {
         setTextLoading(false);
@@ -81,8 +90,11 @@ export function usePageText(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: currentImage, text: nextText })
         });
+        const parsed = parseOcrLayout(data.text);
         const entry: PageText = {
           text: data.text,
+          plainText: parsed.plainText,
+          blocks: parsed.blocks,
           source: data.source
         };
         setTextCache((prev) => ({ ...prev, [currentImage]: entry }));

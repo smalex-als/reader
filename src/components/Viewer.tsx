@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ZOOM_STEP } from '@/lib/hotkeys';
-import type { AppSettings, ViewerMetrics, ViewerPan } from '@/types/app';
+import type { AppSettings, PageText, ViewerMetrics, ViewerPan } from '@/types/app';
 
 interface ViewerProps {
   imageUrl: string | null;
+  pageText: PageText | null;
   settings: AppSettings;
   onPan: (pan: ViewerPan) => void;
   onZoom: (zoom: number, mode?: AppSettings['zoomMode'], pan?: ViewerPan) => void;
   onMetricsChange: (metrics: ViewerMetrics) => void;
+  onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => void;
   rotation: number;
 }
 
@@ -22,8 +24,18 @@ const INITIAL_METRICS: ViewerMetrics = {
 
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
+const OCR_COORDINATE_SPACE = 1000;
 
-export default function Viewer({ imageUrl, settings, onPan, onZoom, onMetricsChange, rotation }: ViewerProps) {
+export default function Viewer({
+  imageUrl,
+  pageText,
+  settings,
+  onPan,
+  onZoom,
+  onMetricsChange,
+  onPlayTextBlock,
+  rotation
+}: ViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointerState = useRef<{ active: boolean; startX: number; startY: number; pan: ViewerPan }>({
@@ -44,6 +56,16 @@ export default function Viewer({ imageUrl, settings, onPan, onZoom, onMetricsCha
   const transform = useMemo(() => {
     return `translate(${settings.pan.x}px, ${settings.pan.y}px) scale(${settings.zoom}) rotate(${rotation}deg)`;
   }, [rotation, settings.pan.x, settings.pan.y, settings.zoom]);
+  const interactiveBlocks = useMemo(
+    () => pageText?.blocks.filter((block) => block.streamStartIndex !== null) ?? [],
+    [pageText]
+  );
+  const blockCoordinateSpace = useMemo(() => {
+    if (interactiveBlocks.length === 0) {
+      return null;
+    }
+    return { width: OCR_COORDINATE_SPACE, height: OCR_COORDINATE_SPACE };
+  }, [interactiveBlocks]);
 
   const updateMetrics = useCallback(() => {
     const container = containerRef.current;
@@ -205,19 +227,62 @@ export default function Viewer({ imageUrl, settings, onPan, onZoom, onMetricsCha
           role="presentation"
       >
         {imageUrl ? (
-            <img
-                ref={imageRef}
-                src={imageUrl}
-                alt=""
-                className="viewer-image"
+            <div
+                className="viewer-stage"
                 style={{
                   transform,
-                  filter: filters,
                   transition: pointerState.current.active ? 'none' : 'transform 0.12s ease-out'
                 }}
-                onError={handleImageError}
-                draggable={false}
-            />
+            >
+              <img
+                  ref={imageRef}
+                  src={imageUrl}
+                  alt=""
+                  className="viewer-image"
+                  style={{ filter: filters }}
+                  onError={handleImageError}
+                  draggable={false}
+              />
+              {metrics.naturalWidth > 0 &&
+              metrics.naturalHeight > 0 &&
+              interactiveBlocks.length > 0 &&
+              blockCoordinateSpace ? (
+                  <div
+                      className="viewer-image-map"
+                      style={{ width: `${metrics.naturalWidth}px`, height: `${metrics.naturalHeight}px` }}
+                  >
+                    {interactiveBlocks.map((block) => {
+                      const [left, top, right, bottom] = block.bounds;
+                      const width = Math.max(1, right - left);
+                      const height = Math.max(1, bottom - top);
+                      return (
+                        <button
+                            key={block.id}
+                            type="button"
+                            className="viewer-hotspot"
+                            style={{
+                              left: `${(left / blockCoordinateSpace.width) * 100}%`,
+                              top: `${(top / blockCoordinateSpace.height) * 100}%`,
+                              width: `${(width / blockCoordinateSpace.width) * 100}%`,
+                              height: `${(height / blockCoordinateSpace.height) * 100}%`
+                            }}
+                            aria-label={`Play stream from ${block.kind}`}
+                            title="Play stream from here"
+                            onPointerDown={(event) => {
+                              event.stopPropagation();
+                            }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (block.streamStartIndex !== null) {
+                                onPlayTextBlock({ startIndex: block.streamStartIndex, blockId: block.id });
+                              }
+                            }}
+                        />
+                      );
+                    })}
+                  </div>
+              ) : null}
+            </div>
         ) : (
             <div className="viewer-empty">Select a book to begin</div>
         )}

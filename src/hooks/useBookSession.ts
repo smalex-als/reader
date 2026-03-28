@@ -44,8 +44,12 @@ function getBookFromLocation(): string | null {
   return book ? book : null;
 }
 
-function getPageFromLocation(): number | null {
+function getPageFromLocation(expectedBookId: string | null): number | null {
   const params = new URLSearchParams(window.location.search);
+  const locationBook = params.get('book')?.trim() || null;
+  if (!expectedBookId || locationBook !== expectedBookId) {
+    return null;
+  }
   const rawPage = params.get('page');
   if (!rawPage) {
     return null;
@@ -57,8 +61,12 @@ function getPageFromLocation(): number | null {
   return parsed - 1;
 }
 
-function getViewModeFromLocation(): ViewMode | null {
+function getViewModeFromLocation(expectedBookId: string | null): ViewMode | null {
   const params = new URLSearchParams(window.location.search);
+  const locationBook = params.get('book')?.trim() || null;
+  if (!expectedBookId || locationBook !== expectedBookId) {
+    return null;
+  }
   const rawView = params.get('view');
   if (rawView === 'pages' || rawView === 'text' || rawView === 'audio') {
     return rawView;
@@ -81,7 +89,7 @@ export function useBookSession<StreamVoice extends string>({
   createDefaultSettings
 }: BookSessionOptions<StreamVoice>) {
   const [books, setBooks] = useState<string[]>([]);
-  const [bookId, setBookId] = useState<string | null>(() => getBookFromLocation() ?? loadLastBook());
+  const [bookId, rawSetBookId] = useState<string | null>(() => getBookFromLocation() ?? loadLastBook());
   const [manifest, setManifest] = useState<string[]>([]);
   const [bookType, setBookType] = useState<'image' | 'text'>('image');
   const [chapterCount, setChapterCount] = useState(0);
@@ -92,6 +100,12 @@ export function useBookSession<StreamVoice extends string>({
   const [uploadingChapter, setUploadingChapter] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
+  const shouldUseLocationPositionRef = useRef(true);
+
+  const setBookId = useCallback((nextBookId: string | null, options?: { preferLocationPosition?: boolean }) => {
+    shouldUseLocationPositionRef.current = options?.preferLocationPosition ?? false;
+    rawSetBookId(nextBookId);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -99,7 +113,7 @@ export function useBookSession<StreamVoice extends string>({
         const data = await fetchJson<{ books: string[] }>('/api/books');
         setBooks(data.books);
         if (data.books.length === 0) {
-          setBookId(null);
+          rawSetBookId(null);
           showToast('No books found. Add files to /data to begin.', 'info');
           return;
         }
@@ -166,7 +180,7 @@ export function useBookSession<StreamVoice extends string>({
 
   useEffect(() => {
     const handleLocationChange = () => {
-      setBookId(getBookFromLocation());
+      setBookId(getBookFromLocation(), { preferLocationPosition: true });
     };
     window.addEventListener('popstate', handleLocationChange);
     window.addEventListener('hashchange', handleLocationChange);
@@ -208,8 +222,9 @@ export function useBookSession<StreamVoice extends string>({
 
     (async () => {
       try {
-        const requestedPageFromLocation = getPageFromLocation();
-        const requestedViewFromLocation = getViewModeFromLocation();
+        const requestedPageFromLocation = shouldUseLocationPositionRef.current ? getPageFromLocation(bookId) : null;
+        const requestedViewFromLocation = shouldUseLocationPositionRef.current ? getViewModeFromLocation(bookId) : null;
+        shouldUseLocationPositionRef.current = false;
         const data = await fetchJson<{
           book: string;
           manifest: string[];
@@ -474,7 +489,7 @@ export function useBookSession<StreamVoice extends string>({
 
         if (bookId === targetBookId) {
           if (data.books.length === 0) {
-            setBookId(null);
+            rawSetBookId(null);
             setBookModalOpen(true);
             showToast('No books found. Add files to /data to begin.', 'info');
           } else {

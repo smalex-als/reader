@@ -1,7 +1,18 @@
 export type ZoomMode = 'custom' | 'fit-width' | 'fit-height';
 
+export interface PageTextBlock {
+  id: string;
+  kind: string;
+  text: string;
+  bounds: [number, number, number, number];
+  startIndex: number | null;
+  streamStartIndex: number | null;
+}
+
 export interface PageText {
   text: string;
+  plainText: string;
+  blocks: PageTextBlock[];
   source: 'file' | 'ai';
 }
 

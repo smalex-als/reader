@@ -310,6 +310,7 @@ export default function App() {
   });
   const {
     startStreamSequence,
+    handlePlayPageBlock,
     handlePlayChapterParagraph,
     handleStopStream,
     handleToggleStreamPause
@@ -331,6 +332,13 @@ export default function App() {
     streamVoice,
     onSequenceComplete: () => handleNext()
   });
+
+  useEffect(() => {
+    if (viewMode !== 'pages' || !currentImage || currentText) {
+      return;
+    }
+    void fetchPageText({ silent: true });
+  }, [currentImage, currentText, fetchPageText, viewMode]);
   const {
     jobs: ocrJobs,
     paused: ocrPaused,
@@ -800,7 +808,7 @@ export default function App() {
       title: currentImage ?? 'Page text',
       onRegenerate: () => {
         setRegeneratedText(true);
-        void fetchPageText(true);
+        void fetchPageText({ force: true });
       },
       regenerated: regeneratedText,
       saving: textSaving,
@@ -863,10 +871,15 @@ export default function App() {
     footerMessage,
     viewerProps: {
       imageUrl: currentImage,
+      pageText: currentText,
       settings,
       onPan: updatePan,
       onZoom: updateZoom,
       onMetricsChange: handleMetricsChange,
+      onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => {
+        const { startIndex, blockId } = payload;
+        void handlePlayPageBlock({ startIndex, blockId });
+      },
       rotation: settings.rotation
     },
     chapterEditorProps: {

@@ -15,7 +15,7 @@ type StreamSequenceOptions = {
   firstChapterParagraph: ChapterParagraph | null;
   currentImage: string | null;
   currentText: PageText | null;
-  fetchPageText: (force?: boolean) => Promise<PageText | null>;
+  fetchPageText: (options?: { force?: boolean; silent?: boolean }) => Promise<PageText | null>;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   streamState: StreamState;
   startStream: (payload: { text: string; pageKey: string; voice: string }) => Promise<void>;
@@ -129,7 +129,7 @@ export function useStreamSequence({
         return;
       }
       const pageText = currentText ?? (await fetchPageText());
-    const textValue = stripMarkdown(pageText?.text || '');
+    const textValue = pageText?.plainText || '';
     if (!textValue) {
       showToast('No page text available to stream', 'error');
       return;
@@ -158,6 +158,22 @@ export function useStreamSequence({
       await startStreamSequenceFromText(payload.fullText, payload.startIndex, payload.key, 'paragraph');
     },
     [showToast, startStreamSequenceFromText]
+  );
+
+  const handlePlayPageBlock = useCallback(
+    async (payload: { startIndex: number; blockId: string }) => {
+      if (!currentImage) {
+        return;
+      }
+      const pageText = currentText ?? (await fetchPageText({ silent: true }));
+      const textValue = pageText?.plainText || '';
+      if (!textValue) {
+        showToast('No page text available to stream', 'error');
+        return;
+      }
+      await startStreamSequenceFromText(textValue, payload.startIndex, `${currentImage}#${payload.blockId}`, 'page');
+    },
+    [currentImage, currentText, fetchPageText, showToast, startStreamSequenceFromText]
   );
 
   const handleStopStream = useCallback(() => {
@@ -233,6 +249,7 @@ export function useStreamSequence({
 
   return {
     startStreamSequence,
+    handlePlayPageBlock,
     handlePlayChapterParagraph,
     handleStopStream,
     handleToggleStreamPause
