@@ -54,6 +54,8 @@ export interface AppSettings {
   invert: boolean;
   brightness: number;
   contrast: number;
+  dimOutsideBlocks: boolean;
+  dimOutsideBlocksIntensity: number;
   pan: ViewerPan;
   textFontSize: number;
   textTheme:

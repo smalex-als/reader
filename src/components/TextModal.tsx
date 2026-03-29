@@ -30,10 +30,6 @@ export default function TextModal({
   onSave,
   onCopyText
 }: TextModalProps) {
-  if (!open) {
-    return null;
-  }
-
   const [draftText, setDraftText] = useState('');
   const [copied, setCopied] = useState(false);
   const generatedMarker = text?.source === 'ai' || regenerated;
@@ -61,6 +57,10 @@ export default function TextModal({
   }, [text]);
   const isDirty = draftText !== displayedText;
   const canCopy = Boolean(draftText.trim());
+
+  if (!open) {
+    return null;
+  }
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">

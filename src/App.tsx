@@ -67,6 +67,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   invert: false,
   brightness: 100,
   contrast: 100,
+  dimOutsideBlocks: true,
+  dimOutsideBlocksIntensity: 38,
   pan: { x: 0, y: 0 },
   textFontSize: TEXT_FONT_SIZE_OPTIONS[0],
   textTheme: 'dark'
@@ -539,7 +541,11 @@ export default function App() {
   }, [bookId, closeBookmarks, resetAudioCache, resetTextState, stopAudio, stopStream]);
 
   const applyFilters = useCallback(
-    (filters: Partial<Pick<AppSettings, 'brightness' | 'contrast' | 'invert'>>) => {
+    (
+      filters: Partial<
+        Pick<AppSettings, 'brightness' | 'contrast' | 'invert' | 'dimOutsideBlocks' | 'dimOutsideBlocksIntensity'>
+      >
+    ) => {
       setSettings((prev) => ({
         ...prev,
         ...filters
@@ -804,8 +810,13 @@ export default function App() {
     rotation: settings.rotation,
     brightness: settings.brightness,
     contrast: settings.contrast,
+    dimOutsideBlocks: settings.dimOutsideBlocks,
+    dimOutsideBlocksIntensity: settings.dimOutsideBlocksIntensity,
     onBrightness: (value: number) => applyFilters({ brightness: value }),
     onContrast: (value: number) => applyFilters({ contrast: value }),
+    onToggleDimOutsideBlocks: () => applyFilters({ dimOutsideBlocks: !settings.dimOutsideBlocks }),
+    onDimOutsideBlocksIntensity: (value: number) =>
+      applyFilters({ dimOutsideBlocksIntensity: clamp(value, 0, 85) }),
     onToggleTextModal: () => {
       toggleTextModal();
     },

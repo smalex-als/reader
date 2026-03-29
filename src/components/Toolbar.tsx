@@ -24,8 +24,12 @@ interface ToolbarProps {
   rotation: number;
   brightness: number;
   contrast: number;
+  dimOutsideBlocks: boolean;
+  dimOutsideBlocksIntensity: number;
   onBrightness: (value: number) => void;
   onContrast: (value: number) => void;
+  onToggleDimOutsideBlocks: () => void;
+  onDimOutsideBlocksIntensity: (value: number) => void;
   onToggleTextModal: () => void;
   onToggleOcrEditMode: () => void;
   ocrEditMode: boolean;
@@ -85,8 +89,12 @@ export default function Toolbar({
   rotation,
   brightness,
   contrast,
+  dimOutsideBlocks,
+  dimOutsideBlocksIntensity,
   onBrightness,
   onContrast,
+  onToggleDimOutsideBlocks,
+  onDimOutsideBlocksIntensity,
   onToggleTextModal,
   onToggleOcrEditMode,
   ocrEditMode,
@@ -369,6 +377,26 @@ export default function Toolbar({
                   value={contrast}
                   disabled={controlsDisabled}
                   onChange={(event) => onContrast(Number(event.target.value))}
+                />
+              </span>
+              <button
+                type="button"
+                className={`button ${dimOutsideBlocks ? 'button-active' : ''}`}
+                onClick={onToggleDimOutsideBlocks}
+                disabled={controlsDisabled}
+              >
+                Dim Outside
+              </button>
+              <span className="toolbar-field">
+                Dim level
+                <input
+                  type="range"
+                  className="slider"
+                  min={0}
+                  max={85}
+                  value={dimOutsideBlocksIntensity}
+                  disabled={controlsDisabled || !dimOutsideBlocks}
+                  onChange={(event) => onDimOutsideBlocksIntensity(Number(event.target.value))}
                 />
               </span>
             </div>

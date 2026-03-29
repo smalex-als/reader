@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import type { AppSettings, PageText, ViewerMetrics, ViewerPan } from '@/types/app';
@@ -41,6 +41,7 @@ export default function Viewer({
   onToggleSpeechBlock,
   rotation
 }: ViewerProps) {
+  const overlayMaskId = useId().replace(/:/g, '-');
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointerState = useRef<{ active: boolean; startX: number; startY: number; pan: ViewerPan }>({
@@ -154,7 +155,7 @@ export default function Viewer({
   );
 
   const handleWheel = useCallback(
-      (event: React.WheelEvent<HTMLDivElement>) => {
+      (event: WheelEvent) => {
         event.preventDefault();
         if (event.ctrlKey || event.metaKey) {
           if (event.deltaY === 0) {
@@ -205,6 +206,18 @@ export default function Viewer({
   }, [updateMetrics]);
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
+
+  useEffect(() => {
     if (!imageUrl) {
       return;
     }
@@ -233,7 +246,6 @@ export default function Viewer({
           ref={containerRef}
           className="viewer"
           onPointerDown={handlePointerDown}
-          onWheel={handleWheel}
           role="presentation"
       >
         {imageUrl ? (
@@ -261,6 +273,59 @@ export default function Viewer({
                       className="viewer-image-map"
                       style={{ width: `${metrics.naturalWidth}px`, height: `${metrics.naturalHeight}px` }}
                   >
+                    <svg
+                        className="viewer-dim-overlay"
+                        viewBox={`0 0 ${metrics.naturalWidth} ${metrics.naturalHeight}`}
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                        style={{ opacity: settings.dimOutsideBlocks ? 1 : 0 }}
+                    >
+                      <defs>
+                        <mask id={overlayMaskId}>
+                          <rect width={metrics.naturalWidth} height={metrics.naturalHeight} fill="white" />
+                          {interactiveBlocks.map((block) => {
+                            const [left, top, right, bottom] = block.bounds;
+                            const width = ((Math.max(1, right - left) / blockCoordinateSpace.width) * metrics.naturalWidth);
+                            const height =
+                              ((Math.max(1, bottom - top) / blockCoordinateSpace.height) * metrics.naturalHeight);
+                            const x = (left / blockCoordinateSpace.width) * metrics.naturalWidth;
+                            const y = (top / blockCoordinateSpace.height) * metrics.naturalHeight;
+                            return <rect key={`mask-${block.id}`} x={x} y={y} width={width} height={height} fill="black" />;
+                          })}
+                        </mask>
+                        <clipPath id={`${overlayMaskId}-blocks`}>
+                          {interactiveBlocks.map((block) => {
+                            const [left, top, right, bottom] = block.bounds;
+                            const width = ((Math.max(1, right - left) / blockCoordinateSpace.width) * metrics.naturalWidth);
+                            const height =
+                              ((Math.max(1, bottom - top) / blockCoordinateSpace.height) * metrics.naturalHeight);
+                            const x = (left / blockCoordinateSpace.width) * metrics.naturalWidth;
+                            const y = (top / blockCoordinateSpace.height) * metrics.naturalHeight;
+                            return (
+                              <rect
+                                  key={`clip-${block.id}`}
+                                  x={x}
+                                  y={y}
+                                  width={width}
+                                  height={height}
+                              />
+                            );
+                          })}
+                        </clipPath>
+                      </defs>
+                      <rect
+                          width={metrics.naturalWidth}
+                          height={metrics.naturalHeight}
+                          fill={`rgba(196, 170, 110, ${settings.dimOutsideBlocksIntensity / 100})`}
+                          mask={`url(#${overlayMaskId})`}
+                      />
+                      <rect
+                          width={metrics.naturalWidth}
+                          height={metrics.naturalHeight}
+                          fill={`rgba(196, 170, 110, ${settings.dimOutsideBlocksIntensity / 110})`}
+                          clipPath={`url(#${overlayMaskId}-blocks)`}
+                      />
+                    </svg>
                     {interactiveBlocks.map((block) => {
                       const [left, top, right, bottom] = block.bounds;
                       const width = Math.max(1, right - left);
