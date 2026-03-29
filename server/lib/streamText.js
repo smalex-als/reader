@@ -186,6 +186,7 @@ function normalizeFormulaText(text) {
   }
 
   output = output.replace(/\\text\s*\{([^{}]*)\}/g, '$1');
+  output = output.replace(/\[\s*(\d+)\s*,\s*(\d+)\s*\]/g, '$1 to $2');
   output = output.replace(/\\approx|\\sim/g, ' approximately ');
   output = output.replace(/\\times|\\cdot/g, ' times ');
   output = output.replace(/\\div/g, ' divided by ');
@@ -212,10 +213,10 @@ function normalizeFormulaText(text) {
 export function stripMarkdown(text) {
   let output = removeExcludedOcrBlocks(text);
   output = normalizeApiExamples(output);
-  output = output.replace(NUMERIC_CITATION_PATTERN, (_, refs) => `reference ${refs.replace(/\s*,\s*/g, ', ')}`);
   output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
     normalizeFormulaText(inlineRound || inlineSquare || inlineDollar || '')
   );
+  output = output.replace(NUMERIC_CITATION_PATTERN, (_, refs) => `reference ${refs.replace(/\s*,\s*/g, ', ')}`);
   output = output.replace(/```[\s\S]*?```/g, '');
   output = output.replace(/`[^`]*`/g, '');
   output = output.replace(/<script[\s\S]*?<\/script>/gi, ' ');

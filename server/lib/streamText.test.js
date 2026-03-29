@@ -88,6 +88,18 @@ test('normalizes numeric citations into speakable references', () => {
   assert.equal(output, 'Places API reference 7 and Yelp business endpoints reference 8 are common examples.');
 });
 
+test('does not treat bracketed hash slot ranges as citations', () => {
+  const input =
+    'The first node contains hash slots \\([0, 5500]\\).\n- The second node contains hash slots \\([5501, 11000]\\).';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(
+    output,
+    'The first node contains hash slots 0 to 5500.\nThe second node contains hash slots 5501 to 11000.'
+  );
+});
+
 test('preserves markdown line structure long enough to strip headings and bullets', () => {
   const input = [
     'Two examples are Google Places API [7] and Yelp business endpoints [8].',
