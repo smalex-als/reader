@@ -9,6 +9,7 @@ import { safeStat } from './fs.js';
 import { resolveDataUrl } from './paths.js';
 import { getOpenAI } from './openai.js';
 import { loadPageText } from './ocr.js';
+import { stripMarkdown } from './streamText.js';
 
 function toNodeReadableStream(streamBody) {
   if (!streamBody) {
@@ -51,7 +52,7 @@ async function resolvePageSpeechInput(image) {
   }
 
   const generated = await loadPageText(image);
-  const spokenText = generated.text.trim();
+  const spokenText = stripMarkdown(generated.text).trim();
 
   if (!spokenText) {
     throw createHttpError(400, 'No text available for audio generation');

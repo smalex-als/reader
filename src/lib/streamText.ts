@@ -1,11 +1,18 @@
 const STREAM_CHUNK_SIZE = 1000;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
 const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\([^)]+\)/g;
+const HTML_TAG_PATTERN = /<[^>]+>/g;
+const ZERO_WIDTH_PATTERN = /[\u200B-\u200D\u2060\uFEFF]/g;
+const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
 
 export function stripMarkdown(text: string) {
   let output = text;
   output = output.replace(/```[\s\S]*?```/g, '');
   output = output.replace(/`[^`]*`/g, '');
+  output = output.replace(/<script[\s\S]*?<\/script>/gi, ' ');
+  output = output.replace(/<style[\s\S]*?<\/style>/gi, ' ');
+  output = output.replace(HTML_TAG_PATTERN, ' ');
   output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
   output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
   output = output.replace(/\*\*(.*?)\*\*/g, '$1');
@@ -17,6 +24,14 @@ export function stripMarkdown(text: string) {
   output = output.replace(/^\s{0,3}>\s?/gm, '');
   output = output.replace(/^\s{0,3}[-*+]\s+/gm, '');
   output = output.replace(/^\s{0,3}---+\s*$/gm, '');
+  output = output.replace(ZERO_WIDTH_PATTERN, '');
+  output = output.replace(/\uFE0F/g, '');
+  output = output.replace(CONTROL_PATTERN, ' ');
+  output = output.replace(EMOJI_PATTERN, ' ');
+  output = output.replace(/[^\p{L}\p{N}\p{P}\p{Z}\n]/gu, ' ');
+  output = output.replace(/[ \t]+\n/g, '\n');
+  output = output.replace(/\n[ \t]+/g, '\n');
+  output = output.replace(/[ \t]{2,}/g, ' ');
   output = output.replace(/\n{3,}/g, '\n\n');
   return output.trim();
 }
