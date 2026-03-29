@@ -15,6 +15,7 @@ type HotkeysOptions = {
   updateRotation: () => void;
   applyFilters: (filters: Partial<Pick<AppSettings, 'brightness' | 'contrast' | 'invert'>>) => void;
   toggleTextModal: () => void;
+  triggerBackgroundOcr: () => Promise<void> | void;
   toggleOcrEditMode: () => Promise<void> | void;
   toggleViewMode: () => void;
   handlePrev: () => void;
@@ -67,6 +68,7 @@ export function useHotkeys({
   updateRotation,
   applyFilters,
   toggleTextModal,
+  triggerBackgroundOcr,
   toggleOcrEditMode,
   toggleViewMode,
   handlePrev,
@@ -116,6 +118,7 @@ export function useHotkeys({
       { keys: 'R', action: 'Rotate 90°' },
       { keys: 'I', action: 'Invert colors' },
       { keys: 'T', action: 'Toggle page text' },
+      { keys: 'O', action: 'Run Deepseek OCR in background' },
       { keys: 'E', action: 'Toggle OCR block edit mode' },
       { keys: 'V', action: 'Toggle view mode' },
       { keys: 'P', action: 'Play/Pause audio' },
@@ -265,6 +268,10 @@ export function useHotkeys({
           event.preventDefault();
           toggleTextModal();
           break;
+        case 'o':
+          event.preventDefault();
+          void triggerBackgroundOcr();
+          break;
         case 'e':
           event.preventDefault();
           void toggleOcrEditMode();
@@ -362,6 +369,7 @@ export function useHotkeys({
     openHelp,
     closeHelp,
     toggleTextModal,
+    triggerBackgroundOcr,
     toggleOcrEditMode,
     gotoInputRef
   ]);

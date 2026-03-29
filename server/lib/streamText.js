@@ -7,6 +7,7 @@ const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
 const INLINE_MATH_PATTERN = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$([^$\n]+)\$/g;
 const HTTP_METHOD_PATTERN = /\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(\/[^\s,;)"']*)/g;
+const NUMERIC_CITATION_PATTERN = /\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]/g;
 const OCR_BLOCK_HEADER_PATTERN =
   /<\|ref\|>([^<]+)<\|\/ref\|><\|det\|>\[\[(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\]\]<\|\/det\|>/g;
 const OCR_SPEECH_EXCLUDED_MARKER = '<|speech_removed|>';
@@ -104,7 +105,9 @@ function normalizeApiExamples(text) {
   output = output.replace(/"([A-Za-z][A-Za-z0-9_-]*)"\s*:/g, (_, key) => `${speakIdentifier(key)}:`);
   output = output.replace(/:\s*"([^"\n]+)"/g, (_, value) => `: ${speakApiValue(value)}`);
   output = output.replace(/([{\[\]}])/g, ' $1 ');
-  output = output.replace(/\s+/g, ' ');
+  output = output.replace(/[ \t]{2,}/g, ' ');
+  output = output.replace(/[ \t]+\n/g, '\n');
+  output = output.replace(/\n[ \t]+/g, '\n');
 
   return output.trim();
 }
@@ -209,6 +212,7 @@ function normalizeFormulaText(text) {
 export function stripMarkdown(text) {
   let output = removeExcludedOcrBlocks(text);
   output = normalizeApiExamples(output);
+  output = output.replace(NUMERIC_CITATION_PATTERN, (_, refs) => `reference ${refs.replace(/\s*,\s*/g, ', ')}`);
   output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
     normalizeFormulaText(inlineRound || inlineSquare || inlineDollar || '')
   );
@@ -238,6 +242,7 @@ export function stripMarkdown(text) {
   output = output.replace(/[ \t]+\n/g, '\n');
   output = output.replace(/\n[ \t]+/g, '\n');
   output = output.replace(/[ \t]{2,}/g, ' ');
+  output = output.replace(/[ \t]+([.,:;!?])/g, '$1');
   output = output.replace(/\n{3,}/g, '\n\n');
   return output.trim();
 }

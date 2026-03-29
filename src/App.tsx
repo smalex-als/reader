@@ -737,6 +737,16 @@ export default function App() {
     updateRotation,
     applyFilters,
     toggleTextModal,
+    triggerBackgroundOcr: async () => {
+      if (!currentImage || isTextBook) {
+        return;
+      }
+      showToast('Starting OCR…', 'info');
+      const pageText = await fetchPageText({ force: true, silent: true, engine: 'deepseek_ocr' });
+      if (pageText) {
+        showToast('OCR finished', 'success');
+      }
+    },
     toggleOcrEditMode: handleToggleOcrEditMode,
     toggleViewMode,
     handlePrev,

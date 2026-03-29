@@ -77,5 +77,30 @@ test('skips ocr blocks marked as removed from speech', () => {
 
   const output = stripMarkdown(input);
 
-  assert.equal(output, 'Keep this block. Keep this one too.');
+  assert.equal(output, 'Keep this block.\n\nKeep this one too.');
+});
+
+test('normalizes numeric citations into speakable references', () => {
+  const input = 'Places API [7] and Yelp business endpoints [8] are common examples.';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'Places API reference 7 and Yelp business endpoints reference 8 are common examples.');
+});
+
+test('preserves markdown line structure long enough to strip headings and bullets', () => {
+  const input = [
+    'Two examples are Google Places API [7] and Yelp business endpoints [8].',
+    '## Data model',
+    'Read volume is high because the following features are commonly used:',
+    '- Search for nearby businesses.',
+    '- View the detailed information of a business.'
+  ].join('\n');
+
+  const output = stripMarkdown(input);
+
+  assert.equal(
+    output,
+    'Two examples are Google Places API reference 7 and Yelp business endpoints reference 8.\nData model\nRead volume is high because the following features are commonly used:\nSearch for nearby businesses.\nView the detailed information of a business.'
+  );
 });

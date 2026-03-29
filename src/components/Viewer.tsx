@@ -27,6 +27,7 @@ const INITIAL_METRICS: ViewerMetrics = {
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
 const OCR_COORDINATE_SPACE = 1000;
+const NON_INTERACTIVE_BLOCK_KINDS = new Set(['image', 'table']);
 
 export default function Viewer({
   imageUrl,
@@ -61,7 +62,9 @@ export default function Viewer({
     return `translate(${settings.pan.x}px, ${settings.pan.y}px) scale(${settings.zoom}) rotate(${rotation}deg)`;
   }, [rotation, settings.pan.x, settings.pan.y, settings.zoom]);
   const interactiveBlocks = useMemo(() => {
-    const blocks = (pageText?.blocks ?? []).filter((block) => block.kind.toLowerCase() !== 'image');
+    const blocks = (pageText?.blocks ?? []).filter(
+      (block) => !NON_INTERACTIVE_BLOCK_KINDS.has(block.kind.toLowerCase())
+    );
     if (editMode) {
       return blocks.filter((block) => block.text.trim().length > 0);
     }

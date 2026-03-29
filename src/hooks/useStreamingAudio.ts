@@ -201,6 +201,10 @@ export function useStreamingAudio(
         return;
       }
 
+      console.info(
+        `[TTS stream text]\npageKey: ${pageKey}\nvoice: ${voice || DEFAULT_STREAM_VOICE}\n---\n${cleaned}\n---`
+      );
+
       const params = new URLSearchParams();
       params.set('text', cleaned);
       if (voice) {
