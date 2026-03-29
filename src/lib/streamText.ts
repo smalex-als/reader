@@ -5,9 +5,110 @@ const HTML_TAG_PATTERN = /<[^>]+>/g;
 const ZERO_WIDTH_PATTERN = /[\u200B-\u200D\u2060\uFEFF]/g;
 const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
+const INLINE_MATH_PATTERN = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$([^$\n]+)\$/g;
+
+function readBracketGroup(input: string, startIndex: number) {
+  if (input[startIndex] !== '{') {
+    return null;
+  }
+
+  let depth = 0;
+  for (let index = startIndex; index < input.length; index += 1) {
+    const char = input[index];
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return {
+          value: input.slice(startIndex + 1, index),
+          endIndex: index + 1
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function replaceFractions(input: string) {
+  let output = '';
+
+  for (let index = 0; index < input.length; index += 1) {
+    if (!input.startsWith('\\frac', index)) {
+      output += input[index];
+      continue;
+    }
+
+    let cursor = index + 5;
+    while (cursor < input.length && /\s/.test(input[cursor])) {
+      cursor += 1;
+    }
+
+    const numerator = readBracketGroup(input, cursor);
+    if (!numerator) {
+      output += input[index];
+      continue;
+    }
+
+    cursor = numerator.endIndex;
+    while (cursor < input.length && /\s/.test(input[cursor])) {
+      cursor += 1;
+    }
+
+    const denominator = readBracketGroup(input, cursor);
+    if (!denominator) {
+      output += input[index];
+      continue;
+    }
+
+    output += `${numerator.value} divided by ${denominator.value}`;
+    index = denominator.endIndex - 1;
+  }
+
+  return output;
+}
+
+function normalizeFormulaText(text: string) {
+  let output = text;
+
+  for (let pass = 0; pass < 4; pass += 1) {
+    const next = replaceFractions(output);
+    if (next === output) {
+      break;
+    }
+    output = next;
+  }
+
+  output = output.replace(/\\text\s*\{([^{}]*)\}/g, '$1');
+  output = output.replace(/\\approx|\\sim/g, ' approximately ');
+  output = output.replace(/\\times|\\cdot/g, ' times ');
+  output = output.replace(/\\div/g, ' divided by ');
+  output = output.replace(/\\pm/g, ' plus or minus ');
+  output = output.replace(/\\geq|\\ge/g, ' greater than or equal to ');
+  output = output.replace(/\\leq|\\le/g, ' less than or equal to ');
+  output = output.replace(/\\neq/g, ' not equal to ');
+  output = output.replace(/\\rightarrow|\\to/g, ' goes to ');
+  output = output.replace(/\\infty/g, ' infinity ');
+  output = output.replace(/\\%/g, ' percent');
+  output = output.replace(/\^(\d+)/g, ' to the power of $1');
+  output = output.replace(/\^\{([^{}]+)\}/g, ' to the power of $1');
+  output = output.replace(/_(\d+)/g, ' sub $1');
+  output = output.replace(/_\{([^{}]+)\}/g, ' sub $1');
+  output = output.replace(/[{}\\]/g, ' ');
+  output = output.replace(/\s*=\s*/g, ' equals ');
+  output = output.replace(/\s*>\s*/g, ' greater than ');
+  output = output.replace(/\s*<\s*/g, ' less than ');
+  output = output.replace(/\s+/g, ' ');
+
+  return output.trim();
+}
 
 export function stripMarkdown(text: string) {
   let output = text;
+  output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
+    normalizeFormulaText(inlineRound || inlineSquare || inlineDollar || '')
+  );
   output = output.replace(/```[\s\S]*?```/g, '');
   output = output.replace(/`[^`]*`/g, '');
   output = output.replace(/<script[\s\S]*?<\/script>/gi, ' ');
@@ -24,6 +125,8 @@ export function stripMarkdown(text: string) {
   output = output.replace(/^\s{0,3}>\s?/gm, '');
   output = output.replace(/^\s{0,3}[-*+]\s+/gm, '');
   output = output.replace(/^\s{0,3}---+\s*$/gm, '');
+  output = output.replace(/([0-9])%/g, '$1 percent');
+  output = output.replace(/\s*[=><]\s*/g, ' ');
   output = output.replace(ZERO_WIDTH_PATTERN, '');
   output = output.replace(/\uFE0F/g, '');
   output = output.replace(CONTROL_PATTERN, ' ');
