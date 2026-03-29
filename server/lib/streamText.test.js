@@ -38,3 +38,26 @@ test('normalizes dollar-delimited math and simple operators', () => {
 
   assert.equal(output, 'Value is x sub 1 equals y to the power of 2 times 4 today.');
 });
+
+test('normalizes http api examples into speakable text', () => {
+  const input = 'GET /v1/hotels/ID/rooms/ID Delete uses DELETE /v1/reservations/ID.';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(
+    output,
+    'get slash v 1 slash hotels slash I D slash rooms slash I D Delete uses delete slash v 1 slash reservations slash I D.'
+  );
+});
+
+test('normalizes json-style request fields into speakable text', () => {
+  const input =
+    '{ "startDate":"2021-04-28", "hotelID":"245", "roomID":"U12354673389", "reservationID":"13422445" }';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(
+    output,
+    '{ start date: 2021-04-28, hotel I D: 245, room I D: u 12354673389, reservation I D: 13422445 }'
+  );
+});

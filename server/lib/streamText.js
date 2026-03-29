@@ -6,6 +6,77 @@ const ZERO_WIDTH_PATTERN = /[\u200B-\u200D\u2060\uFEFF]/g;
 const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
 const INLINE_MATH_PATTERN = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$([^$\n]+)\$/g;
+const HTTP_METHOD_PATTERN = /\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(\/[^\s,;)"']*)/g;
+
+function speakIdentifier(identifier) {
+  return identifier
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Za-z])(\d)/g, '$1 $2')
+    .replace(/(\d)([A-Za-z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => {
+      if (/^v\d+$/i.test(part)) {
+        return `v ${part.slice(1)}`;
+      }
+      if (/^[A-Z]{2,5}$/.test(part)) {
+        return part.split('').join(' ');
+      }
+      return part.toLowerCase();
+    })
+    .join(' ');
+}
+
+function speakApiPath(path) {
+  return path
+    .split('/')
+    .filter((segment, index) => index !== 0 || segment.length > 0)
+    .map((segment, index) => {
+      if (index === 0 && segment === '') {
+        return 'slash';
+      }
+      if (!segment) {
+        return 'slash';
+      }
+      return `slash ${speakIdentifier(segment)}`;
+    })
+    .join(' ')
+    .trim();
+}
+
+function speakApiValue(value) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+  if (value.startsWith('/')) {
+    return speakApiPath(value);
+  }
+  if (/^[A-Z]{2,5}$/.test(value)) {
+    return value.split('').join(' ');
+  }
+  if (/^[A-Za-z0-9_./-]+$/.test(value) && /[A-Za-z]/.test(value)) {
+    return speakIdentifier(value);
+  }
+  return value;
+}
+
+function normalizeApiExamples(text) {
+  let output = text;
+
+  output = output.replace(HTTP_METHOD_PATTERN, (_, method, path) => {
+    const match = path.match(/^(.+?)([.,:;])?$/);
+    const cleanPath = match?.[1] || path;
+    const trailing = match?.[2] || '';
+    return `${method.toLowerCase()} ${speakApiPath(cleanPath)}${trailing}`;
+  });
+  output = output.replace(/"([A-Za-z][A-Za-z0-9_-]*)"\s*:/g, (_, key) => `${speakIdentifier(key)}:`);
+  output = output.replace(/:\s*"([^"\n]+)"/g, (_, value) => `: ${speakApiValue(value)}`);
+  output = output.replace(/([{\[\]}])/g, ' $1 ');
+  output = output.replace(/\s+/g, ' ');
+
+  return output.trim();
+}
 
 function readBracketGroup(input, startIndex) {
   if (input[startIndex] !== '{') {
@@ -106,6 +177,7 @@ function normalizeFormulaText(text) {
 
 export function stripMarkdown(text) {
   let output = text;
+  output = normalizeApiExamples(output);
   output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
     normalizeFormulaText(inlineRound || inlineSquare || inlineDollar || '')
   );
