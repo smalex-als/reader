@@ -61,3 +61,21 @@ test('normalizes json-style request fields into speakable text', () => {
     '{ start date: 2021-04-28, hotel I D: 245, room I D: u 12354673389, reservation I D: 13422445 }'
   );
 });
+
+test('skips ocr blocks marked as removed from speech', () => {
+  const input = [
+    '<|ref|>text<|/ref|><|det|>[[1, 2, 3, 4]]<|/det|>',
+    'Keep this block.',
+    '',
+    '<|ref|>text<|/ref|><|det|>[[5, 6, 7, 8]]<|/det|>',
+    '<|speech_removed|><|/speech_removed|>',
+    'Skip this block.',
+    '',
+    '<|ref|>text<|/ref|><|det|>[[9, 10, 11, 12]]<|/det|>',
+    'Keep this one too.'
+  ].join('\n');
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'Keep this block. Keep this one too.');
+});

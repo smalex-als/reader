@@ -7,6 +7,37 @@ const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
 const INLINE_MATH_PATTERN = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$([^$\n]+)\$/g;
 const HTTP_METHOD_PATTERN = /\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(\/[^\s,;)"']*)/g;
+const OCR_BLOCK_HEADER_PATTERN =
+  /<\|ref\|>([^<]+)<\|\/ref\|><\|det\|>\[\[(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\]\]<\|\/det\|>/g;
+const OCR_SPEECH_EXCLUDED_MARKER = '<|speech_removed|>';
+const OCR_SPEECH_EXCLUDED_END_MARKER = '<|/speech_removed|>';
+
+function removeExcludedOcrBlocks(text) {
+  const input = typeof text === 'string' ? text : '';
+  const matches = Array.from(input.matchAll(OCR_BLOCK_HEADER_PATTERN));
+  if (matches.length === 0) {
+    return input;
+  }
+
+  const parts = [];
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
+    const nextMatch = matches[index + 1];
+    const contentStart = (match.index ?? 0) + match[0].length;
+    const contentEnd = nextMatch?.index ?? input.length;
+    const rawContent = input.slice(contentStart, contentEnd).trim();
+    if (!rawContent.startsWith(OCR_SPEECH_EXCLUDED_MARKER)) {
+      parts.push(rawContent);
+      continue;
+    }
+    const endIndex = rawContent.indexOf(OCR_SPEECH_EXCLUDED_END_MARKER);
+    if (endIndex === -1) {
+      parts.push(rawContent);
+    }
+  }
+
+  return parts.filter(Boolean).join('\n\n');
+}
 
 function speakIdentifier(identifier) {
   return identifier
@@ -176,7 +207,7 @@ function normalizeFormulaText(text) {
 }
 
 export function stripMarkdown(text) {
-  let output = text;
+  let output = removeExcludedOcrBlocks(text);
   output = normalizeApiExamples(output);
   output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
     normalizeFormulaText(inlineRound || inlineSquare || inlineDollar || '')

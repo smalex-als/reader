@@ -122,6 +122,10 @@ export default function App() {
     setEditorChapterNumber
   } = useModalState();
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
+  const [ocrEditMode, setOcrEditMode] = useState(false);
+  const [ocrEditSaving, setOcrEditSaving] = useState(false);
+  const ocrEditBaselineRef = useRef<string | null>(null);
+  const ocrEditImageRef = useRef<string | null>(null);
   const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
     fullText: string;
     startIndex: number;
@@ -278,9 +282,10 @@ export default function App() {
     textLoading,
     textModalOpen,
     textSaving,
-    toggleTextModal
+    toggleTextModal,
+    updatePageTextBlocks
   } = usePageText(currentImage, showToast);
-  const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('openai');
+  const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('deepseek_ocr');
   const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
   const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
     setFloatingAudio(payload);
@@ -291,6 +296,15 @@ export default function App() {
   useEffect(() => {
     setFloatingAudio(null);
   }, [bookId]);
+  useEffect(() => {
+    if (ocrEditImageRef.current === currentImage) {
+      return;
+    }
+    ocrEditImageRef.current = currentImage;
+    ocrEditBaselineRef.current = null;
+    setOcrEditMode(false);
+    setOcrEditSaving(false);
+  }, [currentImage]);
   const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
     navigationCount,
     currentPage,
@@ -333,6 +347,67 @@ export default function App() {
     streamVoice,
     onSequenceComplete: () => handleNext()
   });
+
+  const handleToggleOcrEditMode = useCallback(async () => {
+    if (!currentImage || isTextBook) {
+      return;
+    }
+
+    if (!ocrEditMode) {
+      const pageText = currentText ?? (await fetchPageText({ silent: true }));
+      if (!pageText || pageText.blocks.length === 0) {
+        showToast('No OCR blocks available for editing', 'error');
+        return;
+      }
+      ocrEditBaselineRef.current = pageText.text;
+      setOcrEditMode(true);
+      showToast('Block edit mode enabled', 'info');
+      return;
+    }
+
+    const nextText = currentText?.text ?? '';
+    const baselineText = ocrEditBaselineRef.current;
+    setOcrEditMode(false);
+
+    if (!nextText || nextText === baselineText) {
+      ocrEditBaselineRef.current = nextText || baselineText;
+      showToast('Block edit mode disabled', 'info');
+      return;
+    }
+
+    setOcrEditSaving(true);
+    const saved = await savePageText(nextText);
+    setOcrEditSaving(false);
+    if (saved) {
+      ocrEditBaselineRef.current = saved.text;
+      showToast('Block edits saved', 'success');
+      return;
+    }
+    setOcrEditMode(true);
+  }, [currentImage, currentText, fetchPageText, isTextBook, ocrEditMode, savePageText, showToast]);
+
+  const handleToggleSpeechBlock = useCallback(
+    async (blockId: string) => {
+      if (!currentImage) {
+        return;
+      }
+      const pageText = currentText ?? (await fetchPageText({ silent: true }));
+      if (!pageText || pageText.blocks.length === 0) {
+        showToast('No OCR blocks available', 'error');
+        return;
+      }
+      const updated = updatePageTextBlocks((blocks) =>
+        blocks.map((block) =>
+          block.id === blockId ? { ...block, excludedFromSpeech: !block.excludedFromSpeech } : block
+        )
+      );
+      const toggled = updated?.blocks.find((block) => block.id === blockId);
+      if (toggled) {
+        showToast(toggled.excludedFromSpeech ? 'Block excluded from speech' : 'Block restored to speech', 'info');
+      }
+    },
+    [currentImage, currentText, fetchPageText, showToast, updatePageTextBlocks]
+  );
 
   useEffect(() => {
     if (viewMode !== 'pages' || !currentImage || currentText) {
@@ -662,6 +737,7 @@ export default function App() {
     updateRotation,
     applyFilters,
     toggleTextModal,
+    toggleOcrEditMode: handleToggleOcrEditMode,
     toggleViewMode,
     handlePrev,
     handleNext,
@@ -723,6 +799,11 @@ export default function App() {
     onToggleTextModal: () => {
       toggleTextModal();
     },
+    onToggleOcrEditMode: () => {
+      void handleToggleOcrEditMode();
+    },
+    ocrEditMode,
+    ocrEditSaving,
     onCopyText: handleCopyText,
     onToggleFullscreen: () => void toggleFullscreen(),
     fullscreen: isFullscreen,
@@ -875,6 +956,7 @@ export default function App() {
     viewerProps: {
       imageUrl: currentImage,
       pageText: currentText,
+      editMode: ocrEditMode,
       settings,
       onPan: updatePan,
       onZoom: updateZoom,
@@ -882,6 +964,9 @@ export default function App() {
       onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => {
         const { startIndex, blockId } = payload;
         void handlePlayPageBlock({ startIndex, blockId });
+      },
+      onToggleSpeechBlock: (blockId: string) => {
+        void handleToggleSpeechBlock(blockId);
       },
       rotation: settings.rotation
     },

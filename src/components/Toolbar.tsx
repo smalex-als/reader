@@ -27,6 +27,9 @@ interface ToolbarProps {
   onBrightness: (value: number) => void;
   onContrast: (value: number) => void;
   onToggleTextModal: () => void;
+  onToggleOcrEditMode: () => void;
+  ocrEditMode: boolean;
+  ocrEditSaving: boolean;
   onCopyText: () => void;
   onToggleFullscreen: () => void;
   fullscreen: boolean;
@@ -85,6 +88,9 @@ export default function Toolbar({
   onBrightness,
   onContrast,
   onToggleTextModal,
+  onToggleOcrEditMode,
+  ocrEditMode,
+  ocrEditSaving,
   onCopyText,
   onToggleFullscreen,
   fullscreen,
@@ -421,6 +427,14 @@ export default function Toolbar({
             disabled={controlsDisabled || disableImageActions}
           >
             Page Text
+          </button>
+          <button
+            type="button"
+            className={`button ${ocrEditMode ? 'button-active' : ''}`}
+            onClick={onToggleOcrEditMode}
+            disabled={controlsDisabled || disableImageActions || ocrEditSaving}
+          >
+            {ocrEditSaving ? 'Saving Blocks…' : ocrEditMode ? 'Finish Blocks' : 'Edit Blocks'}
           </button>
           <button
             type="button"

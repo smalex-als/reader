@@ -6,11 +6,13 @@ import type { AppSettings, PageText, ViewerMetrics, ViewerPan } from '@/types/ap
 interface ViewerProps {
   imageUrl: string | null;
   pageText: PageText | null;
+  editMode: boolean;
   settings: AppSettings;
   onPan: (pan: ViewerPan) => void;
   onZoom: (zoom: number, mode?: AppSettings['zoomMode'], pan?: ViewerPan) => void;
   onMetricsChange: (metrics: ViewerMetrics) => void;
   onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => void;
+  onToggleSpeechBlock: (blockId: string) => void;
   rotation: number;
 }
 
@@ -29,11 +31,13 @@ const OCR_COORDINATE_SPACE = 1000;
 export default function Viewer({
   imageUrl,
   pageText,
+  editMode,
   settings,
   onPan,
   onZoom,
   onMetricsChange,
   onPlayTextBlock,
+  onToggleSpeechBlock,
   rotation
 }: ViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -56,10 +60,13 @@ export default function Viewer({
   const transform = useMemo(() => {
     return `translate(${settings.pan.x}px, ${settings.pan.y}px) scale(${settings.zoom}) rotate(${rotation}deg)`;
   }, [rotation, settings.pan.x, settings.pan.y, settings.zoom]);
-  const interactiveBlocks = useMemo(
-    () => pageText?.blocks.filter((block) => block.streamStartIndex !== null) ?? [],
-    [pageText]
-  );
+  const interactiveBlocks = useMemo(() => {
+    const blocks = (pageText?.blocks ?? []).filter((block) => block.kind.toLowerCase() !== 'image');
+    if (editMode) {
+      return blocks.filter((block) => block.text.trim().length > 0);
+    }
+    return blocks.filter((block) => block.streamStartIndex !== null);
+  }, [editMode, pageText]);
   const blockCoordinateSpace = useMemo(() => {
     if (interactiveBlocks.length === 0) {
       return null;
@@ -266,13 +273,29 @@ export default function Viewer({
                               width: `${(width / blockCoordinateSpace.width) * 100}%`,
                               height: `${(height / blockCoordinateSpace.height) * 100}%`
                             }}
-                            aria-label={`Play stream from ${block.kind}`}
-                            title="Play stream from here"
+                            aria-label={
+                              editMode
+                                ? `${block.excludedFromSpeech ? 'Restore' : 'Exclude'} ${block.kind} block`
+                                : `Play stream from ${block.kind}`
+                            }
+                            title={
+                              editMode
+                                ? block.excludedFromSpeech
+                                  ? 'Restore block to speech'
+                                  : 'Exclude block from speech'
+                                : 'Play stream from here'
+                            }
+                            data-excluded={block.excludedFromSpeech ? 'true' : 'false'}
+                            data-edit-mode={editMode ? 'true' : 'false'}
                             onPointerDown={(event) => {
                               event.stopPropagation();
                             }}
                             onClick={(event) => {
                               event.stopPropagation();
+                              if (editMode) {
+                                onToggleSpeechBlock(block.id);
+                                return;
+                              }
                               if (block.streamStartIndex !== null) {
                                 onPlayTextBlock({ startIndex: block.streamStartIndex, blockId: block.id });
                               }

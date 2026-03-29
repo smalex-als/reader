@@ -6,6 +6,7 @@ export interface PageTextBlock {
   kind: string;
   text: string;
   bounds: [number, number, number, number];
+  excludedFromSpeech: boolean;
   startIndex: number | null;
   streamStartIndex: number | null;
 }

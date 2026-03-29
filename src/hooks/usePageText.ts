@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { parseOcrLayout } from '@/lib/ocrLayout';
+import { parseOcrLayout, serializeOcrLayout } from '@/lib/ocrLayout';
 import type { PageText, PageTextOcrEngine } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -127,6 +127,30 @@ export function usePageText(
     return currentImage ? textCache[currentImage] ?? null : null;
   }, [currentImage, textCache]);
 
+  const updatePageTextBlocks = useCallback(
+    (updater: (blocks: PageText['blocks']) => PageText['blocks']): PageText | null => {
+      if (!currentImage) {
+        return null;
+      }
+      const current = textCache[currentImage];
+      if (!current || current.blocks.length === 0) {
+        return null;
+      }
+      const nextBlocks = updater(current.blocks);
+      const nextText = serializeOcrLayout(nextBlocks);
+      const parsed = parseOcrLayout(nextText);
+      const entry: PageText = {
+        text: nextText,
+        plainText: parsed.plainText,
+        blocks: parsed.blocks,
+        source: current.source
+      };
+      setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
+      return entry;
+    },
+    [currentImage, textCache]
+  );
+
   return {
     closeTextModal,
     currentText,
@@ -139,6 +163,7 @@ export function usePageText(
     textLoading,
     textModalOpen,
     textSaving,
-    toggleTextModal
+    toggleTextModal,
+    updatePageTextBlocks
   };
 }
