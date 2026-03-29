@@ -6,7 +6,10 @@ Node/Express server for OCR and PDF tooling.
 ## Features
 
 - Book picker with page navigation, zoom, rotate, fit, invert, brightness/contrast, and pan.
-- OCR page text modal with regeneration and batch OCR queue.
+- OCR page text modal with `Deepseek OCR` / `OpenAI` regeneration and batch OCR queue.
+- OCR block overlays on page images with click-to-stream playback.
+- OCR block edit mode to exclude/include blocks from speech directly on the page; exclusions are saved back into the OCR text file.
+- Page dimming controls for OCR overlays, including toolbar toggle and adjustable dim level.
 - Audio playback (reuse existing MP3s or generate with OpenAI).
 - Streaming audio via WebSocket (external stream server).
 - Bookmarks, table of contents (manual or generated), and print-to-PDF.
@@ -63,11 +66,10 @@ data/
 
 Server environment variables:
 
-- `OPENAI_API_KEY` (required for OCR if `OCR_BACKEND` is `openai`, TOC generation,
-  and TTS audio generation; used as a fallback for `openai_compat`)
-- `OCR_OPENAI_BASE_URL` (required for OCR if `OCR_BACKEND` is `openai_compat`)
-- `OCR_OPENAI_MODEL` (default `deepseek-ocr` for `openai_compat`)
-- `OCR_OPENAI_API_KEY` (optional; overrides `OPENAI_API_KEY` for `openai_compat`)
+- `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, and TTS audio generation)
+- `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://myserver.home:11434`)
+- `OCR_DEEPSEEK_MODEL` (default `deepseek-ocr`)
+- `OCR_DEEPSEEK_PROMPT` (default `<|grounding|>Convert the document to markdown.`)
 - `HOST` (default `0.0.0.0`)
 - `PORT` (default `3000`)
 - `HTTPS_KEY_PATH` and `HTTPS_CERT_PATH` to enable HTTPS
@@ -82,16 +84,29 @@ Front-end environment variables:
 
 Notes:
 
-- OCR backend is configured in `server/config.js` via `OCR_BACKEND`. The default is `llmproxy`, configured
-  via `LLMPROXY_ENDPOINT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`. Use `openai` for OpenAI vision, or
-  `openai_compat` for OpenAI-compatible endpoints with `OCR_OPENAI_BASE_URL`.
+- The current page text flow supports two OCR engines from the UI:
+  - `OpenAI` uses the existing OpenAI OCR path.
+  - `Deepseek OCR` calls `${OCR_DEEPSEEK_HOST}/api/generate`.
 - OCR prompt files live in `server/prompts/`. You can add model- or backend-specific prompts using
   `text.<model>.txt` or `text.<backend>.txt` (sanitized to lowercase; non-alphanumerics become `_`), with
   `text.txt` as the fallback.
+- OCR text files may contain coordinate-tagged blocks such as `<|ref|>...<|det|>[[...]]...`. Blocks marked
+  with `<|speech_removed|><|/speech_removed|>` stay in the file but are skipped during speech playback.
 - Text books can be created by uploading chapter files; chapters are stored as `chapter###.txt` and TOC
   entries are created automatically.
 - Prompt text lives in `server/prompts/` for easy editing and review.
 - PDF upload uses `pdftoppm` from Poppler. Install it before using `/api/upload/pdf`.
+
+## Useful hotkeys
+
+- `T`: open/close `Page Text`
+- `O`: run OCR for the current page in the background
+- `E`: toggle OCR block edit mode on the page
+- `S`: start/stop stream audio
+- `P`: play/stop page audio
+- `G`: focus the page number input
+- `F`: toggle fullscreen
+- `?`: open help
 
 ## API highlights
 
