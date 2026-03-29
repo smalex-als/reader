@@ -21,30 +21,11 @@ export const STREAM_SERVER =
   process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'https://myserver.home:3000';
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
 
-export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai_compat'; // 'openai' | 'llmproxy' | 'openai_compat'
-export const LLMPROXY_ENDPOINT =
-  process.env.LLMPROXY_ENDPOINT || 'http://myserver.home:11434/api/generate';
-export const LLMPROXY_MODEL = 'ministral-3:14b';
-export const LLMPROXY_AUTH = 'dummy';
+export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai'; // 'openai' | 'deepseek_ocr'
 export const OCR_DEEPSEEK_HOST = process.env.OCR_DEEPSEEK_HOST || 'http://myserver.home:11434';
 export const OCR_DEEPSEEK_MODEL = process.env.OCR_DEEPSEEK_MODEL || 'deepseek-ocr';
 export const OCR_DEEPSEEK_PROMPT =
   process.env.OCR_DEEPSEEK_PROMPT || '<|grounding|>Convert the document to markdown.';
-export const LLMPROXY_HEADERS_TIMEOUT_MS = Number.parseInt(
-  process.env.LLMPROXY_HEADERS_TIMEOUT_MS || '900000',
-  10
-);
-export const LLMPROXY_BODY_TIMEOUT_MS = Number.parseInt(
-  process.env.LLMPROXY_BODY_TIMEOUT_MS || '900000',
-  10
-);
-export const LLMPROXY_CONNECT_TIMEOUT_MS = Number.parseInt(
-  process.env.LLMPROXY_CONNECT_TIMEOUT_MS || '30000',
-  10
-);
-export const OCR_OPENAI_BASE_URL = process.env.OCR_OPENAI_BASE_URL || 'http://myserver.home:8000';
-export const OCR_OPENAI_MODEL = process.env.OCR_OPENAI_MODEL || 'ministral-3-14b';
-export const OCR_OPENAI_API_KEY = process.env.OCR_OPENAI_API_KEY || '';
 
 const PROMPTS_DIR = path.join(ROOT_DIR, 'server', 'prompts');
 const readPrompt = (filename) =>

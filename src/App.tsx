@@ -280,7 +280,7 @@ export default function App() {
     textSaving,
     toggleTextModal
   } = usePageText(currentImage, showToast);
-  const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('openai_compact');
+  const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('openai');
   const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
   const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
     setFloatingAudio(payload);

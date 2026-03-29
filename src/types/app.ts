@@ -1,5 +1,5 @@
 export type ZoomMode = 'custom' | 'fit-width' | 'fit-height';
-export type PageTextOcrEngine = 'deepseek_ocr' | 'openai_compact';
+export type PageTextOcrEngine = 'deepseek_ocr' | 'openai';
 
 export interface PageTextBlock {
   id: string;

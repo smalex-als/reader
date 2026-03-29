@@ -1,63 +1,17 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime-types';
-import {
-  DATA_DIR,
-  OCR_DEEPSEEK_HOST,
-  OCR_DEEPSEEK_MODEL,
-  OCR_DEEPSEEK_PROMPT,
-  LLMPROXY_AUTH,
-  LLMPROXY_ENDPOINT,
-  LLMPROXY_MODEL,
-  OCR_BACKEND,
-  OCR_OPENAI_MODEL,
-  getTextPrompt
-} from '../config.js';
-import { createHttpError } from './errors.js';
-import { safeStat } from './fs.js';
-import { fetchLlmproxy } from './llmproxy.js';
-import { deriveTextPathsFromImageUrl, resolveDataUrl } from './paths.js';
-import { getOcrOpenAI, getOpenAI } from './openai.js';
+import {getTextPrompt, OCR_BACKEND, OCR_DEEPSEEK_HOST, OCR_DEEPSEEK_MODEL, OCR_DEEPSEEK_PROMPT} from '../config.js';
+import {createHttpError} from './errors.js';
+import {safeStat} from './fs.js';
+import {deriveTextPathsFromImageUrl, resolveDataUrl} from './paths.js';
+import {getOpenAI} from './openai.js';
 
 function normalizeOcrEngine(engine) {
-  if (engine === 'deepseek_ocr') {
-    return engine;
-  } else if (engine === 'openai_compat') {
+  if (engine === 'openai') {
     return engine;
   }
   return 'deepseek_ocr';
-}
-
-async function extractTextFromLlmproxy(absolute, prompt) {
-  const buffer = await fs.readFile(absolute);
-  const base64 = buffer.toString('base64');
-
-  const response = await fetchLlmproxy(LLMPROXY_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${LLMPROXY_AUTH}`
-    },
-    body: JSON.stringify({
-      model: LLMPROXY_MODEL,
-      prompt,
-      images: [base64],
-      stream: false
-    })
-  });
-
-  if (!response.ok) {
-    throw createHttpError(502, `LLM proxy failed (${response.status} ${response.statusText})`);
-  }
-
-  const payload = await response.json();
-  const rawText = typeof payload?.response === 'string' ? payload.response : '';
-  let text = rawText.trim();
-  if (!text) {
-    throw createHttpError(502, 'LLM proxy returned empty text');
-  }
-
-  return text;
 }
 
 async function extractTextFromDeepseekOcr(absolute) {
@@ -139,17 +93,10 @@ export async function loadPageText(imageUrl, options = {}) {
   } else {
     const prompt = getTextPrompt({
       backend: OCR_BACKEND,
-      model:
-        OCR_BACKEND === 'llmproxy'
-          ? LLMPROXY_MODEL
-          : OCR_BACKEND === 'openai'
-            ? 'gpt-5.4'
-            : OCR_OPENAI_MODEL
+      model: 'gpt-5.4'
     });
 
-    if (OCR_BACKEND === 'llmproxy') {
-      text = await extractTextFromLlmproxy(absolute, prompt);
-    } else if (OCR_BACKEND === 'openai') {
+    if (OCR_BACKEND === 'openai') {
       const openai = getOpenAI();
       const buffer = await fs.readFile(absolute);
       const base64 = buffer.toString('base64');
@@ -177,28 +124,6 @@ export async function loadPageText(imageUrl, options = {}) {
         response.output_text?.trim() ||
         response?.output?.[0]?.content?.[0]?.text?.trim() ||
         '';
-    } else if (OCR_BACKEND === 'openai_compat') {
-      const openai = getOcrOpenAI();
-      const buffer = await fs.readFile(absolute);
-      const base64 = buffer.toString('base64');
-
-      const response = await openai.chat.completions.create({
-        model: OCR_OPENAI_MODEL,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              {
-                type: 'image_url',
-                image_url: { url: `data:${mimeType};base64,${base64}` }
-              }
-            ]
-          }
-        ]
-      });
-
-      text = response?.choices?.[0]?.message?.content?.trim() || '';
     } else {
       throw createHttpError(500, `Unknown OCR backend: ${OCR_BACKEND}`);
     }

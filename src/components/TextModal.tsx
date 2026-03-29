@@ -88,12 +88,12 @@ export default function TextModal({
               </button>
               <button
                 type="button"
-                className={`segmented-item ${ocrEngine === 'openai_compact' ? 'segmented-item-active' : ''}`}
-                onClick={() => onOcrEngineChange('openai_compact')}
-                aria-pressed={ocrEngine === 'openai_compact'}
+                className={`segmented-item ${ocrEngine === 'openai' ? 'segmented-item-active' : ''}`}
+                onClick={() => onOcrEngineChange('openai')}
+                aria-pressed={ocrEngine === 'openai'}
                 disabled={loading || saving}
               >
-                OpenAI compact
+                OpenAI
               </button>
             </div>
           </div>
