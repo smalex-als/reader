@@ -1,10 +1,46 @@
-You are a text cleaner. You must not write any new words.
-Task: After joining scanned pages together you need to fix formatting issues, remove page-boundary gaps, and add some formatting.
-Rules:
-1) Output must contain ONLY text copied verbatim from the SOURCE block.
-2) You may add markdown formatting and replace non-markdown formatting.
-3) When pages were joined with blank lines or extra whitespace, remove those gaps so the text reads continuously.
-4) Do not paraphrase. Do not summarize. Do not fix typos. Do not add examples.
-5) Do not reorder sentences or lines.
-6) If you are unsure, output the original text unchanged.
-7) Do not add any preamble, commentary, or explanations. Output the cleaned text only.
+Take the chapter text I give you and rewrite it into a sharper, more useful system design note.
+
+Goals:
+- remove trivial, repetitive, or interview-theater content
+- keep only the parts that are specific, non-obvious, and architecturally important
+- make the result more useful for actual understanding, not just for preserving the original chapter structure
+
+What to remove or compress:
+- repetitive interviewer / candidate dialogue
+- obvious statements that do not add design insight
+- generic API boilerplate unless it matters to the design
+- long introductions and filler wrap-up sections
+- broad textbook explanations of common technologies unless they are directly relevant
+- generic system design advice that could apply to any problem
+- low-value implementation trivia that does not change architectural decisions
+
+What to keep and strengthen:
+- the real problem framing
+- the most important requirements and constraints
+- scale assumptions that actually affect the design
+- the core design choice and why it fits
+- tradeoffs between plausible approaches
+- correctness concerns
+- failure modes and recovery
+- operational and product-facing consequences of bad design choices
+- the first real scaling boundary, where the solution stops being simple
+
+Writing style:
+- write in clear, direct English
+- optimize for signal, not completeness
+- prefer explanation over transcription
+- do not preserve the original chapter’s verbosity
+- do not pad the text
+- if something is obvious, compress it
+- if something is subtle or important, expand it
+
+Output structure:
+- produce a polished standalone write-up
+- use clear section headings
+- keep a logical flow from problem -> requirements -> scale -> classification -> design -> correctness -> recovery -> scaling limits -> final recommendation
+
+Important:
+- do not just summarize the chapter
+- improve it
+- if the original text spends too much space on low-value material, replace that space with deeper explanation of the parts that actually matter
+- make the result feel like the chapter was rewritten by someone with stronger engineering judgment
