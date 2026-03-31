@@ -369,19 +369,30 @@ export default function AudioView({
                       </button>
                     ) : null}
                     {audioReady && entry.audio?.url ? (
-                      <button
-                        type="button"
-                        className="button audio-native-play"
-                        onClick={() =>
-                          onPlayAudio({
-                            title: entry.title,
-                            subtitle: `Chapter ${entry.chapterNumber}`,
-                            url: entry.audio.url
-                          })
-                        }
-                      >
-                        ▶ Play
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className="button audio-native-play"
+                          onClick={() =>
+                            onPlayAudio({
+                              title: entry.title,
+                              subtitle: `Chapter ${entry.chapterNumber}`,
+                              url: entry.audio.url
+                            })
+                          }
+                        >
+                          ▶ Play
+                        </button>
+                        <a
+                          className="button button-secondary"
+                          href={entry.audio.url}
+                          download
+                          aria-label="Download MP3 file"
+                          title="Download MP3 file"
+                        >
+                          ↓
+                        </a>
+                      </>
                     ) : null}
                   </div>
                   {jobStatus?.status === 'failed' ? (

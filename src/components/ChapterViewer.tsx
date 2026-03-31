@@ -84,11 +84,16 @@ export default function ChapterViewer({
   onPlayParagraph,
   onPlayAudio,
 }: ChapterViewerProps) {
+  const [contentMode, setContentMode] = useState<'chapter' | 'narration'>('chapter');
   const [chapterText, setChapterText] = useState('');
+  const [narrationText, setNarrationText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [narrationLoading, setNarrationLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [missingFile, setMissingFile] = useState<string | null>(null);
+  const [narrationError, setNarrationError] = useState<string | null>(null);
+  const [missingNarrationFile, setMissingNarrationFile] = useState<string | null>(null);
   const [localRefreshToken, setLocalRefreshToken] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioGenerating, setAudioGenerating] = useState(false);
@@ -148,11 +153,19 @@ export default function ChapterViewer({
   }, [chapterNumber]);
 
   useEffect(() => {
+    setContentMode('chapter');
+  }, [bookId, chapterNumber]);
+
+  useEffect(() => {
     if (!bookId || !chapterNumber) {
       setChapterText('');
+      setNarrationText('');
       setError(null);
       setMissingFile(null);
       setLoading(false);
+      setNarrationLoading(false);
+      setNarrationError(null);
+      setMissingNarrationFile(null);
       setAudioGenerating(false);
       setAudioError(null);
       setNarrationGenerating(false);
@@ -205,6 +218,61 @@ export default function ChapterViewer({
       .finally(() => {
         if (!canceled) {
           setLoading(false);
+        }
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [bookId, chapterNumber, refreshToken, localRefreshToken]);
+
+  useEffect(() => {
+    if (!bookId || !chapterNumber) {
+      setNarrationText('');
+      setNarrationError(null);
+      setMissingNarrationFile(null);
+      setNarrationLoading(false);
+      return;
+    }
+
+    let canceled = false;
+    const filename = `chapter${String(chapterNumber).padStart(3, '0')}.narration.txt`;
+    const url = `/data/${encodeURIComponent(bookId)}/${filename}`;
+
+    setNarrationText('');
+    setNarrationLoading(true);
+    setNarrationError(null);
+    setMissingNarrationFile(null);
+
+    fetch(url)
+      .then(async (response) => {
+        if (!response.ok) {
+          if (response.status === 404) {
+            const err = new Error('Narration text not found.');
+            (err as Error & { missingFile?: string }).missingFile = filename;
+            throw err;
+          }
+          throw new Error('Failed to load narration.');
+        }
+        return response.text();
+      })
+      .then((text) => {
+        if (canceled) {
+          return;
+        }
+        setNarrationText(text.trim());
+      })
+      .catch((err: Error & { missingFile?: string }) => {
+        if (canceled) {
+          return;
+        }
+        setNarrationText('');
+        setMissingNarrationFile(err.missingFile ?? null);
+        setNarrationError(err.message || 'Unable to load narration text.');
+      })
+      .finally(() => {
+        if (!canceled) {
+          setNarrationLoading(false);
         }
       });
 
@@ -320,11 +388,12 @@ export default function ChapterViewer({
   }, [pollAudioJobStatus]);
 
   useEffect(() => {
-    if (!chapterText || !chapterNumber) {
+    const activeText = contentMode === 'narration' ? narrationText : chapterText;
+    if (!activeText || !chapterNumber) {
       onFirstParagraphReady(null);
       return;
     }
-    const paragraphs = chapterText
+    const paragraphs = activeText
       .split(/\n\s*\n/)
       .map((value) => value.trim())
       .filter(Boolean);
@@ -333,14 +402,14 @@ export default function ChapterViewer({
       return;
     }
     const firstParagraph = paragraphs[0];
-    const startIndex = chapterText.indexOf(firstParagraph);
-    const paragraphKey = `chapter-${chapterNumber}-${hashText(firstParagraph)}-${startIndex}`;
+    const startIndex = activeText.indexOf(firstParagraph);
+    const paragraphKey = `${contentMode}-${chapterNumber}-${hashText(firstParagraph)}-${startIndex}`;
     onFirstParagraphReady({
-      fullText: chapterText,
+      fullText: activeText,
       startIndex: Math.max(0, startIndex),
       key: paragraphKey
     });
-  }, [chapterNumber, chapterText, onFirstParagraphReady]);
+  }, [chapterNumber, chapterText, contentMode, narrationText, onFirstParagraphReady]);
   const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
   const canGenerateNarration = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
   const canGenerateAudio = Boolean(canGenerateNarration && chapterNarrationReady);
@@ -431,6 +500,7 @@ export default function ChapterViewer({
         throw new Error(`Narration generation failed: ${response.status}`);
       }
       setNarrationStatus('Narration saved.');
+      setLocalRefreshToken((prev) => prev + 1);
       await loadChapterAudioStatus();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to generate narration.';
@@ -498,20 +568,26 @@ export default function ChapterViewer({
     return `Pages ${start}-${end}`;
   }, [pageRange]);
 
+  const displayText = contentMode === 'narration' ? narrationText : chapterText;
+  const displayLoading = contentMode === 'narration' ? narrationLoading : loading;
+  const displayError = contentMode === 'narration' ? narrationError : error;
+  const displayMissingFile = contentMode === 'narration' ? missingNarrationFile : missingFile;
+  const contentModeLabel = contentMode === 'narration' ? 'Narration' : 'Chapter';
+
   const markdownComponents = useMemo(() => {
     const resolveStartIndex = (textValue: string, node?: any) => {
-      if (!chapterText) {
+      if (!displayText) {
         return 0;
       }
       const nodeOffset = node?.position?.start?.offset;
       if (typeof nodeOffset === 'number') {
-        const lineStart = chapterText.lastIndexOf('\n', nodeOffset - 1);
+        const lineStart = displayText.lastIndexOf('\n', nodeOffset - 1);
         return lineStart === -1 ? 0 : lineStart + 1;
       }
       if (textValue) {
-        const foundIndex = chapterText.indexOf(textValue);
+        const foundIndex = displayText.indexOf(textValue);
         if (foundIndex !== -1) {
-          const lineStart = chapterText.lastIndexOf('\n', foundIndex - 1);
+          const lineStart = displayText.lastIndexOf('\n', foundIndex - 1);
           return lineStart === -1 ? 0 : lineStart + 1;
         }
       }
@@ -523,7 +599,7 @@ export default function ChapterViewer({
         const textValue = extractTextFromNode(children ?? '').trim();
         const startIndex = resolveStartIndex(textValue, node);
         const paragraphKey = chapterNumber
-          ? `chapter-${chapterNumber}-${hashText(textValue)}-${startIndex}`
+          ? `${contentMode}-${chapterNumber}-${hashText(textValue)}-${startIndex}`
           : '';
         return (
           <Tag className="text-viewer-block">
@@ -534,7 +610,7 @@ export default function ChapterViewer({
                 className="text-paragraph-stream"
                 onClick={() =>
                   onPlayParagraphRef.current({
-                    fullText: chapterText,
+                    fullText: displayText,
                     startIndex,
                     key: paragraphKey
                   })
@@ -561,7 +637,7 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, chapterText]);
+  }, [chapterNumber, contentMode, displayText]);
 
   return (
     <div className="text-viewer" style={textStyle}>
@@ -572,6 +648,28 @@ export default function ChapterViewer({
         </div>
         {pageMeta ? <div className="text-viewer-meta">{pageMeta}</div> : null}
         <div className="text-viewer-actions">
+          {chapterNumber ? (
+            <div className="text-viewer-source segmented" role="tablist" aria-label="Displayed text source">
+              <button
+                type="button"
+                className={`segmented-item ${contentMode === 'chapter' ? 'segmented-item-active' : ''}`}
+                onClick={() => setContentMode('chapter')}
+                aria-selected={contentMode === 'chapter'}
+                role="tab"
+              >
+                Chapter
+              </button>
+              <button
+                type="button"
+                className={`segmented-item ${contentMode === 'narration' ? 'segmented-item-active' : ''}`}
+                onClick={() => setContentMode('narration')}
+                aria-selected={contentMode === 'narration'}
+                role="tab"
+              >
+                Narration
+              </button>
+            </div>
+          ) : null}
           <button
             type="button"
             className="button button-secondary"
@@ -601,19 +699,30 @@ export default function ChapterViewer({
             </button>
           ) : null}
           {chapterAudioReady && chapterAudioUrl ? (
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() =>
-                onPlayAudio({
-                  title: chapterTitle ?? `Chapter ${chapterNumber}`,
-                  subtitle: chapterNumber ? `Chapter ${chapterNumber}` : undefined,
-                  url: chapterAudioUrl
-                })
-              }
-            >
-              ▶ Play
-            </button>
+            <>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() =>
+                  onPlayAudio({
+                    title: chapterTitle ?? `Chapter ${chapterNumber}`,
+                    subtitle: chapterNumber ? `Chapter ${chapterNumber}` : undefined,
+                    url: chapterAudioUrl
+                  })
+                }
+              >
+                ▶ Play
+              </button>
+              <a
+                className="button button-secondary"
+                href={chapterAudioUrl}
+                download
+                aria-label="Download MP3 file"
+                title="Download MP3 file"
+              >
+                ↓
+              </a>
+            </>
           ) : null}
           {allowEdit && chapterNumber ? (
             <button
@@ -677,12 +786,17 @@ export default function ChapterViewer({
         {!tocLoading && !chapterNumber && (
           <p className="text-viewer-status">No table of contents found. Use Edit TOC to add chapters.</p>
         )}
-        {!tocLoading && chapterNumber && loading && (
-          <p className="text-viewer-status">Loading chapter text…</p>
+        {!tocLoading && chapterNumber && displayLoading && (
+          <p className="text-viewer-status">Loading {contentModeLabel.toLowerCase()} text…</p>
         )}
-        {!tocLoading && allowGenerate && chapterNumber && !loading && missingFile && (
+        {!tocLoading &&
+          allowGenerate &&
+          chapterNumber &&
+          contentMode === 'chapter' &&
+          !displayLoading &&
+          displayMissingFile && (
           <div className="text-viewer-action">
-            <p className="text-viewer-status">{missingFile} is missing. Generate it now?</p>
+            <p className="text-viewer-status">{displayMissingFile} is missing. Generate it now?</p>
             <button
               type="button"
               className="button"
@@ -693,26 +807,43 @@ export default function ChapterViewer({
             </button>
           </div>
         )}
-        {!tocLoading && chapterNumber && !loading && !missingFile && error && (
-          <p className="text-viewer-status">{error}</p>
+        {!tocLoading &&
+          chapterNumber &&
+          contentMode === 'narration' &&
+          !displayLoading &&
+          displayMissingFile && (
+          <div className="text-viewer-action">
+            <p className="text-viewer-status">{displayMissingFile} is missing. Generate it now?</p>
+            <button
+              type="button"
+              className="button"
+              onClick={() => void handleGenerateNarration()}
+              disabled={!canGenerateNarration || narrationGenerating}
+            >
+              {narrationGenerating ? 'Generating…' : 'Generate Narration'}
+            </button>
+          </div>
         )}
-        {!tocLoading && chapterNumber && !loading && !error && chapterText && (
+        {!tocLoading && chapterNumber && !displayLoading && !displayMissingFile && displayError && (
+          <p className="text-viewer-status">{displayError}</p>
+        )}
+        {!tocLoading && chapterNumber && !displayLoading && !displayError && displayText && (
           <div className="text-viewer-markdown">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {chapterText}
+              {displayText}
             </ReactMarkdown>
           </div>
         )}
         {!tocLoading &&
           chapterNumber &&
-          !loading &&
+          !displayLoading &&
           !generating &&
-          !missingFile &&
-          !error &&
-          !chapterText && (
-          <p className="text-viewer-status">Chapter text is empty.</p>
+          !displayMissingFile &&
+          !displayError &&
+          !displayText && (
+          <p className="text-viewer-status">{contentModeLabel} text is empty.</p>
         )}
-        {!tocLoading && allowGenerate && chapterNumber && !missingFile ? (
+        {!tocLoading && allowGenerate && chapterNumber && contentMode === 'chapter' && !missingFile ? (
           <div className="text-viewer-regenerate">
             <button
               type="button"
@@ -721,6 +852,18 @@ export default function ChapterViewer({
               disabled={!canGenerate || generating}
             >
               {generating ? 'Regenerating…' : 'Regenerate Chapter'}
+            </button>
+          </div>
+        ) : null}
+        {!tocLoading && chapterNumber && contentMode === 'narration' && chapterNarrationReady ? (
+          <div className="text-viewer-regenerate">
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => void handleGenerateNarration()}
+              disabled={!canGenerateNarration || narrationGenerating}
+            >
+              {narrationGenerating ? 'Regenerating…' : 'Regenerate Narration'}
             </button>
           </div>
         ) : null}
