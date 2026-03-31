@@ -5,6 +5,7 @@ import {CHAPTER_SPLIT_PROMPT} from '../config.js';
 import {createHttpError} from './errors.js';
 import {getOpenAI} from './openai.js';
 import {loadPageText} from './ocr.js';
+import {extractPlainTextFromOcrLayout} from './ocrLayout.js';
 
 const CHAPTER_PAD_LENGTH = 3;
 
@@ -78,7 +79,8 @@ export async function generateChapterText(bookId, pageStart, pageEnd, chapterNum
   const chunks = [];
   for (const imageUrl of imageUrls) {
     const { text } = await loadPageText(imageUrl);
-    const cleaned = typeof text === 'string' ? text.trim() : '';
+    const cleanedSource = extractPlainTextFromOcrLayout(text);
+    const cleaned = typeof cleanedSource === 'string' ? cleanedSource.trim() : '';
     chunks.push(cleaned);
   }
 
