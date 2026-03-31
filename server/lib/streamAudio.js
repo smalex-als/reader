@@ -9,7 +9,7 @@ import { STREAM_SERVER, STREAM_VOICE } from '../config.js';
 import { assertBookDirectory } from './books.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
-import { stripMarkdown } from './streamText.js';
+import { splitStreamChunks, stripMarkdown } from './streamText.js';
 
 const SAMPLE_RATE = 24_000;
 const CHANNEL_COUNT = 1;
@@ -174,37 +174,18 @@ async function streamTextToPcm(text, voice) {
 }
 
 function splitTextForStreaming(input) {
-  const text = input.trim();
-  if (text.length <= STREAM_TEXT_LIMIT) {
-    return [text];
-  }
-  const paragraphs = text.split(/\n\s*\n/).filter(Boolean);
-  const chunks = [];
-  let buffer = '';
-  for (const paragraph of paragraphs) {
-    const candidate = buffer ? `${buffer}\n\n${paragraph}` : paragraph;
-    if (candidate.length <= STREAM_TEXT_LIMIT) {
-      buffer = candidate;
-      continue;
+  return splitStreamChunks(input.trim(), 0).flatMap((chunk) => {
+    if (chunk.length <= STREAM_TEXT_LIMIT) {
+      return [chunk];
     }
-    if (buffer) {
-      chunks.push(buffer);
-      buffer = '';
-    }
-    if (paragraph.length <= STREAM_TEXT_LIMIT) {
-      buffer = paragraph;
-      continue;
-    }
+    const parts = [];
     let cursor = 0;
-    while (cursor < paragraph.length) {
-      chunks.push(paragraph.slice(cursor, cursor + STREAM_TEXT_LIMIT));
+    while (cursor < chunk.length) {
+      parts.push(chunk.slice(cursor, cursor + STREAM_TEXT_LIMIT).trim());
       cursor += STREAM_TEXT_LIMIT;
     }
-  }
-  if (buffer) {
-    chunks.push(buffer);
-  }
-  return chunks.filter((chunk) => chunk.length > 0);
+    return parts.filter((part) => part.length > 0);
+  });
 }
 
 export async function prepareChapterAudio({ bookId, chapterNumber }) {

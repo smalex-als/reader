@@ -1,4 +1,5 @@
 const STREAM_CHUNK_SIZE = 1000;
+const STREAM_CHUNK_LOOKAHEAD = 240;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
 const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\([^)]+\)/g;
 const HTML_TAG_PATTERN = /<[^>]+>/g;
@@ -217,32 +218,100 @@ export function stripMarkdown(text: string) {
   return output.trim();
 }
 
+function findSentenceBreakBackward(input: string, start: number, end: number) {
+  for (let index = Math.min(end - 1, input.length - 1); index >= start; index -= 1) {
+    const char = input[index];
+    if (char !== '.' && char !== '!' && char !== '?') {
+      continue;
+    }
+    const nextChar = input[index + 1] ?? '';
+    if (!nextChar || /\s|["')\]]/.test(nextChar)) {
+      return index + 1;
+    }
+  }
+  return -1;
+}
+
+function findBreakBackward(input: string, start: number, end: number) {
+  if (end <= start) {
+    return -1;
+  }
+  let index = input.lastIndexOf('\n\n', end - 1);
+  if (index >= start) {
+    return index + 2;
+  }
+  index = input.lastIndexOf('\n', end - 1);
+  if (index >= start) {
+    return index + 1;
+  }
+  index = findSentenceBreakBackward(input, start, end);
+  if (index >= start) {
+    return index;
+  }
+  index = input.lastIndexOf(' ', end - 1);
+  if (index >= start) {
+    return index + 1;
+  }
+  return -1;
+}
+
+function findBreakForward(input: string, idealEnd: number, maxEnd: number) {
+  if (maxEnd <= idealEnd) {
+    return -1;
+  }
+  let index = input.indexOf('\n\n', idealEnd);
+  if (index !== -1 && index < maxEnd) {
+    return index + 2;
+  }
+  index = input.indexOf('\n', idealEnd);
+  if (index !== -1 && index < maxEnd) {
+    return index + 1;
+  }
+  for (let cursor = idealEnd; cursor < maxEnd; cursor += 1) {
+    const char = input[cursor];
+    if (char !== '.' && char !== '!' && char !== '?') {
+      continue;
+    }
+    const nextChar = input[cursor + 1] ?? '';
+    if (!nextChar || /\s|["')\]]/.test(nextChar)) {
+      return cursor + 1;
+    }
+  }
+  index = input.indexOf(' ', idealEnd);
+  if (index !== -1 && index < maxEnd) {
+    return index + 1;
+  }
+  return -1;
+}
+
+function findChunkEnd(input: string, cursor: number, chunkSize: number, lookahead: number) {
+  const idealEnd = Math.min(cursor + chunkSize, input.length);
+  if (idealEnd >= input.length) {
+    return input.length;
+  }
+  const maxEnd = Math.min(input.length, idealEnd + lookahead);
+  const forwardBreak = findBreakForward(input, idealEnd, maxEnd);
+  if (forwardBreak > cursor) {
+    return forwardBreak;
+  }
+  const backwardBreak = findBreakBackward(input, cursor, idealEnd);
+  if (backwardBreak > cursor) {
+    return backwardBreak;
+  }
+  return idealEnd;
+}
+
 export function splitStreamChunks(text: string, startIndex: number) {
   const input = stripMarkdown(text.slice(Math.max(0, startIndex)));
   const chunks: string[] = [];
   let cursor = 0;
   while (cursor < input.length) {
-    const slice = input.slice(cursor, cursor + STREAM_CHUNK_SIZE);
-    if (cursor + STREAM_CHUNK_SIZE >= input.length) {
-      chunks.push(slice.trim());
-      break;
+    const chunkEnd = findChunkEnd(input, cursor, STREAM_CHUNK_SIZE, STREAM_CHUNK_LOOKAHEAD);
+    const chunk = input.slice(cursor, chunkEnd).trim();
+    if (chunk.length > 0) {
+      chunks.push(chunk);
     }
-    const breakWindow = slice.slice(Math.max(0, slice.length - 200));
-    let breakIndex = breakWindow.lastIndexOf('\n\n');
-    if (breakIndex === -1) {
-      breakIndex = breakWindow.lastIndexOf('\n');
-    }
-    if (breakIndex === -1) {
-      breakIndex = breakWindow.lastIndexOf(' ');
-    }
-    if (breakIndex === -1) {
-      breakIndex = slice.length;
-    } else {
-      breakIndex += Math.max(0, slice.length - 200);
-    }
-    const chunk = input.slice(cursor, cursor + breakIndex);
-    chunks.push(chunk.trim());
-    cursor += Math.max(1, breakIndex);
+    cursor = Math.max(cursor + 1, chunkEnd);
   }
-  return chunks.filter((chunk) => chunk.length > 0);
+  return chunks;
 }

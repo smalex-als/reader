@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stripMarkdown } from './streamText.js';
+import { splitStreamChunks, stripMarkdown } from './streamText.js';
 
 test('removes html table tags before speech cleanup', () => {
   const input =
@@ -115,4 +115,28 @@ test('preserves markdown line structure long enough to strip headings and bullet
     output,
     'Two examples are Google Places API reference 7 and Yelp business endpoints reference 8.\nData model\nRead volume is high because the following features are commonly used:\nSearch for nearby businesses.\nView the detailed information of a business.'
   );
+});
+
+test('prefers line breaks over mid-line chunk splits', () => {
+  const firstLine = 'A'.repeat(650);
+  const secondLine = 'B'.repeat(650);
+  const input = `${firstLine}\n${secondLine}`;
+
+  const output = splitStreamChunks(input, 0);
+
+  assert.equal(output.length, 2);
+  assert.equal(output[0], firstLine);
+  assert.equal(output[1], secondLine);
+});
+
+test('uses sentence endings before falling back to spaces', () => {
+  const firstSentence = 'A'.repeat(995) + '.';
+  const secondSentence = 'B'.repeat(400) + '.';
+  const input = `${firstSentence} ${secondSentence}`;
+
+  const output = splitStreamChunks(input, 0);
+
+  assert.equal(output.length, 2);
+  assert.equal(output[0], firstSentence);
+  assert.equal(output[1], secondSentence);
 });
