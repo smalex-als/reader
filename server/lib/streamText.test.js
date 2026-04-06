@@ -39,6 +39,25 @@ test('normalizes dollar-delimited math and simple operators', () => {
   assert.equal(output, 'Value is x sub 1 equals y to the power of 2 times 4 today.');
 });
 
+test('normalizes degree notation into speakable temperature text', () => {
+  const input = 'Preheat the oven to \\(200^{\\circ}C\\).';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'Preheat the oven to 200 degrees Celsius.');
+});
+
+test('normalizes plain degree symbols into speakable temperature text', () => {
+  const input = 'Bake at 180°C, then finish at 350°F or hold at 90°.';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(
+    output,
+    'Bake at 180 degrees Celsius, then finish at 350 degrees Fahrenheit or hold at 90 degrees.'
+  );
+});
+
 test('normalizes http api examples into speakable text', () => {
   const input = 'GET /v1/hotels/ID/rooms/ID Delete uses DELETE /v1/reservations/ID.';
 

@@ -175,6 +175,20 @@ function replaceFractions(input) {
   return output;
 }
 
+function speakTemperatureUnit(unit) {
+  const normalized = unit.toUpperCase();
+  if (normalized === 'C') {
+    return 'Celsius';
+  }
+  if (normalized === 'F') {
+    return 'Fahrenheit';
+  }
+  if (normalized === 'K') {
+    return 'Kelvin';
+  }
+  return unit;
+}
+
 function normalizeFormulaText(text) {
   let output = text;
 
@@ -187,6 +201,14 @@ function normalizeFormulaText(text) {
   }
 
   output = output.replace(/\\text\s*\{([^{}]*)\}/g, '$1');
+  output = output.replace(/\^\{\s*\\circ\s*\}\s*([CFK])\b/g, (_, unit) => {
+    return ` degrees ${speakTemperatureUnit(unit)}`;
+  });
+  output = output.replace(/\\circ\s*([CFK])\b/g, (_, unit) => {
+    return ` degrees ${speakTemperatureUnit(unit)}`;
+  });
+  output = output.replace(/\^\{\s*\\circ\s*\}/g, ' degrees');
+  output = output.replace(/\\circ\b/g, ' degrees');
   output = output.replace(/\[\s*(\d+)\s*,\s*(\d+)\s*\]/g, '$1 to $2');
   output = output.replace(/\\approx|\\sim/g, ' approximately ');
   output = output.replace(/\\times|\\cdot/g, ' times ');
@@ -211,12 +233,28 @@ function normalizeFormulaText(text) {
   return output.trim();
 }
 
+function normalizePlainTemperatureText(text) {
+  return text
+    .replace(/(\d+)\s*[°º]\s*([CFK])\b/g, (_, value, unit) => {
+      return `${value} degrees ${speakTemperatureUnit(unit)}`;
+    })
+    .replace(/(\d+)\s*[°º](?=[\s.,:;!?)]|$)/g, '$1 degrees');
+}
+
+function normalizeSpokenTemperatureUnits(text) {
+  return text.replace(/\bdegrees\s+([CFK])\b/g, (_, unit) => {
+    return `degrees ${speakTemperatureUnit(unit)}`;
+  });
+}
+
 export function stripMarkdown(text) {
   let output = removeExcludedOcrBlocks(text);
   output = normalizeApiExamples(output);
   output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
     normalizeFormulaText(inlineRound || inlineSquare || inlineDollar || '')
   );
+  output = normalizePlainTemperatureText(output);
+  output = normalizeSpokenTemperatureUnits(output);
   output = output.replace(NUMERIC_CITATION_PATTERN, (_, refs) => `reference ${refs.replace(/\s*,\s*/g, ', ')}`);
   output = output.replace(/```[\s\S]*?```/g, '');
   output = output.replace(/`[^`]*`/g, '');
