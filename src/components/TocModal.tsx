@@ -1,8 +1,10 @@
 import type { TocEntry } from '@/types/app';
+import { getDetailedTocLevel } from '@/lib/toc';
 
 interface TocModalProps {
   open: boolean;
   entries: TocEntry[];
+  variant: 'main' | 'detailed';
   loading: boolean;
   generating: boolean;
   saving: boolean;
@@ -10,8 +12,9 @@ interface TocModalProps {
   chapterGeneratingIndex: number | null;
   allowGenerate: boolean;
   onClose: () => void;
-  onGenerate: () => void;
-  onSave: () => void;
+  onVariantChange: (variant: 'main' | 'detailed') => void;
+  onGenerate: (variant: 'main' | 'detailed') => void;
+  onSave: (variant: 'main' | 'detailed') => void;
   onAddEntry: () => void;
   onRemoveEntry: (index: number) => void;
   onUpdateEntry: (index: number, next: TocEntry) => void;
@@ -21,6 +24,7 @@ interface TocModalProps {
 export default function TocModal({
   open,
   entries,
+  variant,
   loading,
   generating,
   saving,
@@ -28,6 +32,7 @@ export default function TocModal({
   chapterGeneratingIndex,
   allowGenerate,
   onClose,
+  onVariantChange,
   onGenerate,
   onSave,
   onAddEntry,
@@ -44,7 +49,7 @@ export default function TocModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+      <div className="modal modal-toc">
         <header className="modal-header">
           <h2 className="modal-title">Edit Table of Contents</h2>
           <button type="button" className="button button-ghost" onClick={onClose}>
@@ -57,16 +62,50 @@ export default function TocModal({
             <p className="modal-status">No table of contents entries yet.</p>
           )}
           <div className="modal-toolbar">
+            <button
+              type="button"
+              className={variant === 'main' ? 'button button-primary' : 'button button-secondary'}
+              onClick={() => onVariantChange('main')}
+              disabled={busy}
+            >
+              Main TOC
+            </button>
+            <button
+              type="button"
+              className={variant === 'detailed' ? 'button button-primary' : 'button button-secondary'}
+              onClick={() => onVariantChange('detailed')}
+              disabled={busy}
+            >
+              Detailed TOC
+            </button>
+          </div>
+          <div className="modal-toolbar">
             <button type="button" className="button" onClick={onAddEntry} disabled={busy}>
               Add Entry
             </button>
-            <button type="button" className="button" onClick={onGenerate} disabled={busy || !allowGenerate}>
-              {generating ? 'Generating…' : 'Generate from OCR'}
+            <button
+              type="button"
+              className="button"
+              onClick={() => onGenerate(variant)}
+              disabled={busy || !allowGenerate}
+            >
+              {generating
+                ? 'Generating…'
+                : variant === 'detailed'
+                  ? 'Generate Detailed TOC'
+                  : 'Generate from OCR'}
             </button>
           </div>
           <div className="toc-list">
             {entries.map((entry, index) => (
-              <div key={index} className="toc-row">
+              <div
+                key={index}
+                className={`toc-row ${
+                  variant === 'detailed' ? 'toc-row-detailed ' : ''
+                }${
+                  variant === 'detailed' ? `toc-row-level-${getDetailedTocLevel(entries, index)}` : ''
+                }`}
+              >
                 <label className="toc-field">
                   Title
                   <input
@@ -80,6 +119,25 @@ export default function TocModal({
                     disabled={busy}
                   />
                 </label>
+                {variant === 'detailed' ? (
+                  <label className="toc-field toc-level">
+                    Level
+                    <select
+                      className="input"
+                      value={entry.level ?? 0}
+                      onChange={(event) => {
+                        const raw = Number.parseInt(event.target.value, 10);
+                        const level = Number.isInteger(raw) ? Math.max(0, Math.min(raw, 2)) : 0;
+                        onUpdateEntry(index, { ...entry, level });
+                      }}
+                      disabled={busy}
+                    >
+                      <option value={0}>Level 0</option>
+                      <option value={1}>Level 1</option>
+                      <option value={2}>Level 2</option>
+                    </select>
+                  </label>
+                ) : null}
                 <label className="toc-field toc-page">
                   Page
                   <input
@@ -118,7 +176,12 @@ export default function TocModal({
           </div>
         </section>
         <footer className="modal-footer">
-          <button type="button" className="button button-secondary" onClick={onSave} disabled={busy}>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => onSave(variant)}
+            disabled={busy}
+          >
             {saving ? 'Saving…' : 'Save'}
           </button>
           <button type="button" className="button button-primary" onClick={onClose} disabled={busy}>

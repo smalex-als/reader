@@ -11,7 +11,7 @@ LOCAL_TO_REMOTE_FLAGS="${LOCAL_TO_REMOTE_FLAGS:--av --update}"
 mkdir -p "${DATA_DIR}"
 
 echo "Syncing remote -> local: ${REMOTE_TARGET} -> ${DATA_DIR}"
-#rsync ${REMOTE_TO_LOCAL_FLAGS} "${REMOTE_TARGET}" "${DATA_DIR}/"
+rsync ${REMOTE_TO_LOCAL_FLAGS} "${REMOTE_TARGET}" "${DATA_DIR}/"
 
 #echo "Syncing local -> remote: ${DATA_DIR} -> ${REMOTE_TARGET}"
 #rsync ${LOCAL_TO_REMOTE_FLAGS} "${DATA_DIR}/" "${REMOTE_TARGET}"

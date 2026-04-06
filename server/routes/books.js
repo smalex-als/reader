@@ -201,20 +201,24 @@ router.delete('/api/books/:id/bookmarks', asyncHandler(async (req, res) => {
 
 router.get('/api/books/:id/toc', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
-  const toc = await loadToc(bookId);
+  const variant = req.query.variant === 'detailed' ? 'detailed' : 'main';
+  const toc = await loadToc(bookId, { variant });
   res.json({ book: bookId, toc });
 }));
 
 router.post('/api/books/:id/toc', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const { toc } = req.body || {};
-  const saved = await saveToc(bookId, toc);
+  const variant = req.query.variant === 'detailed' ? 'detailed' : 'main';
+  const saved = await saveToc(bookId, toc, { variant });
   res.json({ book: bookId, toc: saved });
 }));
 
 router.post('/api/books/:id/toc/generate', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
-  const toc = await generateTocFromOcr(bookId);
+  const variant = req.query.variant === 'detailed' ? 'detailed' : 'main';
+  const detailLevel = req.query.detailLevel === 'detailed' ? 'detailed' : 'normal';
+  const toc = await generateTocFromOcr(bookId, { variant, detailLevel });
   res.json({ book: bookId, toc });
 }));
 

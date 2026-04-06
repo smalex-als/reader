@@ -1454,6 +1454,10 @@ body {
   max-height: min(92vh, 900px);
 }
 
+.modal-toc {
+  max-height: min(90vh, 860px);
+}
+
 .modal-header,
 .modal-footer {
   padding: 1rem 1.25rem;
@@ -1681,6 +1685,25 @@ body {
   background: rgba(10, 18, 28, 0.28);
 }
 
+.toc-row-detailed {
+  grid-template-columns: minmax(180px, 1fr) 140px 120px auto auto;
+}
+
+.toc-row-level-1 {
+  margin-left: 1rem;
+  background: rgba(10, 18, 28, 0.2);
+}
+
+.toc-row-level-2 {
+  margin-left: 2rem;
+  background: rgba(10, 18, 28, 0.16);
+}
+
+.toc-row-level-1 .toc-field,
+.toc-row-level-2 .toc-field {
+  color: rgba(213, 229, 242, 0.52);
+}
+
 .toc-field {
   display: flex;
   flex-direction: column;
@@ -1695,6 +1718,10 @@ body {
   max-width: 120px;
 }
 
+.toc-level .input {
+  max-width: 140px;
+}
+
 .toc-nav-list {
   list-style: none;
   margin: 0;
@@ -1706,6 +1733,14 @@ body {
 
 .toc-nav-item {
   display: flex;
+}
+
+.toc-nav-item-level-1 {
+  padding-left: 1rem;
+}
+
+.toc-nav-item-level-2 {
+  padding-left: 2rem;
 }
 
 .toc-nav-button {
@@ -1723,14 +1758,66 @@ body {
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
+.toc-nav-item-level-1 .toc-nav-button,
+.toc-nav-item-level-2 .toc-nav-button {
+  position: relative;
+}
+
+.toc-nav-item-level-1 .toc-nav-button::before,
+.toc-nav-item-level-2 .toc-nav-button::before {
+  content: '';
+  position: absolute;
+  left: 0.9rem;
+  top: 50%;
+  width: 0.45rem;
+  height: 1px;
+  background: rgba(120, 190, 255, 0.7);
+  transform: translateY(-50%);
+}
+
+.toc-nav-item-level-1 .toc-nav-button {
+  padding-left: 1.7rem;
+  background: rgba(10, 18, 28, 0.24);
+}
+
+.toc-nav-item-level-2 .toc-nav-button {
+  padding-left: 2rem;
+  background: rgba(10, 18, 28, 0.18);
+}
+
 .toc-nav-button:hover {
   background: rgba(213, 229, 242, 0.08);
   border-color: rgba(0, 120, 255, 0.45);
 }
 
+.toc-nav-button-active {
+  background: rgba(0, 120, 255, 0.16);
+  border-color: rgba(90, 170, 255, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(90, 170, 255, 0.18);
+}
+
+.toc-nav-button-active:hover {
+  background: rgba(0, 120, 255, 0.2);
+  border-color: rgba(120, 190, 255, 0.9);
+}
+
+.toc-nav-button-active .toc-nav-title {
+  color: rgba(232, 242, 255, 0.98);
+}
+
+.toc-nav-button-active .toc-nav-page {
+  color: rgba(160, 210, 255, 0.92);
+}
+
 .toc-nav-title {
   font-weight: 600;
   text-align: left;
+}
+
+.toc-nav-item-level-1 .toc-nav-title,
+.toc-nav-item-level-2 .toc-nav-title {
+  font-weight: 500;
+  font-size: 0.96rem;
 }
 
 .toc-nav-page {

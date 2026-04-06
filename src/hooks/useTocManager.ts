@@ -20,6 +20,8 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
   const [tocOpen, setTocOpen] = useState(false);
   const [tocManageOpen, setTocManageOpen] = useState(false);
   const [tocEntries, setTocEntries] = useState<TocEntry[]>([]);
+  const [detailedTocEntries, setDetailedTocEntries] = useState<TocEntry[]>([]);
+  const [tocVariant, setTocVariant] = useState<'main' | 'detailed'>('main');
   const [tocLoading, setTocLoading] = useState(false);
   const [tocGenerating, setTocGenerating] = useState(false);
   const [tocSaving, setTocSaving] = useState(false);
@@ -30,6 +32,11 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
       .filter((entry) => Number.isInteger(entry.page))
       .sort((a, b) => a.page - b.page);
   }, [tocEntries]);
+  const sortedDetailedTocEntries = useMemo(() => {
+    return [...detailedTocEntries]
+      .filter((entry) => Number.isInteger(entry.page))
+      .sort((a, b) => a.page - b.page);
+  }, [detailedTocEntries]);
 
   const loadToc = useCallback(async () => {
     if (!bookId) {
@@ -37,10 +44,14 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     }
     setTocLoading(true);
     try {
-      const data = await fetchJson<{ toc: TocEntry[] }>(
-        `/api/books/${encodeURIComponent(bookId)}/toc`
-      );
-      setTocEntries(Array.isArray(data.toc) ? data.toc : []);
+      const [mainData, detailedData] = await Promise.all([
+        fetchJson<{ toc: TocEntry[] }>(`/api/books/${encodeURIComponent(bookId)}/toc`),
+        fetchJson<{ toc: TocEntry[] }>(
+          `/api/books/${encodeURIComponent(bookId)}/toc?variant=detailed`
+        )
+      ]);
+      setTocEntries(Array.isArray(mainData.toc) ? mainData.toc : []);
+      setDetailedTocEntries(Array.isArray(detailedData.toc) ? detailedData.toc : []);
     } catch (error) {
       console.error(error);
       showToast('Unable to load table of contents', 'error');
@@ -49,59 +60,97 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     }
   }, [bookId, showToast]);
 
-  const handleGenerateToc = useCallback(async () => {
+  const handleGenerateToc = useCallback(async (variant: 'main' | 'detailed' = 'main') => {
     if (!bookId) {
       return;
     }
     setTocGenerating(true);
     try {
       const response = await fetchJson<{ toc: TocEntry[] }>(
-        `/api/books/${encodeURIComponent(bookId)}/toc/generate`,
+        `/api/books/${encodeURIComponent(bookId)}/toc/generate?variant=${variant}${
+          variant === 'detailed' ? '&detailLevel=detailed' : ''
+        }`,
         { method: 'POST' }
       );
-      setTocEntries(Array.isArray(response.toc) ? response.toc : []);
-      showToast('Table of contents generated', 'success');
+      if (variant === 'detailed') {
+        setDetailedTocEntries(Array.isArray(response.toc) ? response.toc : []);
+        setTocVariant('detailed');
+        showToast('Detailed table of contents generated', 'success');
+      } else {
+        setTocEntries(Array.isArray(response.toc) ? response.toc : []);
+        setTocVariant('main');
+        showToast('Table of contents generated', 'success');
+      }
     } catch (error) {
       console.error(error);
-      showToast('Unable to generate table of contents', 'error');
+      showToast(
+        variant === 'detailed'
+          ? 'Unable to generate detailed table of contents'
+          : 'Unable to generate table of contents',
+        'error'
+      );
     } finally {
       setTocGenerating(false);
     }
   }, [bookId, showToast]);
 
-  const handleSaveToc = useCallback(async () => {
+  const handleSaveToc = useCallback(async (variant: 'main' | 'detailed' = 'main') => {
     if (!bookId) {
       return;
     }
     setTocSaving(true);
     try {
       const response = await fetchJson<{ toc: TocEntry[] }>(
-        `/api/books/${encodeURIComponent(bookId)}/toc`,
+        `/api/books/${encodeURIComponent(bookId)}/toc${
+          variant === 'detailed' ? '?variant=detailed' : ''
+        }`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ toc: tocEntries })
+          body: JSON.stringify({ toc: variant === 'detailed' ? detailedTocEntries : tocEntries })
         }
       );
-      setTocEntries(Array.isArray(response.toc) ? response.toc : []);
-      showToast('Table of contents saved', 'success');
+      if (variant === 'detailed') {
+        setDetailedTocEntries(Array.isArray(response.toc) ? response.toc : []);
+        showToast('Detailed table of contents saved', 'success');
+      } else {
+        setTocEntries(Array.isArray(response.toc) ? response.toc : []);
+        showToast('Table of contents saved', 'success');
+      }
     } catch (error) {
       console.error(error);
-      showToast('Unable to save table of contents', 'error');
+      showToast(
+        variant === 'detailed'
+          ? 'Unable to save detailed table of contents'
+          : 'Unable to save table of contents',
+        'error'
+      );
     } finally {
       setTocSaving(false);
     }
-  }, [bookId, showToast, tocEntries]);
+  }, [bookId, detailedTocEntries, showToast, tocEntries]);
 
-  const handleAddTocEntry = useCallback((currentPage: number) => {
+  const handleAddTocEntry = useCallback((currentPage: number, variant: 'main' | 'detailed' = 'main') => {
+    if (variant === 'detailed') {
+      setDetailedTocEntries((prev) => [...prev, { title: '', page: currentPage }]);
+      return;
+    }
     setTocEntries((prev) => [...prev, { title: '', page: currentPage }]);
   }, []);
 
-  const handleRemoveTocEntry = useCallback((index: number) => {
+  const handleRemoveTocEntry = useCallback((index: number, variant: 'main' | 'detailed' = 'main') => {
+    if (variant === 'detailed') {
+      setDetailedTocEntries((prev) => prev.filter((_, idx) => idx !== index));
+      return;
+    }
     setTocEntries((prev) => prev.filter((_, idx) => idx !== index));
   }, []);
 
-  const handleUpdateTocEntry = useCallback((index: number, next: TocEntry) => {
+  const handleUpdateTocEntry = useCallback((index: number, next: TocEntry, variant: 'main' | 'detailed' = 'main') => {
+    if (variant === 'detailed') {
+      setDetailedTocEntries((prev) => prev.map((entry, idx) => (idx === index ? next : entry)));
+      return;
+    }
     setTocEntries((prev) => prev.map((entry, idx) => (idx === index ? next : entry)));
   }, []);
 
@@ -167,6 +216,8 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
 
   useEffect(() => {
     setTocEntries([]);
+    setDetailedTocEntries([]);
+    setTocVariant('main');
     setTocOpen(false);
     setTocManageOpen(false);
   }, [bookId]);
@@ -184,7 +235,12 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     setTocManageOpen,
     tocEntries,
     setTocEntries,
+    detailedTocEntries,
+    setDetailedTocEntries,
+    tocVariant,
+    setTocVariant,
     sortedTocEntries,
+    sortedDetailedTocEntries,
     tocLoading,
     tocGenerating,
     tocSaving,

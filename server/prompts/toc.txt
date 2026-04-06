@@ -1,11 +1,15 @@
 You are creating a table of contents from OCR snippets per page.
 
-You will be given a list of page numbers and OCR text snippets. Identify likely section or chapter titles and the page where they begin.
+You will be given a detail level and a list of page numbers and OCR text snippets. Identify likely section or chapter titles and the page where they begin.
 
 Rules:
 - Output strict JSON only (no markdown, no extra text).
 - Return an array of objects with shape: {"title": string, "page": number}.
 - Page numbers are 1-based and must match the input pages.
 - Keep titles concise and faithful to the text.
-- Prefer fewer, higher-quality entries over too many.
+- If detailLevel is "normal", prefer fewer, higher-quality entries over too many.
+- If detailLevel is "detailed", return a much more granular navigation outline with subsection-level entries when the page text clearly supports it.
+- For detailed output, include a level field: {"title": string, "page": number, "level": number}.
+- Use level 0 for top-level sections, level 1 for subsections, and level 2 for deeper sub-subsections.
+- For detailed output, still avoid noise: do not create entries for running headers, repeated footers, or weak guesses.
 - If no clear structure exists, return [].

@@ -1,27 +1,44 @@
+import { useEffect, useRef } from 'react';
 import type { TocEntry } from '@/types/app';
+import { getDetailedTocLevel } from '@/lib/toc';
 
 interface TocNavModalProps {
   open: boolean;
   entries: TocEntry[];
+  variant: 'main' | 'detailed';
   loading: boolean;
+  currentPage: number;
   onClose: () => void;
+  onVariantChange: (variant: 'main' | 'detailed') => void;
   onGoToPage: (pageIndex: number) => void;
 }
 
 export default function TocNavModal({
   open,
   entries,
+  variant,
   loading,
+  currentPage,
   onClose,
+  onVariantChange,
   onGoToPage
 }: TocNavModalProps) {
+  const activeEntryRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!open || loading) {
+      return;
+    }
+    activeEntryRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [open, loading, currentPage, variant, entries]);
+
   if (!open) {
     return null;
   }
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+      <div className="modal modal-toc">
         <header className="modal-header">
           <h2 className="modal-title">Table of Contents</h2>
           <button type="button" className="button button-ghost" onClick={onClose}>
@@ -33,19 +50,49 @@ export default function TocNavModal({
           {!loading && entries.length === 0 && (
             <p className="modal-status">No table of contents entries yet.</p>
           )}
+          <div className="modal-toolbar">
+            <button
+              type="button"
+              className={variant === 'main' ? 'button button-primary' : 'button button-secondary'}
+              onClick={() => onVariantChange('main')}
+            >
+              Main TOC
+            </button>
+            <button
+              type="button"
+              className={variant === 'detailed' ? 'button button-primary' : 'button button-secondary'}
+              onClick={() => onVariantChange('detailed')}
+            >
+              Detailed TOC
+            </button>
+          </div>
           <ul className="toc-nav-list">
-            {entries.map((entry, index) => (
-              <li key={`${entry.title}-${entry.page}-${index}`} className="toc-nav-item">
-                <button
-                  type="button"
-                  className="toc-nav-button"
-                  onClick={() => onGoToPage(entry.page)}
+            {entries.map((entry, index) => {
+              const nextEntry = entries[index + 1] ?? null;
+              const isActive =
+                currentPage >= entry.page && (!nextEntry || currentPage < nextEntry.page);
+              return (
+                <li
+                  key={`${entry.title}-${entry.page}-${index}`}
+                  className={`toc-nav-item ${
+                    variant === 'detailed'
+                      ? `toc-nav-item-level-${getDetailedTocLevel(entries, index)}`
+                      : ''
+                  }`}
                 >
-                  <span className="toc-nav-title">{entry.title}</span>
-                  <span className="toc-nav-page">Page {entry.page + 1}</span>
-                </button>
-              </li>
-            ))}
+                  <button
+                    type="button"
+                    className={`toc-nav-button ${isActive ? 'toc-nav-button-active' : ''}`}
+                    onClick={() => onGoToPage(entry.page)}
+                    aria-current={isActive ? 'page' : undefined}
+                    ref={isActive ? activeEntryRef : null}
+                  >
+                    <span className="toc-nav-title">{entry.title}</span>
+                    <span className="toc-nav-page">Page {entry.page + 1}</span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
         <footer className="modal-footer">

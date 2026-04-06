@@ -203,7 +203,11 @@ export default function App() {
     setTocManageOpen,
     tocEntries,
     setTocEntries,
+    detailedTocEntries,
+    tocVariant,
+    setTocVariant,
     sortedTocEntries,
+    sortedDetailedTocEntries,
     tocLoading,
     tocGenerating,
     tocSaving,
@@ -223,6 +227,9 @@ export default function App() {
   useEffect(() => {
     tocEntriesRef.current = setTocEntries;
   }, [setTocEntries]);
+  const visibleTocEntries = tocVariant === 'detailed' ? detailedTocEntries : tocEntries;
+  const visibleSortedTocEntries =
+    tocVariant === 'detailed' ? sortedDetailedTocEntries : sortedTocEntries;
   const currentChapterIndex = useMemo(() => {
     if (isTextBook) {
       return navigationCount > 0 ? currentPage : null;
@@ -926,9 +933,12 @@ export default function App() {
     },
     tocNavModalProps: {
       open: tocOpen,
-      entries: tocEntries,
+      entries: visibleSortedTocEntries,
+      variant: tocVariant,
       loading: tocLoading,
+      currentPage,
       onClose: () => setTocOpen(false),
+      onVariantChange: setTocVariant,
       onGoToPage: (pageIndex: number) => {
         setTocOpen(false);
         renderPage(pageIndex);
@@ -936,7 +946,8 @@ export default function App() {
     },
     tocModalProps: {
       open: tocManageOpen,
-      entries: tocEntries,
+      entries: visibleTocEntries,
+      variant: tocVariant,
       loading: tocLoading,
       generating: tocGenerating,
       saving: tocSaving,
@@ -944,11 +955,13 @@ export default function App() {
       chapterGeneratingIndex,
       allowGenerate: !isTextBook,
       onClose: () => setTocManageOpen(false),
+      onVariantChange: setTocVariant,
       onGenerate: handleGenerateToc,
       onSave: handleSaveToc,
-      onAddEntry: () => handleAddTocEntry(currentPage),
-      onRemoveEntry: handleRemoveTocEntry,
-      onUpdateEntry: handleUpdateTocEntry,
+      onAddEntry: () => handleAddTocEntry(currentPage, tocVariant),
+      onRemoveEntry: (index: number) => handleRemoveTocEntry(index, tocVariant),
+      onUpdateEntry: (index: number, next: TocEntry) =>
+        handleUpdateTocEntry(index, next, tocVariant),
       onGenerateChapter: handleGenerateChapter
     },
     ocrQueueModalProps: {

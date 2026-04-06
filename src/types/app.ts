@@ -27,6 +27,7 @@ export interface Bookmark {
 export interface TocEntry {
   title: string;
   page: number;
+  level?: number;
 }
 
 export interface AudioCacheEntry {

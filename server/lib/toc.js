@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { TOC_FILENAME, TOC_PROMPT } from '../config.js';
+import { DETAILED_TOC_FILENAME, TOC_FILENAME, TOC_PROMPT } from '../config.js';
 import { assertBookDirectory, getBookType, loadManifest } from './books.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
@@ -33,9 +33,26 @@ function sanitizeTocEntry(raw, maxPageIndex) {
   return { title, page };
 }
 
-export async function loadToc(bookId) {
+function sanitizeDetailedTocEntry(raw, maxPageIndex) {
+  const entry = sanitizeTocEntry(raw, maxPageIndex);
+  if (!entry) {
+    return null;
+  }
+  const level = Number.parseInt(raw?.level, 10);
+  if (!Number.isInteger(level)) {
+    return { ...entry, level: 0 };
+  }
+  return { ...entry, level: Math.max(0, Math.min(level, 2)) };
+}
+
+function getTocFilename(variant = 'main') {
+  return variant === 'detailed' ? DETAILED_TOC_FILENAME : TOC_FILENAME;
+}
+
+export async function loadToc(bookId, options = {}) {
+  const variant = options?.variant === 'detailed' ? 'detailed' : 'main';
   const directory = await assertBookDirectory(bookId);
-  const filePath = path.join(directory, TOC_FILENAME);
+  const filePath = path.join(directory, getTocFilename(variant));
   const stat = await safeStat(filePath);
   if (!stat?.isFile()) {
     return [];
@@ -51,20 +68,23 @@ export async function loadToc(bookId) {
     // ignore parse failures and fall back to empty list
   }
   const maxPageIndex = await getTocMaxIndex(bookId);
+  const sanitizeEntry = variant === 'detailed' ? sanitizeDetailedTocEntry : sanitizeTocEntry;
   return parsed
-    .map((entry) => sanitizeTocEntry(entry, maxPageIndex))
+    .map((entry) => sanitizeEntry(entry, maxPageIndex))
     .filter(Boolean)
     .sort((a, b) => a.page - b.page);
 }
 
-export async function saveToc(bookId, toc) {
+export async function saveToc(bookId, toc, options = {}) {
+  const variant = options?.variant === 'detailed' ? 'detailed' : 'main';
   const directory = await assertBookDirectory(bookId);
   const maxPageIndex = await getTocMaxIndex(bookId);
+  const sanitizeEntry = variant === 'detailed' ? sanitizeDetailedTocEntry : sanitizeTocEntry;
   const normalized = (Array.isArray(toc) ? toc : [])
-    .map((entry) => sanitizeTocEntry(entry, maxPageIndex))
+    .map((entry) => sanitizeEntry(entry, maxPageIndex))
     .filter(Boolean)
     .sort((a, b) => a.page - b.page);
-  const filePath = path.join(directory, TOC_FILENAME);
+  const filePath = path.join(directory, getTocFilename(variant));
   await fs.mkdir(directory, { recursive: true });
   await fs.writeFile(filePath, JSON.stringify(normalized, null, 2), 'utf8');
   return normalized;
@@ -87,7 +107,9 @@ function extractJsonArray(text) {
   }
 }
 
-export async function generateTocFromOcr(bookId) {
+export async function generateTocFromOcr(bookId, options = {}) {
+  const variant = options?.variant === 'detailed' ? 'detailed' : 'main';
+  const detailLevel = options?.detailLevel === 'detailed' ? 'detailed' : 'normal';
   const bookType = await getBookType(bookId);
   if (bookType === 'text') {
     throw createHttpError(400, 'TOC generation requires scanned pages');
@@ -130,7 +152,7 @@ export async function generateTocFromOcr(bookId) {
         role: 'user',
         content: [
           { type: 'input_text', text: TOC_PROMPT },
-          { type: 'input_text', text: JSON.stringify({ pages: snippets }) }
+          { type: 'input_text', text: JSON.stringify({ detailLevel, pages: snippets }) }
         ]
       }
     ]
@@ -154,6 +176,7 @@ export async function generateTocFromOcr(bookId) {
       }
       const title = typeof entry.title === 'string' ? entry.title.trim() : '';
       const page = Number.parseInt(entry.page, 10);
+      const level = Number.parseInt(entry.level, 10);
       if (!title || !Number.isInteger(page)) {
         return null;
       }
@@ -161,10 +184,17 @@ export async function generateTocFromOcr(bookId) {
       if (pageIndex < 0 || pageIndex > maxPageIndex) {
         return null;
       }
+      if (variant === 'detailed') {
+        return {
+          title,
+          page: pageIndex,
+          level: Number.isInteger(level) ? Math.max(0, Math.min(level, 2)) : 0
+        };
+      }
       return { title, page: pageIndex };
     })
     .filter(Boolean)
     .sort((a, b) => a.page - b.page);
 
-  return saveToc(bookId, normalized);
+  return saveToc(bookId, normalized, { variant });
 }
