@@ -24,12 +24,35 @@ export default function TocNavModal({
   onGoToPage
 }: TocNavModalProps) {
   const activeEntryRef = useRef<HTMLButtonElement | null>(null);
+  const modalBodyRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open || loading) {
       return;
     }
-    activeEntryRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const activeEntry = activeEntryRef.current;
+    if (!activeEntry) {
+      return;
+    }
+    if (variant === 'detailed') {
+      const container = modalBodyRef.current;
+      if (!container) {
+        return;
+      }
+      const containerRect = container.getBoundingClientRect();
+      const entryRect = activeEntry.getBoundingClientRect();
+      const targetTop =
+        container.scrollTop +
+        (entryRect.top - containerRect.top) -
+        container.clientHeight / 2 +
+        entryRect.height / 2;
+      container.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: 'auto'
+      });
+      return;
+    }
+    activeEntry.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [open, loading, currentPage, variant, entries]);
 
   if (!open) {
@@ -45,7 +68,7 @@ export default function TocNavModal({
             Close
           </button>
         </header>
-        <section className="modal-body">
+        <section ref={modalBodyRef} className="modal-body">
           {loading && <p className="modal-status">Loading table of contents…</p>}
           {!loading && entries.length === 0 && (
             <p className="modal-status">No table of contents entries yet.</p>
