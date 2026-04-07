@@ -1,11 +1,18 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime-types';
+import { OpenAI } from 'openai';
 import {
   getTextPrompt,
   OCR_BACKEND,
+  OCR_DEEPSEEK_API_STYLE,
   OCR_DEEPSEEK_HOST,
   OCR_DEEPSEEK_MODEL,
+  OCR_DEEPSEEK_OPENAI_API_KEY,
+  OCR_DEEPSEEK_OPENAI_BASE_URL,
+  OCR_DEEPSEEK_OPENAI_EXTRA_BODY,
+  OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
+  OCR_DEEPSEEK_OPENAI_MODEL,
   OCR_DEEPSEEK_PATH,
   OCR_DEEPSEEK_PROMPT
 } from '../config.js';
@@ -25,7 +32,66 @@ function resolveDeepseekOcrUrl() {
   return new URL(OCR_DEEPSEEK_PATH, OCR_DEEPSEEK_HOST).toString();
 }
 
+function parseDeepseekOpenAiExtraBody() {
+  if (!OCR_DEEPSEEK_OPENAI_EXTRA_BODY.trim()) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(OCR_DEEPSEEK_OPENAI_EXTRA_BODY);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('must be a JSON object');
+    }
+    return parsed;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'invalid JSON';
+    throw createHttpError(500, `OCR_DEEPSEEK_OPENAI_EXTRA_BODY ${message}`);
+  }
+}
+
+async function extractTextFromDeepseekOpenAiCompatible(absolute) {
+  const buffer = await fs.readFile(absolute);
+  const mimeType = mime.lookup(absolute) || 'application/octet-stream';
+  const imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+
+  const client = new OpenAI({
+    apiKey: OCR_DEEPSEEK_OPENAI_API_KEY,
+    baseURL: OCR_DEEPSEEK_OPENAI_BASE_URL
+  });
+
+  const response = await client.chat.completions.create({
+    model: OCR_DEEPSEEK_OPENAI_MODEL,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: imageUrl }
+          },
+          {
+            type: 'text',
+            text: OCR_DEEPSEEK_PROMPT
+          }
+        ]
+      }
+    ],
+    max_tokens: OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
+    temperature: 0,
+    extra_body: parseDeepseekOpenAiExtraBody()
+  });
+
+  const text = response.choices?.[0]?.message?.content?.trim() || '';
+  if (!text) {
+    throw createHttpError(502, 'Deepseek OpenAI-compatible OCR returned empty text');
+  }
+  return text;
+}
+
 async function extractTextFromDeepseekOcr(absolute) {
+  if (OCR_DEEPSEEK_API_STYLE === 'openai') {
+    return extractTextFromDeepseekOpenAiCompatible(absolute);
+  }
+
   const buffer = await fs.readFile(absolute);
   const requestBody = JSON.stringify({
     model: OCR_DEEPSEEK_MODEL,
