@@ -6,6 +6,7 @@ import {
   OCR_BACKEND,
   OCR_DEEPSEEK_API_STYLE,
   OCR_DEEPSEEK_HOST,
+  OCR_DEEPSEEK_DEBUG,
   OCR_DEEPSEEK_MODEL,
   OCR_DEEPSEEK_OPENAI_API_KEY,
   OCR_DEEPSEEK_OPENAI_BASE_URL,
@@ -54,6 +55,68 @@ function parseDeepseekOpenAiExtraBody() {
   }
 }
 
+function debugDeepseekOcr(event, payload = {}) {
+  if (!OCR_DEEPSEEK_DEBUG) {
+    return;
+  }
+  console.log('[ocr:deepseek]', event, payload);
+}
+
+function summarizeOpenAiCompatibleRequest(requestBody) {
+  const content = requestBody?.messages?.[0]?.content;
+  return {
+    model: requestBody?.model,
+    max_tokens: requestBody?.max_tokens,
+    temperature: requestBody?.temperature,
+    extra_body_keys:
+      requestBody?.extra_body && typeof requestBody.extra_body === 'object'
+        ? Object.keys(requestBody.extra_body)
+        : [],
+    content:
+      Array.isArray(content)
+        ? content.map((item) => {
+            if (!item || typeof item !== 'object') {
+              return item;
+            }
+            if (item.type === 'image_url') {
+              return {
+                type: item.type,
+                image_url: {
+                  url:
+                    typeof item.image_url?.url === 'string'
+                      ? `${item.image_url.url.slice(0, 48)}...`
+                      : null
+                }
+              };
+            }
+            if (item.type === 'text') {
+              return {
+                type: item.type,
+                text: typeof item.text === 'string' ? item.text.slice(0, 240) : null
+              };
+            }
+            return item;
+          })
+        : content
+  };
+}
+
+function summarizeOpenAiCompatibleResponse(payload) {
+  const rawContent = payload?.choices?.[0]?.message?.content;
+  return {
+    id: payload?.id,
+    model: payload?.model,
+    choice_count: Array.isArray(payload?.choices) ? payload.choices.length : 0,
+    content_type: Array.isArray(rawContent) ? 'array' : typeof rawContent,
+    content_preview:
+      typeof rawContent === 'string'
+        ? rawContent.slice(0, 400)
+        : Array.isArray(rawContent)
+          ? rawContent.slice(0, 4)
+          : rawContent
+  };
+}
+
 async function extractTextFromDeepseekOpenAiCompatible(absolute) {
   const buffer = await fs.readFile(absolute);
   const mimeType = mime.lookup(absolute) || 'application/octet-stream';
@@ -81,6 +144,10 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
     temperature: 0,
     ...(extraBody ? { extra_body: extraBody } : {})
   };
+  debugDeepseekOcr('openai-compatible-request', {
+    url: requestUrl,
+    request: summarizeOpenAiCompatibleRequest(requestBody)
+  });
 
   let payload;
   try {
@@ -92,14 +159,25 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
       },
       body: JSON.stringify(requestBody)
     });
+    debugDeepseekOcr('openai-compatible-response-status', {
+      url: requestUrl,
+      status: response.status,
+      ok: response.ok
+    });
     if (!response.ok) {
       const errorText = await response.text();
+      debugDeepseekOcr('openai-compatible-response-error', {
+        url: requestUrl,
+        status: response.status,
+        body_preview: errorText.slice(0, 1200)
+      });
       throw createHttpError(
         502,
         `Deepseek OpenAI-compatible OCR failed via ${requestUrl} (${response.status} ${errorText})`
       );
     }
     payload = await response.json();
+    debugDeepseekOcr('openai-compatible-response-json', summarizeOpenAiCompatibleResponse(payload));
   } catch (error) {
     if (error?.status) {
       throw error;
@@ -125,6 +203,10 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
     : typeof rawContent === 'string'
       ? rawContent.trim()
       : '';
+  debugDeepseekOcr('openai-compatible-extracted-text', {
+    text_preview: text.slice(0, 600),
+    text_length: text.length
+  });
   if (!text) {
     throw createHttpError(502, 'Deepseek OpenAI-compatible OCR returned empty text');
   }

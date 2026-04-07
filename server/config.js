@@ -43,6 +43,8 @@ export const OCR_DEEPSEEK_OPENAI_MAX_TOKENS =
     ? deepseekOpenAiMaxTokensRaw
     : 4096;
 export const OCR_DEEPSEEK_OPENAI_EXTRA_BODY = process.env.OCR_DEEPSEEK_OPENAI_EXTRA_BODY || '';
+export const OCR_DEEPSEEK_DEBUG =
+  ['1', 'true', 'yes', 'on'].includes(String(process.env.OCR_DEEPSEEK_DEBUG || '').toLowerCase());
 
 const PROMPTS_DIR = path.join(ROOT_DIR, 'server', 'prompts');
 const readPrompt = (filename) =>
