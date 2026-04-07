@@ -1,7 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime-types';
-import { execFile } from 'node:child_process/promises';
+import { execFile as execFileCallback } from 'node:child_process';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import {
   getTextPrompt,
@@ -45,6 +46,7 @@ const DEEPSEEK_OCR_PYTHON_HELPER = fileURLToPath(
   new URL('../scripts/deepseek_ocr_openai.py', import.meta.url)
 );
 const OCR_PYTHON_BIN = process.env.OCR_PYTHON_BIN || 'python3';
+const execFile = promisify(execFileCallback);
 
 function parseDeepseekOpenAiExtraBody() {
   if (!OCR_DEEPSEEK_OPENAI_EXTRA_BODY.trim()) {
