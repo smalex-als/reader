@@ -52,33 +52,43 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
   const buffer = await fs.readFile(absolute);
   const mimeType = mime.lookup(absolute) || 'application/octet-stream';
   const imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+  const extraBody = parseDeepseekOpenAiExtraBody();
 
   const client = new OpenAI({
     apiKey: OCR_DEEPSEEK_OPENAI_API_KEY,
     baseURL: OCR_DEEPSEEK_OPENAI_BASE_URL
   });
 
-  const response = await client.chat.completions.create({
-    model: OCR_DEEPSEEK_OPENAI_MODEL,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: { url: imageUrl }
-          },
-          {
-            type: 'text',
-            text: OCR_DEEPSEEK_PROMPT
-          }
-        ]
-      }
-    ],
-    max_tokens: OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
-    temperature: 0,
-    extra_body: parseDeepseekOpenAiExtraBody()
-  });
+  let response;
+  try {
+    response = await client.chat.completions.create({
+      model: OCR_DEEPSEEK_OPENAI_MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: imageUrl }
+            },
+            {
+              type: 'text',
+              text: OCR_DEEPSEEK_PROMPT
+            }
+          ]
+        }
+      ],
+      max_tokens: OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
+      temperature: 0,
+      extra_body: extraBody
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Connection error.';
+    throw createHttpError(
+      502,
+      `Deepseek OpenAI-compatible OCR failed via ${OCR_DEEPSEEK_OPENAI_BASE_URL} (${message})`
+    );
+  }
 
   const text = response.choices?.[0]?.message?.content?.trim() || '';
   if (!text) {
