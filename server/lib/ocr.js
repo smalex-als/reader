@@ -1,7 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime-types';
-import { OpenAI } from 'openai';
 import {
   getTextPrompt,
   OCR_BACKEND,
@@ -32,6 +31,13 @@ function resolveDeepseekOcrUrl() {
   return new URL(OCR_DEEPSEEK_PATH, OCR_DEEPSEEK_HOST).toString();
 }
 
+function resolveDeepseekOpenAiChatCompletionsUrl() {
+  const normalizedBase = OCR_DEEPSEEK_OPENAI_BASE_URL.endsWith('/')
+    ? OCR_DEEPSEEK_OPENAI_BASE_URL
+    : `${OCR_DEEPSEEK_OPENAI_BASE_URL}/`;
+  return new URL('chat/completions', normalizedBase).toString();
+}
+
 function parseDeepseekOpenAiExtraBody() {
   if (!OCR_DEEPSEEK_OPENAI_EXTRA_BODY.trim()) {
     return undefined;
@@ -53,44 +59,72 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
   const mimeType = mime.lookup(absolute) || 'application/octet-stream';
   const imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
   const extraBody = parseDeepseekOpenAiExtraBody();
+  const requestUrl = resolveDeepseekOpenAiChatCompletionsUrl();
+  const requestBody = {
+    model: OCR_DEEPSEEK_OPENAI_MODEL,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image_url',
+            image_url: { url: imageUrl }
+          },
+          {
+            type: 'text',
+            text: OCR_DEEPSEEK_PROMPT
+          }
+        ]
+      }
+    ],
+    max_tokens: OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
+    temperature: 0,
+    ...(extraBody ? { extra_body: extraBody } : {})
+  };
 
-  const client = new OpenAI({
-    apiKey: OCR_DEEPSEEK_OPENAI_API_KEY,
-    baseURL: OCR_DEEPSEEK_OPENAI_BASE_URL
-  });
-
-  let response;
+  let payload;
   try {
-    response = await client.chat.completions.create({
-      model: OCR_DEEPSEEK_OPENAI_MODEL,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: imageUrl }
-            },
-            {
-              type: 'text',
-              text: OCR_DEEPSEEK_PROMPT
-            }
-          ]
-        }
-      ],
-      max_tokens: OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
-      temperature: 0,
-      extra_body: extraBody
+    const response = await fetch(requestUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OCR_DEEPSEEK_OPENAI_API_KEY}`
+      },
+      body: JSON.stringify(requestBody)
     });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw createHttpError(
+        502,
+        `Deepseek OpenAI-compatible OCR failed via ${requestUrl} (${response.status} ${errorText})`
+      );
+    }
+    payload = await response.json();
   } catch (error) {
+    if (error?.status) {
+      throw error;
+    }
     const message = error instanceof Error ? error.message : 'Connection error.';
-    throw createHttpError(
-      502,
-      `Deepseek OpenAI-compatible OCR failed via ${OCR_DEEPSEEK_OPENAI_BASE_URL} (${message})`
-    );
+    throw createHttpError(502, `Deepseek OpenAI-compatible OCR failed via ${requestUrl} (${message})`);
   }
 
-  const text = response.choices?.[0]?.message?.content?.trim() || '';
+  const rawContent = payload?.choices?.[0]?.message?.content;
+  const text = Array.isArray(rawContent)
+    ? rawContent
+        .map((part) => {
+          if (typeof part === 'string') {
+            return part;
+          }
+          if (part && typeof part === 'object' && typeof part.text === 'string') {
+            return part.text;
+          }
+          return '';
+        })
+        .join('')
+        .trim()
+    : typeof rawContent === 'string'
+      ? rawContent.trim()
+      : '';
   if (!text) {
     throw createHttpError(502, 'Deepseek OpenAI-compatible OCR returned empty text');
   }
