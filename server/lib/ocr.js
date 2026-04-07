@@ -104,7 +104,6 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
   const buffer = await fs.readFile(absolute);
   const mimeType = mime.lookup(absolute) || 'application/octet-stream';
   const imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
-  const extraBody = parseDeepseekOpenAiExtraBody();
   const requestUrl = resolveDeepseekOpenAiChatCompletionsUrl();
   const requestBody = {
     model: OCR_DEEPSEEK_OPENAI_MODEL,
