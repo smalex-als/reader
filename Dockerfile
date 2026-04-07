@@ -18,7 +18,8 @@ ENV PORT=3000
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends poppler-utils curl lame \
+  && apt-get install -y --no-install-recommends poppler-utils curl lame python3 python3-pip \
+  && pip3 install --no-cache-dir openai \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json ./

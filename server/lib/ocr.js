@@ -1,7 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime-types';
-import { OpenAI } from 'openai';
+import { execFile } from 'node:child_process/promises';
+import { fileURLToPath } from 'node:url';
 import {
   getTextPrompt,
   OCR_BACKEND,
@@ -39,6 +40,10 @@ function resolveDeepseekOpenAiChatCompletionsUrl() {
     : `${OCR_DEEPSEEK_OPENAI_BASE_URL}/`;
   return new URL('chat/completions', normalizedBase).toString();
 }
+
+const DEEPSEEK_OCR_PYTHON_HELPER = fileURLToPath(
+  new URL('../scripts/deepseek_ocr_openai.py', import.meta.url)
+);
 
 function parseDeepseekOpenAiExtraBody() {
   if (!OCR_DEEPSEEK_OPENAI_EXTRA_BODY.trim()) {
@@ -126,9 +131,6 @@ function summarizeOpenAiCompatibleResponse(payload) {
 }
 
 async function extractTextFromDeepseekOpenAiCompatible(absolute) {
-  const buffer = await fs.readFile(absolute);
-  const mimeType = mime.lookup(absolute) || 'application/octet-stream';
-  const imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
   const requestUrl = resolveDeepseekOpenAiChatCompletionsUrl();
   const extraBody = parseDeepseekOpenAiExtraBody();
   const requestBody = {
@@ -139,7 +141,7 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
         content: [
           {
             type: 'image_url',
-            image_url: { url: imageUrl }
+            image_url: { url: absolute }
           },
           {
             type: 'text',
@@ -159,11 +161,31 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
 
   let payload;
   try {
-    const client = new OpenAI({
-      apiKey: OCR_DEEPSEEK_OPENAI_API_KEY,
-      baseURL: OCR_DEEPSEEK_OPENAI_BASE_URL
+    const { stdout, stderr } = await execFile('python3', [
+      DEEPSEEK_OCR_PYTHON_HELPER,
+      '--image',
+      absolute,
+      '--base-url',
+      OCR_DEEPSEEK_OPENAI_BASE_URL,
+      '--api-key',
+      OCR_DEEPSEEK_OPENAI_API_KEY,
+      '--model',
+      OCR_DEEPSEEK_OPENAI_MODEL,
+      '--prompt',
+      OCR_DEEPSEEK_PROMPT,
+      '--max-tokens',
+      String(OCR_DEEPSEEK_OPENAI_MAX_TOKENS),
+      '--extra-body',
+      JSON.stringify(extraBody)
+    ], {
+      maxBuffer: 20 * 1024 * 1024
     });
-    payload = await client.chat.completions.create(requestBody);
+    payload = { choices: [{ message: { content: stdout.trim() } }] };
+    if (stderr.trim()) {
+      debugDeepseekOcr('openai-compatible-python-stderr', {
+        output_preview: stderr.slice(0, 1200)
+      });
+    }
     debugDeepseekOcr('openai-compatible-response-json', summarizeOpenAiCompatibleResponse(payload));
   } catch (error) {
     if (error?.status && error?.message) {
@@ -177,11 +199,12 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
         `Deepseek OpenAI-compatible OCR failed via ${requestUrl} (${error.status} ${error.message})`
       );
     }
+    const stderr = typeof error?.stderr === 'string' ? error.stderr : '';
     const message = error instanceof Error ? error.message : 'Connection error.';
     debugDeepseekOcr('openai-compatible-response-error', {
       url: requestUrl,
       status: 'connection',
-      body_preview: String(message).slice(0, 1200)
+      body_preview: `${String(message).slice(0, 600)} ${stderr.slice(0, 600)}`.trim()
     });
     throw createHttpError(502, `Deepseek OpenAI-compatible OCR failed via ${requestUrl} (${message})`);
   }
