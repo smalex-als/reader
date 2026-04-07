@@ -10,7 +10,6 @@ import {
   OCR_DEEPSEEK_MODEL,
   OCR_DEEPSEEK_OPENAI_API_KEY,
   OCR_DEEPSEEK_OPENAI_BASE_URL,
-  OCR_DEEPSEEK_OPENAI_EXTRA_BODY,
   OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
   OCR_DEEPSEEK_OPENAI_MODEL,
   OCR_DEEPSEEK_PATH,
@@ -37,22 +36,6 @@ function resolveDeepseekOpenAiChatCompletionsUrl() {
     ? OCR_DEEPSEEK_OPENAI_BASE_URL
     : `${OCR_DEEPSEEK_OPENAI_BASE_URL}/`;
   return new URL('chat/completions', normalizedBase).toString();
-}
-
-function parseDeepseekOpenAiExtraBody() {
-  if (!OCR_DEEPSEEK_OPENAI_EXTRA_BODY.trim()) {
-    return undefined;
-  }
-  try {
-    const parsed = JSON.parse(OCR_DEEPSEEK_OPENAI_EXTRA_BODY);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error('must be a JSON object');
-    }
-    return parsed;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'invalid JSON';
-    throw createHttpError(500, `OCR_DEEPSEEK_OPENAI_EXTRA_BODY ${message}`);
-  }
 }
 
 function debugDeepseekOcr(event, payload = {}) {
@@ -142,7 +125,14 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
     ],
     max_tokens: OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
     temperature: 0,
-    ...(extraBody ? { extra_body: extraBody } : {})
+    extra_body:{
+      skip_special_tokens: false,
+      vllm_xargs: {
+        ngram_size: 30,
+        window_size: 90,
+        whitelist_token_ids: [128821, 128822],
+      },
+    }
   };
   debugDeepseekOcr('openai-compatible-request', {
     url: requestUrl,
