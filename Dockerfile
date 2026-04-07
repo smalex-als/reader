@@ -16,12 +16,9 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV OCR_PYTHON_BIN=/opt/ocr-venv/bin/python
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends poppler-utils curl lame python3 python3-pip python3-venv \
-  && python3 -m venv /opt/ocr-venv \
-  && /opt/ocr-venv/bin/pip install --no-cache-dir openai \
+  && apt-get install -y --no-install-recommends poppler-utils curl lame \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json ./

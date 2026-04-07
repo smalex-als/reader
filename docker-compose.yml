@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   reader:
     build:
@@ -15,14 +13,8 @@ services:
       OCR_BACKEND: ${OCR_BACKEND:-deepseek_ocr}
       OCR_DEEPSEEK_HOST: http://host.docker.internal:11434
       OCR_DEEPSEEK_PATH: ${OCR_DEEPSEEK_PATH:-/api/generate}
-      OCR_DEEPSEEK_API_STYLE: ${OCR_DEEPSEEK_API_STYLE:-generate}
       OCR_DEEPSEEK_MODEL: ${OCR_DEEPSEEK_MODEL:-deepseek-ocr}
       OCR_DEEPSEEK_PROMPT: ${OCR_DEEPSEEK_PROMPT:-<|grounding|>Convert the document to markdown.}
-      OCR_DEEPSEEK_OPENAI_BASE_URL: ${OCR_DEEPSEEK_OPENAI_BASE_URL:-http://host.docker.internal:8000/v1}
-      OCR_DEEPSEEK_OPENAI_API_KEY: ${OCR_DEEPSEEK_OPENAI_API_KEY:-EMPTY}
-      OCR_DEEPSEEK_OPENAI_MODEL: ${OCR_DEEPSEEK_OPENAI_MODEL:-deepseek-ai/DeepSeek-OCR}
-      OCR_DEEPSEEK_OPENAI_MAX_TOKENS: ${OCR_DEEPSEEK_OPENAI_MAX_TOKENS:-4096}
-      OCR_DEEPSEEK_OPENAI_EXTRA_BODY: ${OCR_DEEPSEEK_OPENAI_EXTRA_BODY:-}
       NODE_TLS_REJECT_UNAUTHORIZED: '0'
     volumes:
       - ./data:/app/data

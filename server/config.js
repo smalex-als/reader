@@ -25,26 +25,9 @@ export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_
 export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai'; // 'openai' | 'deepseek_ocr'
 export const OCR_DEEPSEEK_HOST = process.env.OCR_DEEPSEEK_HOST || 'http://myserver.home:11434';
 export const OCR_DEEPSEEK_PATH = process.env.OCR_DEEPSEEK_PATH || '/api/generate';
-export const OCR_DEEPSEEK_API_STYLE = process.env.OCR_DEEPSEEK_API_STYLE || 'generate'; // 'generate' | 'openai'
 export const OCR_DEEPSEEK_MODEL = process.env.OCR_DEEPSEEK_MODEL || 'deepseek-ocr';
 export const OCR_DEEPSEEK_PROMPT =
   process.env.OCR_DEEPSEEK_PROMPT || '<|grounding|>Convert the document to markdown.';
-export const OCR_DEEPSEEK_OPENAI_BASE_URL =
-  process.env.OCR_DEEPSEEK_OPENAI_BASE_URL || new URL('/v1', OCR_DEEPSEEK_HOST).toString();
-export const OCR_DEEPSEEK_OPENAI_API_KEY = process.env.OCR_DEEPSEEK_OPENAI_API_KEY || 'EMPTY';
-export const OCR_DEEPSEEK_OPENAI_MODEL =
-  process.env.OCR_DEEPSEEK_OPENAI_MODEL || OCR_DEEPSEEK_MODEL;
-const deepseekOpenAiMaxTokensRaw = Number.parseInt(
-  process.env.OCR_DEEPSEEK_OPENAI_MAX_TOKENS || '4096',
-  10
-);
-export const OCR_DEEPSEEK_OPENAI_MAX_TOKENS =
-  Number.isFinite(deepseekOpenAiMaxTokensRaw) && deepseekOpenAiMaxTokensRaw > 0
-    ? deepseekOpenAiMaxTokensRaw
-    : 4096;
-export const OCR_DEEPSEEK_OPENAI_EXTRA_BODY = process.env.OCR_DEEPSEEK_OPENAI_EXTRA_BODY || '';
-export const OCR_DEEPSEEK_DEBUG =
-  ['1', 'true', 'yes', 'on'].includes(String(process.env.OCR_DEEPSEEK_DEBUG || '').toLowerCase());
 
 const PROMPTS_DIR = path.join(ROOT_DIR, 'server', 'prompts');
 const readPrompt = (filename) =>
