@@ -1,7 +1,14 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime-types';
-import {getTextPrompt, OCR_BACKEND, OCR_DEEPSEEK_HOST, OCR_DEEPSEEK_MODEL, OCR_DEEPSEEK_PROMPT} from '../config.js';
+import {
+  getTextPrompt,
+  OCR_BACKEND,
+  OCR_DEEPSEEK_HOST,
+  OCR_DEEPSEEK_MODEL,
+  OCR_DEEPSEEK_PATH,
+  OCR_DEEPSEEK_PROMPT
+} from '../config.js';
 import {createHttpError} from './errors.js';
 import {safeStat} from './fs.js';
 import {deriveTextPathsFromImageUrl, resolveDataUrl} from './paths.js';
@@ -12,6 +19,10 @@ function normalizeOcrEngine(engine) {
     return engine;
   }
   return 'deepseek_ocr';
+}
+
+function resolveDeepseekOcrUrl() {
+  return new URL(OCR_DEEPSEEK_PATH, OCR_DEEPSEEK_HOST).toString();
 }
 
 async function extractTextFromDeepseekOcr(absolute) {
@@ -25,8 +36,9 @@ async function extractTextFromDeepseekOcr(absolute) {
 
   let lastStatus = 500;
   let lastErrorText = 'Unknown Deepseek OCR error';
+  const requestUrl = resolveDeepseekOcrUrl();
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch(`${OCR_DEEPSEEK_HOST}/api/generate`, {
+    const response = await fetch(requestUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
