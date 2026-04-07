@@ -1,6 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import mime from 'mime-types';
+import { OpenAI } from 'openai';
 import {
   getTextPrompt,
   OCR_BACKEND,
@@ -10,6 +11,7 @@ import {
   OCR_DEEPSEEK_MODEL,
   OCR_DEEPSEEK_OPENAI_API_KEY,
   OCR_DEEPSEEK_OPENAI_BASE_URL,
+  OCR_DEEPSEEK_OPENAI_EXTRA_BODY,
   OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
   OCR_DEEPSEEK_OPENAI_MODEL,
   OCR_DEEPSEEK_PATH,
@@ -36,6 +38,29 @@ function resolveDeepseekOpenAiChatCompletionsUrl() {
     ? OCR_DEEPSEEK_OPENAI_BASE_URL
     : `${OCR_DEEPSEEK_OPENAI_BASE_URL}/`;
   return new URL('chat/completions', normalizedBase).toString();
+}
+
+function parseDeepseekOpenAiExtraBody() {
+  if (!OCR_DEEPSEEK_OPENAI_EXTRA_BODY.trim()) {
+    return {
+      skip_special_tokens: false,
+      vllm_xargs: {
+        ngram_size: 30,
+        window_size: 90,
+        whitelist_token_ids: [128821, 128822]
+      }
+    };
+  }
+  try {
+    const parsed = JSON.parse(OCR_DEEPSEEK_OPENAI_EXTRA_BODY);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('must be a JSON object');
+    }
+    return parsed;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'invalid JSON';
+    throw createHttpError(500, `OCR_DEEPSEEK_OPENAI_EXTRA_BODY ${message}`);
+  }
 }
 
 function debugDeepseekOcr(event, payload = {}) {
@@ -105,6 +130,7 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
   const mimeType = mime.lookup(absolute) || 'application/octet-stream';
   const imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
   const requestUrl = resolveDeepseekOpenAiChatCompletionsUrl();
+  const extraBody = parseDeepseekOpenAiExtraBody();
   const requestBody = {
     model: OCR_DEEPSEEK_OPENAI_MODEL,
     messages: [
@@ -124,14 +150,7 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
     ],
     max_tokens: OCR_DEEPSEEK_OPENAI_MAX_TOKENS,
     temperature: 0,
-    extra_body:{
-      skip_special_tokens: false,
-      vllm_xargs: {
-        ngram_size: 30,
-        window_size: 90,
-        whitelist_token_ids: [128821, 128822],
-      },
-    }
+    extra_body: extraBody
   };
   debugDeepseekOcr('openai-compatible-request', {
     url: requestUrl,
@@ -140,38 +159,30 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
 
   let payload;
   try {
-    const response = await fetch(requestUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OCR_DEEPSEEK_OPENAI_API_KEY}`
-      },
-      body: JSON.stringify(requestBody)
+    const client = new OpenAI({
+      apiKey: OCR_DEEPSEEK_OPENAI_API_KEY,
+      baseURL: OCR_DEEPSEEK_OPENAI_BASE_URL
     });
-    debugDeepseekOcr('openai-compatible-response-status', {
-      url: requestUrl,
-      status: response.status,
-      ok: response.ok
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
+    payload = await client.chat.completions.create(requestBody);
+    debugDeepseekOcr('openai-compatible-response-json', summarizeOpenAiCompatibleResponse(payload));
+  } catch (error) {
+    if (error?.status && error?.message) {
       debugDeepseekOcr('openai-compatible-response-error', {
         url: requestUrl,
-        status: response.status,
-        body_preview: errorText.slice(0, 1200)
+        status: error.status,
+        body_preview: String(error.message).slice(0, 1200)
       });
       throw createHttpError(
         502,
-        `Deepseek OpenAI-compatible OCR failed via ${requestUrl} (${response.status} ${errorText})`
+        `Deepseek OpenAI-compatible OCR failed via ${requestUrl} (${error.status} ${error.message})`
       );
     }
-    payload = await response.json();
-    debugDeepseekOcr('openai-compatible-response-json', summarizeOpenAiCompatibleResponse(payload));
-  } catch (error) {
-    if (error?.status) {
-      throw error;
-    }
     const message = error instanceof Error ? error.message : 'Connection error.';
+    debugDeepseekOcr('openai-compatible-response-error', {
+      url: requestUrl,
+      status: 'connection',
+      body_preview: String(message).slice(0, 1200)
+    });
     throw createHttpError(502, `Deepseek OpenAI-compatible OCR failed via ${requestUrl} (${message})`);
   }
 
