@@ -44,6 +44,7 @@ function resolveDeepseekOpenAiChatCompletionsUrl() {
 const DEEPSEEK_OCR_PYTHON_HELPER = fileURLToPath(
   new URL('../scripts/deepseek_ocr_openai.py', import.meta.url)
 );
+const OCR_PYTHON_BIN = process.env.OCR_PYTHON_BIN || 'python3';
 
 function parseDeepseekOpenAiExtraBody() {
   if (!OCR_DEEPSEEK_OPENAI_EXTRA_BODY.trim()) {
@@ -161,7 +162,7 @@ async function extractTextFromDeepseekOpenAiCompatible(absolute) {
 
   let payload;
   try {
-    const { stdout, stderr } = await execFile('python3', [
+    const { stdout, stderr } = await execFile(OCR_PYTHON_BIN, [
       DEEPSEEK_OCR_PYTHON_HELPER,
       '--image',
       absolute,
