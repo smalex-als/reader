@@ -67,7 +67,7 @@ data/
 Server environment variables:
 
 - `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, and TTS audio generation)
-- `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://myserver.home:11434`)
+- `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://reader.test:11434`)
 - `OCR_DEEPSEEK_MODEL` (default `deepseek-ocr`)
 - `OCR_DEEPSEEK_PROMPT` (default `\n<|grounding|>Convert the\ndocument to markdown.`)
 - `HOST` (default `0.0.0.0`)

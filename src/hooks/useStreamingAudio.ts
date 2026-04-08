@@ -4,7 +4,7 @@ import { stripMarkdown } from '@/lib/streamText';
 
 const SAMPLE_RATE = 24_000;
 const SILENT_FRAME_LIMIT = 4;
-const STREAM_SERVER = 'https://myserver.home:3000';
+const STREAM_SERVER = 'https://reader.test:3000';
 export const DEFAULT_STREAM_VOICE = 'en-Mike_man';
 
 const INITIAL_STREAM_STATE: StreamState = {
