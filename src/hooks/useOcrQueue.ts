@@ -7,6 +7,7 @@ export interface OcrJob {
   pageIndex: number;
   imageUrl: string;
   status: OcrJobStatus;
+  force?: boolean;
   error?: string;
 }
 
@@ -28,9 +29,12 @@ function createJobId(counter: number) {
   return `ocr-${Date.now()}-${counter}`;
 }
 
-async function requestPageText(imageUrl: string, signal?: AbortSignal) {
+async function requestPageText(imageUrl: string, options: { signal?: AbortSignal; force?: boolean } = {}) {
   const params = new URLSearchParams({ image: imageUrl });
-  const response = await fetch(`/api/page-text?${params.toString()}`, { signal });
+  if (options.force) {
+    params.set('skipCache', '1');
+  }
+  const response = await fetch(`/api/page-text?${params.toString()}`, { signal: options.signal });
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`);
   }
@@ -45,16 +49,30 @@ export function useOcrQueue({ manifest, showToast }: UseOcrQueueOptions) {
   const wasBusyRef = useRef(false);
 
   const enqueuePages = useCallback(
-    (pages: number[]) => {
+    (pages: number[], options: { force?: boolean } = {}) => {
       if (!manifest.length) {
         return;
       }
+      const { force = false } = options;
       setJobs((prev) => {
-        const existing = new Set(prev.map((job) => job.imageUrl));
         const next = [...prev];
+        const existingByImage = new Map(next.map((job, index) => [job.imageUrl, index]));
         pages.forEach((pageIndex) => {
           const imageUrl = manifest[pageIndex];
-          if (!imageUrl || existing.has(imageUrl)) {
+          if (!imageUrl) {
+            return;
+          }
+          const existingIndex = existingByImage.get(imageUrl);
+          if (existingIndex !== undefined) {
+            if (!force) {
+              return;
+            }
+            next[existingIndex] = {
+              ...next[existingIndex],
+              status: 'pending',
+              error: undefined,
+              force: true
+            };
             return;
           }
           idCounterRef.current += 1;
@@ -62,9 +80,10 @@ export function useOcrQueue({ manifest, showToast }: UseOcrQueueOptions) {
             id: createJobId(idCounterRef.current),
             pageIndex,
             imageUrl,
-            status: 'pending'
+            status: 'pending',
+            force
           });
-          existing.add(imageUrl);
+          existingByImage.set(imageUrl, next.length - 1);
         });
         return next;
       });
@@ -141,7 +160,10 @@ export function useOcrQueue({ manifest, showToast }: UseOcrQueueOptions) {
 
     (async () => {
       try {
-        await requestPageText(nextJob.imageUrl, controller.signal);
+        await requestPageText(nextJob.imageUrl, {
+          signal: controller.signal,
+          force: nextJob.force
+        });
         setJobs((prev) =>
           prev.map((job) => (job.id === nextJob.id ? { ...job, status: 'completed' } : job))
         );

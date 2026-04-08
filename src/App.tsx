@@ -612,16 +612,15 @@ export default function App() {
     enqueuePages(pages);
   }, [enqueuePages, manifest]);
 
+  const forceUpdateAllPages = useCallback(() => {
+    const pages = manifest.map((_, index) => index);
+    enqueuePages(pages, { force: true });
+  }, [enqueuePages, manifest]);
+
   const queueRemainingPages = useCallback(() => {
     const pages = manifest.map((_, index) => index).filter((index) => index >= currentPage);
     enqueuePages(pages);
   }, [currentPage, enqueuePages, manifest]);
-
-  const queueCurrentPage = useCallback(() => {
-    if (currentPage >= 0) {
-      enqueuePages([currentPage]);
-    }
-  }, [currentPage, enqueuePages]);
 
   const ocrQueueState = useMemo(
     () => ({
@@ -990,8 +989,8 @@ export default function App() {
       paused: ocrPaused,
       onTogglePause: togglePause,
       onQueueAll: queueAllPages,
+      onForceUpdateAll: forceUpdateAllPages,
       onQueueRemaining: queueRemainingPages,
-      onQueueCurrent: queueCurrentPage,
       onRetryFailed: retryFailed,
       onClearQueue: clearQueue
     }

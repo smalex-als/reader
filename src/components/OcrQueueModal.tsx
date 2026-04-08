@@ -7,8 +7,8 @@ interface OcrQueueModalProps {
   paused: boolean;
   onTogglePause: () => void;
   onQueueAll: () => void;
+  onForceUpdateAll: () => void;
   onQueueRemaining: () => void;
-  onQueueCurrent: () => void;
   onRetryFailed: () => void;
   onClearQueue: () => void;
 }
@@ -33,8 +33,8 @@ export default function OcrQueueModal({
   paused,
   onTogglePause,
   onQueueAll,
+  onForceUpdateAll,
   onQueueRemaining,
-  onQueueCurrent,
   onRetryFailed,
   onClearQueue
 }: OcrQueueModalProps) {
@@ -73,14 +73,14 @@ export default function OcrQueueModal({
         </header>
         <section className="modal-body">
           <div className="modal-toolbar">
-            <button type="button" className="button" onClick={onQueueCurrent}>
-              Queue Current
-            </button>
             <button type="button" className="button" onClick={onQueueRemaining}>
               Queue Remaining
             </button>
             <button type="button" className="button" onClick={onQueueAll}>
               Queue All
+            </button>
+            <button type="button" className="button" onClick={onForceUpdateAll}>
+              Force Update All
             </button>
             <button type="button" className="button" onClick={onRetryFailed} disabled={failed === 0}>
               Retry Failed
