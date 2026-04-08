@@ -19,6 +19,7 @@ type StreamSequenceOptions = {
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   streamState: StreamState;
   startStream: (payload: { text: string; pageKey: string; voice: string }) => Promise<void>;
+  enqueueStream: (payload: { text: string; pageKey: string; voice: string }) => void;
   stopStream: () => void;
   pauseStream: () => Promise<void>;
   resumeStream: () => Promise<void>;
@@ -42,6 +43,7 @@ export function useStreamSequence({
   showToast,
   streamState,
   startStream,
+  enqueueStream,
   stopStream,
   pauseStream,
   resumeStream,
@@ -50,8 +52,7 @@ export function useStreamSequence({
   onSequenceComplete
 }: StreamSequenceOptions) {
   const streamSequenceRef = useRef<{
-    chunks: string[];
-    index: number;
+    source: 'page' | 'chapter' | 'paragraph';
     baseKey: string;
   } | null>(null);
   const pendingStreamSequenceRef = useRef<{
@@ -92,11 +93,19 @@ export function useStreamSequence({
       stopAudio();
       stopStream();
       stopStreamSequence();
-      streamSequenceRef.current = { chunks, index: 0, baseKey };
+      streamSequenceRef.current = { source, baseKey };
       setStreamSequenceActive(true);
       await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice: streamVoice });
+      for (let index = 1; index < chunks.length; index += 1) {
+        enqueueStream({
+          text: chunks[index],
+          pageKey: `${baseKey}#chunk-${index}`,
+          voice: streamVoice
+        });
+      }
     },
     [
+      enqueueStream,
       showToast,
       startStream,
       stopAudio,
@@ -201,25 +210,16 @@ export function useStreamSequence({
       setStreamSequenceActive(false);
       return;
     }
-    if (sequence.index >= sequence.chunks.length - 1) {
-      if (autoAdvanceRef.current) {
-        const source = lastStreamSourceRef.current;
-        if (source && (source.type === 'page' || source.type === 'chapter')) {
-          onSequenceComplete?.(source.type);
-        }
-        autoAdvanceRef.current = false;
-        lastStreamSourceRef.current = null;
+    if (autoAdvanceRef.current) {
+      const source = lastStreamSourceRef.current;
+      if (source && (source.type === 'page' || source.type === 'chapter')) {
+        onSequenceComplete?.(source.type);
       }
-      stopStreamSequence();
-      return;
+      autoAdvanceRef.current = false;
+      lastStreamSourceRef.current = null;
     }
-    sequence.index += 1;
-    void startStream({
-      text: sequence.chunks[sequence.index],
-      pageKey: `${sequence.baseKey}#chunk-${sequence.index}`,
-      voice: streamVoice
-    });
-  }, [startStream, stopStreamSequence, streamSequenceActive, streamState.status, streamVoice]);
+    stopStreamSequence();
+  }, [onSequenceComplete, stopStreamSequence, streamSequenceActive, streamState.status]);
 
   useEffect(() => {
     if (streamState.status !== 'idle') {

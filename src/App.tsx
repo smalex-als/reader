@@ -277,7 +277,7 @@ export default function App() {
     resetAudioCache,
     stopAudio
   } = useAudioController(currentImage, showToast);
-  const { streamState, startStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
+  const { streamState, startStream, enqueueStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
   const isListening = audioState.status === 'playing' || streamState.status === 'streaming';
   useWakeLock(isFullscreen && isListening);
   const {
@@ -349,6 +349,7 @@ export default function App() {
     showToast,
     streamState,
     startStream,
+    enqueueStream,
     stopStream,
     pauseStream,
     resumeStream,

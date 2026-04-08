@@ -30,6 +30,11 @@ export function useStreamingAudio(
   const stopRequestedRef = useRef(false);
   const socketClosedRef = useRef(false);
   const firstAudioRef = useRef(false);
+  const queueRef = useRef<Array<{ text: string; pageKey: string; voice: string }>>([]);
+
+  const clearQueue = useCallback(() => {
+    queueRef.current = [];
+  }, []);
 
   const stopPlaybackTimer = useCallback(() => {
     if (playbackTimerRef.current !== null) {
@@ -89,6 +94,7 @@ export function useStreamingAudio(
     (status: StreamState['status'] = 'idle', error?: string) => {
       sessionRef.current += 1;
       stopRequestedRef.current = false;
+      clearQueue();
       const playedSeconds = playbackSamplesRef.current / SAMPLE_RATE;
       silencePlayback();
       closeSocket();
@@ -103,7 +109,7 @@ export function useStreamingAudio(
         showToast(error, 'error');
       }
     },
-    [closeSocket, showToast, silencePlayback]
+    [clearQueue, closeSocket, showToast, silencePlayback]
   );
 
   useEffect(() => {
@@ -166,52 +172,33 @@ export function useStreamingAudio(
     }
   }, []);
 
-  const startStream = useCallback(
-    async ({ text, pageKey, voice }: { text: string; pageKey: string; voice?: string }) => {
-      const cleaned = stripMarkdown(text).trim();
-      if (!cleaned) {
-        showToast('No text available to stream', 'error');
+  const startQueuedSocket = useCallback(
+    async (sessionId: number) => {
+      if (sessionRef.current !== sessionId || stopRequestedRef.current) {
         return;
       }
-      if (
-        streamState.status === 'connecting' ||
-        streamState.status === 'streaming' ||
-        streamState.status === 'paused'
-      ) {
-        showToast('Audio stream already running', 'info');
+      if (socketRef.current) {
         return;
       }
-      const sessionId = sessionRef.current + 1;
-      sessionRef.current = sessionId;
-      stopRequestedRef.current = false;
-      firstAudioRef.current = false;
-      setStreamState({
-        status: 'connecting',
-        pageKey,
-        playbackSeconds: 0,
+      const nextItem = queueRef.current.shift();
+      if (!nextItem) {
+        socketClosedRef.current = true;
+        return;
+      }
+
+      socketClosedRef.current = false;
+      let receivedSegmentAudio = false;
+      setStreamState((prev) => ({
+        ...prev,
+        pageKey: nextItem.pageKey,
         modelSeconds: 0,
-        error: undefined
-      });
-
-      try {
-        await createAudioChain();
-      } catch (error) {
-        console.error('Unable to create audio worklet', error);
-        finalizeStream('error', 'Audio setup failed');
-        return;
-      }
-
-      console.info(
-        `[TTS stream text]\npageKey: ${pageKey}\nvoice: ${voice || DEFAULT_STREAM_VOICE}\n---\n${cleaned}\n---`
-      );
+        error: undefined,
+        status: firstAudioRef.current ? prev.status : 'connecting'
+      }));
 
       const params = new URLSearchParams();
-      params.set('text', cleaned);
-      if (voice) {
-        params.set('voice', voice);
-      } else if (DEFAULT_STREAM_VOICE) {
-        params.set('voice', DEFAULT_STREAM_VOICE);
-      }
+      params.set('text', nextItem.text);
+      params.set('voice', nextItem.voice || DEFAULT_STREAM_VOICE);
       params.set('cfg', '1.5');
       params.set('steps', '5');
 
@@ -224,6 +211,10 @@ export function useStreamingAudio(
         wsUrl.protocol = 'ws:';
       }
       wsUrl.search = params.toString();
+
+      console.info(
+        `[TTS stream text]\npageKey: ${nextItem.pageKey}\nvoice: ${nextItem.voice || DEFAULT_STREAM_VOICE}\n---\n${nextItem.text}\n---`
+      );
 
       try {
         const socket = new WebSocket(wsUrl);
@@ -254,9 +245,10 @@ export function useStreamingAudio(
             floatChunk[i] = view.getInt16(i * 2, true) / 32768;
           }
           appendAudio(floatChunk);
-          if (!firstAudioRef.current) {
+          if (!receivedSegmentAudio) {
+            receivedSegmentAudio = true;
             firstAudioRef.current = true;
-            setStreamState((prev) => ({ ...prev, status: 'streaming' }));
+            setStreamState((prev) => ({ ...prev, status: prev.status === 'paused' ? 'paused' : 'streaming' }));
           }
         };
         socket.onerror = (err) => {
@@ -266,20 +258,96 @@ export function useStreamingAudio(
           }
         };
         socket.onclose = () => {
-          if (sessionRef.current === sessionId) {
-            socketRef.current = null;
-            socketClosedRef.current = true;
+          if (sessionRef.current !== sessionId) {
+            return;
           }
+          socketRef.current = null;
+          if (stopRequestedRef.current) {
+            socketClosedRef.current = true;
+            return;
+          }
+          if (queueRef.current.length > 0) {
+            void startQueuedSocket(sessionId);
+            return;
+          }
+          socketClosedRef.current = true;
         };
         socketRef.current = socket;
-        // No toast on start.
         await audioCtxRef.current?.resume();
       } catch (error) {
         console.error('Unable to start stream', error);
         finalizeStream('error', 'Unable to start stream');
       }
     },
-    [appendAudio, createAudioChain, finalizeStream, showToast, streamState.status]
+    [appendAudio, finalizeStream]
+  );
+
+  const startStream = useCallback(
+    async ({ text, pageKey, voice }: { text: string; pageKey: string; voice?: string }) => {
+      const cleaned = stripMarkdown(text).trim();
+      if (!cleaned) {
+        showToast('No text available to stream', 'error');
+        return;
+      }
+      if (
+        streamState.status === 'connecting' ||
+        streamState.status === 'streaming' ||
+        streamState.status === 'paused'
+      ) {
+        showToast('Audio stream already running', 'info');
+        return;
+      }
+      const sessionId = sessionRef.current + 1;
+      sessionRef.current = sessionId;
+      stopRequestedRef.current = false;
+      firstAudioRef.current = false;
+      clearQueue();
+      setStreamState({
+        status: 'connecting',
+        pageKey,
+        playbackSeconds: 0,
+        modelSeconds: 0,
+        error: undefined
+      });
+
+      try {
+        await createAudioChain();
+      } catch (error) {
+        console.error('Unable to create audio worklet', error);
+        finalizeStream('error', 'Audio setup failed');
+        return;
+      }
+      try {
+        queueRef.current.push({
+          text: cleaned,
+          pageKey,
+          voice: voice || DEFAULT_STREAM_VOICE
+        });
+        await startQueuedSocket(sessionId);
+      } catch (error) {
+        console.error('Unable to start stream', error);
+        finalizeStream('error', 'Unable to start stream');
+      }
+    },
+    [clearQueue, createAudioChain, finalizeStream, showToast, startQueuedSocket, streamState.status]
+  );
+
+  const enqueueStream = useCallback(
+    ({ text, pageKey, voice }: { text: string; pageKey: string; voice?: string }) => {
+      const cleaned = stripMarkdown(text).trim();
+      if (!cleaned || stopRequestedRef.current || sessionRef.current === 0) {
+        return;
+      }
+      queueRef.current.push({
+        text: cleaned,
+        pageKey,
+        voice: voice || DEFAULT_STREAM_VOICE
+      });
+      if (!socketRef.current) {
+        void startQueuedSocket(sessionRef.current);
+      }
+    },
+    [startQueuedSocket]
   );
 
   const pauseStream = useCallback(async () => {
@@ -319,6 +387,7 @@ export function useStreamingAudio(
   const stopStream = useCallback(() => {
     stopRequestedRef.current = true;
     socketClosedRef.current = true;
+    clearQueue();
     if (
       socketRef.current &&
       (socketRef.current.readyState === WebSocket.CONNECTING || socketRef.current.readyState === WebSocket.OPEN)
@@ -336,11 +405,12 @@ export function useStreamingAudio(
     }
     socketRef.current = null;
     finalizeStream();
-  }, [finalizeStream]);
+  }, [clearQueue, finalizeStream]);
 
   return {
     streamState,
     startStream,
+    enqueueStream,
     pauseStream,
     resumeStream,
     stopStream
