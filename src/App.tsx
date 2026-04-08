@@ -284,6 +284,7 @@ export default function App() {
     closeTextModal,
     currentText,
     fetchPageText,
+    fetchPageTextByImage,
     regeneratedText,
     resetTextState,
     savePageText,
@@ -332,6 +333,23 @@ export default function App() {
     chapterNumber,
     currentChapterEntry
   });
+  const handleStreamSequenceComplete = useCallback(
+    (source: 'page' | 'chapter') => {
+      if (source !== 'page' || viewMode !== 'pages') {
+        handleNext();
+        return;
+      }
+      const nextImage = manifest[currentPage + 1] ?? null;
+      if (!nextImage) {
+        handleNext();
+        return;
+      }
+      void fetchPageTextByImage(nextImage, { silent: true, updateCurrentState: false }).finally(() => {
+        handleNext();
+      });
+    },
+    [currentPage, fetchPageTextByImage, handleNext, manifest, viewMode]
+  );
   const {
     startStreamSequence,
     handlePlayPageBlock,
@@ -355,7 +373,7 @@ export default function App() {
     resumeStream,
     stopAudio,
     streamVoice,
-    onSequenceComplete: () => handleNext()
+    onSequenceComplete: handleStreamSequenceComplete
   });
 
   const handleToggleOcrEditMode = useCallback(async () => {

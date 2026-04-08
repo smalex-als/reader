@@ -20,20 +20,22 @@ export function usePageText(
   const [textSaving, setTextSaving] = useState(false);
   const [regeneratedText, setRegeneratedText] = useState(false);
 
-  const fetchPageText = useCallback(
-    async (options: { force?: boolean; silent?: boolean; engine?: PageTextOcrEngine } = {}): Promise<PageText | null> => {
-      const { force = false, silent = false, engine } = options;
-      if (!currentImage) {
-        return null;
-      }
-      const cached = textCache[currentImage];
+  const fetchPageTextByImage = useCallback(
+    async (
+      image: string,
+      options: { force?: boolean; silent?: boolean; engine?: PageTextOcrEngine; updateCurrentState?: boolean } = {}
+    ): Promise<PageText | null> => {
+      const { force = false, silent = false, engine, updateCurrentState = image === currentImage } = options;
+      const cached = textCache[image];
       if (cached && !force) {
         return cached;
       }
 
-      setTextLoading(true);
+      if (updateCurrentState) {
+        setTextLoading(true);
+      }
       try {
-        const params = new URLSearchParams({ image: currentImage });
+        const params = new URLSearchParams({ image });
         if (force) {
           params.set('skipCache', '1');
         }
@@ -50,9 +52,11 @@ export function usePageText(
           blocks: parsed.blocks,
           source: data.source
         };
-        setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
-        setRegeneratedText(data.source === 'ai' || force);
-        if (!silent) {
+        setTextCache((prev) => ({ ...prev, [image]: entry }));
+        if (updateCurrentState) {
+          setRegeneratedText(data.source === 'ai' || force);
+        }
+        if (!silent && updateCurrentState) {
           const action = data.source === 'ai' ? 'generated' : 'loaded';
           if (parsed.blocks.length === 0 && parsed.plainText.trim()) {
             showToast(`Page text ${action}, but OCR coordinates were not found`, 'info');
@@ -63,15 +67,27 @@ export function usePageText(
         return entry;
       } catch (error) {
         console.error(error);
-        if (!silent) {
+        if (!silent && updateCurrentState) {
           showToast('Unable to load page text', 'error');
         }
         return null;
       } finally {
-        setTextLoading(false);
+        if (updateCurrentState) {
+          setTextLoading(false);
+        }
       }
     },
     [currentImage, showToast, textCache]
+  );
+
+  const fetchPageText = useCallback(
+    async (options: { force?: boolean; silent?: boolean; engine?: PageTextOcrEngine } = {}): Promise<PageText | null> => {
+      if (!currentImage) {
+        return null;
+      }
+      return fetchPageTextByImage(currentImage, options);
+    },
+    [currentImage, fetchPageTextByImage]
   );
 
   const toggleTextModal = useCallback(() => {
@@ -160,6 +176,7 @@ export function usePageText(
     closeTextModal,
     currentText,
     fetchPageText,
+    fetchPageTextByImage,
     regeneratedText,
     resetTextState,
     savePageText,
