@@ -53,7 +53,12 @@ export function usePageText(
         setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
         setRegeneratedText(data.source === 'ai' || force);
         if (!silent) {
-          showToast(`Page text ${data.source === 'ai' ? 'generated' : 'loaded'}`, 'success');
+          const action = data.source === 'ai' ? 'generated' : 'loaded';
+          if (parsed.blocks.length === 0 && parsed.plainText.trim()) {
+            showToast(`Page text ${action}, but OCR coordinates were not found`, 'info');
+          } else {
+            showToast(`Page text ${action}`, 'success');
+          }
         }
         return entry;
       } catch (error) {

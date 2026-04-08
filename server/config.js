@@ -27,7 +27,7 @@ export const OCR_DEEPSEEK_HOST = process.env.OCR_DEEPSEEK_HOST || 'http://myserv
 export const OCR_DEEPSEEK_PATH = process.env.OCR_DEEPSEEK_PATH || '/api/generate';
 export const OCR_DEEPSEEK_MODEL = process.env.OCR_DEEPSEEK_MODEL || 'deepseek-ocr';
 export const OCR_DEEPSEEK_PROMPT =
-  process.env.OCR_DEEPSEEK_PROMPT || '\n<|grounding|>Convert the document to markdown.';
+  process.env.OCR_DEEPSEEK_PROMPT || '\n<|grounding|>Convert the\ndocument to markdown.';
 
 const PROMPTS_DIR = path.join(ROOT_DIR, 'server', 'prompts');
 const readPrompt = (filename) =>
