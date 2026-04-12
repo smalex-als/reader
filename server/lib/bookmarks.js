@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import { BOOKMARKS_FILENAME, DATA_DIR } from '../config.js';
 import { assertBookDirectory } from './books.js';
 import { safeStat } from './fs.js';
+import { extractPlainTextFromOcrLayout } from './ocrLayout.js';
 import { resolveDataUrl } from './paths.js';
 
 function deriveBookmarkLabel(imageUrl) {
@@ -79,7 +80,8 @@ export async function deriveBookmarkLabelFromText(imageUrl) {
   }
   try {
     const content = await fs.readFile(textAbsolute, 'utf8');
-    const firstLine = content.split(/\r?\n/).find((line) => line.trim().length > 0);
+    const plainText = extractPlainTextFromOcrLayout(content);
+    const firstLine = plainText.split(/\r?\n/).find((line) => line.trim().length > 0);
     return firstLine?.trim() || null;
   } catch {
     return null;
