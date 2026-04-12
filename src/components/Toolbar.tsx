@@ -50,6 +50,7 @@ interface ToolbarProps {
   gotoInputRef: React.RefObject<HTMLInputElement>;
   onToggleBookmark: () => void;
   onShowBookmarks: () => void;
+  onOpenSearch: () => void;
   isBookmarked: boolean;
   bookmarksCount: number;
   onOpenPrint: () => void;
@@ -115,6 +116,7 @@ export default function Toolbar({
   gotoInputRef,
   onToggleBookmark,
   onShowBookmarks,
+  onOpenSearch,
   isBookmarked,
   bookmarksCount,
   onOpenPrint,
@@ -280,6 +282,9 @@ export default function Toolbar({
               </button>
               <button type="button" className="button" onClick={onShowBookmarks} disabled={!currentBook}>
                 ★ ({bookmarksCount})
+              </button>
+              <button type="button" className="button" onClick={onOpenSearch} disabled={!currentBook}>
+                Search
               </button>
             </div>
           </div>

@@ -11,6 +11,7 @@ import { asyncHandler } from '../lib/async.js';
 import { loadPageText, savePageText } from '../lib/ocr.js';
 import { createPageAudioStream, handlePageAudio, resolvePageAudioOutput } from '../lib/audio.js';
 import { createBookFromPdf } from '../lib/pdf.js';
+import { invalidateSearchIndexForImage } from '../lib/search.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -39,6 +40,9 @@ router.get('/api/page-text', asyncHandler(async (req, res) => {
       ? skipCacheParam.some((value) => ['1', 'true', 'yes'].includes(String(value).toLowerCase()))
       : false;
   const result = await loadPageText(image, { skipCache, engine });
+  if (result.source === 'ai') {
+    await invalidateSearchIndexForImage(String(image));
+  }
   res.json({ source: result.source, text: result.text });
 }));
 
@@ -48,6 +52,7 @@ router.post('/api/page-text', asyncHandler(async (req, res) => {
     throw createHttpError(400, 'Image is required');
   }
   const result = await savePageText(image, text);
+  await invalidateSearchIndexForImage(image);
   res.json({ source: result.source, text: result.text });
 }));
 

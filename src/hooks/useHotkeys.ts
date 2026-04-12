@@ -33,6 +33,7 @@ type HotkeysOptions = {
   helpOpen: boolean;
   printModalOpen: boolean;
   bookmarksOpen: boolean;
+  searchOpen: boolean;
   bookModalOpen: boolean;
   ocrQueueOpen: boolean;
   tocOpen: boolean;
@@ -41,6 +42,8 @@ type HotkeysOptions = {
   closeBookModal: () => void;
   closePrintModal: () => void;
   closeBookmarks: () => void;
+  openSearch: () => void;
+  closeSearch: () => void;
   setOcrQueueOpen: (open: boolean) => void;
   setTocOpen: (open: boolean) => void;
   setTocManageOpen: (open: boolean) => void;
@@ -86,6 +89,7 @@ export function useHotkeys({
   helpOpen,
   printModalOpen,
   bookmarksOpen,
+  searchOpen,
   bookModalOpen,
   ocrQueueOpen,
   tocOpen,
@@ -94,6 +98,8 @@ export function useHotkeys({
   closeBookModal,
   closePrintModal,
   closeBookmarks,
+  openSearch,
+  closeSearch,
   setOcrQueueOpen,
   setTocOpen,
   setTocManageOpen,
@@ -127,6 +133,7 @@ export function useHotkeys({
       { keys: 'F', action: 'Toggle fullscreen' },
       { keys: 'C', action: 'Open TOC' },
       { keys: 'B', action: 'Open book selector' },
+      { keys: '/', action: 'Open search' },
       { keys: 'Esc', action: 'Close dialogs' },
       { keys: 'Shift + /', action: 'Open help' }
     ],
@@ -141,6 +148,7 @@ export function useHotkeys({
           helpOpen ||
           printModalOpen ||
           bookmarksOpen ||
+          searchOpen ||
           bookModalOpen ||
           ocrQueueOpen ||
           tocOpen ||
@@ -287,6 +295,13 @@ export function useHotkeys({
           event.preventDefault();
           openBookModal();
           break;
+        case '/':
+          if (event.shiftKey) {
+            return;
+          }
+          event.preventDefault();
+          openSearch();
+          break;
         case 'f':
           if (event.metaKey || event.ctrlKey) {
             return;
@@ -318,6 +333,9 @@ export function useHotkeys({
           }
           if (bookmarksOpen) {
             closeBookmarks();
+          }
+          if (searchOpen) {
+            closeSearch();
           }
           break;
         default:
@@ -355,7 +373,10 @@ export function useHotkeys({
     helpOpen,
     printModalOpen,
     bookmarksOpen,
+    searchOpen,
     closeBookmarks,
+    openSearch,
+    closeSearch,
     closePrintModal,
     ocrQueueOpen,
     streamStatus,

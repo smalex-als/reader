@@ -22,7 +22,15 @@ import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
-import type { AppSettings, PageTextOcrEngine, TocEntry } from '@/types/app';
+import type { AppSettings, BookSearchResponse, PageTextOcrEngine, SearchResult, TocEntry } from '@/types/app';
+
+async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, init);
+  if (!response.ok) {
+    throw new Error(`${response.status} ${response.statusText}`);
+  }
+  return (await response.json()) as T;
+}
 
 const STREAM_VOICE_OPTIONS = [
   'en-Breeze_woman',
@@ -118,6 +126,10 @@ export default function App() {
     setOcrQueueOpen,
     openOcrQueue,
     closeOcrQueue,
+    searchOpen,
+    setSearchOpen,
+    openSearch,
+    closeSearch,
     editorOpen,
     setEditorOpen,
     editorChapterNumber,
@@ -134,6 +146,9 @@ export default function App() {
     key: string;
   } | null>(null);
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
@@ -560,11 +575,46 @@ export default function App() {
 
   useEffect(() => {
     closeBookmarks();
+    closeSearch();
     resetTextState();
     resetAudioCache();
     stopAudio();
     stopStream();
-  }, [bookId, closeBookmarks, resetAudioCache, resetTextState, stopAudio, stopStream]);
+    setSearchQuery('');
+    setSearchResults([]);
+  }, [bookId, closeBookmarks, closeSearch, resetAudioCache, resetTextState, stopAudio, stopStream]);
+
+  const handleSearch = useCallback(async (query: string) => {
+    if (!bookId) {
+      showToast('Select a book before searching', 'error');
+      return;
+    }
+    const trimmed = query.trim();
+    setSearchQuery(query);
+    if (!trimmed) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    try {
+      const result = await fetchJson<BookSearchResponse>(
+        `/api/books/${encodeURIComponent(bookId)}/search?q=${encodeURIComponent(trimmed)}&limit=25`
+      );
+      setSearchResults(Array.isArray(result.results) ? result.results : []);
+    } catch (error) {
+      console.error(error);
+      showToast('Unable to search this book', 'error');
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }, [bookId, showToast]);
+
+  const handleSelectSearchResult = useCallback((result: SearchResult) => {
+    closeSearch();
+    renderPage(result.page);
+    setViewMode(isTextBook ? 'text' : 'pages');
+  }, [closeSearch, isTextBook, renderPage, setViewMode]);
 
   const applyFilters = useCallback(
     (
@@ -795,6 +845,7 @@ export default function App() {
     helpOpen,
     printModalOpen,
     bookmarksOpen,
+    searchOpen,
     bookModalOpen,
     ocrQueueOpen,
     tocOpen,
@@ -803,6 +854,8 @@ export default function App() {
     closeBookModal,
     closePrintModal,
     closeBookmarks,
+    openSearch,
+    closeSearch,
     setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,
@@ -875,6 +928,7 @@ export default function App() {
     gotoInputRef,
     onToggleBookmark: toggleBookmark,
     onShowBookmarks: showBookmarks,
+    onOpenSearch: openSearch,
     isBookmarked,
     bookmarksCount: bookmarks.length,
     onOpenPrint: openPrintModal,
@@ -993,6 +1047,20 @@ export default function App() {
       onQueueRemaining: queueRemainingPages,
       onRetryFailed: retryFailed,
       onClearQueue: clearQueue
+    },
+    searchModalProps: {
+      open: searchOpen,
+      currentBook: bookId,
+      currentPage,
+      loading: searchLoading,
+      query: searchQuery,
+      results: searchResults,
+      onClose: closeSearch,
+      onSearch: (query: string) => {
+        void handleSearch(query);
+      },
+      onQueryChange: setSearchQuery,
+      onSelect: handleSelectSearchResult
     }
   };
 

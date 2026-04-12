@@ -32,6 +32,11 @@ import {
   getTextChapterCount,
   updateTextChapter
 } from '../lib/textBooks.js';
+import {
+  buildBookSearchIndex,
+  invalidateBookSearchIndex,
+  searchBook
+} from '../lib/search.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -211,6 +216,7 @@ router.post('/api/books/:id/toc', asyncHandler(async (req, res) => {
   const { toc } = req.body || {};
   const variant = req.query.variant === 'detailed' ? 'detailed' : 'main';
   const saved = await saveToc(bookId, toc, { variant });
+  await invalidateBookSearchIndex(bookId);
   res.json({ book: bookId, toc: saved });
 }));
 
@@ -219,7 +225,32 @@ router.post('/api/books/:id/toc/generate', asyncHandler(async (req, res) => {
   const variant = req.query.variant === 'detailed' ? 'detailed' : 'main';
   const detailLevel = req.query.detailLevel === 'detailed' ? 'detailed' : 'normal';
   const toc = await generateTocFromOcr(bookId, { variant, detailLevel });
+  await invalidateBookSearchIndex(bookId);
   res.json({ book: bookId, toc });
+}));
+
+router.get('/api/books/:id/search', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const query = typeof req.query.q === 'string' ? req.query.q : '';
+  const limit = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+  const autoBuildParam = req.query.autoBuild;
+  const autoBuild =
+    typeof autoBuildParam === 'string'
+      ? !['0', 'false', 'no'].includes(autoBuildParam.toLowerCase())
+      : true;
+  const result = await searchBook(bookId, query, { limit, autoBuild });
+  res.json(result);
+}));
+
+router.post('/api/books/:id/search/index', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const index = await buildBookSearchIndex(bookId);
+  res.json({
+    book: bookId,
+    builtAt: index.builtAt,
+    documents: index.documents.length,
+    terms: Object.keys(index.terms).length
+  });
 }));
 
 router.post('/api/books/:id/chapters/generate', asyncHandler(async (req, res) => {
@@ -296,6 +327,7 @@ router.post('/api/books/text', upload.single('file'), asyncHandler(async (req, r
   const content = file.buffer.toString('utf8');
   const bookId = await createTextBook(bookName);
   const result = await addTextChapter(bookId, { title: chapterTitle, content });
+  await invalidateBookSearchIndex(bookId);
   const chapterCount = await getTextChapterCount(bookId);
   res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));
@@ -304,6 +336,7 @@ router.post('/api/books/text/empty', asyncHandler(async (req, res) => {
   const { bookName, chapterTitle } = req.body || {};
   const bookId = await createTextBook(bookName);
   const result = await createEmptyTextChapter(bookId, chapterTitle);
+  await invalidateBookSearchIndex(bookId);
   const chapterCount = await getTextChapterCount(bookId);
   res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));
@@ -317,6 +350,7 @@ router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async
   }
   const content = file.buffer.toString('utf8');
   const result = await addTextChapter(bookId, { title: chapterTitle, content });
+  await invalidateBookSearchIndex(bookId);
   const chapterCount = await getTextChapterCount(bookId);
   res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));
@@ -325,6 +359,7 @@ router.post('/api/books/:id/chapters/empty', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const { chapterTitle } = req.body || {};
   const result = await createEmptyTextChapter(bookId, chapterTitle);
+  await invalidateBookSearchIndex(bookId);
   const chapterCount = await getTextChapterCount(bookId);
   res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));
@@ -334,6 +369,7 @@ router.put('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => 
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const { content, title } = req.body || {};
   const result = await updateTextChapter(bookId, chapterNumber, content, title);
+  await invalidateBookSearchIndex(bookId);
   const chapterCount = await getTextChapterCount(bookId);
   res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
 }));

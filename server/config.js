@@ -15,6 +15,7 @@ export const PORT = Number.parseInt(process.env.PORT || '3000', 10);
 export const BOOKMARKS_FILENAME = 'bookmarks.txt';
 export const TOC_FILENAME = 'toc.json';
 export const DETAILED_TOC_FILENAME = 'toc.detailed.json';
+export const SEARCH_INDEX_FILENAME = 'search.index.json';
 export const DEFAULT_VOICE = 'santa';
 export const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;

@@ -30,6 +30,25 @@ export interface TocEntry {
   level?: number;
 }
 
+export interface SearchResult {
+  id: string;
+  kind: 'page' | 'chapter';
+  page: number;
+  chapterNumber: number | null;
+  title: string;
+  score: number;
+  textPath: string;
+  snippet: string;
+}
+
+export interface BookSearchResponse {
+  book: string;
+  query: string;
+  count: number;
+  builtAt: string;
+  results: SearchResult[];
+}
+
 export interface AudioCacheEntry {
   url: string;
   source: 'file' | 'ai';
