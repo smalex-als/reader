@@ -2112,10 +2112,26 @@ body {
   gap: 0.5rem;
 }
 
+.book-select-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.book-select-toolbar-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08rem;
+  color: rgba(213, 229, 242, 0.58);
+}
+
 .book-select-row {
   display: flex;
   gap: 0.5rem;
-  align-items: center;
+  align-items: stretch;
 }
 
 .book-select-button {
@@ -2126,10 +2142,11 @@ body {
   background: rgba(213, 229, 242, 0.04);
   color: inherit;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 0.75rem;
   cursor: pointer;
+  text-align: left;
 }
 
 .book-select-row .book-select-button {
@@ -2148,6 +2165,34 @@ body {
 .book-select-marker {
   font-size: 0.85rem;
   color: rgba(0, 200, 120, 0.9);
+}
+
+.book-select-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.book-select-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.book-select-subtitle {
+  font-size: 0.82rem;
+  color: rgba(213, 229, 242, 0.55);
+}
+
+.book-select-tag {
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: rgba(255, 220, 120, 0.95);
+  background: rgba(255, 200, 0, 0.12);
+  border: 1px solid rgba(255, 200, 0, 0.24);
 }
 
 .book-upload {
@@ -2206,6 +2251,16 @@ body {
   border: 1px solid rgba(255, 120, 120, 0.35);
   color: rgba(255, 120, 120, 0.9);
   white-space: nowrap;
+}
+
+.book-select-deferred {
+  white-space: nowrap;
+}
+
+.book-select-deferred-active {
+  color: rgba(255, 220, 120, 0.98);
+  border-color: rgba(255, 200, 0, 0.3);
+  background: rgba(255, 200, 0, 0.08);
 }
 
 .book-select-delete:hover:not(:disabled) {

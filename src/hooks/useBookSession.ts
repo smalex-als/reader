@@ -5,6 +5,8 @@ import {
   loadLastPage,
   loadSettingsForBook,
   loadStreamVoiceForBook,
+  markBookOpened,
+  removeBookStorage,
   saveLastBook,
   saveSettingsForBook,
   saveStreamVoiceForBook
@@ -137,6 +139,7 @@ export function useBookSession<StreamVoice extends string>({
   useEffect(() => {
     if (bookId) {
       saveLastBook(bookId);
+      markBookOpened(bookId);
     }
   }, [bookId]);
 
@@ -484,6 +487,7 @@ export function useBookSession<StreamVoice extends string>({
           `/api/books/${encodeURIComponent(targetBookId)}`,
           { method: 'DELETE' }
         );
+        removeBookStorage(targetBookId);
         setBooks(data.books);
         showToast(`Deleted ${data.book}`, 'success');
 

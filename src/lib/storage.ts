@@ -4,8 +4,17 @@ const SETTINGS_KEY = 'scanned-reader:settings';
 const BOOK_KEY = 'scanned-reader:lastBook';
 const PAGE_KEY = 'scanned-reader:lastPage';
 const STREAM_VOICE_KEY = 'scanned-reader:streamVoice';
+const BOOK_META_KEY = 'scanned-reader:bookMeta';
+const BOOK_SORT_MODE_KEY = 'scanned-reader:bookSortMode';
 
 type StoredSettings = Record<string, AppSettings>;
+type StoredBookMeta = Record<
+  string,
+  {
+    lastOpenedAt?: string;
+    deferred?: boolean;
+  }
+>;
 
 function readJson<T>(key: string): T | null {
   if (typeof window === 'undefined') {
@@ -89,4 +98,68 @@ export function saveStreamVoiceForBook(bookId: string, voice: string) {
   const voices = readJson<Record<string, string>>(STREAM_VOICE_KEY) ?? {};
   voices[bookId] = voice;
   writeJson(STREAM_VOICE_KEY, voices);
+}
+
+export function loadBookMeta(): StoredBookMeta {
+  return readJson<StoredBookMeta>(BOOK_META_KEY) ?? {};
+}
+
+export function markBookOpened(bookId: string) {
+  const meta = loadBookMeta();
+  meta[bookId] = {
+    ...meta[bookId],
+    lastOpenedAt: new Date().toISOString()
+  };
+  writeJson(BOOK_META_KEY, meta);
+}
+
+export function setBookDeferred(bookId: string, deferred: boolean) {
+  const meta = loadBookMeta();
+  meta[bookId] = {
+    ...meta[bookId],
+    deferred
+  };
+  writeJson(BOOK_META_KEY, meta);
+}
+
+export function removeBookStorage(bookId: string) {
+  const pages = readJson<Record<string, number>>(PAGE_KEY) ?? {};
+  if (bookId in pages) {
+    delete pages[bookId];
+    writeJson(PAGE_KEY, pages);
+  }
+
+  const settings = readJson<StoredSettings>(SETTINGS_KEY) ?? {};
+  if (bookId in settings) {
+    delete settings[bookId];
+    writeJson(SETTINGS_KEY, settings);
+  }
+
+  const voices = readJson<Record<string, string>>(STREAM_VOICE_KEY) ?? {};
+  if (bookId in voices) {
+    delete voices[bookId];
+    writeJson(STREAM_VOICE_KEY, voices);
+  }
+
+  const meta = loadBookMeta();
+  if (bookId in meta) {
+    delete meta[bookId];
+    writeJson(BOOK_META_KEY, meta);
+  }
+
+  if (loadLastBook() === bookId && typeof window !== 'undefined') {
+    window.localStorage.removeItem(BOOK_KEY);
+  }
+}
+
+export function loadBookSortMode(): 'alphabetical' | 'recent' | 'deferred' {
+  const value = readJson<string>(BOOK_SORT_MODE_KEY);
+  if (value === 'recent' || value === 'deferred') {
+    return value;
+  }
+  return 'alphabetical';
+}
+
+export function saveBookSortMode(mode: 'alphabetical' | 'recent' | 'deferred') {
+  writeJson(BOOK_SORT_MODE_KEY, mode);
 }

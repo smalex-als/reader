@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import {
+  loadBookMeta,
+  loadBookSortMode,
+  saveBookSortMode,
+  setBookDeferred
+} from '@/lib/storage';
+
+type BookSortMode = 'alphabetical' | 'recent' | 'deferred';
 
 interface BookSelectModalProps {
   open: boolean;
@@ -30,12 +38,62 @@ export default function BookSelectModal({
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [chapterBook, setChapterBook] = useState('');
   const [chapterTitle, setChapterTitle] = useState('');
+  const [sortMode, setSortMode] = useState<BookSortMode>(() => loadBookSortMode());
+  const [bookMeta, setBookMeta] = useState(() => loadBookMeta());
 
   useEffect(() => {
     if (open) {
       setChapterBook(currentBook ?? '');
+      setBookMeta(loadBookMeta());
     }
   }, [currentBook, open]);
+
+  useEffect(() => {
+    saveBookSortMode(sortMode);
+  }, [sortMode]);
+
+  const collator = new Intl.Collator('en', { sensitivity: 'base', numeric: true });
+  const formatLastOpened = (value?: string) => {
+    if (!value) {
+      return 'Never opened';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'Never opened';
+    }
+    return new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(date);
+  };
+
+  const sortedBooks = [...books].sort((left, right) => {
+    const leftMeta = bookMeta[left] ?? {};
+    const rightMeta = bookMeta[right] ?? {};
+
+    if (sortMode === 'recent') {
+      const leftTime = leftMeta.lastOpenedAt ? new Date(leftMeta.lastOpenedAt).getTime() : 0;
+      const rightTime = rightMeta.lastOpenedAt ? new Date(rightMeta.lastOpenedAt).getTime() : 0;
+      if (rightTime !== leftTime) {
+        return rightTime - leftTime;
+      }
+      return collator.compare(left, right);
+    }
+
+    if (sortMode === 'deferred') {
+      const leftDeferred = Boolean(leftMeta.deferred);
+      const rightDeferred = Boolean(rightMeta.deferred);
+      if (leftDeferred !== rightDeferred) {
+        return leftDeferred ? -1 : 1;
+      }
+      return collator.compare(left, right);
+    }
+
+    return collator.compare(left, right);
+  });
 
   const handleSelectChapter = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -77,12 +135,46 @@ export default function BookSelectModal({
           </button>
         </header>
         <section className="modal-body">
+          <div className="book-select-toolbar">
+            <span className="book-select-toolbar-label">Sort</span>
+            <div className="segmented" role="tablist" aria-label="Book sort">
+              <button
+                type="button"
+                className={`segmented-item ${sortMode === 'alphabetical' ? 'segmented-item-active' : ''}`}
+                onClick={() => setSortMode('alphabetical')}
+                role="tab"
+                aria-selected={sortMode === 'alphabetical'}
+              >
+                A-Z
+              </button>
+              <button
+                type="button"
+                className={`segmented-item ${sortMode === 'recent' ? 'segmented-item-active' : ''}`}
+                onClick={() => setSortMode('recent')}
+                role="tab"
+                aria-selected={sortMode === 'recent'}
+              >
+                Recent
+              </button>
+              <button
+                type="button"
+                className={`segmented-item ${sortMode === 'deferred' ? 'segmented-item-active' : ''}`}
+                onClick={() => setSortMode('deferred')}
+                role="tab"
+                aria-selected={sortMode === 'deferred'}
+              >
+                Deferred
+              </button>
+            </div>
+          </div>
           {books.length === 0 ? (
             <p className="modal-status">No books found. Upload a chapter to create one.</p>
           ) : (
             <ul className="book-select-list">
-              {books.map((book) => {
+              {sortedBooks.map((book) => {
                 const active = currentBook === book;
+                const meta = bookMeta[book] ?? {};
+                const isDeferred = Boolean(meta.deferred);
                 return (
                   <li key={book}>
                     <div className="book-select-row">
@@ -91,8 +183,34 @@ export default function BookSelectModal({
                         className={`book-select-button ${active ? 'book-select-button-active' : ''}`}
                         onClick={() => onSelect(book)}
                       >
-                        {book}
-                        {active ? <span className="book-select-marker">Current</span> : null}
+                        <span className="book-select-labels">
+                          <span className="book-select-name-row">
+                            <span>{book}</span>
+                            {active ? <span className="book-select-marker">Current</span> : null}
+                            {isDeferred ? <span className="book-select-tag">Deferred</span> : null}
+                          </span>
+                          <span className="book-select-subtitle">
+                            Last opened: {formatLastOpened(meta.lastOpenedAt)}
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`button button-ghost book-select-deferred ${isDeferred ? 'book-select-deferred-active' : ''}`}
+                        onClick={() => {
+                          const nextDeferred = !isDeferred;
+                          setBookDeferred(book, nextDeferred);
+                          setBookMeta((prev) => ({
+                            ...prev,
+                            [book]: {
+                              ...prev[book],
+                              deferred: nextDeferred
+                            }
+                          }));
+                        }}
+                        aria-label={isDeferred ? `Remove ${book} from deferred` : `Mark ${book} as deferred`}
+                      >
+                        {isDeferred ? 'Later ✓' : 'Later'}
                       </button>
                       <button
                         type="button"
