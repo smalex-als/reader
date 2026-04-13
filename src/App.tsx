@@ -367,34 +367,6 @@ export default function App() {
     [bookId, setCurrentPage, setRegeneratedText]
   );
 
-  useEffect(() => {
-    const pageKey = streamState.pageKey;
-    if (
-      viewMode !== 'scroll' ||
-      !autoFollowStream ||
-      streamState.status !== 'streaming' ||
-      !pageKey ||
-      manifest.length === 0
-    ) {
-      return;
-    }
-    const streamPageIndex = manifest.findIndex(
-      (imageUrl) => pageKey === imageUrl || pageKey.startsWith(`${imageUrl}#`)
-    );
-    if (streamPageIndex < 0 || streamPageIndex === currentPage) {
-      return;
-    }
-    handleScrollCurrentPageChange(streamPageIndex);
-  }, [
-    autoFollowStream,
-    currentPage,
-    handleScrollCurrentPageChange,
-    manifest,
-    streamState.pageKey,
-    streamState.status,
-    viewMode
-  ]);
-
   const handleStreamSequenceComplete = useCallback(
     (source: 'page' | 'chapter') => {
       if (source !== 'page' || viewMode !== 'pages') {
@@ -1175,6 +1147,8 @@ export default function App() {
       editMode: ocrEditMode,
       dimOutsideBlocks: settings.dimOutsideBlocks,
       dimOutsideBlocksIntensity: settings.dimOutsideBlocksIntensity,
+      streamPageKey: streamState.status === 'streaming' ? streamState.pageKey : null,
+      autoFollowEnabled: autoFollowStream,
       fetchPageTextByImage,
       onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
         void handlePlayPageBlock(payload);

@@ -145,6 +145,7 @@ export default function OcrOverlay({
             }
             data-excluded={block.excludedFromSpeech ? 'true' : 'false'}
             data-edit-mode={editMode ? 'true' : 'false'}
+            data-stream-block-id={block.id}
             onPointerDown={(event) => {
               event.stopPropagation();
             }}

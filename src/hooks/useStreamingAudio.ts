@@ -6,6 +6,15 @@ const SAMPLE_RATE = 24_000;
 const SILENT_FRAME_LIMIT = 4;
 const STREAM_SERVER = 'https://reader.test:3000';
 export const DEFAULT_STREAM_VOICE = 'en-Mike_man';
+const SHORT_SEGMENT_PAUSE_MS = 500;
+const MEDIUM_SEGMENT_PAUSE_MS = 250;
+
+type QueuedStreamItem = {
+  text: string;
+  pageKey: string;
+  voice: string;
+  pauseAfterMs: number;
+};
 
 const INITIAL_STREAM_STATE: StreamState = {
   status: 'idle',
@@ -13,6 +22,26 @@ const INITIAL_STREAM_STATE: StreamState = {
   playbackSeconds: 0,
   modelSeconds: 0
 };
+
+function countSentences(text: string) {
+  const matches = text.match(/[.!?]+(?:\s|$)/g);
+  return matches?.length ?? 0;
+}
+
+function getInterSegmentPauseMs(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return 0;
+  }
+  const sentenceCount = countSentences(trimmed);
+  if (trimmed.length <= 90 || sentenceCount <= 1) {
+    return SHORT_SEGMENT_PAUSE_MS;
+  }
+  if (trimmed.length <= 180 || sentenceCount <= 2) {
+    return MEDIUM_SEGMENT_PAUSE_MS;
+  }
+  return 0;
+}
 
 export function useStreamingAudio(
   showToast: (message: string, kind?: 'info' | 'success' | 'error') => void
@@ -31,7 +60,7 @@ export function useStreamingAudio(
   const stopRequestedRef = useRef(false);
   const socketClosedRef = useRef(false);
   const firstAudioRef = useRef(false);
-  const queueRef = useRef<Array<{ text: string; pageKey: string; voice: string }>>([]);
+  const queueRef = useRef<QueuedStreamItem[]>([]);
   const segmentTimelineRef = useRef<Array<{ pageKey: string; startSample: number }>>([]);
   const activeSegmentKeyRef = useRef<string | null>(null);
 
@@ -182,6 +211,7 @@ export function useStreamingAudio(
 
   const appendAudio = useCallback((chunk: Float32Array) => {
     bufferSamplesRef.current += chunk.length;
+    queuedSamplesRef.current += chunk.length;
     const node = workletRef.current;
     if (!node) {
       return;
@@ -192,6 +222,14 @@ export function useStreamingAudio(
       console.error('Failed to append audio to worklet', error);
     }
   }, []);
+
+  const appendSilence = useCallback((durationMs: number) => {
+    if (durationMs <= 0) {
+      return;
+    }
+    const sampleCount = Math.max(1, Math.round((durationMs / 1000) * SAMPLE_RATE));
+    appendAudio(new Float32Array(sampleCount));
+  }, [appendAudio]);
 
   const startQueuedSocket = useCallback(
     async (sessionId: number) => {
@@ -272,7 +310,6 @@ export function useStreamingAudio(
             });
             segmentRegistered = true;
           }
-          queuedSamplesRef.current += floatChunk.length;
           appendAudio(floatChunk);
           if (!receivedSegmentAudio) {
             receivedSegmentAudio = true;
@@ -300,6 +337,9 @@ export function useStreamingAudio(
             return;
           }
           if (queueRef.current.length > 0) {
+            if (nextItem.pauseAfterMs > 0) {
+              appendSilence(nextItem.pauseAfterMs);
+            }
             void startQueuedSocket(sessionId);
             return;
           }
@@ -312,7 +352,7 @@ export function useStreamingAudio(
         finalizeStream('error', 'Unable to start stream');
       }
     },
-    [appendAudio, finalizeStream]
+    [appendAudio, appendSilence, finalizeStream]
   );
 
   const startStream = useCallback(
@@ -354,7 +394,8 @@ export function useStreamingAudio(
         queueRef.current.push({
           text: cleaned,
           pageKey,
-          voice: voice || DEFAULT_STREAM_VOICE
+          voice: voice || DEFAULT_STREAM_VOICE,
+          pauseAfterMs: getInterSegmentPauseMs(cleaned)
         });
         await startQueuedSocket(sessionId);
       } catch (error) {
@@ -374,7 +415,8 @@ export function useStreamingAudio(
       queueRef.current.push({
         text: cleaned,
         pageKey,
-        voice: voice || DEFAULT_STREAM_VOICE
+        voice: voice || DEFAULT_STREAM_VOICE,
+        pauseAfterMs: getInterSegmentPauseMs(cleaned)
       });
       if (!socketRef.current) {
         void startQueuedSocket(sessionRef.current);

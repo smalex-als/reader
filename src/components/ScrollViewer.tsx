@@ -13,6 +13,8 @@ interface ScrollViewerProps {
   editMode: boolean;
   dimOutsideBlocks: boolean;
   dimOutsideBlocksIntensity: number;
+  streamPageKey: string | null;
+  autoFollowEnabled: boolean;
   fetchPageTextByImage: (
     image: string,
     options?: { force?: boolean; silent?: boolean; updateCurrentState?: boolean }
@@ -37,6 +39,8 @@ export default function ScrollViewer({
   editMode,
   dimOutsideBlocks,
   dimOutsideBlocksIntensity,
+  streamPageKey,
+  autoFollowEnabled,
   fetchPageTextByImage,
   onPlayTextBlock,
   onToggleSpeechBlock,
@@ -76,6 +80,20 @@ export default function ScrollViewer({
     const contrastFilter = `contrast(${settings.contrast}%)`;
     return `${invertFilter} ${brightnessFilter} ${contrastFilter}`;
   }, [settings.brightness, settings.contrast, settings.invert]);
+
+  const parseStreamLocator = (pageKey: string | null) => {
+    if (!pageKey) {
+      return null;
+    }
+    const separatorIndex = pageKey.indexOf('::');
+    if (separatorIndex === -1) {
+      return { imageUrl: pageKey, blockId: null };
+    }
+    return {
+      imageUrl: pageKey.slice(0, separatorIndex),
+      blockId: pageKey.slice(separatorIndex + 2) || null
+    };
+  };
 
   const isPageSufficientlyVisible = (pageIndex: number) => {
     const scroller = scrollerRef.current;
@@ -121,6 +139,51 @@ export default function ScrollViewer({
       behavior: 'smooth'
     });
   }, [currentPage, manifest.length]);
+
+  useEffect(() => {
+    const locator = parseStreamLocator(streamPageKey);
+    if (!autoFollowEnabled || !locator?.imageUrl || manifest.length === 0) {
+      return;
+    }
+    const pageIndex = manifest.findIndex((imageUrl) => imageUrl === locator.imageUrl);
+    if (pageIndex < 0) {
+      return;
+    }
+    internalPageRef.current = pageIndex;
+    if (pageIndex !== currentPage) {
+      onCurrentPageChange(pageIndex);
+    }
+    const scroller = scrollerRef.current;
+    if (!scroller) {
+      return;
+    }
+    if (locator.blockId) {
+      const block = scroller.querySelector<HTMLElement>(
+        `.scroll-viewer-page[data-page-index="${pageIndex}"] [data-stream-block-id="${locator.blockId}"]`
+      );
+      if (block) {
+        const scrollerRect = scroller.getBoundingClientRect();
+        const blockRect = block.getBoundingClientRect();
+        const visibleTop = Math.max(scrollerRect.top, blockRect.top);
+        const visibleBottom = Math.min(scrollerRect.bottom, blockRect.bottom);
+        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+        const visibleRatio = blockRect.height > 0 ? visibleHeight / blockRect.height : 0;
+        const inReadingZone =
+          blockRect.top >= scrollerRect.top + 48 && blockRect.top <= scrollerRect.top + scrollerRect.height * 0.66;
+        if (visibleRatio >= 0.55 || inReadingZone) {
+          return;
+        }
+      }
+    }
+    if (isPageSufficientlyVisible(pageIndex)) {
+      return;
+    }
+    virtuosoRef.current?.scrollToIndex({
+      index: pageIndex,
+      align: 'start',
+      behavior: 'smooth'
+    });
+  }, [autoFollowEnabled, currentPage, manifest, onCurrentPageChange, streamPageKey]);
 
   const updateCurrentPageFromViewport = () => {
     const scroller = scrollerRef.current;
