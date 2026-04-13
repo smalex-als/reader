@@ -4,6 +4,8 @@ export function useModalState() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [ocrQueueOpen, setOcrQueueOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [bookCardOpen, setBookCardOpen] = useState(false);
+  const [bookCardBookId, setBookCardBookId] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorChapterNumber, setEditorChapterNumber] = useState<number | null>(null);
 
@@ -13,6 +15,14 @@ export function useModalState() {
   const closeOcrQueue = useCallback(() => setOcrQueueOpen(false), []);
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
+  const openBookCard = useCallback((bookId: string) => {
+    setBookCardBookId(bookId);
+    setBookCardOpen(true);
+  }, []);
+  const closeBookCard = useCallback(() => {
+    setBookCardOpen(false);
+    setBookCardBookId(null);
+  }, []);
 
   return {
     helpOpen,
@@ -27,6 +37,12 @@ export function useModalState() {
     setSearchOpen,
     openSearch,
     closeSearch,
+    bookCardOpen,
+    setBookCardOpen,
+    bookCardBookId,
+    setBookCardBookId,
+    openBookCard,
+    closeBookCard,
     editorOpen,
     setEditorOpen,
     editorChapterNumber,

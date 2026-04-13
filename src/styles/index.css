@@ -2112,6 +2112,11 @@ body {
   gap: 0.5rem;
 }
 
+.book-select-modal {
+  width: min(1040px, 100%);
+  max-height: min(88vh, 900px);
+}
+
 .book-select-toolbar {
   display: flex;
   align-items: center;
@@ -2129,7 +2134,8 @@ body {
 }
 
 .book-select-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.5rem;
   align-items: stretch;
 }
@@ -2151,6 +2157,42 @@ body {
 
 .book-select-row .book-select-button {
   flex: 1;
+  min-width: 0;
+}
+
+.book-select-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.book-select-cover {
+  width: 56px;
+  height: 72px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: rgba(213, 229, 242, 0.08);
+  border: 1px solid rgba(213, 229, 242, 0.08);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.book-select-cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.book-select-cover-placeholder {
+  font-size: 0.78rem;
+  letter-spacing: 0.08rem;
+  text-transform: uppercase;
+  color: rgba(213, 229, 242, 0.55);
 }
 
 .book-select-button:hover {
@@ -2181,9 +2223,22 @@ body {
   flex-wrap: wrap;
 }
 
+.book-select-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+  color: rgba(213, 229, 242, 0.72);
+}
+
 .book-select-subtitle {
   font-size: 0.82rem;
   color: rgba(213, 229, 242, 0.55);
+}
+
+.book-select-id {
+  word-break: break-word;
 }
 
 .book-select-tag {
@@ -2255,12 +2310,73 @@ body {
 
 .book-select-deferred {
   white-space: nowrap;
+  min-width: 88px;
+  justify-content: center;
+}
+
+.book-select-actions > .button {
+  flex-shrink: 0;
 }
 
 .book-select-deferred-active {
   color: rgba(255, 220, 120, 0.98);
   border-color: rgba(255, 200, 0, 0.3);
   background: rgba(255, 200, 0, 0.08);
+}
+
+.book-card-editor {
+  margin-top: 0.6rem;
+  padding: 0.85rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(213, 229, 242, 0.08);
+  background: rgba(10, 18, 28, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.book-card-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.book-card-cover-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.book-card-cover-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+  color: rgba(213, 229, 242, 0.6);
+}
+
+.book-card-cover-preview {
+  width: 96px;
+  height: 128px;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  border: 1px solid rgba(213, 229, 242, 0.08);
+  background: rgba(213, 229, 242, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.book-card-cover-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.book-card-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .book-select-delete:hover:not(:disabled) {

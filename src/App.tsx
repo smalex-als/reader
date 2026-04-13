@@ -130,6 +130,10 @@ export default function App() {
     setSearchOpen,
     openSearch,
     closeSearch,
+    bookCardOpen,
+    bookCardBookId,
+    openBookCard,
+    closeBookCard,
     editorOpen,
     setEditorOpen,
     editorChapterNumber,
@@ -149,6 +153,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [bookCardRefreshToken, setBookCardRefreshToken] = useState(0);
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
@@ -576,13 +581,14 @@ export default function App() {
   useEffect(() => {
     closeBookmarks();
     closeSearch();
+    closeBookCard();
     resetTextState();
     resetAudioCache();
     stopAudio();
     stopStream();
     setSearchQuery('');
     setSearchResults([]);
-  }, [bookId, closeBookmarks, closeSearch, resetAudioCache, resetTextState, stopAudio, stopStream]);
+  }, [bookId, closeBookmarks, closeBookCard, closeSearch, resetAudioCache, resetTextState, stopAudio, stopStream]);
 
   const handleSearch = useCallback(async (query: string) => {
     if (!bookId) {
@@ -846,6 +852,7 @@ export default function App() {
     printModalOpen,
     bookmarksOpen,
     searchOpen,
+    bookCardOpen,
     bookModalOpen,
     ocrQueueOpen,
     tocOpen,
@@ -856,6 +863,7 @@ export default function App() {
     closeBookmarks,
     openSearch,
     closeSearch,
+    closeBookCard,
     setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,
@@ -969,6 +977,8 @@ export default function App() {
       uploadingChapter,
       onUploadPdf: handleUploadPdf,
       uploadingPdf,
+      onOpenEditCard: openBookCard,
+      cardRefreshToken: bookCardRefreshToken,
       onClose: closeBookModal
     },
     helpModalProps: { open: helpOpen, hotkeys, onClose: closeHelp },
@@ -1061,6 +1071,14 @@ export default function App() {
       },
       onQueryChange: setSearchQuery,
       onSelect: handleSelectSearchResult
+    },
+    bookCardModalProps: {
+      open: bookCardOpen,
+      bookId: bookCardBookId,
+      onClose: closeBookCard,
+      onSaved: () => {
+        setBookCardRefreshToken((prev) => prev + 1);
+      }
     }
   };
 

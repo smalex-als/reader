@@ -49,6 +49,16 @@ export interface BookSearchResponse {
   results: SearchResult[];
 }
 
+export interface BookCard {
+  book: string;
+  title: string;
+  author: string;
+  category: string;
+  coverImage: string | null;
+  defaultCoverImage: string | null;
+  bookType: 'image' | 'text';
+}
+
 export interface AudioCacheEntry {
   url: string;
   source: 'file' | 'ai';

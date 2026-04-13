@@ -6,8 +6,17 @@ import {
   saveBookSortMode,
   setBookDeferred
 } from '@/lib/storage';
+import type { BookCard } from '@/types/app';
 
 type BookSortMode = 'alphabetical' | 'recent' | 'deferred';
+
+async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, init);
+  if (!response.ok) {
+    throw new Error(`${response.status} ${response.statusText}`);
+  }
+  return (await response.json()) as T;
+}
 
 interface BookSelectModalProps {
   open: boolean;
@@ -19,6 +28,8 @@ interface BookSelectModalProps {
   uploadingChapter: boolean;
   onUploadPdf: (file: File) => void;
   uploadingPdf: boolean;
+  onOpenEditCard: (bookId: string) => void;
+  cardRefreshToken?: number;
   onClose: () => void;
 }
 
@@ -32,6 +43,8 @@ export default function BookSelectModal({
   uploadingChapter,
   onUploadPdf,
   uploadingPdf,
+  onOpenEditCard,
+  cardRefreshToken = 0,
   onClose
 }: BookSelectModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +53,8 @@ export default function BookSelectModal({
   const [chapterTitle, setChapterTitle] = useState('');
   const [sortMode, setSortMode] = useState<BookSortMode>(() => loadBookSortMode());
   const [bookMeta, setBookMeta] = useState(() => loadBookMeta());
+  const [bookCards, setBookCards] = useState<Record<string, BookCard>>({});
+  const [cardsLoading, setCardsLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -47,6 +62,35 @@ export default function BookSelectModal({
       setBookMeta(loadBookMeta());
     }
   }, [currentBook, open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    let cancelled = false;
+    setCardsLoading(true);
+    void fetchJson<{ books: BookCard[] }>('/api/books/cards')
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+        const nextCards = Object.fromEntries(
+          (Array.isArray(data.books) ? data.books : []).map((book) => [book.book, book])
+        );
+        setBookCards(nextCards);
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCardsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [books, cardRefreshToken, open]);
 
   useEffect(() => {
     saveBookSortMode(sortMode);
@@ -127,7 +171,7 @@ export default function BookSelectModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+      <div className="modal modal-wide book-select-modal">
         <header className="modal-header">
           <h2 className="modal-title">Select a book</h2>
           <button type="button" className="button button-ghost" onClick={onClose}>
@@ -175,6 +219,11 @@ export default function BookSelectModal({
                 const active = currentBook === book;
                 const meta = bookMeta[book] ?? {};
                 const isDeferred = Boolean(meta.deferred);
+                const card = bookCards[book];
+                const displayTitle = card?.title?.trim() || book;
+                const displayAuthor = card?.author?.trim() || '';
+                const displayCategory = card?.category?.trim() || '';
+                const displayCover = card?.coverImage ?? null;
                 return (
                   <li key={book}>
                     <div className="book-select-row">
@@ -183,49 +232,75 @@ export default function BookSelectModal({
                         className={`book-select-button ${active ? 'book-select-button-active' : ''}`}
                         onClick={() => onSelect(book)}
                       >
+                        <span className="book-select-cover">
+                          {displayCover ? (
+                            <img src={displayCover} alt={displayTitle} className="book-select-cover-image" />
+                          ) : (
+                            <span className="book-select-cover-placeholder">
+                              {card?.bookType === 'text' ? 'TXT' : 'IMG'}
+                            </span>
+                          )}
+                        </span>
                         <span className="book-select-labels">
                           <span className="book-select-name-row">
-                            <span>{book}</span>
+                            <span>{displayTitle}</span>
                             {active ? <span className="book-select-marker">Current</span> : null}
                             {isDeferred ? <span className="book-select-tag">Deferred</span> : null}
                           </span>
+                          {displayAuthor || displayCategory ? (
+                            <span className="book-select-meta-row">
+                              {displayAuthor ? <span>{displayAuthor}</span> : null}
+                              {displayCategory ? <span>{displayCategory}</span> : null}
+                            </span>
+                          ) : null}
                           <span className="book-select-subtitle">
                             Last opened: {formatLastOpened(meta.lastOpenedAt)}
                           </span>
+                          <span className="book-select-subtitle book-select-id">{book}</span>
                         </span>
                       </button>
-                      <button
-                        type="button"
-                        className={`button button-ghost book-select-deferred ${isDeferred ? 'book-select-deferred-active' : ''}`}
-                        onClick={() => {
-                          const nextDeferred = !isDeferred;
-                          setBookDeferred(book, nextDeferred);
-                          setBookMeta((prev) => ({
-                            ...prev,
-                            [book]: {
-                              ...prev[book],
-                              deferred: nextDeferred
-                            }
-                          }));
-                        }}
-                        aria-label={isDeferred ? `Remove ${book} from deferred` : `Mark ${book} as deferred`}
-                      >
-                        {isDeferred ? 'Later ✓' : 'Later'}
-                      </button>
-                      <button
-                        type="button"
-                        className="button button-ghost book-select-delete"
-                        onClick={() => onDelete(book)}
-                        aria-label={`Delete ${book}`}
-                      >
-                        Delete
-                      </button>
+                      <div className="book-select-actions">
+                        <button
+                          type="button"
+                          className="button button-ghost"
+                          onClick={() => onOpenEditCard(book)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className={`button button-ghost book-select-deferred ${isDeferred ? 'book-select-deferred-active' : ''}`}
+                          onClick={() => {
+                            const nextDeferred = !isDeferred;
+                            setBookDeferred(book, nextDeferred);
+                            setBookMeta((prev) => ({
+                              ...prev,
+                              [book]: {
+                                ...prev[book],
+                                deferred: nextDeferred
+                              }
+                            }));
+                          }}
+                          aria-label={isDeferred ? `Remove ${book} from deferred` : `Mark ${book} as deferred`}
+                        >
+                          {isDeferred ? 'Later ✓' : 'Later'}
+                        </button>
+                        <button
+                          type="button"
+                          className="button button-ghost book-select-delete"
+                          onClick={() => onDelete(book)}
+                          aria-label={`Delete ${book}`}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </li>
                 );
               })}
             </ul>
           )}
+          {cardsLoading ? <p className="modal-status">Loading book cards…</p> : null}
           <div className="book-upload">
             <div className="book-upload-header">
               <span className="book-upload-title">Text chapters</span>

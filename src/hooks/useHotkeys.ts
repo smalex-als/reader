@@ -34,6 +34,7 @@ type HotkeysOptions = {
   printModalOpen: boolean;
   bookmarksOpen: boolean;
   searchOpen: boolean;
+  bookCardOpen: boolean;
   bookModalOpen: boolean;
   ocrQueueOpen: boolean;
   tocOpen: boolean;
@@ -44,6 +45,7 @@ type HotkeysOptions = {
   closeBookmarks: () => void;
   openSearch: () => void;
   closeSearch: () => void;
+  closeBookCard: () => void;
   setOcrQueueOpen: (open: boolean) => void;
   setTocOpen: (open: boolean) => void;
   setTocManageOpen: (open: boolean) => void;
@@ -90,6 +92,7 @@ export function useHotkeys({
   printModalOpen,
   bookmarksOpen,
   searchOpen,
+  bookCardOpen,
   bookModalOpen,
   ocrQueueOpen,
   tocOpen,
@@ -100,6 +103,7 @@ export function useHotkeys({
   closeBookmarks,
   openSearch,
   closeSearch,
+  closeBookCard,
   setOcrQueueOpen,
   setTocOpen,
   setTocManageOpen,
@@ -149,6 +153,7 @@ export function useHotkeys({
           printModalOpen ||
           bookmarksOpen ||
           searchOpen ||
+          bookCardOpen ||
           bookModalOpen ||
           ocrQueueOpen ||
           tocOpen ||
@@ -337,6 +342,9 @@ export function useHotkeys({
           if (searchOpen) {
             closeSearch();
           }
+          if (bookCardOpen) {
+            closeBookCard();
+          }
           break;
         default:
           break;
@@ -374,9 +382,11 @@ export function useHotkeys({
     printModalOpen,
     bookmarksOpen,
     searchOpen,
+    bookCardOpen,
     closeBookmarks,
     openSearch,
     closeSearch,
+    closeBookCard,
     closePrintModal,
     ocrQueueOpen,
     streamStatus,

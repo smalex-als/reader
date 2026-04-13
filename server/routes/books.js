@@ -4,7 +4,15 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import multer from 'multer';
 import { derivePrintFilename, createPdfFromImages } from '../lib/pdf.js';
-import { deleteBook, getBookType, listBooks, loadManifest } from '../lib/books.js';
+import {
+  deleteBook,
+  getBookType,
+  listBookCards,
+  listBooks,
+  loadBookCard,
+  loadManifest,
+  updateBookCard
+} from '../lib/books.js';
 import { normalizeBookId } from '../lib/paths.js';
 import { createHttpError } from '../lib/errors.js';
 import { asyncHandler } from '../lib/async.js';
@@ -78,6 +86,23 @@ async function resolveChapterAudioUrl(bookId, chapterNumber) {
 router.get('/api/books', asyncHandler(async (_req, res) => {
   const books = await listBooks();
   res.json({ books });
+}));
+
+router.get('/api/books/cards', asyncHandler(async (_req, res) => {
+  const books = await listBookCards();
+  res.json({ books });
+}));
+
+router.get('/api/books/:id/meta', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const meta = await loadBookCard(bookId);
+  res.json(meta);
+}));
+
+router.put('/api/books/:id/meta', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const meta = await updateBookCard(bookId, req.body || {});
+  res.json(meta);
 }));
 
 router.get('/api/books/:id/manifest', asyncHandler(async (req, res) => {
