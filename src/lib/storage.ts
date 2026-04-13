@@ -28,7 +28,7 @@ let libraryStateCache: LibraryStateSnapshot = {
   lastBook: null,
   lastPages: {},
   bookMeta: {},
-  bookSortMode: 'alphabetical'
+  bookSortMode: 'recent'
 };
 
 function readJson<T>(key: string): T | null {
@@ -88,7 +88,7 @@ export async function loadLibraryStateFromServer(): Promise<LibraryStateSnapshot
       bookSortMode:
         data.bookSortMode === 'recent' || data.bookSortMode === 'deferred'
           ? data.bookSortMode
-          : 'alphabetical'
+          : 'recent'
     };
     libraryStateCache = snapshot;
     return snapshot;

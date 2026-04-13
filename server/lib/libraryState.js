@@ -7,7 +7,7 @@ const DEFAULT_LIBRARY_STATE = {
   lastBook: null,
   lastPages: {},
   bookMeta: {},
-  bookSortMode: 'alphabetical'
+  bookSortMode: 'recent'
 };
 
 function sanitizePageMap(value) {
@@ -56,7 +56,7 @@ function normalizeLibraryState(value) {
     bookSortMode:
       state.bookSortMode === 'recent' || state.bookSortMode === 'deferred'
         ? state.bookSortMode
-        : 'alphabetical'
+        : 'recent'
   };
 }
 

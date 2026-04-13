@@ -203,15 +203,6 @@ export default function BookSelectModal({
             <div className="segmented" role="tablist" aria-label="Book sort">
               <button
                 type="button"
-                className={`segmented-item ${sortMode === 'alphabetical' ? 'segmented-item-active' : ''}`}
-                onClick={() => setSortMode('alphabetical')}
-                role="tab"
-                aria-selected={sortMode === 'alphabetical'}
-              >
-                A-Z
-              </button>
-              <button
-                type="button"
                 className={`segmented-item ${sortMode === 'recent' ? 'segmented-item-active' : ''}`}
                 onClick={() => setSortMode('recent')}
                 role="tab"
@@ -227,6 +218,15 @@ export default function BookSelectModal({
                 aria-selected={sortMode === 'deferred'}
               >
                 Saved
+              </button>
+              <button
+                type="button"
+                className={`segmented-item ${sortMode === 'alphabetical' ? 'segmented-item-active' : ''}`}
+                onClick={() => setSortMode('alphabetical')}
+                role="tab"
+                aria-selected={sortMode === 'alphabetical'}
+              >
+                A-Z
               </button>
             </div>
           </div>
