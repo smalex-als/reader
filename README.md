@@ -6,6 +6,7 @@ Node/Express server for OCR and PDF tooling.
 ## Features
 
 - Book picker with page navigation, zoom, rotate, fit, invert, brightness/contrast, and pan.
+- Book picker state shared through the server: recent books, saved books, last page per book, and sort mode sync across devices.
 - OCR page text modal with `Deepseek OCR` / `OpenAI` regeneration and batch OCR queue.
 - OCR block overlays on page images with click-to-stream playback.
 - OCR block edit mode to exclude/include blocks from speech directly on the page; exclusions are saved back into the OCR text file.
@@ -48,6 +49,7 @@ The server serves `dist/` if it exists, otherwise it serves the project root.
 
 ```
 data/
+  .library-state.json
   <bookId>/
     page-001.jpg
     page-001.txt
@@ -57,6 +59,7 @@ data/
 ```
 
 - Books are directories under `data/`.
+- `.library-state.json` stores shared reader library state (`lastBook`, per-book `lastPages`, `bookMeta`, and `bookSortMode`).
 - Supported page images: png, jpg, jpeg, gif, webp.
 - OCR text uses `.txt`, and audio uses `.mp3`.
 - `bookmarks.txt` is a JSON array of `{ page, image, label }`.
@@ -110,17 +113,42 @@ Notes:
 
 ## API highlights
 
+Library state:
+- `GET/PUT /api/library/state`
+
+Books:
 - `GET /api/books`
+- `GET /api/books/cards`
+- `GET/PUT /api/books/:id/meta`
 - `DELETE /api/books/:id`
 - `GET /api/books/:id/manifest`
 - `POST /api/books/text`
 - `POST /api/books/text/empty`
-- `POST /api/books/:id/chapters`
-- `POST /api/books/:id/chapters/empty`
-- `POST /api/books/:id/chapters/:chapter/audio`
-- `GET /api/page-text?image=/data/...`
-- `POST /api/page-audio`
 - `POST /api/upload/pdf`
 - `POST /api/books/:id/print`
+
+Chapters and narration:
+- `POST /api/books/:id/chapters`
+- `POST /api/books/:id/chapters/empty`
+- `PUT /api/books/:id/chapters/:chapter`
+- `POST /api/books/:id/chapters/generate`
+- `POST /api/books/:id/chapters/:chapter/narration`
+- `POST /api/books/:id/chapters/:chapter/audio`
+- `GET /api/books/:id/chapters/:chapter/audio/status`
+- `POST /api/books/:id/chapters/:chapter/audio/cancel`
+- `GET /api/books/:id/audio`
+
+Page media:
+- `GET /api/page-text?image=/data/...`
+- `POST /api/page-audio`
+- `GET /api/page-audio/stream`
+
+Bookmarks and table of contents:
 - `GET/POST/DELETE /api/books/:id/bookmarks`
-- `GET/POST /api/books/:id/toc`, `POST /api/books/:id/toc/generate`
+- `GET/POST /api/books/:id/toc`
+- `POST /api/books/:id/toc/generate`
+
+Search and health:
+- `GET /api/books/:id/search`
+- `POST /api/books/:id/search/index`
+- `GET /api/health`

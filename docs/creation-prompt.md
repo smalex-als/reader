@@ -2,6 +2,7 @@ Build "Scanned Book Reader", a Vite + React 18 + TypeScript single-page app serv
 
 Front end
 - Populate the list of books by calling `GET /api/books`. When a book is chosen, call `GET /api/books/:id/manifest` to obtain page image URLs (under `/data/{bookId}/filename.ext`).
+- Initialize shared library state from `GET /api/library/state`, then keep `lastBook`, per-book `lastPage`, recent/saved metadata, and sort mode synced via `PUT /api/library/state`.
 - Controls: Prev/Next, page counter, Zoom In/Out, Reset (100%), Fit Width/Height, Rotate 90 degrees, Invert colors, brightness/contrast sliders (50-200), Go-to page, Fullscreen. All update app state, call helpers like `renderPage`, `applyZoomMode`, `applyFilters`, `updatePan`, and persist changes.
 - Implement mouse drag panning within the viewer, wheel-based panning, clamped to content bounds. Support keyboard shortcuts: arrows/PageUp/PageDown/Space for navigation, +/-/0 zoom controls, W/H fit, R rotate, I invert, X text modal, P play audio, G focus goto input, F fullscreen, B book selector, Shift+/ help, Esc closes modal.
 - Maintain a toast helper that shows temporary status messages.
@@ -18,6 +19,7 @@ Front end
 Back end (`server.js`)
 - Express HTTP server. Serve static assets from `dist/` if built, otherwise project root. Serve `/data` directory for images/text/audio.
 - `GET /api/books`: list immediate subdirectories of `./data` (sorted, case-insensitive, numeric-aware) and return `{ books: string[] }`.
+- `GET/PUT /api/library/state`: read/write shared library session state in `data/.library-state.json`, including `lastBook`, `lastPages`, `bookMeta`, and `bookSortMode`.
 - `GET /api/books/:id/manifest`: list image files (png/jpg/jpeg/gif/webp) inside the book directory; return `{ book, manifest: string[] }` with `/data/...` URLs.
 - `GET /api/page-text?image=/data/...`: if matching `.txt` file exists and `skipCache` is not set, return `{ source: 'file', text }`. Otherwise generate OCR text, persist `.txt`, and return `{ source: 'ai', text }`.
 - OCR backend: default `llmproxy` that POSTs to `LLMPROXY_ENDPOINT` with `TEXT_PROMPT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`. Alternate backend `openai` runs `gpt-5.2` vision with `TEXT_PROMPT` (requires `OPENAI_API_KEY`). Use `openai_compat` for OpenAI-compatible endpoints with `OCR_OPENAI_BASE_URL` and `OCR_OPENAI_MODEL`.
@@ -27,6 +29,11 @@ Back end (`server.js`)
 - `POST /api/books/:id/print`: accept `{ pages: string[] }`, create a PDF from PNG/JPEG images (max 10 pages).
 - Bookmarks: `GET/POST/DELETE /api/books/:id/bookmarks` read/write `bookmarks.txt`.
 - Table of contents: `GET/POST /api/books/:id/toc` read/write `toc.json` (0-based pages). `POST /api/books/:id/toc/generate` uses OCR snippets and OpenAI `gpt-5.2` with `TOC_PROMPT`.
+- Additional endpoints by category:
+- Library state: `GET/PUT /api/library/state`.
+- Book metadata: `GET /api/books/cards`, `GET/PUT /api/books/:id/meta`, `GET /api/books/:id/audio`.
+- Chapters and narration: `POST /api/books/:id/chapters/generate`, `PUT /api/books/:id/chapters/:chapter`, `POST /api/books/:id/chapters/:chapter/narration`, `GET /api/books/:id/chapters/:chapter/audio/status`, `POST /api/books/:id/chapters/:chapter/audio/cancel`.
+- Search: `GET /api/books/:id/search`, `POST /api/books/:id/search/index`.
 - `GET /api/health` returns `{ status: 'ok' }`.
 - Support `HOST`/`PORT` and optional `HTTPS_KEY_PATH`/`HTTPS_CERT_PATH`. Log every API/static request. Include helpers for MIME lookup, path resolution, body parsing, and JSON responses.
 
