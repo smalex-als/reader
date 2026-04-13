@@ -17,7 +17,7 @@ interface ScrollViewerProps {
     image: string,
     options?: { force?: boolean; silent?: boolean; updateCurrentState?: boolean }
   ) => Promise<PageText | null>;
-  onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => void;
+  onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
   onCurrentPageChange: (pageIndex: number) => void;
 }
@@ -77,6 +77,27 @@ export default function ScrollViewer({
     return `${invertFilter} ${brightnessFilter} ${contrastFilter}`;
   }, [settings.brightness, settings.contrast, settings.invert]);
 
+  const isPageSufficientlyVisible = (pageIndex: number) => {
+    const scroller = scrollerRef.current;
+    if (!scroller) {
+      return false;
+    }
+    const page = scroller.querySelector<HTMLElement>(
+      `.scroll-viewer-page[data-page-index="${pageIndex}"]`
+    );
+    if (!page) {
+      return false;
+    }
+    const scrollerRect = scroller.getBoundingClientRect();
+    const pageRect = page.getBoundingClientRect();
+    const visibleTop = Math.max(scrollerRect.top, pageRect.top);
+    const visibleBottom = Math.min(scrollerRect.bottom, pageRect.bottom);
+    const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+    const visibleRatio = pageRect.height > 0 ? visibleHeight / pageRect.height : 0;
+    const pageTopInViewport = pageRect.top >= scrollerRect.top && pageRect.top <= scrollerRect.bottom - 80;
+    return visibleRatio >= 0.35 || pageTopInViewport;
+  };
+
   useEffect(() => {
     if (manifest.length === 0) {
       internalPageRef.current = 0;
@@ -91,6 +112,9 @@ export default function ScrollViewer({
       return;
     }
     internalPageRef.current = currentPage;
+    if (isPageSufficientlyVisible(currentPage)) {
+      return;
+    }
     virtuosoRef.current?.scrollToIndex({
       index: currentPage,
       align: 'start',
@@ -104,7 +128,7 @@ export default function ScrollViewer({
       return;
     }
     const scrollerRect = scroller.getBoundingClientRect();
-    const viewportMidpoint = scrollerRect.top + scrollerRect.height / 2;
+    const readingLine = scrollerRect.top + Math.min(220, Math.max(120, scrollerRect.height * 0.22));
     const renderedPages = Array.from(
       scroller.querySelectorAll<HTMLElement>('.scroll-viewer-page[data-page-index]')
     );
@@ -113,14 +137,25 @@ export default function ScrollViewer({
     }
     let nextPage = currentPage;
     let bestDistance = Number.POSITIVE_INFINITY;
+    let fallbackPage = currentPage;
+    let fallbackBottom = Number.NEGATIVE_INFINITY;
     for (const page of renderedPages) {
       const rect = page.getBoundingClientRect();
-      const midpoint = rect.top + rect.height / 2;
-      const distance = Math.abs(midpoint - viewportMidpoint);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        nextPage = Number.parseInt(page.dataset.pageIndex || String(currentPage), 10);
+      const pageIndex = Number.parseInt(page.dataset.pageIndex || String(currentPage), 10);
+      if (rect.top <= readingLine && rect.bottom >= readingLine) {
+        const distance = Math.abs(rect.top - readingLine);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          nextPage = pageIndex;
+        }
       }
+      if (rect.top <= readingLine && rect.bottom > fallbackBottom) {
+        fallbackBottom = rect.bottom;
+        fallbackPage = pageIndex;
+      }
+    }
+    if (bestDistance === Number.POSITIVE_INFINITY) {
+      nextPage = fallbackPage;
     }
     internalPageRef.current = nextPage;
     if (nextPage !== currentPage) {
@@ -210,6 +245,7 @@ export default function ScrollViewer({
                 />
                 {index === currentPage ? (
                   <OcrOverlay
+                    imageUrl={imageUrl}
                     pageText={entry}
                     editMode={editMode}
                     dimOutsideBlocks={dimOutsideBlocks}
@@ -219,6 +255,7 @@ export default function ScrollViewer({
                   />
                 ) : entry ? (
                   <OcrOverlay
+                    imageUrl={imageUrl}
                     pageText={entry}
                     editMode={false}
                     dimOutsideBlocks={dimOutsideBlocks}

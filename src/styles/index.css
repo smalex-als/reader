@@ -1404,6 +1404,35 @@ body {
   outline-offset: 2px;
 }
 
+.stream-bubble-toggle {
+  height: 34px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(213, 229, 242, 0.16);
+  background: rgba(213, 229, 242, 0.06);
+  color: rgba(213, 229, 242, 0.88);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.stream-bubble-toggle:hover {
+  background: rgba(213, 229, 242, 0.12);
+}
+
+.stream-bubble-toggle:focus-visible {
+  outline: 2px solid rgba(96, 160, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.stream-bubble-toggle-active {
+  background: rgba(120, 180, 255, 0.18);
+  border-color: rgba(120, 180, 255, 0.42);
+  color: #eef6ff;
+}
+
 .stream-bubble-divider {
   width: 1px;
   height: 20px;

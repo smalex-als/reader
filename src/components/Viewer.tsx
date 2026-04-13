@@ -12,7 +12,7 @@ interface ViewerProps {
   onPan: (pan: ViewerPan) => void;
   onZoom: (zoom: number, mode?: AppSettings['zoomMode'], pan?: ViewerPan) => void;
   onMetricsChange: (metrics: ViewerMetrics) => void;
-  onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => void;
+  onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
   rotation: number;
 }
@@ -252,6 +252,7 @@ export default function Viewer({
                   style={{ width: `${metrics.naturalWidth}px`, height: `${metrics.naturalHeight}px` }}
                 >
                   <OcrOverlay
+                    imageUrl={imageUrl}
                     pageText={pageText}
                     editMode={editMode}
                     dimOutsideBlocks={settings.dimOutsideBlocks}

@@ -2,11 +2,12 @@ import { useId, useMemo } from 'react';
 import type { PageText } from '@/types/app';
 
 interface OcrOverlayProps {
+  imageUrl: string;
   pageText: PageText | null;
   editMode: boolean;
   dimOutsideBlocks: boolean;
   dimOutsideBlocksIntensity: number;
-  onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => void;
+  onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
 }
 
@@ -14,6 +15,7 @@ const OCR_COORDINATE_SPACE = 1000;
 const NON_INTERACTIVE_BLOCK_KINDS = new Set(['image', 'table']);
 
 export default function OcrOverlay({
+  imageUrl,
   pageText,
   editMode,
   dimOutsideBlocks,
@@ -153,7 +155,7 @@ export default function OcrOverlay({
                 return;
               }
               if (block.streamStartIndex !== null) {
-                onPlayTextBlock({ startIndex: block.streamStartIndex, blockId: block.id });
+                onPlayTextBlock({ imageUrl, startIndex: block.streamStartIndex, blockId: block.id });
               }
             }}
           />

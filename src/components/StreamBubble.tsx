@@ -3,11 +3,21 @@ import { useStreamUi } from '@/hooks/useStreamUi';
 
 interface StreamBubbleProps {
   streamState: StreamState;
+  showAutoFollow?: boolean;
+  autoFollowEnabled?: boolean;
+  onToggleAutoFollow?: () => void;
   onTogglePause: () => void;
   onStopStream: () => void;
 }
 
-export default function StreamBubble({ streamState, onTogglePause, onStopStream }: StreamBubbleProps) {
+export default function StreamBubble({
+  streamState,
+  showAutoFollow = false,
+  autoFollowEnabled = false,
+  onToggleAutoFollow,
+  onTogglePause,
+  onStopStream
+}: StreamBubbleProps) {
   const { isVisible, status, isDisabled, ariaLabel, title } = useStreamUi(streamState);
   const playedSeconds = Math.max(0, Math.floor(streamState.playbackSeconds));
   const minutes = Math.floor(playedSeconds / 60);
@@ -53,6 +63,20 @@ export default function StreamBubble({ streamState, onTogglePause, onStopStream 
       <span className="stream-bubble-time" aria-live="polite">
         {timeLabel}
       </span>
+      {showAutoFollow ? (
+        <>
+          <span className="stream-bubble-divider" aria-hidden="true" />
+          <button
+            type="button"
+            className={`stream-bubble-toggle ${autoFollowEnabled ? 'stream-bubble-toggle-active' : ''}`}
+            onClick={onToggleAutoFollow}
+            aria-pressed={autoFollowEnabled}
+            title={autoFollowEnabled ? 'Disable auto-follow' : 'Enable auto-follow'}
+          >
+            Follow
+          </button>
+        </>
+      ) : null}
       <span className="stream-bubble-divider" aria-hidden="true" />
       <button
         type="button"

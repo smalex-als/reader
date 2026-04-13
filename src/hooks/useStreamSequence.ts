@@ -9,13 +9,20 @@ type ChapterParagraph = {
 };
 
 type StreamSequenceOptions = {
+  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
   isTextBook: boolean;
   bookId: string | null;
   chapterCount: number;
+  currentPage: number;
+  manifest: string[];
   firstChapterParagraph: ChapterParagraph | null;
   currentImage: string | null;
   currentText: PageText | null;
   fetchPageText: (options?: { force?: boolean; silent?: boolean }) => Promise<PageText | null>;
+  fetchPageTextByImage: (
+    image: string,
+    options?: { force?: boolean; silent?: boolean; updateCurrentState?: boolean }
+  ) => Promise<PageText | null>;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   streamState: StreamState;
   startStream: (payload: { text: string; pageKey: string; voice: string }) => Promise<void>;
@@ -33,13 +40,17 @@ type StreamSource =
   | { type: 'single'; text: string; pageKey: string };
 
 export function useStreamSequence({
+  viewMode,
   isTextBook,
   bookId,
   chapterCount,
+  currentPage,
+  manifest,
   firstChapterParagraph,
   currentImage,
   currentText,
   fetchPageText,
+  fetchPageTextByImage,
   showToast,
   streamState,
   startStream,
@@ -63,18 +74,69 @@ export function useStreamSequence({
   } | null>(null);
   const pendingSingleStreamRef = useRef<{ text: string; pageKey: string } | null>(null);
   const lastStreamSourceRef = useRef<StreamSource | null>(null);
+  const sequenceRunIdRef = useRef(0);
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
   const autoAdvanceRef = useRef(false);
 
   const stopStreamSequence = useCallback(() => {
+    sequenceRunIdRef.current += 1;
     streamSequenceRef.current = null;
     setStreamSequenceActive(false);
   }, []);
 
+  const enqueueChunks = useCallback(
+    (fullText: string, startIndex: number, baseKey: string) => {
+      const chunks = splitStreamChunks(fullText, startIndex);
+      for (let index = 1; index < chunks.length; index += 1) {
+        enqueueStream({
+          text: chunks[index],
+          pageKey: `${baseKey}#chunk-${index}`,
+          voice: streamVoice
+        });
+      }
+      return chunks;
+    },
+    [enqueueStream, streamVoice]
+  );
+
+  const enqueueFollowingScrollPages = useCallback(
+    async (startPageIndex: number, runId: number) => {
+      for (let index = startPageIndex; index < manifest.length; index += 1) {
+        if (sequenceRunIdRef.current !== runId) {
+          return;
+        }
+        const image = manifest[index];
+        if (!image) {
+          continue;
+        }
+        const nextPageText = await fetchPageTextByImage(image, {
+          silent: true,
+          updateCurrentState: false
+        });
+        if (sequenceRunIdRef.current !== runId) {
+          return;
+        }
+        const textValue = nextPageText?.plainText?.trim() || '';
+        if (!textValue) {
+          continue;
+        }
+        const chunks = splitStreamChunks(textValue, 0);
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
+          enqueueStream({
+            text: chunks[chunkIndex],
+            pageKey: `${image}#chunk-${chunkIndex}`,
+            voice: streamVoice
+          });
+        }
+      }
+    },
+    [enqueueStream, fetchPageTextByImage, manifest, streamVoice]
+  );
+
   const startStreamSequenceFromText = useCallback(
     async (fullText: string, startIndex: number, baseKey: string, source: 'page' | 'chapter' | 'paragraph') => {
       lastStreamSourceRef.current = { type: source, fullText, startIndex, baseKey };
-      autoAdvanceRef.current = source === 'page' || source === 'chapter';
+      autoAdvanceRef.current = (source === 'page' || source === 'chapter') && viewMode !== 'scroll';
       if (
         streamState.status === 'connecting' ||
         streamState.status === 'streaming' ||
@@ -93,26 +155,29 @@ export function useStreamSequence({
       stopAudio();
       stopStream();
       stopStreamSequence();
+      const runId = sequenceRunIdRef.current + 1;
+      sequenceRunIdRef.current = runId;
       streamSequenceRef.current = { source, baseKey };
       setStreamSequenceActive(true);
       await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice: streamVoice });
-      for (let index = 1; index < chunks.length; index += 1) {
-        enqueueStream({
-          text: chunks[index],
-          pageKey: `${baseKey}#chunk-${index}`,
-          voice: streamVoice
-        });
+      enqueueChunks(fullText, startIndex, baseKey);
+      if (source === 'page' && viewMode === 'scroll' && !isTextBook) {
+        void enqueueFollowingScrollPages(currentPage + 1, runId);
       }
     },
     [
-      enqueueStream,
+      currentPage,
+      enqueueChunks,
+      enqueueFollowingScrollPages,
       showToast,
+      isTextBook,
       startStream,
       stopAudio,
       stopStream,
       stopStreamSequence,
       streamState.status,
-      streamVoice
+      streamVoice,
+      viewMode
     ]
   );
 
@@ -148,13 +213,17 @@ export function useStreamSequence({
     isTextBook,
     bookId,
     chapterCount,
+    currentPage,
+    manifest,
     firstChapterParagraph,
     currentImage,
     currentText,
     fetchPageText,
+    fetchPageTextByImage,
     showToast,
     startStreamSequenceFromText,
-    streamVoice
+    streamVoice,
+    viewMode
   ]);
 
   const handlePlayChapterParagraph = useCallback(
@@ -170,19 +239,34 @@ export function useStreamSequence({
   );
 
   const handlePlayPageBlock = useCallback(
-    async (payload: { startIndex: number; blockId: string }) => {
-      if (!currentImage) {
+    async (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
+      if (!payload.imageUrl) {
         return;
       }
-      const pageText = currentText ?? (await fetchPageText({ silent: true }));
+      const pageText =
+        payload.imageUrl === currentImage
+          ? currentText ?? (await fetchPageText({ silent: true }))
+          : await fetchPageTextByImage(payload.imageUrl, { silent: true, updateCurrentState: false });
       const textValue = pageText?.plainText || '';
       if (!textValue) {
         showToast('No page text available to stream', 'error');
         return;
       }
-      await startStreamSequenceFromText(textValue, payload.startIndex, `${currentImage}#${payload.blockId}`, 'page');
+      await startStreamSequenceFromText(
+        textValue,
+        payload.startIndex,
+        `${payload.imageUrl}#${payload.blockId}`,
+        'page'
+      );
     },
-    [currentImage, currentText, fetchPageText, showToast, startStreamSequenceFromText]
+    [
+      currentImage,
+      currentText,
+      fetchPageText,
+      fetchPageTextByImage,
+      showToast,
+      startStreamSequenceFromText
+    ]
   );
 
   const handleStopStream = useCallback(() => {

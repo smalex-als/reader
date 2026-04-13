@@ -23,6 +23,7 @@ export function useStreamingAudio(
   const socketRef = useRef<WebSocket | null>(null);
   const playbackSamplesRef = useRef(0);
   const bufferSamplesRef = useRef(0);
+  const queuedSamplesRef = useRef(0);
   const playbackTimerRef = useRef<number | null>(null);
   const hasStartedPlaybackRef = useRef(false);
   const silentFramesRef = useRef(0);
@@ -31,6 +32,8 @@ export function useStreamingAudio(
   const socketClosedRef = useRef(false);
   const firstAudioRef = useRef(false);
   const queueRef = useRef<Array<{ text: string; pageKey: string; voice: string }>>([]);
+  const segmentTimelineRef = useRef<Array<{ pageKey: string; startSample: number }>>([]);
+  const activeSegmentKeyRef = useRef<string | null>(null);
 
   const clearQueue = useCallback(() => {
     queueRef.current = [];
@@ -57,11 +60,14 @@ export function useStreamingAudio(
     stopPlaybackTimer();
     playbackSamplesRef.current = 0;
     bufferSamplesRef.current = 0;
+    queuedSamplesRef.current = 0;
     hasStartedPlaybackRef.current = false;
     silentFramesRef.current = 0;
     firstAudioRef.current = false;
+    segmentTimelineRef.current = [];
+    activeSegmentKeyRef.current = null;
 
-    const node = workletRef.current;
+      const node = workletRef.current;
     if (node) {
       try {
         node.disconnect();
@@ -123,6 +129,21 @@ export function useStreamingAudio(
       }
       const frames = data.frames;
       playbackSamplesRef.current += frames;
+
+      const playbackSample = playbackSamplesRef.current;
+      let nextActivePageKey: string | null = null;
+      for (const segment of segmentTimelineRef.current) {
+        if (segment.startSample <= playbackSample) {
+          nextActivePageKey = segment.pageKey;
+        } else {
+          break;
+        }
+      }
+      if (nextActivePageKey && nextActivePageKey !== activeSegmentKeyRef.current) {
+        activeSegmentKeyRef.current = nextActivePageKey;
+        setStreamState((prev) => ({ ...prev, pageKey: nextActivePageKey }));
+      }
+
       if (!data.silent && !hasStartedPlaybackRef.current) {
         hasStartedPlaybackRef.current = true;
         startPlaybackTimer();
@@ -188,9 +209,9 @@ export function useStreamingAudio(
 
       socketClosedRef.current = false;
       let receivedSegmentAudio = false;
+      let segmentRegistered = false;
       setStreamState((prev) => ({
         ...prev,
-        pageKey: nextItem.pageKey,
         modelSeconds: 0,
         error: undefined,
         status: firstAudioRef.current ? prev.status : 'connecting'
@@ -244,10 +265,22 @@ export function useStreamingAudio(
           for (let i = 0; i < floatChunk.length; i += 1) {
             floatChunk[i] = view.getInt16(i * 2, true) / 32768;
           }
+          if (!segmentRegistered) {
+            segmentTimelineRef.current.push({
+              pageKey: nextItem.pageKey,
+              startSample: queuedSamplesRef.current
+            });
+            segmentRegistered = true;
+          }
+          queuedSamplesRef.current += floatChunk.length;
           appendAudio(floatChunk);
           if (!receivedSegmentAudio) {
             receivedSegmentAudio = true;
             firstAudioRef.current = true;
+            if (!activeSegmentKeyRef.current) {
+              activeSegmentKeyRef.current = nextItem.pageKey;
+              setStreamState((prev) => ({ ...prev, pageKey: nextItem.pageKey }));
+            }
             setStreamState((prev) => ({ ...prev, status: prev.status === 'paused' ? 'paused' : 'streaming' }));
           }
         };

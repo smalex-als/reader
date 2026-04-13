@@ -319,6 +319,7 @@ export default function App() {
   } = usePageText(currentImage, showToast);
   const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('deepseek_ocr');
   const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
+  const [autoFollowStream, setAutoFollowStream] = useState(true);
   const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
     setFloatingAudio(payload);
   }, []);
@@ -366,9 +367,37 @@ export default function App() {
     [bookId, setCurrentPage, setRegeneratedText]
   );
 
+  useEffect(() => {
+    const pageKey = streamState.pageKey;
+    if (
+      viewMode !== 'scroll' ||
+      !autoFollowStream ||
+      streamState.status !== 'streaming' ||
+      !pageKey ||
+      manifest.length === 0
+    ) {
+      return;
+    }
+    const streamPageIndex = manifest.findIndex(
+      (imageUrl) => pageKey === imageUrl || pageKey.startsWith(`${imageUrl}#`)
+    );
+    if (streamPageIndex < 0 || streamPageIndex === currentPage) {
+      return;
+    }
+    handleScrollCurrentPageChange(streamPageIndex);
+  }, [
+    autoFollowStream,
+    currentPage,
+    handleScrollCurrentPageChange,
+    manifest,
+    streamState.pageKey,
+    streamState.status,
+    viewMode
+  ]);
+
   const handleStreamSequenceComplete = useCallback(
     (source: 'page' | 'chapter') => {
-      if (source !== 'page' || (viewMode !== 'pages' && viewMode !== 'scroll')) {
+      if (source !== 'page' || viewMode !== 'pages') {
         handleNext();
         return;
       }
@@ -390,13 +419,17 @@ export default function App() {
     handleStopStream,
     handleToggleStreamPause
   } = useStreamSequence({
+    viewMode,
     isTextBook,
     bookId,
     chapterCount,
+    currentPage,
+    manifest,
     firstChapterParagraph,
     currentImage,
     currentText,
     fetchPageText,
+    fetchPageTextByImage,
     showToast,
     streamState,
     startStream,
@@ -1121,9 +1154,8 @@ export default function App() {
       onPan: updatePan,
       onZoom: updateZoom,
       onMetricsChange: handleMetricsChange,
-      onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => {
-        const { startIndex, blockId } = payload;
-        void handlePlayPageBlock({ startIndex, blockId });
+      onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
+        void handlePlayPageBlock(payload);
       },
       onToggleSpeechBlock: (blockId: string) => {
         void handleToggleSpeechBlock(blockId);
@@ -1144,9 +1176,8 @@ export default function App() {
       dimOutsideBlocks: settings.dimOutsideBlocks,
       dimOutsideBlocksIntensity: settings.dimOutsideBlocksIntensity,
       fetchPageTextByImage,
-      onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => {
-        const { startIndex, blockId } = payload;
-        void handlePlayPageBlock({ startIndex, blockId });
+      onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
+        void handlePlayPageBlock(payload);
       },
       onToggleSpeechBlock: (blockId: string) => {
         void handleToggleSpeechBlock(blockId);
@@ -1206,6 +1237,9 @@ export default function App() {
     },
     streamBubbleProps: {
       streamState,
+      showAutoFollow: viewMode === 'scroll',
+      autoFollowEnabled: autoFollowStream,
+      onToggleAutoFollow: () => setAutoFollowStream((prev) => !prev),
       onTogglePause: () => void handleToggleStreamPause(),
       onStopStream: handleStopStream
     },
