@@ -16,7 +16,7 @@ import type { AppSettings, TocEntry, ToastMessage, ViewerMetrics } from '@/types
 
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 
-type ViewMode = 'pages' | 'text' | 'audio';
+type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
 type BookSessionOptions<StreamVoice extends string> = {
   settings: AppSettings;
@@ -71,7 +71,7 @@ function getViewModeFromLocation(expectedBookId: string | null): ViewMode | null
     return null;
   }
   const rawView = params.get('view');
-  if (rawView === 'pages' || rawView === 'text' || rawView === 'audio') {
+  if (rawView === 'pages' || rawView === 'scroll' || rawView === 'text' || rawView === 'audio') {
     return rawView;
   }
   return null;
@@ -287,7 +287,7 @@ export function useBookSession<StreamVoice extends string>({
           setViewMode(requestedView && requestedView !== 'pages' ? requestedView : 'text');
           showToast(`Loaded ${nextChapterCount} chapters`, 'success');
         } else {
-          setViewMode(requestedView ?? 'pages');
+          setViewMode(requestedView === 'scroll' || requestedView === 'pages' ? requestedView : 'pages');
           showToast(`Loaded ${nextManifest.length} pages`, 'success');
         }
       } catch (error) {

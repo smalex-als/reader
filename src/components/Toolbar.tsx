@@ -4,10 +4,11 @@ interface ToolbarProps {
   currentBook: string | null;
   manifestLength: number;
   currentPage: number;
-  viewMode: 'pages' | 'text' | 'audio';
+  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
   disablePagesMode: boolean;
+  disableScrollMode: boolean;
   disableImageActions: boolean;
-  onViewModeChange: (mode: 'pages' | 'text' | 'audio') => void;
+  onViewModeChange: (mode: 'pages' | 'scroll' | 'text' | 'audio') => void;
   onOpenBookModal: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -72,6 +73,7 @@ export default function Toolbar({
   currentPage,
   viewMode,
   disablePagesMode,
+  disableScrollMode,
   disableImageActions,
   onViewModeChange,
   onOpenBookModal,
@@ -203,6 +205,16 @@ export default function Toolbar({
               aria-selected={viewMode === 'pages'}
             >
               Pages
+            </button>
+            <button
+              type="button"
+              className={`segmented-item ${viewMode === 'scroll' ? 'segmented-item-active' : ''}`}
+              onClick={() => onViewModeChange('scroll')}
+              disabled={manifestLength === 0 || disableScrollMode}
+              role="tab"
+              aria-selected={viewMode === 'scroll'}
+            >
+              Scroll
             </button>
             <button
               type="button"

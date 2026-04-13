@@ -22,6 +22,7 @@ import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
+import { saveLastPage } from '@/lib/storage';
 import type { AppSettings, BookSearchResponse, PageTextOcrEngine, SearchResult, TocEntry } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -353,9 +354,20 @@ export default function App() {
     chapterNumber,
     currentChapterEntry
   });
+  const handleScrollCurrentPageChange = useCallback(
+    (pageIndex: number) => {
+      setCurrentPage(pageIndex);
+      setRegeneratedText(false);
+      if (bookId) {
+        saveLastPage(bookId, pageIndex);
+      }
+    },
+    [bookId, setCurrentPage, setRegeneratedText]
+  );
+
   const handleStreamSequenceComplete = useCallback(
     (source: 'page' | 'chapter') => {
-      if (source !== 'page' || viewMode !== 'pages') {
+      if (source !== 'page' || (viewMode !== 'pages' && viewMode !== 'scroll')) {
         handleNext();
         return;
       }
@@ -544,8 +556,8 @@ export default function App() {
   }, [settings.textTheme, setSettings]);
 
   const handleViewModeChange = useCallback(
-    (mode: 'pages' | 'text' | 'audio') => {
-      if (isTextBook && mode === 'pages') {
+    (mode: 'pages' | 'scroll' | 'text' | 'audio') => {
+      if (isTextBook && (mode === 'pages' || mode === 'scroll')) {
         return;
       }
       setViewMode(mode);
@@ -557,7 +569,15 @@ export default function App() {
     if (isTextBook) {
       return;
     }
-    setViewMode((prev) => (prev === 'pages' ? 'text' : 'pages'));
+    setViewMode((prev) => {
+      if (prev === 'pages') {
+        return 'scroll';
+      }
+      if (prev === 'scroll') {
+        return 'text';
+      }
+      return 'pages';
+    });
   }, [isTextBook, setViewMode]);
 
   const {
@@ -619,8 +639,8 @@ export default function App() {
   const handleSelectSearchResult = useCallback((result: SearchResult) => {
     closeSearch();
     renderPage(result.page);
-    setViewMode(isTextBook ? 'text' : 'pages');
-  }, [closeSearch, isTextBook, renderPage, setViewMode]);
+    setViewMode(isTextBook ? 'text' : viewMode === 'scroll' ? 'scroll' : 'pages');
+  }, [closeSearch, isTextBook, renderPage, setViewMode, viewMode]);
 
   const applyFilters = useCallback(
     (
@@ -878,7 +898,8 @@ export default function App() {
     currentPage,
     viewMode,
     disablePagesMode: isTextBook,
-    disableImageActions: isTextBook,
+    disableScrollMode: isTextBook,
+    disableImageActions: isTextBook || viewMode === 'scroll',
     onViewModeChange: handleViewModeChange,
     onOpenBookModal: openBookModal,
     onPrev: handlePrev,
@@ -1107,6 +1128,16 @@ export default function App() {
         void handleToggleSpeechBlock(blockId);
       },
       rotation: settings.rotation
+    },
+    scrollViewerProps: {
+      manifest,
+      currentPage,
+      settings: {
+        invert: settings.invert,
+        brightness: settings.brightness,
+        contrast: settings.contrast
+      },
+      onCurrentPageChange: handleScrollCurrentPageChange
     },
     chapterEditorProps: {
       bookId,

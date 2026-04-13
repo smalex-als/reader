@@ -7,7 +7,7 @@ import type { TocEntry } from '@/types/app';
 interface UseNavigationParams {
   navigationCount: number;
   currentPage: number;
-  viewMode: 'pages' | 'text' | 'audio';
+  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
   isTextBook: boolean;
   currentChapterIndex: number | null;
   sortedTocEntries: TocEntry[];
@@ -49,7 +49,7 @@ export function useNavigation({
       const maxIndex = navigationCount - 1;
       const nextIndex = clamp(pageIndex, 0, maxIndex);
       setCurrentPage(nextIndex);
-      pendingAlignTopRef.current = viewMode === 'pages';
+      pendingAlignTopRef.current = viewMode === 'pages' || viewMode === 'scroll';
       setRegeneratedText(false);
       if (bookId) {
         saveLastPage(bookId, nextIndex);

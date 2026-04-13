@@ -4,9 +4,11 @@ import AudioView from '@/components/AudioView';
 import FloatingAudioPlayer from '@/components/FloatingAudioPlayer';
 import ChapterViewer from '@/components/ChapterViewer';
 import StreamBubble from '@/components/StreamBubble';
+import ScrollViewer from '@/components/ScrollViewer';
 import Viewer from '@/components/Viewer';
 
 type ViewerProps = ComponentProps<typeof Viewer>;
+type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
 type ChapterEditorProps = ComponentProps<typeof ChapterEditor>;
 type ChapterViewerProps = ComponentProps<typeof ChapterViewer>;
 type AudioViewProps = ComponentProps<typeof AudioView>;
@@ -18,11 +20,12 @@ interface ReaderMainContentProps {
   modalHostRef: RefObject<HTMLDivElement>;
   isFullscreen: boolean;
   loading: boolean;
-  viewMode: 'pages' | 'text' | 'audio';
+  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
   textTheme: string;
   editorOpen: boolean;
   footerMessage: string;
   viewerProps: ViewerProps;
+  scrollViewerProps: ScrollViewerProps;
   chapterEditorProps: ChapterEditorProps;
   chapterViewerProps: ChapterViewerProps;
   audioViewProps: AudioViewProps;
@@ -40,6 +43,7 @@ export default function ReaderMainContent({
   editorOpen,
   footerMessage,
   viewerProps,
+  scrollViewerProps,
   chapterEditorProps,
   chapterViewerProps,
   audioViewProps,
@@ -56,6 +60,8 @@ export default function ReaderMainContent({
       >
         {viewMode === 'pages' ? (
           <Viewer {...viewerProps} />
+        ) : viewMode === 'scroll' ? (
+          <ScrollViewer {...scrollViewerProps} />
         ) : viewMode === 'text' ? (
           editorOpen ? (
             <ChapterEditor {...chapterEditorProps} />

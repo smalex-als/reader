@@ -2,7 +2,7 @@ import { useEffect, useMemo, type RefObject } from 'react';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
 import type { AppSettings, AudioState, StreamState, ViewerPan } from '@/types/app';
 
-type ViewMode = 'pages' | 'text' | 'audio';
+type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
 type HotkeysOptions = {
   viewMode: ViewMode;
@@ -237,10 +237,16 @@ export function useHotkeys({
           resetTransform();
           break;
         case 'w':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
           event.preventDefault();
           applyZoomModeWithAlign('fit-width');
           break;
         case 'h':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
           event.preventDefault();
           applyZoomModeWithAlign('fit-height');
           break;
@@ -278,14 +284,23 @@ export function useHotkeys({
           gotoInputRef.current?.focus();
           break;
         case 't':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
           event.preventDefault();
           toggleTextModal();
           break;
         case 'o':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
           event.preventDefault();
           void triggerBackgroundOcr();
           break;
         case 'e':
+          if (viewMode !== 'pages' || !currentImage) {
+            return;
+          }
           event.preventDefault();
           void toggleOcrEditMode();
           break;
