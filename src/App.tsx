@@ -23,6 +23,7 @@ import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
 import { saveLastPage } from '@/lib/storage';
+import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import type { AppSettings, BookSearchResponse, PageTextOcrEngine, SearchResult, TocEntry } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -320,6 +321,7 @@ export default function App() {
   const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('deepseek_ocr');
   const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
   const [autoFollowStream, setAutoFollowStream] = useState(true);
+  const [selectedStreamBlockKey, setSelectedStreamBlockKey] = useState<string | null>(null);
   const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
     setFloatingAudio(payload);
   }, []);
@@ -329,6 +331,18 @@ export default function App() {
   useEffect(() => {
     setFloatingAudio(null);
   }, [bookId]);
+  useEffect(() => {
+    setSelectedStreamBlockKey(null);
+  }, [bookId]);
+  useEffect(() => {
+    if (selectedStreamBlockKey || streamState.status === 'idle' || !streamState.pageKey) {
+      return;
+    }
+    const locator = parseStreamLocator(streamState.pageKey);
+    if (locator?.blockId) {
+      setSelectedStreamBlockKey(makeStreamLocator(locator.imageUrl, locator.blockId));
+    }
+  }, [selectedStreamBlockKey, streamState.pageKey, streamState.status]);
   useEffect(() => {
     if (ocrEditImageRef.current === currentImage) {
       return;
@@ -413,6 +427,11 @@ export default function App() {
     streamVoice,
     onSequenceComplete: handleStreamSequenceComplete
   });
+  const selectedStreamLocator = useMemo(() => parseStreamLocator(selectedStreamBlockKey), [selectedStreamBlockKey]);
+  const playingStreamLocator = useMemo(
+    () => parseStreamLocator(streamState.status !== 'idle' ? streamState.pageKey : null),
+    [streamState.pageKey, streamState.status]
+  );
 
   const handleToggleOcrEditMode = useCallback(async () => {
     if (!currentImage || isTextBook) {
@@ -1122,11 +1141,14 @@ export default function App() {
       imageUrl: currentImage,
       pageText: currentText,
       editMode: ocrEditMode,
+      currentBlockId: selectedStreamLocator?.imageUrl === currentImage ? selectedStreamLocator.blockId : null,
+      playingBlockId: playingStreamLocator?.imageUrl === currentImage ? playingStreamLocator.blockId : null,
       settings,
       onPan: updatePan,
       onZoom: updateZoom,
       onMetricsChange: handleMetricsChange,
       onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
+        setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));
         void handlePlayPageBlock(payload);
       },
       onToggleSpeechBlock: (blockId: string) => {
@@ -1145,12 +1167,15 @@ export default function App() {
       textCache,
       pageText: currentText,
       editMode: ocrEditMode,
+      currentStreamBlockKey: selectedStreamBlockKey,
+      playingStreamBlockKey: streamState.status !== 'idle' ? streamState.pageKey : null,
       dimOutsideBlocks: settings.dimOutsideBlocks,
       dimOutsideBlocksIntensity: settings.dimOutsideBlocksIntensity,
       streamPageKey: streamState.status === 'streaming' ? streamState.pageKey : null,
       autoFollowEnabled: autoFollowStream,
       fetchPageTextByImage,
       onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
+        setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));
         void handlePlayPageBlock(payload);
       },
       onToggleSpeechBlock: (blockId: string) => {

@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useMemo, useRef, type HTMLAttributes } from 'react';
 import { Virtuoso, type ListRange, type VirtuosoHandle } from 'react-virtuoso';
 import OcrOverlay from '@/components/OcrOverlay';
+import { parseStreamLocator } from '@/lib/streamLocator';
 import type { PageText } from '@/types/app';
 import type { AppSettings } from '@/types/app';
 
@@ -11,11 +12,6 @@ const BLOCK_READING_ZONE_TOP = 48;
 const BLOCK_READING_ZONE_HEIGHT_RATIO = 0.66;
 const VIEWPORT_PREFETCH_PADDING = 1;
 
-type StreamLocator = {
-  imageUrl: string;
-  blockId: string | null;
-};
-
 interface ScrollViewerProps {
   manifest: string[];
   currentPage: number;
@@ -23,6 +19,8 @@ interface ScrollViewerProps {
   textCache: Record<string, PageText>;
   pageText: PageText | null;
   editMode: boolean;
+  currentStreamBlockKey: string | null;
+  playingStreamBlockKey: string | null;
   dimOutsideBlocks: boolean;
   dimOutsideBlocksIntensity: number;
   streamPageKey: string | null;
@@ -41,20 +39,6 @@ const ScrollScroller = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>
     return <div {...props} ref={ref} />;
   }
 );
-
-function parseStreamLocator(pageKey: string | null): StreamLocator | null {
-  if (!pageKey) {
-    return null;
-  }
-  const separatorIndex = pageKey.indexOf('::');
-  if (separatorIndex === -1) {
-    return { imageUrl: pageKey, blockId: null };
-  }
-  return {
-    imageUrl: pageKey.slice(0, separatorIndex),
-    blockId: pageKey.slice(separatorIndex + 2) || null
-  };
-}
 
 function getVisibleRatio(containerRect: DOMRect, itemRect: DOMRect) {
   const visibleTop = Math.max(containerRect.top, itemRect.top);
@@ -76,6 +60,8 @@ export default function ScrollViewer({
   textCache,
   pageText,
   editMode,
+  currentStreamBlockKey,
+  playingStreamBlockKey,
   dimOutsideBlocks,
   dimOutsideBlocksIntensity,
   streamPageKey,
@@ -119,6 +105,8 @@ export default function ScrollViewer({
     const contrastFilter = `contrast(${settings.contrast}%)`;
     return `${invertFilter} ${brightnessFilter} ${contrastFilter}`;
   }, [settings.brightness, settings.contrast, settings.invert]);
+  const currentStreamLocator = useMemo(() => parseStreamLocator(currentStreamBlockKey), [currentStreamBlockKey]);
+  const playingStreamLocator = useMemo(() => parseStreamLocator(playingStreamBlockKey), [playingStreamBlockKey]);
 
   const isPageSufficientlyVisible = (pageIndex: number) => {
     const scroller = scrollerRef.current;
@@ -310,9 +298,13 @@ export default function ScrollViewer({
         itemContent={(index) => {
           const imageUrl = manifest[index];
           const entry = index === currentPage ? pageText : textCache[imageUrl] ?? null;
+          const currentBlockId = currentStreamLocator?.imageUrl === imageUrl ? currentStreamLocator.blockId : null;
+          const playingBlockId = playingStreamLocator?.imageUrl === imageUrl ? playingStreamLocator.blockId : null;
           const overlayProps = {
             imageUrl,
             pageText: entry,
+            currentBlockId,
+            playingBlockId,
             dimOutsideBlocks,
             dimOutsideBlocksIntensity,
             onPlayTextBlock,

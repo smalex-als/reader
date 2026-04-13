@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { makeStreamLocator } from '@/lib/streamLocator';
 import { splitStreamChunks, stripMarkdown } from '@/lib/streamText';
 import type { PageText, StreamState, ToastMessage } from '@/types/app';
 
@@ -407,7 +408,7 @@ export function useStreamSequence({
       await startStreamSequenceFromText(
         textValue,
         payload.startIndex,
-        `${payload.imageUrl}#${payload.blockId}`,
+        makeStreamLocator(payload.imageUrl, payload.blockId),
         'page'
       );
     },

@@ -5,6 +5,8 @@ interface OcrOverlayProps {
   imageUrl: string;
   pageText: PageText | null;
   editMode: boolean;
+  currentBlockId?: string | null;
+  playingBlockId?: string | null;
   dimOutsideBlocks: boolean;
   dimOutsideBlocksIntensity: number;
   onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
@@ -18,6 +20,8 @@ export default function OcrOverlay({
   imageUrl,
   pageText,
   editMode,
+  currentBlockId = null,
+  playingBlockId = null,
   dimOutsideBlocks,
   dimOutsideBlocksIntensity,
   onPlayTextBlock,
@@ -145,6 +149,8 @@ export default function OcrOverlay({
             }
             data-excluded={block.excludedFromSpeech ? 'true' : 'false'}
             data-edit-mode={editMode ? 'true' : 'false'}
+            data-current={currentBlockId === block.id ? 'true' : 'false'}
+            data-playing={playingBlockId === block.id ? 'true' : 'false'}
             data-stream-block-id={block.id}
             onPointerDown={(event) => {
               event.stopPropagation();

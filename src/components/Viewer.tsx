@@ -8,6 +8,8 @@ interface ViewerProps {
   imageUrl: string | null;
   pageText: PageText | null;
   editMode: boolean;
+  currentBlockId?: string | null;
+  playingBlockId?: string | null;
   settings: AppSettings;
   onPan: (pan: ViewerPan) => void;
   onZoom: (zoom: number, mode?: AppSettings['zoomMode'], pan?: ViewerPan) => void;
@@ -31,6 +33,8 @@ export default function Viewer({
   imageUrl,
   pageText,
   editMode,
+  currentBlockId = null,
+  playingBlockId = null,
   settings,
   onPan,
   onZoom,
@@ -255,6 +259,8 @@ export default function Viewer({
                     imageUrl={imageUrl}
                     pageText={pageText}
                     editMode={editMode}
+                    currentBlockId={currentBlockId}
+                    playingBlockId={playingBlockId}
                     dimOutsideBlocks={settings.dimOutsideBlocks}
                     dimOutsideBlocksIntensity={settings.dimOutsideBlocksIntensity}
                     onPlayTextBlock={onPlayTextBlock}
