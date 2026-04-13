@@ -200,7 +200,6 @@ export default function ScrollViewer({
               className={`scroll-viewer-page ${index === currentPage ? 'scroll-viewer-page-active' : ''}`}
               data-page-index={index}
             >
-              <div className="scroll-viewer-page-header">Page {index + 1}</div>
               <div className="scroll-viewer-image-frame">
                 <img
                   src={imageUrl}
