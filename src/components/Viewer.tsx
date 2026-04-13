@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ZOOM_STEP } from '@/lib/hotkeys';
+import OcrOverlay from '@/components/OcrOverlay';
 import type { AppSettings, PageText, ViewerMetrics, ViewerPan } from '@/types/app';
 
 interface ViewerProps {
@@ -26,9 +27,6 @@ const INITIAL_METRICS: ViewerMetrics = {
 
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
-const OCR_COORDINATE_SPACE = 1000;
-const NON_INTERACTIVE_BLOCK_KINDS = new Set(['image', 'table']);
-
 export default function Viewer({
   imageUrl,
   pageText,
@@ -41,7 +39,6 @@ export default function Viewer({
   onToggleSpeechBlock,
   rotation
 }: ViewerProps) {
-  const overlayMaskId = useId().replace(/:/g, '-');
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointerState = useRef<{ active: boolean; startX: number; startY: number; pan: ViewerPan }>({
@@ -62,33 +59,6 @@ export default function Viewer({
   const transform = useMemo(() => {
     return `translate(${settings.pan.x}px, ${settings.pan.y}px) scale(${settings.zoom}) rotate(${rotation}deg)`;
   }, [rotation, settings.pan.x, settings.pan.y, settings.zoom]);
-  const coordinateBlocks = useMemo(() => {
-    return (pageText?.blocks ?? []).filter((block) => {
-      const bounds = block.bounds;
-      return (
-        Array.isArray(bounds) &&
-        bounds.length === 4 &&
-        bounds.every((value) => Number.isFinite(value))
-      );
-    });
-  }, [pageText]);
-  const interactiveBlocks = useMemo(() => {
-    const blocks = coordinateBlocks.filter(
-      (block) => !NON_INTERACTIVE_BLOCK_KINDS.has(block.kind.toLowerCase())
-    );
-    if (editMode) {
-      return blocks.filter((block) => block.text.trim().length > 0);
-    }
-    return blocks.filter((block) => block.streamStartIndex !== null);
-  }, [coordinateBlocks, editMode]);
-  const blockCoordinateSpace = useMemo(() => {
-    if (coordinateBlocks.length === 0) {
-      return null;
-    }
-    return { width: OCR_COORDINATE_SPACE, height: OCR_COORDINATE_SPACE };
-  }, [coordinateBlocks]);
-  const shouldShowDimOverlay = settings.dimOutsideBlocks && (!pageText || coordinateBlocks.length > 0);
-
   const updateMetrics = useCallback(() => {
     const container = containerRef.current;
     const image = imageRef.current;
@@ -276,135 +246,20 @@ export default function Viewer({
                   onError={handleImageError}
                   draggable={false}
               />
-              {metrics.naturalWidth > 0 &&
-              metrics.naturalHeight > 0 &&
-              shouldShowDimOverlay ? (
-                  <div
-                      className="viewer-image-map"
-                      style={{ width: `${metrics.naturalWidth}px`, height: `${metrics.naturalHeight}px` }}
-                  >
-                    <svg
-                        className="viewer-dim-overlay"
-                        viewBox={`0 0 ${metrics.naturalWidth} ${metrics.naturalHeight}`}
-                        preserveAspectRatio="none"
-                        aria-hidden="true"
-                        style={{ opacity: 1 }}
-                    >
-                      {blockCoordinateSpace && coordinateBlocks.length > 0 ? (
-                        <>
-                          <defs>
-                            <mask id={overlayMaskId}>
-                              <rect width={metrics.naturalWidth} height={metrics.naturalHeight} fill="white" />
-                              {coordinateBlocks.map((block) => {
-                                const [left, top, right, bottom] = block.bounds;
-                                const width =
-                                  (Math.max(1, right - left) / blockCoordinateSpace.width) * metrics.naturalWidth;
-                                const height =
-                                  (Math.max(1, bottom - top) / blockCoordinateSpace.height) * metrics.naturalHeight;
-                                const x = (left / blockCoordinateSpace.width) * metrics.naturalWidth;
-                                const y = (top / blockCoordinateSpace.height) * metrics.naturalHeight;
-                                return (
-                                  <rect
-                                    key={`mask-${block.id}`}
-                                    x={x}
-                                    y={y}
-                                    width={width}
-                                    height={height}
-                                    fill="black"
-                                  />
-                                );
-                              })}
-                            </mask>
-                            <clipPath id={`${overlayMaskId}-blocks`}>
-                              {coordinateBlocks.map((block) => {
-                                const [left, top, right, bottom] = block.bounds;
-                                const width =
-                                  (Math.max(1, right - left) / blockCoordinateSpace.width) * metrics.naturalWidth;
-                                const height =
-                                  (Math.max(1, bottom - top) / blockCoordinateSpace.height) * metrics.naturalHeight;
-                                const x = (left / blockCoordinateSpace.width) * metrics.naturalWidth;
-                                const y = (top / blockCoordinateSpace.height) * metrics.naturalHeight;
-                                return (
-                                  <rect
-                                    key={`clip-${block.id}`}
-                                    x={x}
-                                    y={y}
-                                    width={width}
-                                    height={height}
-                                  />
-                                );
-                              })}
-                            </clipPath>
-                          </defs>
-                          <rect
-                            width={metrics.naturalWidth}
-                            height={metrics.naturalHeight}
-                            fill={`rgba(196, 170, 110, ${settings.dimOutsideBlocksIntensity / 100})`}
-                            mask={`url(#${overlayMaskId})`}
-                          />
-                          <rect
-                            width={metrics.naturalWidth}
-                            height={metrics.naturalHeight}
-                            fill={`rgba(196, 170, 110, ${settings.dimOutsideBlocksIntensity / 110})`}
-                            clipPath={`url(#${overlayMaskId}-blocks)`}
-                          />
-                        </>
-                      ) : (
-                        <rect
-                          width={metrics.naturalWidth}
-                          height={metrics.naturalHeight}
-                          fill={`rgba(196, 170, 110, ${settings.dimOutsideBlocksIntensity / 100})`}
-                        />
-                      )}
-                    </svg>
-                    {blockCoordinateSpace
-                      ? interactiveBlocks.map((block) => {
-                      const [left, top, right, bottom] = block.bounds;
-                      const width = Math.max(1, right - left);
-                      const height = Math.max(1, bottom - top);
-                      return (
-                        <button
-                            key={block.id}
-                            type="button"
-                            className="viewer-hotspot"
-                            style={{
-                              left: `${(left / blockCoordinateSpace.width) * 100}%`,
-                              top: `${(top / blockCoordinateSpace.height) * 100}%`,
-                              width: `${(width / blockCoordinateSpace.width) * 100}%`,
-                              height: `${(height / blockCoordinateSpace.height) * 100}%`
-                            }}
-                            aria-label={
-                              editMode
-                                ? `${block.excludedFromSpeech ? 'Restore' : 'Exclude'} ${block.kind} block`
-                                : `Play stream from ${block.kind}`
-                            }
-                            title={
-                              editMode
-                                ? block.excludedFromSpeech
-                                  ? 'Restore block to speech'
-                                  : 'Exclude block from speech'
-                                : 'Play stream from here'
-                            }
-                            data-excluded={block.excludedFromSpeech ? 'true' : 'false'}
-                            data-edit-mode={editMode ? 'true' : 'false'}
-                            onPointerDown={(event) => {
-                              event.stopPropagation();
-                            }}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              if (editMode) {
-                                onToggleSpeechBlock(block.id);
-                                return;
-                              }
-                              if (block.streamStartIndex !== null) {
-                                onPlayTextBlock({ startIndex: block.streamStartIndex, blockId: block.id });
-                              }
-                            }}
-                        />
-                      );
-                    })
-                      : null}
-                  </div>
+              {metrics.naturalWidth > 0 && metrics.naturalHeight > 0 ? (
+                <div
+                  className="viewer-image-map"
+                  style={{ width: `${metrics.naturalWidth}px`, height: `${metrics.naturalHeight}px` }}
+                >
+                  <OcrOverlay
+                    pageText={pageText}
+                    editMode={editMode}
+                    dimOutsideBlocks={settings.dimOutsideBlocks}
+                    dimOutsideBlocksIntensity={settings.dimOutsideBlocksIntensity}
+                    onPlayTextBlock={onPlayTextBlock}
+                    onToggleSpeechBlock={onToggleSpeechBlock}
+                  />
+                </div>
               ) : null}
             </div>
         ) : (

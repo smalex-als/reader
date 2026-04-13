@@ -284,21 +284,21 @@ export function useHotkeys({
           gotoInputRef.current?.focus();
           break;
         case 't':
-          if (viewMode !== 'pages' || !currentImage) {
+          if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage) {
             return;
           }
           event.preventDefault();
           toggleTextModal();
           break;
         case 'o':
-          if (viewMode !== 'pages' || !currentImage) {
+          if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage) {
             return;
           }
           event.preventDefault();
           void triggerBackgroundOcr();
           break;
         case 'e':
-          if (viewMode !== 'pages' || !currentImage) {
+          if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage) {
             return;
           }
           event.preventDefault();

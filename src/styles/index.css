@@ -387,6 +387,10 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.scroll-viewer-image-frame {
+  position: relative;
+}
+
 .scroll-viewer-page-active .scroll-viewer-page-header {
   color: rgba(244, 248, 252, 0.94);
   background: rgba(26, 38, 52, 0.82);

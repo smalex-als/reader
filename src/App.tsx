@@ -310,6 +310,7 @@ export default function App() {
     resetTextState,
     savePageText,
     setRegeneratedText,
+    textCache,
     textLoading,
     textModalOpen,
     textSaving,
@@ -470,7 +471,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (viewMode !== 'pages' || !currentImage || currentText) {
+    if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage || currentText) {
       return;
     }
     void fetchPageText({ silent: true });
@@ -899,7 +900,7 @@ export default function App() {
     viewMode,
     disablePagesMode: isTextBook,
     disableScrollMode: isTextBook,
-    disableImageActions: isTextBook || viewMode === 'scroll',
+    disableImageActions: isTextBook,
     onViewModeChange: handleViewModeChange,
     onOpenBookModal: openBookModal,
     onPrev: handlePrev,
@@ -1136,6 +1137,19 @@ export default function App() {
         invert: settings.invert,
         brightness: settings.brightness,
         contrast: settings.contrast
+      },
+      textCache,
+      pageText: currentText,
+      editMode: ocrEditMode,
+      dimOutsideBlocks: settings.dimOutsideBlocks,
+      dimOutsideBlocksIntensity: settings.dimOutsideBlocksIntensity,
+      fetchPageTextByImage,
+      onPlayTextBlock: (payload: { startIndex: number; blockId: string }) => {
+        const { startIndex, blockId } = payload;
+        void handlePlayPageBlock({ startIndex, blockId });
+      },
+      onToggleSpeechBlock: (blockId: string) => {
+        void handleToggleSpeechBlock(blockId);
       },
       onCurrentPageChange: handleScrollCurrentPageChange
     },
