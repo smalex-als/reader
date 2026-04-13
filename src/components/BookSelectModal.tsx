@@ -207,7 +207,7 @@ export default function BookSelectModal({
                 role="tab"
                 aria-selected={sortMode === 'deferred'}
               >
-                Deferred
+                Saved
               </button>
             </div>
           </div>
@@ -245,7 +245,7 @@ export default function BookSelectModal({
                           <span className="book-select-name-row">
                             <span>{displayTitle}</span>
                             {active ? <span className="book-select-marker">Current</span> : null}
-                            {isDeferred ? <span className="book-select-tag">Deferred</span> : null}
+                            {isDeferred ? <span className="book-select-tag">Saved</span> : null}
                           </span>
                           {displayAuthor || displayCategory ? (
                             <span className="book-select-meta-row">
@@ -281,9 +281,9 @@ export default function BookSelectModal({
                               }
                             }));
                           }}
-                          aria-label={isDeferred ? `Remove ${book} from deferred` : `Mark ${book} as deferred`}
+                          aria-label={isDeferred ? `Remove ${book} from saved` : `Mark ${book} as saved`}
                         >
-                          {isDeferred ? 'Later ✓' : 'Later'}
+                          {isDeferred ? 'Saved ✓' : 'Save'}
                         </button>
                         <button
                           type="button"
