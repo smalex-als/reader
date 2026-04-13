@@ -15,6 +15,21 @@ type StoredBookMeta = Record<
     deferred?: boolean;
   }
 >;
+type BookSortMode = 'alphabetical' | 'recent' | 'deferred';
+
+export interface LibraryStateSnapshot {
+  lastBook: string | null;
+  lastPages: Record<string, number>;
+  bookMeta: StoredBookMeta;
+  bookSortMode: BookSortMode;
+}
+
+let libraryStateCache: LibraryStateSnapshot = {
+  lastBook: null,
+  lastPages: {},
+  bookMeta: {},
+  bookSortMode: 'alphabetical'
+};
 
 function readJson<T>(key: string): T | null {
   if (typeof window === 'undefined') {
@@ -42,6 +57,47 @@ function writeJson<T>(key: string, value: T) {
   }
 }
 
+async function persistLibraryPatch(patch: {
+  lastBook?: string | null;
+  lastPages?: Record<string, number | null>;
+  bookMeta?: Record<string, { lastOpenedAt?: string | null; deferred?: boolean | null } | null>;
+  bookSortMode?: BookSortMode;
+}) {
+  try {
+    await fetch('/api/library/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    });
+  } catch (error) {
+    console.error('Unable to persist library state', error);
+  }
+}
+
+export async function loadLibraryStateFromServer(): Promise<LibraryStateSnapshot> {
+  try {
+    const response = await fetch('/api/library/state');
+    if (!response.ok) {
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
+    const data = (await response.json()) as Partial<LibraryStateSnapshot>;
+    const snapshot: LibraryStateSnapshot = {
+      lastBook: typeof data.lastBook === 'string' && data.lastBook.trim() ? data.lastBook : null,
+      lastPages: data.lastPages && typeof data.lastPages === 'object' ? data.lastPages : {},
+      bookMeta: data.bookMeta && typeof data.bookMeta === 'object' ? data.bookMeta : {},
+      bookSortMode:
+        data.bookSortMode === 'recent' || data.bookSortMode === 'deferred'
+          ? data.bookSortMode
+          : 'alphabetical'
+    };
+    libraryStateCache = snapshot;
+    return snapshot;
+  } catch (error) {
+    console.error('Unable to load library state', error);
+    return libraryStateCache;
+  }
+}
+
 export function loadSettingsForBook(bookId: string): AppSettings | null {
   const settings = readJson<StoredSettings>(SETTINGS_KEY);
   if (!settings) {
@@ -57,32 +113,31 @@ export function saveSettingsForBook(bookId: string, settings: AppSettings) {
 }
 
 export function loadLastBook(): string | null {
-  return readJson<string>(BOOK_KEY);
+  return libraryStateCache.lastBook;
 }
 
 export function saveLastBook(bookId: string | null) {
-  if (!bookId) {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(BOOK_KEY);
-    }
-    return;
-  }
-  writeJson(BOOK_KEY, bookId);
+  libraryStateCache = {
+    ...libraryStateCache,
+    lastBook: bookId && bookId.trim() ? bookId : null
+  };
+  void persistLibraryPatch({ lastBook: libraryStateCache.lastBook });
 }
 
 export function loadLastPage(bookId: string): number | null {
-  const pages = readJson<Record<string, number>>(PAGE_KEY);
-  if (!pages) {
-    return null;
-  }
-  const page = pages[bookId];
+  const page = libraryStateCache.lastPages[bookId];
   return typeof page === 'number' ? page : null;
 }
 
 export function saveLastPage(bookId: string, pageIndex: number) {
-  const pages = readJson<Record<string, number>>(PAGE_KEY) ?? {};
-  pages[bookId] = pageIndex;
-  writeJson(PAGE_KEY, pages);
+  libraryStateCache = {
+    ...libraryStateCache,
+    lastPages: {
+      ...libraryStateCache.lastPages,
+      [bookId]: pageIndex
+    }
+  };
+  void persistLibraryPatch({ lastPages: { [bookId]: pageIndex } });
 }
 
 export function loadStreamVoiceForBook(bookId: string): string | null {
@@ -101,34 +156,39 @@ export function saveStreamVoiceForBook(bookId: string, voice: string) {
 }
 
 export function loadBookMeta(): StoredBookMeta {
-  return readJson<StoredBookMeta>(BOOK_META_KEY) ?? {};
+  return libraryStateCache.bookMeta;
 }
 
 export function markBookOpened(bookId: string) {
-  const meta = loadBookMeta();
-  meta[bookId] = {
-    ...meta[bookId],
-    lastOpenedAt: new Date().toISOString()
+  const lastOpenedAt = new Date().toISOString();
+  libraryStateCache = {
+    ...libraryStateCache,
+    bookMeta: {
+      ...libraryStateCache.bookMeta,
+      [bookId]: {
+        ...libraryStateCache.bookMeta[bookId],
+        lastOpenedAt
+      }
+    }
   };
-  writeJson(BOOK_META_KEY, meta);
+  void persistLibraryPatch({ bookMeta: { [bookId]: { lastOpenedAt } } });
 }
 
 export function setBookDeferred(bookId: string, deferred: boolean) {
-  const meta = loadBookMeta();
-  meta[bookId] = {
-    ...meta[bookId],
-    deferred
+  libraryStateCache = {
+    ...libraryStateCache,
+    bookMeta: {
+      ...libraryStateCache.bookMeta,
+      [bookId]: {
+        ...libraryStateCache.bookMeta[bookId],
+        deferred
+      }
+    }
   };
-  writeJson(BOOK_META_KEY, meta);
+  void persistLibraryPatch({ bookMeta: { [bookId]: { deferred } } });
 }
 
 export function removeBookStorage(bookId: string) {
-  const pages = readJson<Record<string, number>>(PAGE_KEY) ?? {};
-  if (bookId in pages) {
-    delete pages[bookId];
-    writeJson(PAGE_KEY, pages);
-  }
-
   const settings = readJson<StoredSettings>(SETTINGS_KEY) ?? {};
   if (bookId in settings) {
     delete settings[bookId];
@@ -141,25 +201,33 @@ export function removeBookStorage(bookId: string) {
     writeJson(STREAM_VOICE_KEY, voices);
   }
 
-  const meta = loadBookMeta();
-  if (bookId in meta) {
-    delete meta[bookId];
-    writeJson(BOOK_META_KEY, meta);
-  }
+  const nextPages = { ...libraryStateCache.lastPages };
+  delete nextPages[bookId];
+  const nextMeta = { ...libraryStateCache.bookMeta };
+  delete nextMeta[bookId];
+  const removedLastBook = libraryStateCache.lastBook === bookId;
+  libraryStateCache = {
+    ...libraryStateCache,
+    lastBook: removedLastBook ? null : libraryStateCache.lastBook,
+    lastPages: nextPages,
+    bookMeta: nextMeta
+  };
 
-  if (loadLastBook() === bookId && typeof window !== 'undefined') {
-    window.localStorage.removeItem(BOOK_KEY);
-  }
+  void persistLibraryPatch({
+    lastBook: removedLastBook ? null : undefined,
+    lastPages: { [bookId]: null },
+    bookMeta: { [bookId]: null }
+  });
 }
 
-export function loadBookSortMode(): 'alphabetical' | 'recent' | 'deferred' {
-  const value = readJson<string>(BOOK_SORT_MODE_KEY);
-  if (value === 'recent' || value === 'deferred') {
-    return value;
-  }
-  return 'alphabetical';
+export function loadBookSortMode(): BookSortMode {
+  return libraryStateCache.bookSortMode;
 }
 
-export function saveBookSortMode(mode: 'alphabetical' | 'recent' | 'deferred') {
-  writeJson(BOOK_SORT_MODE_KEY, mode);
+export function saveBookSortMode(mode: BookSortMode) {
+  libraryStateCache = {
+    ...libraryStateCache,
+    bookSortMode: mode
+  };
+  void persistLibraryPatch({ bookSortMode: mode });
 }

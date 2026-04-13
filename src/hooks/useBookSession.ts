@@ -3,6 +3,7 @@ import { clamp } from '@/lib/math';
 import {
   loadLastBook,
   loadLastPage,
+  loadLibraryStateFromServer,
   loadSettingsForBook,
   loadStreamVoiceForBook,
   markBookOpened,
@@ -101,6 +102,7 @@ export function useBookSession<StreamVoice extends string>({
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [uploadingChapter, setUploadingChapter] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [libraryStateReady, setLibraryStateReady] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
   const shouldUseLocationPositionRef = useRef(true);
 
@@ -110,6 +112,30 @@ export function useBookSession<StreamVoice extends string>({
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    void loadLibraryStateFromServer()
+      .then((state) => {
+        if (cancelled) {
+          return;
+        }
+        if (!getBookFromLocation() && state.lastBook) {
+          rawSetBookId(state.lastBook);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLibraryStateReady(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!libraryStateReady) {
+      return;
+    }
     (async () => {
       try {
         const data = await fetchJson<{ books: string[] }>('/api/books');
@@ -134,7 +160,7 @@ export function useBookSession<StreamVoice extends string>({
         showToast('Unable to load books', 'error');
       }
     })();
-  }, [bookId, showToast]);
+  }, [bookId, libraryStateReady, setBookId, showToast]);
 
   useEffect(() => {
     if (bookId) {
@@ -194,6 +220,9 @@ export function useBookSession<StreamVoice extends string>({
   }, []);
 
   useEffect(() => {
+    if (!libraryStateReady) {
+      return;
+    }
     if (!bookId) {
       setManifest([]);
       setBookType('image');
@@ -276,6 +305,7 @@ export function useBookSession<StreamVoice extends string>({
     createDefaultSettings,
     getDefaultStreamVoice,
     isStreamVoice,
+    libraryStateReady,
     setMetrics,
     setSettings,
     setStreamVoice,

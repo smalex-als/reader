@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react';
 import {
   loadBookMeta,
   loadBookSortMode,
+  loadLibraryStateFromServer,
   saveBookSortMode,
   setBookDeferred
 } from '@/lib/storage';
@@ -60,8 +61,26 @@ export default function BookSelectModal({
     if (open) {
       setChapterBook(currentBook ?? '');
       setBookMeta(loadBookMeta());
+      setSortMode(loadBookSortMode());
     }
   }, [currentBook, open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    let cancelled = false;
+    void loadLibraryStateFromServer().then((state) => {
+      if (cancelled) {
+        return;
+      }
+      setBookMeta(state.bookMeta);
+      setSortMode(state.bookSortMode);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
