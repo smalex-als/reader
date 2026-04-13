@@ -6,8 +6,9 @@ const SAMPLE_RATE = 24_000;
 const SILENT_FRAME_LIMIT = 4;
 const STREAM_SERVER = 'https://reader.test:3000';
 export const DEFAULT_STREAM_VOICE = 'en-Mike_man';
-const SHORT_SEGMENT_PAUSE_MS = 500;
-const MEDIUM_SEGMENT_PAUSE_MS = 250;
+const SHORT_SEGMENT_PAUSE_MS = 700;
+const MEDIUM_SEGMENT_PAUSE_MS = 700;
+const LONG_SEGMENT_PAUSE_MS = 1000;
 
 type QueuedStreamItem = {
   text: string;
@@ -40,7 +41,7 @@ function getInterSegmentPauseMs(text: string) {
   if (trimmed.length <= 180 || sentenceCount <= 2) {
     return MEDIUM_SEGMENT_PAUSE_MS;
   }
-  return 0;
+  return LONG_SEGMENT_PAUSE_MS;
 }
 
 export function useStreamingAudio(
