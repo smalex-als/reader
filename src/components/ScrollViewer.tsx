@@ -4,6 +4,18 @@ import OcrOverlay from '@/components/OcrOverlay';
 import type { PageText } from '@/types/app';
 import type { AppSettings } from '@/types/app';
 
+const PAGE_VISIBILITY_THRESHOLD = 0.35;
+const BLOCK_VISIBILITY_THRESHOLD = 0.55;
+const PAGE_TOP_MARGIN = 80;
+const BLOCK_READING_ZONE_TOP = 48;
+const BLOCK_READING_ZONE_HEIGHT_RATIO = 0.66;
+const VIEWPORT_PREFETCH_PADDING = 1;
+
+type StreamLocator = {
+  imageUrl: string;
+  blockId: string | null;
+};
+
 interface ScrollViewerProps {
   manifest: string[];
   currentPage: number;
@@ -29,6 +41,33 @@ const ScrollScroller = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>
     return <div {...props} ref={ref} />;
   }
 );
+
+function parseStreamLocator(pageKey: string | null): StreamLocator | null {
+  if (!pageKey) {
+    return null;
+  }
+  const separatorIndex = pageKey.indexOf('::');
+  if (separatorIndex === -1) {
+    return { imageUrl: pageKey, blockId: null };
+  }
+  return {
+    imageUrl: pageKey.slice(0, separatorIndex),
+    blockId: pageKey.slice(separatorIndex + 2) || null
+  };
+}
+
+function getVisibleRatio(containerRect: DOMRect, itemRect: DOMRect) {
+  const visibleTop = Math.max(containerRect.top, itemRect.top);
+  const visibleBottom = Math.min(containerRect.bottom, itemRect.bottom);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  return itemRect.height > 0 ? visibleHeight / itemRect.height : 0;
+}
+
+function isBlockInReadingZone(containerRect: DOMRect, blockRect: DOMRect) {
+  const readingZoneTop = containerRect.top + BLOCK_READING_ZONE_TOP;
+  const readingZoneBottom = containerRect.top + containerRect.height * BLOCK_READING_ZONE_HEIGHT_RATIO;
+  return blockRect.top >= readingZoneTop && blockRect.top <= readingZoneBottom;
+}
 
 export default function ScrollViewer({
   manifest,
@@ -81,20 +120,6 @@ export default function ScrollViewer({
     return `${invertFilter} ${brightnessFilter} ${contrastFilter}`;
   }, [settings.brightness, settings.contrast, settings.invert]);
 
-  const parseStreamLocator = (pageKey: string | null) => {
-    if (!pageKey) {
-      return null;
-    }
-    const separatorIndex = pageKey.indexOf('::');
-    if (separatorIndex === -1) {
-      return { imageUrl: pageKey, blockId: null };
-    }
-    return {
-      imageUrl: pageKey.slice(0, separatorIndex),
-      blockId: pageKey.slice(separatorIndex + 2) || null
-    };
-  };
-
   const isPageSufficientlyVisible = (pageIndex: number) => {
     const scroller = scrollerRef.current;
     if (!scroller) {
@@ -108,12 +133,9 @@ export default function ScrollViewer({
     }
     const scrollerRect = scroller.getBoundingClientRect();
     const pageRect = page.getBoundingClientRect();
-    const visibleTop = Math.max(scrollerRect.top, pageRect.top);
-    const visibleBottom = Math.min(scrollerRect.bottom, pageRect.bottom);
-    const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-    const visibleRatio = pageRect.height > 0 ? visibleHeight / pageRect.height : 0;
-    const pageTopInViewport = pageRect.top >= scrollerRect.top && pageRect.top <= scrollerRect.bottom - 80;
-    return visibleRatio >= 0.35 || pageTopInViewport;
+    const visibleRatio = getVisibleRatio(scrollerRect, pageRect);
+    const pageTopInViewport = pageRect.top >= scrollerRect.top && pageRect.top <= scrollerRect.bottom - PAGE_TOP_MARGIN;
+    return visibleRatio >= PAGE_VISIBILITY_THRESHOLD || pageTopInViewport;
   };
 
   useEffect(() => {
@@ -164,13 +186,8 @@ export default function ScrollViewer({
       if (block) {
         const scrollerRect = scroller.getBoundingClientRect();
         const blockRect = block.getBoundingClientRect();
-        const visibleTop = Math.max(scrollerRect.top, blockRect.top);
-        const visibleBottom = Math.min(scrollerRect.bottom, blockRect.bottom);
-        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-        const visibleRatio = blockRect.height > 0 ? visibleHeight / blockRect.height : 0;
-        const inReadingZone =
-          blockRect.top >= scrollerRect.top + 48 && blockRect.top <= scrollerRect.top + scrollerRect.height * 0.66;
-        if (visibleRatio >= 0.55 || inReadingZone) {
+        const visibleRatio = getVisibleRatio(scrollerRect, blockRect);
+        if (visibleRatio >= BLOCK_VISIBILITY_THRESHOLD || isBlockInReadingZone(scrollerRect, blockRect)) {
           return;
         }
       }
@@ -227,8 +244,8 @@ export default function ScrollViewer({
   };
 
   const prefetchVisibleRange = (range: ListRange) => {
-    const start = Math.max(0, range.startIndex - 1);
-    const end = Math.min(manifest.length - 1, range.endIndex + 1);
+    const start = Math.max(0, range.startIndex - VIEWPORT_PREFETCH_PADDING);
+    const end = Math.min(manifest.length - 1, range.endIndex + VIEWPORT_PREFETCH_PADDING);
     for (let index = start; index <= end; index += 1) {
       const image = manifest[index];
       if (!image || textCache[image]) {
@@ -293,6 +310,14 @@ export default function ScrollViewer({
         itemContent={(index) => {
           const imageUrl = manifest[index];
           const entry = index === currentPage ? pageText : textCache[imageUrl] ?? null;
+          const overlayProps = {
+            imageUrl,
+            pageText: entry,
+            dimOutsideBlocks,
+            dimOutsideBlocksIntensity,
+            onPlayTextBlock,
+            onToggleSpeechBlock
+          };
           return (
             <div
               className={`scroll-viewer-page ${index === currentPage ? 'scroll-viewer-page-active' : ''}`}
@@ -308,23 +333,13 @@ export default function ScrollViewer({
                 />
                 {index === currentPage ? (
                   <OcrOverlay
-                    imageUrl={imageUrl}
-                    pageText={entry}
+                    {...overlayProps}
                     editMode={editMode}
-                    dimOutsideBlocks={dimOutsideBlocks}
-                    dimOutsideBlocksIntensity={dimOutsideBlocksIntensity}
-                    onPlayTextBlock={onPlayTextBlock}
-                    onToggleSpeechBlock={onToggleSpeechBlock}
                   />
                 ) : entry ? (
                   <OcrOverlay
-                    imageUrl={imageUrl}
-                    pageText={entry}
+                    {...overlayProps}
                     editMode={false}
-                    dimOutsideBlocks={dimOutsideBlocks}
-                    dimOutsideBlocksIntensity={dimOutsideBlocksIntensity}
-                    onPlayTextBlock={onPlayTextBlock}
-                    onToggleSpeechBlock={onToggleSpeechBlock}
                   />
                 ) : null}
               </div>
