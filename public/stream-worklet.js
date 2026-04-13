@@ -1,20 +1,22 @@
 class StreamPlayerProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.buffer = new Float32Array(0);
+    this.chunks = [];
+    this.activePageKey = null;
     this.port.onmessage = (event) => {
       const data = event.data;
       if (!data || typeof data.type !== 'string') {
         return;
       }
       if (data.type === 'append' && data.payload instanceof ArrayBuffer) {
-        const incoming = new Float32Array(data.payload);
-        const merged = new Float32Array(this.buffer.length + incoming.length);
-        merged.set(this.buffer, 0);
-        merged.set(incoming, this.buffer.length);
-        this.buffer = merged;
+        this.chunks.push({
+          samples: new Float32Array(data.payload),
+          pageKey: typeof data.pageKey === 'string' ? data.pageKey : null,
+          offset: 0
+        });
       } else if (data.type === 'reset') {
-        this.buffer = new Float32Array(0);
+        this.chunks = [];
+        this.activePageKey = null;
       }
     };
   }
@@ -26,22 +28,37 @@ class StreamPlayerProcessor extends AudioWorkletProcessor {
     }
     const frames = output.length;
     let silent = false;
+    let writeOffset = 0;
+    let activePageKey = null;
 
-    if (this.buffer.length === 0) {
-      output.fill(0);
-      silent = true;
-    } else if (this.buffer.length <= frames) {
-      output.set(this.buffer);
-      if (this.buffer.length < frames) {
-        output.fill(0, this.buffer.length);
+    while (writeOffset < frames && this.chunks.length > 0) {
+      const chunk = this.chunks[0];
+      const remaining = chunk.samples.length - chunk.offset;
+      if (remaining <= 0) {
+        this.chunks.shift();
+        continue;
       }
-      this.buffer = new Float32Array(0);
-    } else {
-      output.set(this.buffer.subarray(0, frames));
-      this.buffer = this.buffer.subarray(frames);
+      const take = Math.min(frames - writeOffset, remaining);
+      output.set(chunk.samples.subarray(chunk.offset, chunk.offset + take), writeOffset);
+      if (activePageKey === null && chunk.pageKey) {
+        activePageKey = chunk.pageKey;
+      }
+      chunk.offset += take;
+      writeOffset += take;
+      if (chunk.offset >= chunk.samples.length) {
+        this.chunks.shift();
+      }
     }
 
-    this.port.postMessage({ type: 'played', frames, silent });
+    if (writeOffset < frames) {
+      output.fill(0, writeOffset);
+      silent = writeOffset === 0;
+    }
+
+    if (activePageKey !== this.activePageKey) {
+      this.activePageKey = activePageKey;
+    }
+    this.port.postMessage({ type: 'played', frames, silent, pageKey: this.activePageKey });
     return true;
   }
 }

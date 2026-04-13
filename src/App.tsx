@@ -429,9 +429,10 @@ export default function App() {
   });
   const selectedStreamLocator = useMemo(() => parseStreamLocator(selectedStreamBlockKey), [selectedStreamBlockKey]);
   const playingStreamLocator = useMemo(
-    () => parseStreamLocator(streamState.status !== 'idle' ? streamState.pageKey : null),
+    () => parseStreamLocator(streamState.status === 'streaming' ? streamState.pageKey : null),
     [streamState.pageKey, streamState.status]
   );
+  const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
 
   const handleToggleOcrEditMode = useCallback(async () => {
     if (!currentImage || isTextBook) {
@@ -1141,7 +1142,7 @@ export default function App() {
       imageUrl: currentImage,
       pageText: currentText,
       editMode: ocrEditMode,
-      currentBlockId: selectedStreamLocator?.imageUrl === currentImage ? selectedStreamLocator.blockId : null,
+      currentBlockId: activeStreamLocator?.imageUrl === currentImage ? activeStreamLocator.blockId : null,
       playingBlockId: playingStreamLocator?.imageUrl === currentImage ? playingStreamLocator.blockId : null,
       settings,
       onPan: updatePan,
@@ -1167,8 +1168,9 @@ export default function App() {
       textCache,
       pageText: currentText,
       editMode: ocrEditMode,
-      currentStreamBlockKey: selectedStreamBlockKey,
-      playingStreamBlockKey: streamState.status !== 'idle' ? streamState.pageKey : null,
+      currentStreamBlockKey:
+        activeStreamLocator ? makeStreamLocator(activeStreamLocator.imageUrl, activeStreamLocator.blockId) : null,
+      playingStreamBlockKey: streamState.status === 'streaming' ? streamState.pageKey : null,
       dimOutsideBlocks: settings.dimOutsideBlocks,
       dimOutsideBlocksIntensity: settings.dimOutsideBlocksIntensity,
       streamPageKey: streamState.status === 'streaming' ? streamState.pageKey : null,

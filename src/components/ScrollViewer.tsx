@@ -10,6 +10,7 @@ const BLOCK_VISIBILITY_THRESHOLD = 0.55;
 const PAGE_TOP_MARGIN = 80;
 const BLOCK_READING_ZONE_TOP = 48;
 const BLOCK_READING_ZONE_HEIGHT_RATIO = 0.66;
+const BLOCK_SCROLL_TARGET_OFFSET = 88;
 const VIEWPORT_PREFETCH_PADDING = 1;
 
 interface ScrollViewerProps {
@@ -51,6 +52,16 @@ function isBlockInReadingZone(containerRect: DOMRect, blockRect: DOMRect) {
   const readingZoneTop = containerRect.top + BLOCK_READING_ZONE_TOP;
   const readingZoneBottom = containerRect.top + containerRect.height * BLOCK_READING_ZONE_HEIGHT_RATIO;
   return blockRect.top >= readingZoneTop && blockRect.top <= readingZoneBottom;
+}
+
+function scrollBlockIntoReadingZone(scroller: HTMLDivElement, block: HTMLElement) {
+  const scrollerRect = scroller.getBoundingClientRect();
+  const blockRect = block.getBoundingClientRect();
+  const targetTop = scroller.scrollTop + (blockRect.top - scrollerRect.top) - BLOCK_SCROLL_TARGET_OFFSET;
+  scroller.scrollTo({
+    top: Math.max(0, targetTop),
+    behavior: 'smooth'
+  });
 }
 
 export default function ScrollViewer({
@@ -178,6 +189,8 @@ export default function ScrollViewer({
         if (visibleRatio >= BLOCK_VISIBILITY_THRESHOLD || isBlockInReadingZone(scrollerRect, blockRect)) {
           return;
         }
+        scrollBlockIntoReadingZone(scroller, block);
+        return;
       }
     }
     if (isPageSufficientlyVisible(pageIndex)) {

@@ -225,7 +225,7 @@ export function useStreamSequence({
   );
 
   const startScrollPageSequence = useCallback(
-    async (imageUrl: string, pageText: PageText, startBlockId?: string) => {
+    async (imageUrl: string, pageText: PageText, startBlockId?: string, continueAcrossPages = true) => {
       const allSegments = getPageStreamSegments(pageText, imageUrl);
       if (allSegments.length === 0) {
         showToast('No page text available to stream', 'error');
@@ -260,14 +260,23 @@ export function useStreamSequence({
       const runId = sequenceRunIdRef.current + 1;
       sequenceRunIdRef.current = runId;
       const imagePageIndex = manifest.findIndex((entry) => entry === imageUrl);
-      scrollBufferRef.current = {
-        runId,
-        nextPageIndex: imagePageIndex >= 0 ? imagePageIndex + 1 : currentPage + 1,
-        pendingSegments: segments.slice(1),
-        queuedAhead: 0,
-        lastActivePageKey: segments[0].pageKey,
-        filling: false
-      };
+      scrollBufferRef.current = continueAcrossPages
+        ? {
+            runId,
+            nextPageIndex: imagePageIndex >= 0 ? imagePageIndex + 1 : currentPage + 1,
+            pendingSegments: segments.slice(1),
+            queuedAhead: 0,
+            lastActivePageKey: segments[0].pageKey,
+            filling: false
+          }
+        : {
+            runId,
+            nextPageIndex: manifest.length,
+            pendingSegments: segments.slice(1),
+            queuedAhead: 0,
+            lastActivePageKey: segments[0].pageKey,
+            filling: false
+          };
       streamSequenceRef.current = { source: 'page', baseKey: imageUrl };
       setStreamSequenceActive(true);
       await startStream({
@@ -401,16 +410,11 @@ export function useStreamSequence({
         showToast('No page text available to stream', 'error');
         return;
       }
-      if (viewMode === 'scroll' && pageText) {
-        await startScrollPageSequence(payload.imageUrl, pageText, payload.blockId);
+      if (pageText) {
+        await startScrollPageSequence(payload.imageUrl, pageText, payload.blockId, viewMode === 'scroll');
         return;
       }
-      await startStreamSequenceFromText(
-        textValue,
-        payload.startIndex,
-        makeStreamLocator(payload.imageUrl, payload.blockId),
-        'page'
-      );
+      await startStreamSequenceFromText(textValue, payload.startIndex, makeStreamLocator(payload.imageUrl, payload.blockId), 'page');
     },
     [
       currentImage,
@@ -440,12 +444,7 @@ export function useStreamSequence({
 
   useEffect(() => {
     const buffer = scrollBufferRef.current;
-    if (
-      !buffer ||
-      viewMode !== 'scroll' ||
-      streamState.status !== 'streaming' ||
-      !streamState.pageKey
-    ) {
+    if (!buffer || streamState.status !== 'streaming' || !streamState.pageKey) {
       return;
     }
     if (streamState.pageKey === buffer.lastActivePageKey) {
@@ -454,7 +453,7 @@ export function useStreamSequence({
     buffer.lastActivePageKey = streamState.pageKey;
     buffer.queuedAhead = Math.max(0, buffer.queuedAhead - 1);
     void fillScrollBuffer(buffer.runId);
-  }, [fillScrollBuffer, streamState.pageKey, streamState.status, viewMode]);
+  }, [fillScrollBuffer, streamState.pageKey, streamState.status]);
 
   useEffect(() => {
     if (!streamSequenceActive || streamState.status !== 'idle') {

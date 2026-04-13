@@ -61,7 +61,6 @@ export function useStreamingAudio(
   const socketClosedRef = useRef(false);
   const firstAudioRef = useRef(false);
   const queueRef = useRef<QueuedStreamItem[]>([]);
-  const segmentTimelineRef = useRef<Array<{ pageKey: string; startSample: number }>>([]);
   const activeSegmentKeyRef = useRef<string | null>(null);
 
   const clearQueue = useCallback(() => {
@@ -93,7 +92,6 @@ export function useStreamingAudio(
     hasStartedPlaybackRef.current = false;
     silentFramesRef.current = 0;
     firstAudioRef.current = false;
-    segmentTimelineRef.current = [];
     activeSegmentKeyRef.current = null;
 
       const node = workletRef.current;
@@ -159,18 +157,9 @@ export function useStreamingAudio(
       const frames = data.frames;
       playbackSamplesRef.current += frames;
 
-      const playbackSample = playbackSamplesRef.current;
-      let nextActivePageKey: string | null = null;
-      for (const segment of segmentTimelineRef.current) {
-        if (segment.startSample <= playbackSample) {
-          nextActivePageKey = segment.pageKey;
-        } else {
-          break;
-        }
-      }
-      if (nextActivePageKey && nextActivePageKey !== activeSegmentKeyRef.current) {
-        activeSegmentKeyRef.current = nextActivePageKey;
-        setStreamState((prev) => ({ ...prev, pageKey: nextActivePageKey }));
+      if (typeof data.pageKey === 'string' && data.pageKey !== activeSegmentKeyRef.current) {
+        activeSegmentKeyRef.current = data.pageKey;
+        setStreamState((prev) => ({ ...prev, pageKey: data.pageKey }));
       }
 
       if (!data.silent && !hasStartedPlaybackRef.current) {
@@ -209,7 +198,7 @@ export function useStreamingAudio(
     workletRef.current = node;
   }, [handleWorkletMessage, silencePlayback]);
 
-  const appendAudio = useCallback((chunk: Float32Array) => {
+  const appendAudio = useCallback((chunk: Float32Array, pageKey: string | null) => {
     bufferSamplesRef.current += chunk.length;
     queuedSamplesRef.current += chunk.length;
     const node = workletRef.current;
@@ -217,7 +206,7 @@ export function useStreamingAudio(
       return;
     }
     try {
-      node.port.postMessage({ type: 'append', payload: chunk.buffer }, [chunk.buffer]);
+      node.port.postMessage({ type: 'append', payload: chunk.buffer, pageKey }, [chunk.buffer]);
     } catch (error) {
       console.error('Failed to append audio to worklet', error);
     }
@@ -228,7 +217,7 @@ export function useStreamingAudio(
       return;
     }
     const sampleCount = Math.max(1, Math.round((durationMs / 1000) * SAMPLE_RATE));
-    appendAudio(new Float32Array(sampleCount));
+    appendAudio(new Float32Array(sampleCount), null);
   }, [appendAudio]);
 
   const startQueuedSocket = useCallback(
@@ -247,7 +236,6 @@ export function useStreamingAudio(
 
       socketClosedRef.current = false;
       let receivedSegmentAudio = false;
-      let segmentRegistered = false;
       setStreamState((prev) => ({
         ...prev,
         modelSeconds: 0,
@@ -303,21 +291,10 @@ export function useStreamingAudio(
           for (let i = 0; i < floatChunk.length; i += 1) {
             floatChunk[i] = view.getInt16(i * 2, true) / 32768;
           }
-          if (!segmentRegistered) {
-            segmentTimelineRef.current.push({
-              pageKey: nextItem.pageKey,
-              startSample: queuedSamplesRef.current
-            });
-            segmentRegistered = true;
-          }
-          appendAudio(floatChunk);
+          appendAudio(floatChunk, nextItem.pageKey);
           if (!receivedSegmentAudio) {
             receivedSegmentAudio = true;
             firstAudioRef.current = true;
-            if (!activeSegmentKeyRef.current) {
-              activeSegmentKeyRef.current = nextItem.pageKey;
-              setStreamState((prev) => ({ ...prev, pageKey: nextItem.pageKey }));
-            }
             setStreamState((prev) => ({ ...prev, status: prev.status === 'paused' ? 'paused' : 'streaming' }));
           }
         };
