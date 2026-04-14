@@ -1,6 +1,6 @@
 import type { AudioState, StreamState } from '@/types/app';
 
-export type ToolbarTab = 'reading' | 'image' | 'audio' | 'tools';
+export type ToolbarTab = 'reading' | 'image' | 'audio' | 'study' | 'tools';
 
 interface ToolbarProps {
   layout?: 'panel' | 'modal';
@@ -53,6 +53,9 @@ interface ToolbarProps {
   onPlayStream: () => void;
   onStopStream: () => void;
   onCreateChapter: () => void;
+  onOpenQuiz: () => void;
+  quizDisabled: boolean;
+  currentChapterLabel?: string | null;
   gotoInputRef: React.RefObject<HTMLInputElement>;
   onToggleBookmark: () => void;
   onShowBookmarks: () => void;
@@ -123,6 +126,9 @@ export default function Toolbar({
   onPlayStream,
   onStopStream,
   onCreateChapter,
+  onOpenQuiz,
+  quizDisabled,
+  currentChapterLabel,
   gotoInputRef,
   onToggleBookmark,
   onShowBookmarks,
@@ -193,6 +199,7 @@ export default function Toolbar({
   const showReadingTab = !isModal || activeTab === 'reading';
   const showImageTab = !isModal || activeTab === 'image';
   const showAudioTab = !isModal || activeTab === 'audio';
+  const showStudyTab = !isModal || activeTab === 'study';
   const showToolsTab = !isModal || activeTab === 'tools';
 
   return (
@@ -225,6 +232,15 @@ export default function Toolbar({
             aria-selected={activeTab === 'audio'}
           >
             Audio
+          </button>
+          <button
+            type="button"
+            className={`segmented-item ${activeTab === 'study' ? 'segmented-item-active' : ''}`}
+            onClick={() => onTabChange?.('study')}
+            role="tab"
+            aria-selected={activeTab === 'study'}
+          >
+            Study
           </button>
           <button
             type="button"
@@ -479,7 +495,7 @@ export default function Toolbar({
       </div>
       ) : null}
 
-      {showAudioTab || showToolsTab ? (
+      {showAudioTab || showStudyTab || showToolsTab ? (
       <div className="toolbar-row">
         {showAudioTab ? (
           <div className="toolbar-group">
@@ -521,6 +537,23 @@ export default function Toolbar({
           <button type="button" className="button" onClick={streamHandler} disabled={controlsDisabled}>
             {streamLabel}
           </button>
+        </div>
+        ) : null}
+
+        {showStudyTab ? (
+        <div className="toolbar-group">
+          <span className="toolbar-group-title">Study</span>
+          <button
+            type="button"
+            className="button"
+            onClick={onOpenQuiz}
+            disabled={quizDisabled}
+          >
+            Open Quiz
+          </button>
+          <span className="toolbar-readout">
+            {currentChapterLabel ? `For ${currentChapterLabel}` : 'Move to a page inside a chapter'}
+          </span>
         </div>
         ) : null}
 

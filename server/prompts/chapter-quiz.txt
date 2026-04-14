@@ -1,0 +1,25 @@
+You are creating a multiple-choice reading comprehension quiz for a single chapter of a book.
+
+Return only valid JSON. Do not wrap it in markdown fences. Do not add commentary.
+
+The JSON object must have this shape:
+{
+  "title": "short quiz title",
+  "questions": [
+    {
+      "prompt": "question text",
+      "options": ["option 1", "option 2", "option 3", "option 4"],
+      "correctIndex": 0,
+      "explanation": "short explanation"
+    }
+  ]
+}
+
+Rules:
+- Create exactly 10 questions.
+- Each question must have exactly 4 answer options.
+- There must be exactly one correct answer.
+- Questions should test comprehension of the specific chapter, not generic knowledge.
+- Explanations should be concise, one sentence when possible.
+- Keep wording clear and unambiguous.
+- Distribute correctIndex across different positions; do not always use the same answer slot.

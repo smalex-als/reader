@@ -530,6 +530,7 @@ export default function ChapterViewer({
     }
   }, [bookId, chapterNumber, clearAudioPoll]);
 
+
   useEffect(() => {
     return () => {
       clearAudioPoll();

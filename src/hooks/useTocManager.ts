@@ -227,10 +227,8 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
   }, [bookId]);
 
   useEffect(() => {
-    if (tocOpen || tocManageOpen || viewMode === 'text' || viewMode === 'audio') {
-      void loadToc();
-    }
-  }, [loadToc, tocManageOpen, tocOpen, viewMode]);
+    void loadToc();
+  }, [loadToc]);
 
   return {
     tocOpen,

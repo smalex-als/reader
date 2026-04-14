@@ -5,6 +5,7 @@ import ReaderModalLayer from '@/components/ReaderModalLayer';
 import { useAudioController } from '@/hooks/useAudioController';
 import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
+import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useModalState } from '@/hooks/useModalState';
 import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
@@ -23,7 +24,13 @@ import { clamp, clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
 import { saveLastPage } from '@/lib/storage';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
-import type { AppSettings, BookSearchResponse, PageTextOcrEngine, SearchResult, TocEntry } from '@/types/app';
+import type {
+  AppSettings,
+  BookSearchResponse,
+  PageTextOcrEngine,
+  SearchResult,
+  TocEntry
+} from '@/types/app';
 import type { ToolbarTab } from '@/components/Toolbar';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -292,6 +299,19 @@ export default function App() {
     !isTextBook && currentChapterEntry
       ? { start: currentChapterEntry.page, end: nextChapterEntry?.page ?? manifest.length }
       : null;
+  const {
+    quizOpen,
+    quizLoading,
+    quizError,
+    quiz,
+    openQuiz: handleOpenQuiz,
+    regenerateQuiz: handleRegenerateQuiz,
+    closeQuiz: handleCloseQuiz
+  } = useChapterQuiz({
+    bookId,
+    chapterNumber,
+    chapterRange
+  });
   const hasBooks = books.length > 0;
 
   const {
@@ -984,6 +1004,9 @@ export default function App() {
       }
       void handleCreateChapter({ bookName: '', chapterTitle: '' });
     },
+    onOpenQuiz: () => void handleOpenQuiz(),
+    quizDisabled: !bookId || !chapterNumber,
+    currentChapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : null),
     gotoInputRef,
     onToggleBookmark: toggleBookmark,
     onShowBookmarks: showBookmarks,
@@ -1130,6 +1153,15 @@ export default function App() {
       onSaved: () => {
         setBookCardRefreshToken((prev) => prev + 1);
       }
+    },
+    quizModalProps: {
+      open: quizOpen,
+      loading: quizLoading,
+      error: quizError,
+      chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
+      quiz,
+      onRegenerate: () => void handleRegenerateQuiz(),
+      onClose: handleCloseQuiz
     }
   };
 

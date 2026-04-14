@@ -33,6 +33,7 @@ import {
   getChapterAudioJob
 } from '../lib/chapterAudioJobs.js';
 import { generateChapterNarration } from '../lib/narration.js';
+import { generateChapterQuiz, loadChapterQuiz } from '../lib/quiz.js';
 import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
 import {
   addTextChapter,
@@ -354,6 +355,31 @@ router.post('/api/books/:id/chapters/:chapter/narration', asyncHandler(async (re
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const result = await generateChapterNarration({ bookId, chapterNumber });
   res.json({ book: bookId, chapterNumber, ...result });
+}));
+
+router.get('/api/books/:id/chapters/:chapter/quiz', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const result = await loadChapterQuiz({ bookId, chapterNumber });
+  res.json({ book: bookId, ...result });
+}));
+
+router.post('/api/books/:id/chapters/:chapter/quiz', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const force = req.body?.force === true;
+  const pageStart =
+    typeof req.body?.pageStart === 'number' ? req.body.pageStart : Number.parseInt(req.body?.pageStart, 10);
+  const pageEnd =
+    typeof req.body?.pageEnd === 'number' ? req.body.pageEnd : Number.parseInt(req.body?.pageEnd, 10);
+  const result = await generateChapterQuiz({
+    bookId,
+    chapterNumber,
+    force,
+    pageStart: Number.isInteger(pageStart) ? pageStart : null,
+    pageEnd: Number.isInteger(pageEnd) ? pageEnd : null
+  });
+  res.json({ book: bookId, ...result });
 }));
 
 router.post('/api/books/text', upload.single('file'), asyncHandler(async (req, res) => {

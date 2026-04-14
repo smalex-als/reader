@@ -47,6 +47,22 @@ export interface SearchResult {
   snippet: string;
 }
 
+export interface ChapterQuizQuestion {
+  id: string;
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  explanation?: string;
+}
+
+export interface ChapterQuiz {
+  chapterNumber: number;
+  title: string;
+  questions: ChapterQuizQuestion[];
+  source: 'file' | 'openai';
+  file?: string;
+}
+
 export interface BookSearchResponse {
   book: string;
   query: string;
