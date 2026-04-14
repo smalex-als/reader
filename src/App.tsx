@@ -990,6 +990,7 @@ export default function App() {
     onDimOutsideBlocksIntensity: (value: number) =>
       applyFilters({ dimOutsideBlocksIntensity: clamp(value, 0, 85) }),
     onToggleTextModal: () => {
+      setSettingsOpen(false);
       toggleTextModal();
     },
     onToggleOcrEditMode: () => {
@@ -1024,16 +1025,31 @@ export default function App() {
     currentChapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : null),
     gotoInputRef,
     onToggleBookmark: toggleBookmark,
-    onShowBookmarks: showBookmarks,
+    onShowBookmarks: () => {
+      setSettingsOpen(false);
+      showBookmarks();
+    },
     onOpenSearch: openSearch,
     isBookmarked,
     bookmarksCount: bookmarks.length,
-    onOpenPrint: openPrintModal,
+    onOpenPrint: () => {
+      setSettingsOpen(false);
+      openPrintModal();
+    },
     onShareLink: () => void handleShareLink(),
-    onOpenHelp: openHelp,
+    onOpenHelp: () => {
+      setSettingsOpen(false);
+      openHelp();
+    },
     onOpenOcrQueue: openOcrQueue,
-    onOpenToc: () => setTocOpen(true),
-    onOpenTocManage: () => setTocManageOpen(true),
+    onOpenToc: () => {
+      setSettingsOpen(false);
+      setTocOpen(true);
+    },
+    onOpenTocManage: () => {
+      setSettingsOpen(false);
+      setTocManageOpen(true);
+    },
     ocrQueueTotal: ocrQueueState.total,
     ocrQueueProcessed: ocrQueueState.processed,
     ocrQueueFailed: ocrQueueState.failed,
