@@ -1646,10 +1646,31 @@ body {
   background: rgba(10, 18, 28, 0.35);
 }
 
+.quiz-question-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 .quiz-question-prompt {
-  margin: 0 0 1rem;
+  margin: 0;
   font-size: 1rem;
   line-height: 1.5;
+}
+
+.quiz-autoplay-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  font-size: 0.88rem;
+  color: rgba(213, 229, 242, 0.72);
+}
+
+.quiz-autoplay-toggle input {
+  margin: 0;
 }
 
 .quiz-question-options {

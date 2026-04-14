@@ -399,6 +399,29 @@ export function useStreamSequence({
     [showToast, startStreamSequenceFromText]
   );
 
+  const handlePlaySingleStream = useCallback(
+    async (payload: { text: string; pageKey: string }) => {
+      const trimmed = stripMarkdown(payload.text).trim();
+      if (!trimmed) {
+        showToast('No text available to stream', 'error');
+        return;
+      }
+      lastStreamSourceRef.current = { type: 'single', text: trimmed, pageKey: payload.pageKey };
+      autoAdvanceRef.current = false;
+      if (isStreamBusy(streamState.status)) {
+        pendingSingleStreamRef.current = { text: trimmed, pageKey: payload.pageKey };
+        stopStream();
+        stopStreamSequence();
+        return;
+      }
+      pendingSingleStreamRef.current = null;
+      stopAudio();
+      stopStreamSequence();
+      await startStream({ text: trimmed, pageKey: payload.pageKey, voice: streamVoice });
+    },
+    [isStreamBusy, showToast, startStream, stopAudio, stopStream, stopStreamSequence, streamState.status, streamVoice]
+  );
+
   const handlePlayPageBlock = useCallback(
     async (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
       if (!payload.imageUrl) {
@@ -505,6 +528,7 @@ export function useStreamSequence({
     startStreamSequence,
     handlePlayPageBlock,
     handlePlayChapterParagraph,
+    handlePlaySingleStream,
     handleStopStream,
     handleToggleStreamPause
   };

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { ChapterQuiz } from '@/types/app';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ChapterQuiz, StreamState } from '@/types/app';
 
 interface QuizModalProps {
   open: boolean;
@@ -7,6 +7,12 @@ interface QuizModalProps {
   error: string | null;
   chapterLabel: string;
   quiz: ChapterQuiz | null;
+  streamState: StreamState;
+  autoPlayEnabled: boolean;
+  onStreamQuestion: (text: string, questionIndex: number) => void;
+  onStreamAnswer: (text: string, questionIndex: number) => void;
+  onStopAudio: () => void;
+  onAutoPlayEnabledChange: (enabled: boolean) => void;
   onRegenerate: () => void;
   onClose: () => void;
 }
@@ -17,15 +23,24 @@ export default function QuizModal({
   error,
   chapterLabel,
   quiz,
+  streamState,
+  autoPlayEnabled,
+  onStreamQuestion,
+  onStreamAnswer,
+  onStopAudio,
+  onAutoPlayEnabledChange,
   onRegenerate,
   onClose
 }: QuizModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const wasOpenRef = useRef(false);
+  const autoPlayQuestionKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open) {
+      autoPlayQuestionKeyRef.current = null;
       return;
     }
     setCurrentIndex(0);
@@ -38,6 +53,13 @@ export default function QuizModal({
   const currentAnswer =
     currentQuestion && Number.isInteger(answers[currentQuestion.id]) ? answers[currentQuestion.id] : null;
   const currentQuestionAnswered = currentAnswer !== null;
+  const currentQuestionStreamPrefix =
+    quiz && currentQuestion ? `quiz::chapter-${quiz.chapterNumber}::question-${currentIndex + 1}` : null;
+  const isCurrentQuestionStreaming =
+    !!currentQuestionStreamPrefix &&
+    (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused') &&
+    typeof streamState.pageKey === 'string' &&
+    streamState.pageKey.startsWith(currentQuestionStreamPrefix);
   const answeredCount = useMemo(
     () => questions.filter((question) => Number.isInteger(answers[question.id])).length,
     [answers, questions]
@@ -50,6 +72,35 @@ export default function QuizModal({
       return total + (answers[question.id] === question.correctIndex ? 1 : 0);
     }, 0);
   }, [answers, questions, submitted]);
+
+  useEffect(() => {
+    const justOpened = open && !wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!open) {
+      autoPlayQuestionKeyRef.current = null;
+      return;
+    }
+    if (!quiz || !currentQuestion) {
+      return;
+    }
+    const questionKey = `${quiz.chapterNumber}:${currentQuestion.id}:${currentIndex}`;
+    if (justOpened) {
+      autoPlayQuestionKeyRef.current = null;
+    }
+    if (!autoPlayEnabled || currentQuestionAnswered) {
+      return;
+    }
+    if (autoPlayQuestionKeyRef.current === questionKey) {
+      return;
+    }
+    autoPlayQuestionKeyRef.current = questionKey;
+    const spokenText = [
+      `Question ${currentIndex + 1}. ${currentQuestion.prompt}`,
+      'Answer choices.',
+      ...currentQuestion.options.map((option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`)
+    ].join('\n\n');
+    onStreamQuestion(spokenText, currentIndex);
+  }, [autoPlayEnabled, currentIndex, currentQuestion, currentQuestionAnswered, onStreamQuestion, open, quiz]);
 
   if (!open) {
     return null;
@@ -98,7 +149,47 @@ export default function QuizModal({
               </div>
 
               <div className="quiz-question-card">
-                <p className="quiz-question-prompt">{currentQuestion.prompt}</p>
+                <div className="quiz-question-header">
+                  <p className="quiz-question-prompt">{currentQuestion.prompt}</p>
+                  <button
+                    type="button"
+                    className={`button button-secondary ${isCurrentQuestionStreaming ? 'button-active' : ''}`}
+                    onClick={() => {
+                      if (isCurrentQuestionStreaming) {
+                        onStopAudio();
+                        return;
+                      }
+                      const spokenText = [
+                        `Question ${currentIndex + 1}. ${currentQuestion.prompt}`,
+                        'Answer choices.',
+                        ...currentQuestion.options.map(
+                          (option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`
+                        ),
+                        currentQuestionAnswered
+                          ? `Correct answer. ${String.fromCharCode(65 + currentQuestion.correctIndex)}. ${
+                              currentQuestion.options[currentQuestion.correctIndex] ?? ''
+                            }`
+                          : null,
+                        currentQuestionAnswered && currentQuestion.explanation
+                          ? `Explanation. ${currentQuestion.explanation}`
+                          : null
+                      ]
+                        .filter(Boolean)
+                        .join('\n\n');
+                      onStreamQuestion(spokenText, currentIndex);
+                    }}
+                  >
+                    {isCurrentQuestionStreaming ? 'Stop Audio' : 'Play Audio'}
+                  </button>
+                </div>
+                <label className="quiz-autoplay-toggle">
+                  <input
+                    type="checkbox"
+                    checked={autoPlayEnabled}
+                    onChange={(event) => onAutoPlayEnabledChange(event.target.checked)}
+                  />
+                  <span>Autoplay question audio on open</span>
+                </label>
                 <div className="quiz-question-options">
                   {currentQuestion.options.map((option, optionIndex) => {
                     const selected = answers[currentQuestion.id] === optionIndex;
@@ -118,7 +209,16 @@ export default function QuizModal({
                           if (submitted || currentQuestionAnswered) {
                             return;
                           }
+                          const answerFeedback = [
+                            `Correct answer. ${String.fromCharCode(65 + currentQuestion.correctIndex)}. ${
+                              currentQuestion.options[currentQuestion.correctIndex] ?? ''
+                            }`,
+                            currentQuestion.explanation ? `Explanation. ${currentQuestion.explanation}` : null
+                          ]
+                            .filter(Boolean)
+                            .join('\n\n');
                           setAnswers((prev) => ({ ...prev, [currentQuestion.id]: optionIndex }));
+                          onStreamAnswer(answerFeedback, currentIndex);
                         }}
                         disabled={submitted || currentQuestionAnswered}
                       >

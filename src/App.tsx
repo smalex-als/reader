@@ -22,7 +22,7 @@ import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
-import { saveLastPage } from '@/lib/storage';
+import { loadQuizAutoplayForBook, saveLastPage, saveQuizAutoplayForBook } from '@/lib/storage';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import type {
   AppSettings,
@@ -161,6 +161,7 @@ export default function App() {
     key: string;
   } | null>(null);
   const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
+  const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -354,6 +355,19 @@ export default function App() {
     setFloatingAudio(null);
   }, [bookId]);
   useEffect(() => {
+    if (!bookId) {
+      setQuizAutoPlayEnabled(true);
+      return;
+    }
+    setQuizAutoPlayEnabled(loadQuizAutoplayForBook(bookId) ?? true);
+  }, [bookId]);
+  useEffect(() => {
+    if (!bookId) {
+      return;
+    }
+    saveQuizAutoplayForBook(bookId, quizAutoPlayEnabled);
+  }, [bookId, quizAutoPlayEnabled]);
+  useEffect(() => {
     setSelectedStreamBlockKey(null);
   }, [bookId]);
   useEffect(() => {
@@ -424,6 +438,7 @@ export default function App() {
     startStreamSequence,
     handlePlayPageBlock,
     handlePlayChapterParagraph,
+    handlePlaySingleStream,
     handleStopStream,
     handleToggleStreamPause
   } = useStreamSequence({
@@ -1160,6 +1175,24 @@ export default function App() {
       error: quizError,
       chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
       quiz,
+      streamState,
+      autoPlayEnabled: quizAutoPlayEnabled,
+      onStreamQuestion: (text: string, questionIndex: number) => {
+        const chapterKey = quiz?.chapterNumber ?? chapterNumber ?? 'unknown';
+        void handlePlaySingleStream({
+          text,
+          pageKey: `quiz::chapter-${chapterKey}::question-${questionIndex + 1}`
+        });
+      },
+      onStreamAnswer: (text: string, questionIndex: number) => {
+        const chapterKey = quiz?.chapterNumber ?? chapterNumber ?? 'unknown';
+        void handlePlaySingleStream({
+          text,
+          pageKey: `quiz::chapter-${chapterKey}::question-${questionIndex + 1}::answer`
+        });
+      },
+      onStopAudio: handleStopStream,
+      onAutoPlayEnabledChange: setQuizAutoPlayEnabled,
       onRegenerate: () => void handleRegenerateQuiz(),
       onClose: handleCloseQuiz
     }

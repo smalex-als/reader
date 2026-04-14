@@ -4,6 +4,7 @@ const SETTINGS_KEY = 'scanned-reader:settings';
 const BOOK_KEY = 'scanned-reader:lastBook';
 const PAGE_KEY = 'scanned-reader:lastPage';
 const STREAM_VOICE_KEY = 'scanned-reader:streamVoice';
+const QUIZ_AUTOPLAY_KEY = 'scanned-reader:quizAutoplay';
 const BOOK_META_KEY = 'scanned-reader:bookMeta';
 const BOOK_SORT_MODE_KEY = 'scanned-reader:bookSortMode';
 
@@ -155,6 +156,21 @@ export function saveStreamVoiceForBook(bookId: string, voice: string) {
   writeJson(STREAM_VOICE_KEY, voices);
 }
 
+export function loadQuizAutoplayForBook(bookId: string): boolean | null {
+  const values = readJson<Record<string, boolean>>(QUIZ_AUTOPLAY_KEY);
+  if (!values) {
+    return null;
+  }
+  const value = values[bookId];
+  return typeof value === 'boolean' ? value : null;
+}
+
+export function saveQuizAutoplayForBook(bookId: string, enabled: boolean) {
+  const values = readJson<Record<string, boolean>>(QUIZ_AUTOPLAY_KEY) ?? {};
+  values[bookId] = enabled;
+  writeJson(QUIZ_AUTOPLAY_KEY, values);
+}
+
 export function loadBookMeta(): StoredBookMeta {
   return libraryStateCache.bookMeta;
 }
@@ -199,6 +215,12 @@ export function removeBookStorage(bookId: string) {
   if (bookId in voices) {
     delete voices[bookId];
     writeJson(STREAM_VOICE_KEY, voices);
+  }
+
+  const quizAutoplay = readJson<Record<string, boolean>>(QUIZ_AUTOPLAY_KEY) ?? {};
+  if (bookId in quizAutoplay) {
+    delete quizAutoplay[bookId];
+    writeJson(QUIZ_AUTOPLAY_KEY, quizAutoplay);
   }
 
   const nextPages = { ...libraryStateCache.lastPages };
