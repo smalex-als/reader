@@ -9,6 +9,7 @@ const DEFAULT_LIBRARY_STATE = {
   bookMeta: {},
   bookSortMode: 'recent'
 };
+let libraryStateMutationChain = Promise.resolve();
 
 function sanitizePageMap(value) {
   const result = {};
@@ -78,66 +79,76 @@ export async function loadLibraryState() {
 }
 
 export async function updateLibraryState(patch) {
-  const current = await loadLibraryState();
-  const next = {
-    ...current,
-    lastPages: { ...current.lastPages },
-    bookMeta: { ...current.bookMeta }
+  const runUpdate = async () => {
+    const current = await loadLibraryState();
+    const next = {
+      ...current,
+      lastPages: { ...current.lastPages },
+      bookMeta: { ...current.bookMeta }
+    };
+
+    if (Object.prototype.hasOwnProperty.call(patch, 'lastBook')) {
+      next.lastBook =
+        typeof patch.lastBook === 'string' && patch.lastBook.trim() ? patch.lastBook : null;
+    }
+
+    if (
+      patch.bookSortMode === 'alphabetical' ||
+      patch.bookSortMode === 'recent' ||
+      patch.bookSortMode === 'deferred'
+    ) {
+      next.bookSortMode = patch.bookSortMode;
+    }
+
+    if (patch.lastPages && typeof patch.lastPages === 'object') {
+      for (const [bookId, page] of Object.entries(patch.lastPages)) {
+        if (page === null) {
+          delete next.lastPages[bookId];
+          continue;
+        }
+        if (Number.isInteger(page) && page >= 0) {
+          next.lastPages[bookId] = page;
+        }
+      }
+    }
+
+    if (patch.bookMeta && typeof patch.bookMeta === 'object') {
+      for (const [bookId, metaPatch] of Object.entries(patch.bookMeta)) {
+        if (metaPatch === null) {
+          delete next.bookMeta[bookId];
+          continue;
+        }
+        if (!metaPatch || typeof metaPatch !== 'object') {
+          continue;
+        }
+        const currentMeta = { ...(next.bookMeta[bookId] ?? {}) };
+        if (Object.prototype.hasOwnProperty.call(metaPatch, 'lastOpenedAt')) {
+          if (typeof metaPatch.lastOpenedAt === 'string' && metaPatch.lastOpenedAt.trim()) {
+            currentMeta.lastOpenedAt = metaPatch.lastOpenedAt;
+          } else {
+            delete currentMeta.lastOpenedAt;
+          }
+        }
+        if (Object.prototype.hasOwnProperty.call(metaPatch, 'deferred')) {
+          if (typeof metaPatch.deferred === 'boolean') {
+            currentMeta.deferred = metaPatch.deferred;
+          } else {
+            delete currentMeta.deferred;
+          }
+        }
+        if (Object.keys(currentMeta).length === 0) {
+          delete next.bookMeta[bookId];
+        } else {
+          next.bookMeta[bookId] = currentMeta;
+        }
+      }
+    }
+
+    await writeLibraryState(next);
+    return next;
   };
 
-  if (Object.prototype.hasOwnProperty.call(patch, 'lastBook')) {
-    next.lastBook =
-      typeof patch.lastBook === 'string' && patch.lastBook.trim() ? patch.lastBook : null;
-  }
-
-  if (patch.bookSortMode === 'alphabetical' || patch.bookSortMode === 'recent' || patch.bookSortMode === 'deferred') {
-    next.bookSortMode = patch.bookSortMode;
-  }
-
-  if (patch.lastPages && typeof patch.lastPages === 'object') {
-    for (const [bookId, page] of Object.entries(patch.lastPages)) {
-      if (page === null) {
-        delete next.lastPages[bookId];
-        continue;
-      }
-      if (Number.isInteger(page) && page >= 0) {
-        next.lastPages[bookId] = page;
-      }
-    }
-  }
-
-  if (patch.bookMeta && typeof patch.bookMeta === 'object') {
-    for (const [bookId, metaPatch] of Object.entries(patch.bookMeta)) {
-      if (metaPatch === null) {
-        delete next.bookMeta[bookId];
-        continue;
-      }
-      if (!metaPatch || typeof metaPatch !== 'object') {
-        continue;
-      }
-      const currentMeta = { ...(next.bookMeta[bookId] ?? {}) };
-      if (Object.prototype.hasOwnProperty.call(metaPatch, 'lastOpenedAt')) {
-        if (typeof metaPatch.lastOpenedAt === 'string' && metaPatch.lastOpenedAt.trim()) {
-          currentMeta.lastOpenedAt = metaPatch.lastOpenedAt;
-        } else {
-          delete currentMeta.lastOpenedAt;
-        }
-      }
-      if (Object.prototype.hasOwnProperty.call(metaPatch, 'deferred')) {
-        if (typeof metaPatch.deferred === 'boolean') {
-          currentMeta.deferred = metaPatch.deferred;
-        } else {
-          delete currentMeta.deferred;
-        }
-      }
-      if (Object.keys(currentMeta).length === 0) {
-        delete next.bookMeta[bookId];
-      } else {
-        next.bookMeta[bookId] = currentMeta;
-      }
-    }
-  }
-
-  await writeLibraryState(next);
-  return next;
+  const pendingUpdate = libraryStateMutationChain.then(runUpdate);
+  libraryStateMutationChain = pendingUpdate.catch(() => {});
+  return pendingUpdate;
 }
