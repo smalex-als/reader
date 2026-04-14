@@ -1,6 +1,11 @@
 import type { AudioState, StreamState } from '@/types/app';
 
+export type ToolbarTab = 'reading' | 'image' | 'audio' | 'tools';
+
 interface ToolbarProps {
+  layout?: 'panel' | 'modal';
+  activeTab?: ToolbarTab;
+  onTabChange?: (tab: ToolbarTab) => void;
   currentBook: string | null;
   manifestLength: number;
   currentPage: number;
@@ -68,6 +73,9 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
+  layout = 'panel',
+  activeTab = 'reading',
+  onTabChange,
   currentBook,
   manifestLength,
   currentPage,
@@ -133,6 +141,7 @@ export default function Toolbar({
   ocrQueueRunning,
   ocrQueuePaused
 }: ToolbarProps) {
+  const isModal = layout === 'modal';
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
   const audioHandler = audioState.status === 'playing' ? onStopAudio : onPlayAudio;
@@ -181,9 +190,55 @@ export default function Toolbar({
     const [name, variant] = withoutLocale.split('_');
     return variant ? `${name} - ${variant}` : name;
   };
+  const showReadingTab = !isModal || activeTab === 'reading';
+  const showImageTab = !isModal || activeTab === 'image';
+  const showAudioTab = !isModal || activeTab === 'audio';
+  const showToolsTab = !isModal || activeTab === 'tools';
 
   return (
-    <div className="toolbar">
+    <div className={`toolbar ${isModal ? 'toolbar-modal' : ''}`}>
+      {isModal ? (
+        <div className="toolbar-modal-tabs segmented" role="tablist" aria-label="Settings sections">
+          <button
+            type="button"
+            className={`segmented-item ${activeTab === 'reading' ? 'segmented-item-active' : ''}`}
+            onClick={() => onTabChange?.('reading')}
+            role="tab"
+            aria-selected={activeTab === 'reading'}
+          >
+            Reading
+          </button>
+          <button
+            type="button"
+            className={`segmented-item ${activeTab === 'image' ? 'segmented-item-active' : ''}`}
+            onClick={() => onTabChange?.('image')}
+            role="tab"
+            aria-selected={activeTab === 'image'}
+          >
+            Image
+          </button>
+          <button
+            type="button"
+            className={`segmented-item ${activeTab === 'audio' ? 'segmented-item-active' : ''}`}
+            onClick={() => onTabChange?.('audio')}
+            role="tab"
+            aria-selected={activeTab === 'audio'}
+          >
+            Audio
+          </button>
+          <button
+            type="button"
+            className={`segmented-item ${activeTab === 'tools' ? 'segmented-item-active' : ''}`}
+            onClick={() => onTabChange?.('tools')}
+            role="tab"
+            aria-selected={activeTab === 'tools'}
+          >
+            Tools
+          </button>
+        </div>
+      ) : null}
+
+      {showReadingTab ? (
       <div className="toolbar-row">
         <div className="toolbar-group">
           <span className="toolbar-group-title">Library</span>
@@ -302,7 +357,9 @@ export default function Toolbar({
           </div>
         </div>
       </div>
+      ) : null}
 
+      {showImageTab ? (
       <div className="toolbar-row">
         {viewMode === 'pages' ? (
           <>
@@ -420,9 +477,11 @@ export default function Toolbar({
           </>
         ) : null}
       </div>
+      ) : null}
 
+      {showAudioTab || showToolsTab ? (
       <div className="toolbar-row">
-        {true ? (
+        {showAudioTab ? (
           <div className="toolbar-group">
             <span className="toolbar-group-title">OpenAI TTS</span>
             <button
@@ -442,6 +501,7 @@ export default function Toolbar({
           </div>
         ) : null}
 
+        {showAudioTab ? (
         <div className="toolbar-group">
           <span className="toolbar-group-title">Stream</span>
           <label className="toolbar-field">
@@ -462,7 +522,9 @@ export default function Toolbar({
             {streamLabel}
           </button>
         </div>
+        ) : null}
 
+        {showToolsTab ? (
         <div className="toolbar-group">
           <span className="toolbar-group-title">Text & TOC</span>
           <button
@@ -529,7 +591,9 @@ export default function Toolbar({
             Print PDF
           </button>
         </div>
+        ) : null}
 
+        {showToolsTab ? (
         <div className="toolbar-group">
           <span className="toolbar-group-title">System</span>
           <button type="button" className="button" onClick={onShareLink} disabled={controlsDisabled}>
@@ -542,7 +606,9 @@ export default function Toolbar({
             {fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           </button>
         </div>
+        ) : null}
       </div>
+      ) : null}
     </div>
   );
 }

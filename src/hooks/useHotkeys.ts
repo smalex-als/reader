@@ -39,6 +39,7 @@ type HotkeysOptions = {
   ocrQueueOpen: boolean;
   tocOpen: boolean;
   tocManageOpen: boolean;
+  settingsOpen: boolean;
   closeTextModal: () => void;
   closeBookModal: () => void;
   closePrintModal: () => void;
@@ -49,6 +50,7 @@ type HotkeysOptions = {
   setOcrQueueOpen: (open: boolean) => void;
   setTocOpen: (open: boolean) => void;
   setTocManageOpen: (open: boolean) => void;
+  setSettingsOpen: (open: boolean) => void;
   openHelp: () => void;
   closeHelp: () => void;
   openBookModal: () => void;
@@ -97,6 +99,7 @@ export function useHotkeys({
   ocrQueueOpen,
   tocOpen,
   tocManageOpen,
+  settingsOpen,
   closeTextModal,
   closeBookModal,
   closePrintModal,
@@ -107,6 +110,7 @@ export function useHotkeys({
   setOcrQueueOpen,
   setTocOpen,
   setTocManageOpen,
+  setSettingsOpen,
   openHelp,
   closeHelp,
   openBookModal,
@@ -137,6 +141,7 @@ export function useHotkeys({
       { keys: 'F', action: 'Toggle fullscreen' },
       { keys: 'C', action: 'Open TOC' },
       { keys: 'B', action: 'Open book selector' },
+      { keys: ',', action: 'Open settings' },
       { keys: '/', action: 'Open search' },
       { keys: 'Esc', action: 'Close dialogs' },
       { keys: 'Shift + /', action: 'Open help' }
@@ -157,7 +162,8 @@ export function useHotkeys({
           bookModalOpen ||
           ocrQueueOpen ||
           tocOpen ||
-          tocManageOpen
+          tocManageOpen ||
+          settingsOpen
         ) &&
         event.key !== 'Escape'
       ) {
@@ -315,6 +321,10 @@ export function useHotkeys({
           event.preventDefault();
           openBookModal();
           break;
+        case ',':
+          event.preventDefault();
+          setSettingsOpen(true);
+          break;
         case '/':
           if (event.shiftKey) {
             return;
@@ -344,6 +354,9 @@ export function useHotkeys({
           }
           if (tocManageOpen) {
             setTocManageOpen(false);
+          }
+          if (settingsOpen) {
+            setSettingsOpen(false);
           }
           if (helpOpen) {
             closeHelp();
@@ -409,9 +422,11 @@ export function useHotkeys({
     currentImage,
     tocOpen,
     tocManageOpen,
+    settingsOpen,
     setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,
+    setSettingsOpen,
     openHelp,
     closeHelp,
     toggleTextModal,

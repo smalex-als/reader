@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import AppSidebar from '@/components/AppSidebar';
 import { type FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
@@ -25,6 +24,7 @@ import { trackEvent } from '@/lib/analytics';
 import { saveLastPage } from '@/lib/storage';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import type { AppSettings, BookSearchResponse, PageTextOcrEngine, SearchResult, TocEntry } from '@/types/app';
+import type { ToolbarTab } from '@/components/Toolbar';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
@@ -120,6 +120,8 @@ function getDefaultStreamVoice(): StreamVoice {
 }
 
 export default function App() {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<ToolbarTab>('reading');
   const {
     helpOpen,
     openHelp,
@@ -903,6 +905,7 @@ export default function App() {
     ocrQueueOpen,
     tocOpen,
     tocManageOpen,
+    settingsOpen,
     closeTextModal,
     closeBookModal,
     closePrintModal,
@@ -913,6 +916,7 @@ export default function App() {
     setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,
+    setSettingsOpen,
     openHelp,
     closeHelp,
     openBookModal
@@ -1247,14 +1251,25 @@ export default function App() {
     floatingAudioPlayerProps: {
       track: floatingAudio,
       onClose: handleCloseFloatingAudio
-    }
+    },
+    onOpenSettings: () => setSettingsOpen(true)
   };
 
   return (
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
-      <AppSidebar toolbarProps={toolbarProps} />
       <ReaderMainContent {...mainContentProps} />
-      <ReaderModalLayer {...modalProps} />
+      <ReaderModalLayer
+        {...modalProps}
+        settingsModalProps={{
+          open: settingsOpen,
+          toolbarProps: {
+            ...toolbarProps,
+            activeTab: settingsTab,
+            onTabChange: setSettingsTab
+          },
+          onClose: () => setSettingsOpen(false)
+        }}
+      />
     </div>
   );
 }
