@@ -41,6 +41,7 @@ export interface SearchResult {
   page: number;
   chapterNumber: number | null;
   title: string;
+  subtitle?: string | null;
   score: number;
   textPath: string;
   snippet: string;

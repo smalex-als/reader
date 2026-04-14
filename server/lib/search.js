@@ -7,11 +7,13 @@ import { safeStat } from './fs.js';
 import { extractPlainTextFromOcrLayout } from './ocrLayout.js';
 import { deriveTextPathsFromImageUrl, resolveDataUrl } from './paths.js';
 import { loadToc } from './toc.js';
+import { stripMarkdown } from './streamText.js';
 
 const WORD_PATTERN = /[a-z0-9]+(?:['’-][a-z0-9]+)*/g;
 const SNIPPET_CONTEXT_CHARS = 100;
 const DEFAULT_SEARCH_LIMIT = 20;
 const MAX_SEARCH_LIMIT = 100;
+const SEARCH_INDEX_VERSION = 2;
 
 function clampLimit(rawLimit) {
   const parsed = Number.parseInt(rawLimit, 10);
@@ -68,43 +70,56 @@ function createSnippet(text, queryTerms) {
   return `${prefix}${input.slice(start, end).trim()}${suffix}`;
 }
 
-function getCurrentSectionTitle(toc, pageIndex) {
-  let activeTitle = '';
+function getCurrentSectionEntry(toc, pageIndex) {
+  let activeEntry = null;
   for (const entry of toc) {
     if (!Number.isInteger(entry?.page) || entry.page > pageIndex) {
       break;
     }
-    activeTitle = entry.title || activeTitle;
+    activeEntry = entry;
   }
-  return activeTitle;
+  return activeEntry;
 }
 
-function createImageDocument(imageUrl, pageIndex, plainText, toc) {
+function getSectionTitles(mainToc, detailedToc, pageIndex) {
+  const mainEntry = getCurrentSectionEntry(mainToc, pageIndex);
+  const detailedEntry = getCurrentSectionEntry(detailedToc, pageIndex);
+  const title = mainEntry?.title || '';
+  const subtitle =
+    detailedEntry?.title && detailedEntry.title !== title ? detailedEntry.title : null;
+  return { title, subtitle };
+}
+
+function createImageDocument(imageUrl, pageIndex, plainText, mainToc, detailedToc) {
   const { textRelative } = deriveTextPathsFromImageUrl(imageUrl);
+  const { title, subtitle } = getSectionTitles(mainToc, detailedToc, pageIndex);
   return {
     id: `page:${pageIndex}`,
     kind: 'page',
     page: pageIndex,
     chapterNumber: null,
-    title: getCurrentSectionTitle(toc, pageIndex),
+    title,
+    subtitle,
     textPath: path.basename(textRelative),
     wordCount: tokenizeSearchText(plainText).length
   };
 }
 
-function createTextDocument(bookId, chapterNumber, chapterIndex, plainText, toc) {
+function createTextDocument(bookId, chapterNumber, chapterIndex, plainText, mainToc, detailedToc) {
+  const { title, subtitle } = getSectionTitles(mainToc, detailedToc, chapterIndex);
   return {
     id: `chapter:${chapterNumber}`,
     kind: 'chapter',
     page: chapterIndex,
     chapterNumber,
-    title: getCurrentSectionTitle(toc, chapterIndex) || `Chapter ${chapterNumber}`,
+    title: title || `Chapter ${chapterNumber}`,
+    subtitle,
     textPath: `chapter${String(chapterNumber).padStart(3, '0')}.txt`,
     wordCount: tokenizeSearchText(plainText).length
   };
 }
 
-async function buildImageBookDocuments(bookId, toc) {
+async function buildImageBookDocuments(bookId, mainToc, detailedToc) {
   const manifest = await loadManifest(bookId);
   const documents = [];
   for (let pageIndex = 0; pageIndex < manifest.length; pageIndex += 1) {
@@ -120,14 +135,14 @@ async function buildImageBookDocuments(bookId, toc) {
       continue;
     }
     documents.push({
-      document: createImageDocument(imageUrl, pageIndex, plainText, toc),
+      document: createImageDocument(imageUrl, pageIndex, plainText, mainToc, detailedToc),
       plainText
     });
   }
   return documents;
 }
 
-async function buildTextBookDocuments(bookId, toc) {
+async function buildTextBookDocuments(bookId, mainToc, detailedToc) {
   const directory = await assertBookDirectory(bookId);
   const entries = await fs.readdir(directory, { withFileTypes: true });
   const chapterFiles = entries
@@ -147,7 +162,7 @@ async function buildTextBookDocuments(bookId, toc) {
       continue;
     }
     documents.push({
-      document: createTextDocument(bookId, chapterNumber, chapterIndex, plainText, toc),
+      document: createTextDocument(bookId, chapterNumber, chapterIndex, plainText, mainToc, detailedToc),
       plainText
     });
   }
@@ -168,11 +183,14 @@ function addPosting(terms, term, docId, tokenIndex) {
 export async function buildBookSearchIndex(bookId) {
   const directory = await assertBookDirectory(bookId);
   const bookType = await getBookType(bookId);
-  const toc = await loadToc(bookId);
+  const [mainToc, detailedToc] = await Promise.all([
+    loadToc(bookId),
+    loadToc(bookId, { variant: 'detailed' })
+  ]);
   const sourceDocuments =
     bookType === 'text'
-      ? await buildTextBookDocuments(bookId, toc)
-      : await buildImageBookDocuments(bookId, toc);
+      ? await buildTextBookDocuments(bookId, mainToc, detailedToc)
+      : await buildImageBookDocuments(bookId, mainToc, detailedToc);
 
   const documents = [];
   const terms = {};
@@ -189,7 +207,7 @@ export async function buildBookSearchIndex(bookId) {
   }
 
   const index = {
-    version: 1,
+    version: SEARCH_INDEX_VERSION,
     book: bookId,
     bookType,
     builtAt: new Date().toISOString(),
@@ -230,6 +248,12 @@ export async function loadBookSearchIndex(bookId, options = {}) {
   if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.documents) || !parsed.terms) {
     throw createHttpError(500, 'Search index is invalid');
   }
+  if (parsed.version !== SEARCH_INDEX_VERSION) {
+    if (options.autoBuild) {
+      return buildBookSearchIndex(bookId);
+    }
+    throw createHttpError(409, 'Search index is outdated');
+  }
   return parsed;
 }
 
@@ -240,7 +264,8 @@ async function loadDocumentText(directory, document) {
     return '';
   }
   const text = await fs.readFile(absolutePath, 'utf8');
-  return document.kind === 'page' ? extractPlainTextFromOcrLayout(text) : text;
+  const plainText = document.kind === 'page' ? extractPlainTextFromOcrLayout(text) : text;
+  return stripMarkdown(plainText);
 }
 
 function hasPhraseMatch(index, documentId, queryTokens) {
@@ -334,6 +359,7 @@ export async function searchBook(bookId, rawQuery, options = {}) {
       page: entry.document.page,
       chapterNumber: entry.document.chapterNumber,
       title: entry.document.title,
+      subtitle: entry.document.subtitle ?? null,
       score: entry.score,
       textPath: `/data/${bookId}/${entry.document.textPath}`,
       snippet: createSnippet(text, dedupeTerms(queryTokens))

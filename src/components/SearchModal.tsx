@@ -102,16 +102,20 @@ export default function SearchModal({
                   <li key={result.id} className={`search-result-item ${isActive ? 'search-result-item-active' : ''}`}>
                     <div className="search-result-meta">
                       <div className="search-result-header">
-                        <span className="search-result-title">{result.title || 'Untitled section'}</span>
-                        <span className="search-result-location">
-                          {result.kind === 'chapter' && result.chapterNumber
-                            ? `Chapter ${result.chapterNumber}`
-                            : `Page ${result.page + 1}`}
-                        </span>
+                        <div className="search-result-title-row">
+                          <span className="search-result-title">{result.title || 'Untitled section'}</span>
+                          {result.subtitle ? (
+                            <span className="search-result-subtitle">/ {result.subtitle}</span>
+                          ) : null}
+                        </div>
                         {isActive ? <span className="bookmark-badge">Current</span> : null}
                       </div>
                       <p className="search-result-snippet">{result.snippet}</p>
-                      <span className="search-result-path">{result.textPath}</span>
+                      <span className="search-result-location">
+                        {result.kind === 'chapter' && result.chapterNumber
+                          ? `Chapter ${result.chapterNumber}`
+                          : `Page ${result.page + 1}`}
+                      </span>
                     </div>
                     <div className="search-result-actions">
                       <button

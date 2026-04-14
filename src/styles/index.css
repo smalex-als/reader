@@ -2199,26 +2199,34 @@ body {
   flex-wrap: wrap;
 }
 
+.search-result-title-row {
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
 .search-result-title {
   font-weight: 600;
   font-size: 1rem;
 }
 
+.search-result-subtitle {
+  font-size: 0.94rem;
+  font-weight: 500;
+  color: rgba(226, 236, 248, 0.86);
+}
+
 .search-result-location {
-  font-size: 0.9rem;
-  color: rgba(213, 229, 242, 0.6);
+  font-size: 0.84rem;
+  color: rgba(213, 229, 242, 0.46);
 }
 
 .search-result-snippet {
   margin: 0;
   color: rgba(213, 229, 242, 0.82);
   line-height: 1.5;
-}
-
-.search-result-path {
-  font-size: 0.85rem;
-  color: rgba(213, 229, 242, 0.5);
-  word-break: break-word;
 }
 
 .search-result-actions {
