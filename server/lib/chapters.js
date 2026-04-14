@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {assertBookDirectory, loadManifest} from './books.js';
-import {CHAPTER_SPLIT_PROMPT} from '../config.js';
+import {assertBookDirectory, loadBookCard, loadManifest} from './books.js';
+import {CHAPTER_SIMPLE_PROMPT, CHAPTER_SPLIT_PROMPT} from '../config.js';
 import {createHttpError} from './errors.js';
 import {getOpenAI} from './openai.js';
 import {loadPageText} from './ocr.js';
@@ -14,24 +14,30 @@ function formatChapterFilename(chapterNumber) {
   return `chapter${normalized}.txt`;
 }
 
-function formatChapterDebugFilename(chapterNumber) {
-  const normalized = String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0');
-  return `chapter${normalized}_debug.txt`;
+function isTechnicalCategory(category) {
+  const normalized = typeof category === 'string' ? category.trim().toLowerCase() : '';
+  return normalized === 'it' || normalized === 'tech' || normalized === 'technology' || normalized === 'programming';
 }
 
-async function preprocessChapterText(rawText, debugFilePath) {
+async function getChapterPrompt(bookId) {
+  const card = await loadBookCard(bookId);
+  return isTechnicalCategory(card?.category) ? CHAPTER_SPLIT_PROMPT : CHAPTER_SIMPLE_PROMPT;
+}
+
+async function preprocessChapterTextForBook(bookId, rawText) {
   const input = typeof rawText === 'string' ? rawText.trim() : '';
   if (!input) {
     return '';
   }
 
+  const prompt = await getChapterPrompt(bookId);
   const openai = getOpenAI();
   const response = await openai.responses.create({
     model: 'gpt-5.4',
     input: [
       {
         role: 'system',
-        content: [{ type: 'input_text', text: CHAPTER_SPLIT_PROMPT }]
+        content: [{ type: 'input_text', text: prompt }]
       },
       {
         role: 'user',
@@ -89,7 +95,7 @@ export async function generateChapterText(bookId, pageStart, pageEnd, chapterNum
 
   let processed = combined;
   try {
-    processed = await preprocessChapterText(combined);
+    processed = await preprocessChapterTextForBook(bookId, combined);
   } catch (error) {
     console.warn('Chapter preprocessing failed; saving original text', error);
   }

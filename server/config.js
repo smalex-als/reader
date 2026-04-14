@@ -43,6 +43,7 @@ const normalizePromptKey = (value) =>
 export const TEXT_PROMPT = readPrompt('text.txt');
 export const TOC_PROMPT = readPrompt('toc.txt');
 export const CHAPTER_SPLIT_PROMPT = readPrompt('chapters.txt');
+export const CHAPTER_SIMPLE_PROMPT = readPrompt('chapters.simple.txt');
 export const CHAPTER_NARRATION_PROMPT = readPrompt('chapter-narration.txt');
 export const CHAPTER_QUIZ_PROMPT = readPrompt('chapter-quiz.txt');
 export const getTextPrompt = ({ backend, model } = {}) => {

@@ -78,6 +78,12 @@ Structure and navigation:
   - Final Recommendation
 - keep the headers useful for quick scanning, not decorative
 
+Fiction and narrative books:
+- if the source reads like fiction, memoir, or other narrative prose, do not force it into topic headers
+- keep the narration as a continuous chapter reading with only minimal cleanup for spoken flow
+- preserve scenes, pacing, and emotional continuity instead of restructuring into sections
+- for narrative books, natural paragraph flow is more important than navigational structure
+
 Narration style targets:
 - sound like an engineer thinking aloud and teaching at the same time
 - slightly redundant in a useful way
