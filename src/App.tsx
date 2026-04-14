@@ -21,7 +21,7 @@ import { useWakeLock } from '@/hooks/useWakeLock';
 import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
-import { trackEvent } from '@/lib/analytics';
+import { logStreamHistory, trackEvent } from '@/lib/analytics';
 import { loadQuizAutoplayForBook, saveLastPage, saveQuizAutoplayForBook } from '@/lib/storage';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import type {
@@ -170,6 +170,14 @@ export default function App() {
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
   const shareOpenedTrackedRef = useRef(false);
+  const streamHistorySessionRef = useRef<{
+    bookId: string;
+    chapterNumber: number | null;
+    chapterTitle: string | null;
+    pageKeyStart: string | null;
+    startedAt: string;
+    lastPageKey: string | null;
+  } | null>(null);
   const {
     settings,
     setSettings,
@@ -470,6 +478,94 @@ export default function App() {
     [streamState.pageKey, streamState.status]
   );
   const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
+  const previousStreamStatusRef = useRef(streamState.status);
+
+  useEffect(() => {
+    const session = streamHistorySessionRef.current;
+    const previousStatus = previousStreamStatusRef.current;
+    const currentStatus = streamState.status;
+    const wasActive =
+      previousStatus === 'connecting' || previousStatus === 'streaming' || previousStatus === 'paused';
+    const isActive = currentStatus === 'connecting' || currentStatus === 'streaming' || currentStatus === 'paused';
+
+    if (!session && isActive && bookId) {
+      streamHistorySessionRef.current = {
+        bookId,
+        chapterNumber,
+        chapterTitle: currentChapterEntry?.title ?? null,
+        pageKeyStart: streamState.pageKey,
+        startedAt: new Date().toISOString(),
+        lastPageKey: streamState.pageKey
+      };
+      previousStreamStatusRef.current = currentStatus;
+      return;
+    }
+
+    if (session && typeof streamState.pageKey === 'string' && streamState.pageKey) {
+      session.lastPageKey = streamState.pageKey;
+    }
+
+    if (session && wasActive && !isActive) {
+      const listenedSeconds = Math.round(streamState.playbackSeconds * 1000) / 1000;
+      if (listenedSeconds >= 1) {
+        const endReason =
+          currentStatus === 'error'
+            ? 'error'
+            : currentStatus === 'idle'
+              ? 'stopped'
+              : 'interrupted';
+        logStreamHistory({
+          bookId: session.bookId,
+          chapterNumber: session.chapterNumber,
+          chapterTitle: session.chapterTitle,
+          pageKeyStart: session.pageKeyStart,
+          pageKeyEnd: session.lastPageKey ?? streamState.pageKey,
+          startedAt: session.startedAt,
+          endedAt: new Date().toISOString(),
+          listenedSeconds,
+          endReason
+        });
+      }
+      streamHistorySessionRef.current = null;
+    }
+
+    previousStreamStatusRef.current = currentStatus;
+  }, [
+    bookId,
+    chapterNumber,
+    currentChapterEntry,
+    streamState.pageKey,
+    streamState.playbackSeconds,
+    streamState.status
+  ]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const session = streamHistorySessionRef.current;
+      if (!session) {
+        return;
+      }
+      const listenedSeconds = Math.round(streamState.playbackSeconds * 1000) / 1000;
+      if (listenedSeconds < 1) {
+        return;
+      }
+      logStreamHistory({
+        bookId: session.bookId,
+        chapterNumber: session.chapterNumber,
+        chapterTitle: session.chapterTitle,
+        pageKeyStart: session.pageKeyStart,
+        pageKeyEnd: session.lastPageKey ?? streamState.pageKey,
+        startedAt: session.startedAt,
+        endedAt: new Date().toISOString(),
+        listenedSeconds,
+        endReason: 'unload'
+      });
+      streamHistorySessionRef.current = null;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [streamState.pageKey, streamState.playbackSeconds]);
 
   const handleToggleOcrEditMode = useCallback(async () => {
     if (!currentImage || isTextBook) {
