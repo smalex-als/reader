@@ -45,9 +45,11 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     setTocLoading(true);
     try {
       const [mainData, detailedData] = await Promise.all([
-        fetchJson<{ toc: TocEntry[] }>(`/api/books/${encodeURIComponent(bookId)}/toc`),
         fetchJson<{ toc: TocEntry[] }>(
-          `/api/books/${encodeURIComponent(bookId)}/toc?variant=detailed`
+          `/api/books/${encodeURIComponent(bookId)}/toc?includeStats=1`
+        ),
+        fetchJson<{ toc: TocEntry[] }>(
+          `/api/books/${encodeURIComponent(bookId)}/toc?variant=detailed&includeStats=1`
         )
       ]);
       setTocEntries(Array.isArray(mainData.toc) ? mainData.toc : []);
@@ -81,6 +83,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
         setTocVariant('main');
         showToast('Table of contents generated', 'success');
       }
+      await loadToc();
     } catch (error) {
       console.error(error);
       showToast(
@@ -92,7 +95,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     } finally {
       setTocGenerating(false);
     }
-  }, [bookId, showToast]);
+  }, [bookId, loadToc, showToast]);
 
   const handleSaveToc = useCallback(async (variant: 'main' | 'detailed' = 'main') => {
     if (!bookId) {
@@ -117,6 +120,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
         setTocEntries(Array.isArray(response.toc) ? response.toc : []);
         showToast('Table of contents saved', 'success');
       }
+      await loadToc();
     } catch (error) {
       console.error(error);
       showToast(
@@ -128,7 +132,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     } finally {
       setTocSaving(false);
     }
-  }, [bookId, detailedTocEntries, showToast, tocEntries]);
+  }, [bookId, detailedTocEntries, loadToc, showToast, tocEntries]);
 
   const handleAddTocEntry = useCallback((currentPage: number, variant: 'main' | 'detailed' = 'main') => {
     if (variant === 'detailed') {

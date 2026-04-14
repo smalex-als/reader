@@ -25,6 +25,7 @@ import {
   saveBookmarks
 } from '../lib/bookmarks.js';
 import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
+import { attachTocStats } from '../lib/tocStats.js';
 import { generateChapterText } from '../lib/chapters.js';
 import {
   cancelChapterAudioJob,
@@ -244,7 +245,8 @@ router.get('/api/books/:id/toc', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const variant = req.query.variant === 'detailed' ? 'detailed' : 'main';
   const toc = await loadToc(bookId, { variant });
-  res.json({ book: bookId, toc });
+  const includeStats = req.query.includeStats === '1' || req.query.includeStats === 'true';
+  res.json({ book: bookId, toc: includeStats ? await attachTocStats(bookId, toc) : toc });
 }));
 
 router.post('/api/books/:id/toc', asyncHandler(async (req, res) => {

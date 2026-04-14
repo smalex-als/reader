@@ -59,6 +59,24 @@ export default function TocNavModal({
     return null;
   }
 
+  const formatWordCount = (value?: number) => {
+    if (!value) {
+      return 'No text';
+    }
+    return new Intl.NumberFormat(undefined, { notation: value >= 1000 ? 'compact' : 'standard' }).format(value) + ' words';
+  };
+
+  const formatListeningTime = (seconds?: number) => {
+    if (!seconds) {
+      return 'no audio estimate';
+    }
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 1) {
+      return '<1 min';
+    }
+    return `~${minutes} min`;
+  };
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal modal-toc">
@@ -110,7 +128,12 @@ export default function TocNavModal({
                     aria-current={isActive ? 'page' : undefined}
                     ref={isActive ? activeEntryRef : null}
                   >
-                    <span className="toc-nav-title">{entry.title}</span>
+                    <span className="toc-nav-copy">
+                      <span className="toc-nav-title">{entry.title}</span>
+                      <span className="toc-nav-meta">
+                        {formatWordCount(entry.stats?.wordCount)} · {formatListeningTime(entry.stats?.listeningSeconds)}
+                      </span>
+                    </span>
                     <span className="toc-nav-page">Page {entry.page + 1}</span>
                   </button>
                 </li>

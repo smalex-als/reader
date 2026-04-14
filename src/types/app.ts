@@ -28,6 +28,11 @@ export interface TocEntry {
   title: string;
   page: number;
   level?: number;
+  stats?: {
+    wordCount: number;
+    charCount: number;
+    listeningSeconds: number;
+  };
 }
 
 export interface SearchResult {
