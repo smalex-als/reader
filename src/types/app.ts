@@ -63,6 +63,20 @@ export interface ChapterQuiz {
   file?: string;
 }
 
+export interface ChapterVocabularyItem {
+  id: string;
+  term: string;
+  definition: string;
+}
+
+export interface ChapterVocabulary {
+  chapterNumber: number;
+  title: string;
+  items: ChapterVocabularyItem[];
+  source: 'file' | 'openai';
+  file?: string;
+}
+
 export interface ImagePreviewTarget {
   imageUrl: string;
   cropUrl: string;

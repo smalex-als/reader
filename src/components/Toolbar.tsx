@@ -54,6 +54,7 @@ interface ToolbarProps {
   onStopStream: () => void;
   onCreateChapter: () => void;
   onOpenQuiz: () => void;
+  onOpenVocabulary: () => void;
   quizDisabled: boolean;
   currentChapterLabel?: string | null;
   gotoInputRef: React.RefObject<HTMLInputElement>;
@@ -127,6 +128,7 @@ export default function Toolbar({
   onStopStream,
   onCreateChapter,
   onOpenQuiz,
+  onOpenVocabulary,
   quizDisabled,
   currentChapterLabel,
   gotoInputRef,
@@ -550,6 +552,14 @@ export default function Toolbar({
             disabled={quizDisabled}
           >
             Open Quiz
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onOpenVocabulary}
+            disabled={quizDisabled}
+          >
+            Open Vocabulary
           </button>
           <span className="toolbar-readout">
             {currentChapterLabel ? `For ${currentChapterLabel}` : 'Move to a page inside a chapter'}

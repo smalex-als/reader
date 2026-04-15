@@ -46,6 +46,7 @@ export const CHAPTER_SPLIT_PROMPT = readPrompt('chapters.txt');
 export const CHAPTER_SIMPLE_PROMPT = readPrompt('chapters.simple.txt');
 export const CHAPTER_NARRATION_PROMPT = readPrompt('chapter-narration.txt');
 export const CHAPTER_QUIZ_PROMPT = readPrompt('chapter-quiz.txt');
+export const CHAPTER_VOCAB_PROMPT = readPrompt('chapter-vocab.txt');
 export const getTextPrompt = ({ backend, model } = {}) => {
   const cacheKey = `${backend || ''}|${model || ''}`;
   if (promptCache.has(cacheKey)) {

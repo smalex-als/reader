@@ -6,6 +6,7 @@ import { useAudioController } from '@/hooks/useAudioController';
 import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
+import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useModalState } from '@/hooks/useModalState';
 import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
@@ -319,6 +320,19 @@ export default function App() {
     regenerateQuiz: handleRegenerateQuiz,
     closeQuiz: handleCloseQuiz
   } = useChapterQuiz({
+    bookId,
+    chapterNumber,
+    chapterRange
+  });
+  const {
+    vocabularyOpen,
+    vocabulary,
+    vocabularyLoading,
+    vocabularyError,
+    openVocabulary: handleOpenVocabulary,
+    regenerateVocabulary: handleRegenerateVocabulary,
+    closeVocabulary: handleCloseVocabulary
+  } = useChapterVocabulary({
     bookId,
     chapterNumber,
     chapterRange
@@ -909,6 +923,35 @@ export default function App() {
       showToast('Unable to copy text', 'error');
     }
   }, [currentImage, currentText, fetchPageText, showToast]);
+  const handleCopyVocabulary = useCallback(async (textValue: string) => {
+    const trimmed = textValue.trim();
+    if (!trimmed) {
+      showToast('No vocabulary available to copy', 'error');
+      return;
+    }
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(trimmed);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = trimmed;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!copied) {
+          throw new Error('copy failed');
+        }
+      }
+      showToast('Copied vocabulary to clipboard', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Unable to copy vocabulary', 'error');
+    }
+  }, [showToast]);
 
   const handleShareLink = useCallback(async () => {
     if (!bookId || navigationCount === 0) {
@@ -1145,6 +1188,7 @@ export default function App() {
       void handleCreateChapter({ bookName: '', chapterTitle: '' });
     },
     onOpenQuiz: () => void handleOpenQuiz(),
+    onOpenVocabulary: () => void handleOpenVocabulary(),
     quizDisabled: !bookId || !chapterNumber,
     currentChapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : null),
     gotoInputRef,
@@ -1340,6 +1384,24 @@ export default function App() {
       open: imagePreview !== null,
       preview: imagePreview,
       onClose: () => setImagePreview(null)
+    },
+    vocabularyModalProps: {
+      open: vocabularyOpen,
+      loading: vocabularyLoading,
+      error: vocabularyError,
+      chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
+      vocabulary,
+      streamState,
+      onCopyList: handleCopyVocabulary,
+      onPlayAudio: (text: string, chapterNumberValue: number) => {
+        void handlePlaySingleStream({
+          text,
+          pageKey: `vocabulary::chapter-${chapterNumberValue}`
+        });
+      },
+      onStopAudio: handleStopStream,
+      onRegenerate: () => void handleRegenerateVocabulary(),
+      onClose: handleCloseVocabulary
     }
   };
 

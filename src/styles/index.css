@@ -246,6 +246,64 @@ body {
   color: rgba(213, 229, 242, 0.6);
 }
 
+.toolbar-study-status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(213, 229, 242, 0.62);
+}
+
+.study-vocabulary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.study-vocabulary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.study-vocabulary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.study-vocabulary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(213, 229, 242, 0.08);
+  background: rgba(213, 229, 242, 0.03);
+}
+
+.study-vocabulary-term {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(234, 241, 249, 0.95);
+}
+
+.study-vocabulary-index {
+  color: rgba(120, 190, 255, 0.88);
+}
+
+.study-vocabulary-definition {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgba(213, 229, 242, 0.7);
+}
+
 
 .button {
   padding: 0.45rem 0.9rem;
@@ -285,6 +343,24 @@ body {
 .button-active {
   border-color: rgba(0, 200, 120, 0.7);
   background: rgba(0, 200, 120, 0.2);
+}
+
+.modal-icon-button {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-action-button {
+  height: 38px;
+  padding: 0 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
 }
 
 .select,
@@ -1507,6 +1583,7 @@ body {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
+  z-index: 260;
   padding: 0.9rem 1.2rem;
   border-radius: 0.75rem;
   font-size: 0.9rem;
@@ -1582,6 +1659,16 @@ body {
   max-height: min(88vh, 820px);
 }
 
+.modal-vocabulary {
+  width: min(920px, calc(100vw - 2rem));
+  height: min(88vh, 820px);
+  max-height: min(88vh, 820px);
+}
+
+.modal-vocabulary .modal-body {
+  overflow: hidden;
+}
+
 .modal-image-preview {
   width: min(1120px, calc(100vw - 2rem));
   max-height: min(90vh, 920px);
@@ -1594,6 +1681,12 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.modal-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .modal-footer-right {

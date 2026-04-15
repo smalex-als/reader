@@ -1,0 +1,27 @@
+Extract a concise vocabulary list from the chapter text I give you.
+
+Goals:
+- identify the most important terms, concepts, named systems, and domain phrases in the chapter
+- prefer terms that are genuinely useful for understanding the chapter
+- avoid trivial everyday words
+
+Output format:
+- return a single JSON object
+- schema:
+{
+  "title": "short title",
+  "items": [
+    {
+      "term": "term name",
+      "definition": "1-2 sentence plain-English explanation"
+    }
+  ]
+}
+
+Rules:
+- return 8 to 20 items depending on chapter density
+- keep definitions concise and clear
+- do not include duplicate or near-duplicate items
+- sort items in a sensible learning order, not alphabetically
+- keep the wording standalone so each definition makes sense without extra context
+- output only valid JSON
