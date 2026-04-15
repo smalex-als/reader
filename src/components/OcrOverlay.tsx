@@ -11,10 +11,16 @@ interface OcrOverlayProps {
   dimOutsideBlocksIntensity: number;
   onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
+  onOpenImagePreview: (payload: {
+    imageUrl: string;
+    bounds: [number, number, number, number];
+    caption?: string | null;
+  }) => void;
 }
 
 const OCR_COORDINATE_SPACE = 1000;
 const NON_INTERACTIVE_BLOCK_KINDS = new Set(['image', 'table']);
+const PREVIEWABLE_BLOCK_KINDS = new Set(['image', 'image_caption']);
 
 export default function OcrOverlay({
   imageUrl,
@@ -25,7 +31,8 @@ export default function OcrOverlay({
   dimOutsideBlocks,
   dimOutsideBlocksIntensity,
   onPlayTextBlock,
-  onToggleSpeechBlock
+  onToggleSpeechBlock,
+  onOpenImagePreview
 }: OcrOverlayProps) {
   const overlayMaskId = useId().replace(/:/g, '-');
 
@@ -42,13 +49,102 @@ export default function OcrOverlay({
 
   const interactiveBlocks = useMemo(() => {
     const blocks = coordinateBlocks.filter(
-      (block) => !NON_INTERACTIVE_BLOCK_KINDS.has(block.kind.toLowerCase())
+      (block) =>
+        !NON_INTERACTIVE_BLOCK_KINDS.has(block.kind.toLowerCase()) &&
+        !PREVIEWABLE_BLOCK_KINDS.has(block.kind.toLowerCase())
     );
     if (editMode) {
       return blocks.filter((block) => block.text.trim().length > 0);
     }
     return blocks.filter((block) => block.streamStartIndex !== null);
   }, [coordinateBlocks, editMode]);
+
+  const previewBlocks = useMemo(() => {
+    if (editMode) {
+      return [];
+    }
+    return coordinateBlocks.filter((block) => PREVIEWABLE_BLOCK_KINDS.has(block.kind.toLowerCase()));
+  }, [coordinateBlocks, editMode]);
+
+  const imageBlocks = useMemo(
+    () => coordinateBlocks.filter((block) => block.kind.toLowerCase() === 'image'),
+    [coordinateBlocks]
+  );
+
+  const resolveImagePreview = useMemo(() => {
+    const findClosestImageBlock = (targetBlockId: string) => {
+      const targetBlock = coordinateBlocks.find((block) => block.id === targetBlockId);
+      if (!targetBlock || imageBlocks.length === 0) {
+        return null;
+      }
+      if (targetBlock.kind.toLowerCase() === 'image') {
+        return targetBlock;
+      }
+      const [left, top, right, bottom] = targetBlock.bounds;
+      const centerX = (left + right) / 2;
+      const centerY = (top + bottom) / 2;
+      let closest = imageBlocks[0];
+      let closestScore = Number.POSITIVE_INFINITY;
+      for (const imageBlock of imageBlocks) {
+        const [imageLeft, imageTop, imageRight, imageBottom] = imageBlock.bounds;
+        const imageCenterX = (imageLeft + imageRight) / 2;
+        const imageCenterY = (imageTop + imageBottom) / 2;
+        const score = Math.abs(imageCenterY - centerY) + Math.abs(imageCenterX - centerX) * 0.35;
+        if (score < closestScore) {
+          closest = imageBlock;
+          closestScore = score;
+        }
+      }
+      return closest;
+    };
+
+    const findCaptionForImage = (targetImageId: string) => {
+      const targetImage = imageBlocks.find((block) => block.id === targetImageId);
+      if (!targetImage) {
+        return null;
+      }
+      const captions = coordinateBlocks.filter((block) => block.kind.toLowerCase() === 'image_caption');
+      if (captions.length === 0) {
+        return null;
+      }
+      const [imageLeft, imageTop, imageRight, imageBottom] = targetImage.bounds;
+      let closest = null;
+      let closestScore = Number.POSITIVE_INFINITY;
+      for (const captionBlock of captions) {
+        const [captionLeft, captionTop, captionRight, captionBottom] = captionBlock.bounds;
+        const verticalGap = Math.abs(captionTop - imageBottom);
+        const horizontalGap = Math.abs((captionLeft + captionRight) / 2 - (imageLeft + imageRight) / 2);
+        const overlap =
+          Math.max(0, Math.min(imageRight, captionRight) - Math.max(imageLeft, captionLeft)) /
+          Math.max(1, imageRight - imageLeft);
+        const score = verticalGap + horizontalGap * 0.2 - overlap * 120;
+        if (score < closestScore) {
+          closest = captionBlock;
+          closestScore = score;
+        }
+      }
+      return closest;
+    };
+
+    return (blockId: string) => {
+      const clickedBlock = coordinateBlocks.find((block) => block.id === blockId);
+      if (!clickedBlock) {
+        return null;
+      }
+      const imageBlock = findClosestImageBlock(blockId);
+      if (!imageBlock) {
+        return null;
+      }
+      const captionBlock =
+        clickedBlock.kind.toLowerCase() === 'image_caption'
+          ? clickedBlock
+          : findCaptionForImage(imageBlock.id);
+      return {
+        bounds: imageBlock.bounds,
+        caption: captionBlock?.text?.trim() || null
+      };
+    };
+  }, [coordinateBlocks, imageBlocks]);
 
   const shouldShowDimOverlay = dimOutsideBlocks && (!pageText || coordinateBlocks.length > 0);
 
@@ -164,6 +260,42 @@ export default function OcrOverlay({
               if (block.streamStartIndex !== null) {
                 onPlayTextBlock({ imageUrl, startIndex: block.streamStartIndex, blockId: block.id });
               }
+            }}
+          />
+        );
+      })}
+      {previewBlocks.map((block) => {
+        const [left, top, right, bottom] = block.bounds;
+        const width = Math.max(1, right - left);
+        const height = Math.max(1, bottom - top);
+        return (
+          <button
+            key={`preview-${block.id}`}
+            type="button"
+            className="viewer-hotspot"
+            style={{
+              left: `${(left / OCR_COORDINATE_SPACE) * 100}%`,
+              top: `${(top / OCR_COORDINATE_SPACE) * 100}%`,
+              width: `${(width / OCR_COORDINATE_SPACE) * 100}%`,
+              height: `${(height / OCR_COORDINATE_SPACE) * 100}%`
+            }}
+            aria-label="Open image preview"
+            title="Open image preview"
+            data-preview={block.kind.toLowerCase()}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+              const preview = resolveImagePreview(block.id);
+              if (!preview) {
+                return;
+              }
+              onOpenImagePreview({
+                imageUrl,
+                bounds: preview.bounds,
+                caption: preview.caption
+              });
             }}
           />
         );

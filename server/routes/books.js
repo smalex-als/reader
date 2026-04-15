@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import multer from 'multer';
@@ -34,6 +35,7 @@ import {
 } from '../lib/chapterAudioJobs.js';
 import { generateChapterNarration } from '../lib/narration.js';
 import { generateChapterQuiz, loadChapterQuiz } from '../lib/quiz.js';
+import { createImagePreviewCrop } from '../lib/imagePreview.js';
 import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
 import {
   addTextChapter,
@@ -110,6 +112,27 @@ router.get('/api/books/:id/meta', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const meta = await loadBookCard(bookId);
   res.json(meta);
+}));
+
+router.get('/api/books/:id/image-preview', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const image = typeof req.query.image === 'string' ? req.query.image : '';
+  const left = Number(req.query.left);
+  const top = Number(req.query.top);
+  const right = Number(req.query.right);
+  const bottom = Number(req.query.bottom);
+  const tempPath = await createImagePreviewCrop({
+    bookId,
+    imageFilename: image,
+    bounds: [left, top, right, bottom]
+  });
+
+  res.sendFile(tempPath, (error) => {
+    void fs.rm(path.dirname(tempPath), { recursive: true, force: true });
+    if (error && !res.headersSent) {
+      res.status(error.statusCode || 500).end();
+    }
+  });
 }));
 
 router.put('/api/books/:id/meta', asyncHandler(async (req, res) => {

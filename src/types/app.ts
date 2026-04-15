@@ -63,6 +63,13 @@ export interface ChapterQuiz {
   file?: string;
 }
 
+export interface ImagePreviewTarget {
+  imageUrl: string;
+  cropUrl: string;
+  bounds: [number, number, number, number];
+  caption?: string | null;
+}
+
 export interface BookSearchResponse {
   book: string;
   query: string;

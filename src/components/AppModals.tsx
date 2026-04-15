@@ -13,6 +13,7 @@ import SearchModal from '@/components/SearchModal';
 import BookCardModal from '@/components/BookCardModal';
 import SettingsModal from '@/components/SettingsModal';
 import QuizModal from '@/components/QuizModal';
+import ImagePreviewModal from '@/components/ImagePreviewModal';
 
 type ToastProps = ComponentProps<typeof Toast>;
 type PrintModalProps = ComponentProps<typeof PrintModal>;
@@ -27,6 +28,7 @@ type SearchModalProps = ComponentProps<typeof SearchModal>;
 type BookCardModalProps = ComponentProps<typeof BookCardModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
 type QuizModalProps = ComponentProps<typeof QuizModal>;
+type ImagePreviewModalProps = ComponentProps<typeof ImagePreviewModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
@@ -43,6 +45,7 @@ interface AppModalsProps {
   bookCardModalProps: BookCardModalProps;
   settingsModalProps: SettingsModalProps;
   quizModalProps: QuizModalProps;
+  imagePreviewModalProps: ImagePreviewModalProps;
 }
 
 function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
@@ -66,7 +69,8 @@ export default function AppModals({
   searchModalProps,
   bookCardModalProps,
   settingsModalProps,
-  quizModalProps
+  quizModalProps,
+  imagePreviewModalProps
 }: AppModalsProps) {
   return (
     <>
@@ -82,6 +86,7 @@ export default function AppModals({
       {renderInPortal(<BookCardModal {...bookCardModalProps} />, portalTarget)}
       {renderInPortal(<SettingsModal {...settingsModalProps} />, portalTarget)}
       {renderInPortal(<QuizModal {...quizModalProps} />, portalTarget)}
+      {renderInPortal(<ImagePreviewModal {...imagePreviewModalProps} />, portalTarget)}
       <OcrQueueModal {...ocrQueueModalProps} />
     </>
   );

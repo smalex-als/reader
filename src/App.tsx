@@ -27,6 +27,7 @@ import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import type {
   AppSettings,
   BookSearchResponse,
+  ImagePreviewTarget,
   PageTextOcrEngine,
   SearchResult,
   TocEntry
@@ -129,6 +130,7 @@ function getDefaultStreamVoice(): StreamVoice {
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<ToolbarTab>('reading');
+  const [imagePreview, setImagePreview] = useState<ImagePreviewTarget | null>(null);
   const {
     helpOpen,
     openHelp,
@@ -982,6 +984,32 @@ export default function App() {
 
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
   const closeBookModal = useCallback(() => setBookModalOpen(false), [setBookModalOpen]);
+  const handleOpenImagePreview = useCallback(
+    (payload: { imageUrl: string; bounds: [number, number, number, number]; caption?: string | null }) => {
+      if (!bookId) {
+        return;
+      }
+      const imageFilename = payload.imageUrl.split('/').pop();
+      if (!imageFilename) {
+        return;
+      }
+      const [left, top, right, bottom] = payload.bounds;
+      const params = new URLSearchParams({
+        image: imageFilename,
+        left: String(left),
+        top: String(top),
+        right: String(right),
+        bottom: String(bottom)
+      });
+      setImagePreview({
+        imageUrl: payload.imageUrl,
+        bounds: payload.bounds,
+        caption: payload.caption ?? null,
+        cropUrl: `/api/books/${encodeURIComponent(bookId)}/image-preview?${params.toString()}`
+      });
+    },
+    [bookId]
+  );
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
       applyZoomMode(mode);
@@ -1307,6 +1335,11 @@ export default function App() {
       onAutoPlayEnabledChange: setQuizAutoPlayEnabled,
       onRegenerate: () => void handleRegenerateQuiz(),
       onClose: handleCloseQuiz
+    },
+    imagePreviewModalProps: {
+      open: imagePreview !== null,
+      preview: imagePreview,
+      onClose: () => setImagePreview(null)
     }
   };
 
@@ -1336,6 +1369,7 @@ export default function App() {
       onToggleSpeechBlock: (blockId: string) => {
         void handleToggleSpeechBlock(blockId);
       },
+      onOpenImagePreview: handleOpenImagePreview,
       rotation: settings.rotation
     },
     scrollViewerProps: {
@@ -1364,6 +1398,7 @@ export default function App() {
       onToggleSpeechBlock: (blockId: string) => {
         void handleToggleSpeechBlock(blockId);
       },
+      onOpenImagePreview: handleOpenImagePreview,
       onCurrentPageChange: handleScrollCurrentPageChange
     },
     chapterEditorProps: {

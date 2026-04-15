@@ -16,6 +16,11 @@ interface ViewerProps {
   onMetricsChange: (metrics: ViewerMetrics) => void;
   onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
+  onOpenImagePreview: (payload: {
+    imageUrl: string;
+    bounds: [number, number, number, number];
+    caption?: string | null;
+  }) => void;
   rotation: number;
 }
 
@@ -41,6 +46,7 @@ export default function Viewer({
   onMetricsChange,
   onPlayTextBlock,
   onToggleSpeechBlock,
+  onOpenImagePreview,
   rotation
 }: ViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -265,6 +271,7 @@ export default function Viewer({
                     dimOutsideBlocksIntensity={settings.dimOutsideBlocksIntensity}
                     onPlayTextBlock={onPlayTextBlock}
                     onToggleSpeechBlock={onToggleSpeechBlock}
+                    onOpenImagePreview={onOpenImagePreview}
                   />
                 </div>
               ) : null}
