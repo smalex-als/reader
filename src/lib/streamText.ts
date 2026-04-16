@@ -353,3 +353,20 @@ export function splitStreamChunks(text: string, startIndex: number) {
   }
   return chunks;
 }
+
+export function splitStreamParagraphChunks(text: string, startIndex: number) {
+  const input = stripMarkdown(text.slice(Math.max(0, startIndex)));
+  const paragraphs = input
+    .split(/\n\s*\n/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const chunks: string[] = [];
+  for (const paragraph of paragraphs) {
+    if (paragraph.length <= STREAM_CHUNK_SIZE + STREAM_CHUNK_LOOKAHEAD) {
+      chunks.push(paragraph);
+      continue;
+    }
+    chunks.push(...splitStreamChunks(paragraph, 0));
+  }
+  return chunks;
+}

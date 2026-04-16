@@ -30,6 +30,8 @@ interface ChapterViewerProps {
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   onPlayAudio: (payload: FloatingAudioTrack) => void;
+  playingParagraphStart: number | null;
+  playingParagraphMode: 'chapter' | 'narration' | null;
 }
 
 type AudioJobStatus = {
@@ -83,6 +85,8 @@ export default function ChapterViewer({
   onFirstParagraphReady,
   onPlayParagraph,
   onPlayAudio,
+  playingParagraphStart,
+  playingParagraphMode
 }: ChapterViewerProps) {
   const [contentMode, setContentMode] = useState<'chapter' | 'narration'>('chapter');
   const [chapterText, setChapterText] = useState('');
@@ -602,8 +606,9 @@ export default function ChapterViewer({
         const paragraphKey = chapterNumber
           ? `${contentMode}-${chapterNumber}-${hashText(textValue)}-${startIndex}`
           : '';
+        const isPlaying = playingParagraphStart === startIndex && playingParagraphMode === contentMode;
         return (
-          <Tag className="text-viewer-block">
+          <Tag className="text-viewer-block" data-playing={isPlaying ? 'true' : 'false'}>
             {children}
             {textValue ? (
               <button
@@ -638,7 +643,7 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, contentMode, displayText]);
+  }, [chapterNumber, contentMode, displayText, playingParagraphMode, playingParagraphStart]);
 
   return (
     <div className="text-viewer" style={textStyle}>

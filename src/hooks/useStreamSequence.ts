@@ -45,10 +45,54 @@ type PageStreamSegment = {
   pageKey: string;
 };
 
+type ParagraphStreamSegment = {
+  text: string;
+  pageKey: string;
+};
+
 type ActiveStreamStatus = 'connecting' | 'streaming' | 'paused';
 
 const ACTIVE_STREAM_STATUSES = new Set<ActiveStreamStatus>(['connecting', 'streaming', 'paused']);
 const SCROLL_STREAM_LOOKAHEAD = 2;
+const PARAGRAPH_STREAM_LOOKAHEAD = 2;
+
+function getTextModeFromBaseKey(baseKey: string) {
+  if (baseKey.startsWith('narration-')) {
+    return 'narration';
+  }
+  return 'chapter';
+}
+
+function createParagraphStreamSegments(fullText: string, startIndex: number, baseKey: string): ParagraphStreamSegment[] {
+  const input = fullText.slice(Math.max(0, startIndex));
+  const textMode = getTextModeFromBaseKey(baseKey);
+  const segments: ParagraphStreamSegment[] = [];
+  const paragraphPattern = /\S[\s\S]*?(?=(?:\n\s*\n)|$)/g;
+  let match;
+
+  while ((match = paragraphPattern.exec(input)) !== null) {
+    const rawParagraph = match[0]?.trim();
+    if (!rawParagraph) {
+      continue;
+    }
+    const spokenParagraph = stripMarkdown(rawParagraph).trim();
+    if (!spokenParagraph) {
+      continue;
+    }
+    const absoluteStart = startIndex + match.index;
+    const pageKey = `${textMode}::paragraph-start-${absoluteStart}`;
+    if (spokenParagraph.length <= 1240) {
+      segments.push({ text: spokenParagraph, pageKey });
+      continue;
+    }
+    const paragraphChunks = splitStreamChunks(spokenParagraph, 0);
+    for (const chunk of paragraphChunks) {
+      segments.push({ text: chunk, pageKey });
+    }
+  }
+
+  return segments;
+}
 
 function getPageStreamSegments(pageText: PageText, imageUrl: string): PageStreamSegment[] {
   const orderedBlocks = [...pageText.blocks]
@@ -123,12 +167,19 @@ export function useStreamSequence({
     lastActivePageKey: string | null;
     filling: boolean;
   } | null>(null);
+  const paragraphBufferRef = useRef<{
+    runId: number;
+    pendingSegments: ParagraphStreamSegment[];
+    queuedAhead: number;
+    lastActivePageKey: string | null;
+  } | null>(null);
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
   const autoAdvanceRef = useRef(false);
 
   const stopStreamSequence = useCallback(() => {
     sequenceRunIdRef.current += 1;
     scrollBufferRef.current = null;
+    paragraphBufferRef.current = null;
     streamSequenceRef.current = null;
     setStreamSequenceActive(false);
   }, []);
@@ -168,6 +219,28 @@ export function useStreamSequence({
         });
       }
       return chunks;
+    },
+    [enqueueStream, streamVoice]
+  );
+
+  const fillParagraphBuffer = useCallback(
+    (runId: number) => {
+      const buffer = paragraphBufferRef.current;
+      if (!buffer || buffer.runId !== runId) {
+        return;
+      }
+      while (sequenceRunIdRef.current === runId && buffer.queuedAhead < PARAGRAPH_STREAM_LOOKAHEAD) {
+        const nextSegment = buffer.pendingSegments.shift();
+        if (!nextSegment) {
+          break;
+        }
+        enqueueStream({
+          text: nextSegment.text,
+          pageKey: nextSegment.pageKey,
+          voice: streamVoice
+        });
+        buffer.queuedAhead += 1;
+      }
     },
     [enqueueStream, streamVoice]
   );
@@ -312,21 +385,39 @@ export function useStreamSequence({
         stopStreamSequence();
         return;
       }
-      const chunks = splitStreamChunks(fullText, startIndex);
-      if (chunks.length === 0) {
-        showToast('No text available to stream', 'error');
-        return;
-      }
+      const paragraphMode = source === 'chapter' || source === 'paragraph';
+      const paragraphSegments = paragraphMode ? createParagraphStreamSegments(fullText, startIndex, baseKey) : null;
       resetCurrentSequence();
       const runId = sequenceRunIdRef.current + 1;
       sequenceRunIdRef.current = runId;
       streamSequenceRef.current = { source, baseKey };
       setStreamSequenceActive(true);
+      if (paragraphMode && paragraphSegments) {
+        if (paragraphSegments.length === 0) {
+          showToast('No text available to stream', 'error');
+          return;
+        }
+        paragraphBufferRef.current = {
+          runId,
+          pendingSegments: paragraphSegments.slice(1),
+          queuedAhead: 0,
+          lastActivePageKey: paragraphSegments[0].pageKey
+        };
+        await startStream({ text: paragraphSegments[0].text, pageKey: paragraphSegments[0].pageKey, voice: streamVoice });
+        fillParagraphBuffer(runId);
+        return;
+      }
+      const chunks = splitStreamChunks(fullText, startIndex);
+      if (chunks.length === 0) {
+        showToast('No text available to stream', 'error');
+        return;
+      }
       await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice: streamVoice });
       enqueueChunks(fullText, startIndex, baseKey);
     },
     [
       enqueueChunks,
+      fillParagraphBuffer,
       showToast,
       startStream,
       stopAudio,
@@ -477,6 +568,19 @@ export function useStreamSequence({
     buffer.queuedAhead = Math.max(0, buffer.queuedAhead - 1);
     void fillScrollBuffer(buffer.runId);
   }, [fillScrollBuffer, streamState.pageKey, streamState.status]);
+
+  useEffect(() => {
+    const buffer = paragraphBufferRef.current;
+    if (!buffer || streamState.status !== 'streaming' || !streamState.pageKey) {
+      return;
+    }
+    if (streamState.pageKey === buffer.lastActivePageKey) {
+      return;
+    }
+    buffer.lastActivePageKey = streamState.pageKey;
+    buffer.queuedAhead = Math.max(0, buffer.queuedAhead - 1);
+    fillParagraphBuffer(buffer.runId);
+  }, [fillParagraphBuffer, streamState.pageKey, streamState.status]);
 
   useEffect(() => {
     if (!streamSequenceActive || streamState.status !== 'idle') {

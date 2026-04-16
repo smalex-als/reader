@@ -24,6 +24,7 @@ export const STREAM_SERVER =
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
 
 export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai'; // 'openai' | 'deepseek_ocr'
+export const OCR_TIMEOUT_MS = Number.parseInt(process.env.OCR_TIMEOUT_MS || '20000', 10);
 export const OCR_DEEPSEEK_HOST = process.env.OCR_DEEPSEEK_HOST || 'http://reader.test:11434';
 export const OCR_DEEPSEEK_PATH = process.env.OCR_DEEPSEEK_PATH || '/api/generate';
 export const OCR_DEEPSEEK_MODEL = process.env.OCR_DEEPSEEK_MODEL || 'deepseek-ocr';

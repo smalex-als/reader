@@ -4,6 +4,7 @@ import mime from 'mime-types';
 import {
   getTextPrompt,
   OCR_BACKEND,
+  OCR_TIMEOUT_MS,
   OCR_DEEPSEEK_HOST,
   OCR_DEEPSEEK_MODEL,
   OCR_DEEPSEEK_PATH,
@@ -14,18 +15,46 @@ import {safeStat} from './fs.js';
 import {deriveTextPathsFromImageUrl, resolveDataUrl} from './paths.js';
 import {getOpenAI} from './openai.js';
 
-function normalizeOcrEngine(engine) {
-  if (engine === 'openai') {
+function resolveOcrBackend(engine) {
+  if (engine === 'openai' || engine === 'deepseek_ocr') {
     return engine;
   }
-  return 'deepseek_ocr';
+  return OCR_BACKEND;
 }
 
 function resolveDeepseekOcrUrl() {
   return new URL(OCR_DEEPSEEK_PATH, OCR_DEEPSEEK_HOST).toString();
 }
 
-async function extractTextFromDeepseekOcr(absolute) {
+function createOcrTimeoutError(timeoutMs) {
+  const error = new Error(`OCR timed out after ${timeoutMs}ms`);
+  error.code = 'OCR_TIMEOUT';
+  return error;
+}
+
+async function withOcrTimeout(task, timeoutMs) {
+  let timeoutId = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(createOcrTimeoutError(timeoutMs));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([task(), timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
+async function writeEmptyPageText(textAbsolute) {
+  await fs.mkdir(path.dirname(textAbsolute), { recursive: true });
+  await fs.writeFile(textAbsolute, '', 'utf8');
+}
+
+async function extractTextFromDeepseekOcr(absolute, timeoutMs) {
   const buffer = await fs.readFile(absolute);
   const requestBody = JSON.stringify({
     model: OCR_DEEPSEEK_MODEL,
@@ -38,13 +67,26 @@ async function extractTextFromDeepseekOcr(absolute) {
   let lastErrorText = 'Unknown Deepseek OCR error';
   const requestUrl = resolveDeepseekOcrUrl();
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch(requestUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: requestBody
-    });
+    const controller = new AbortController();
+    const abortId = setTimeout(() => controller.abort(createOcrTimeoutError(timeoutMs)), timeoutMs);
+    let response;
+    try {
+      response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: requestBody,
+        signal: controller.signal
+      });
+    } catch (error) {
+      clearTimeout(abortId);
+      if (error?.name === 'AbortError' || error?.code === 'OCR_TIMEOUT') {
+        throw createOcrTimeoutError(timeoutMs);
+      }
+      throw error;
+    }
+    clearTimeout(abortId);
 
     if (response.ok) {
       const payload = await response.json();
@@ -76,6 +118,7 @@ export async function loadPageText(imageUrl, options = {}) {
   const { skipCache = false, engine = null } = options;
   const { absolute } = resolveDataUrl(imageUrl);
   const { textRelative, textAbsolute } = deriveTextPathsFromImageUrl(imageUrl);
+  const timeoutMs = Number.isFinite(OCR_TIMEOUT_MS) && OCR_TIMEOUT_MS > 0 ? OCR_TIMEOUT_MS : 20000;
 
   const textStat = await safeStat(textAbsolute);
   if (textStat?.isFile() && !skipCache) {
@@ -99,46 +142,61 @@ export async function loadPageText(imageUrl, options = {}) {
   }
 
   let text = '';
-  const normalizedEngine = normalizeOcrEngine(engine);
-  if (normalizedEngine === 'deepseek_ocr') {
-    text = await extractTextFromDeepseekOcr(absolute);
-  } else {
-    const prompt = getTextPrompt({
-      backend: OCR_BACKEND,
-      model: 'gpt-5.4'
-    });
+  const ocrBackend = resolveOcrBackend(engine);
+  try {
+    if (ocrBackend === 'deepseek_ocr') {
+      text = await extractTextFromDeepseekOcr(absolute, timeoutMs);
+    } else if (ocrBackend === 'openai') {
+      const prompt = getTextPrompt({
+        backend: ocrBackend,
+        model: 'gpt-5.4'
+      });
 
-    if (OCR_BACKEND === 'openai') {
       const openai = getOpenAI();
       const buffer = await fs.readFile(absolute);
       const base64 = buffer.toString('base64');
 
-      const response = await openai.responses.create({
-        model: 'gpt-5.4',
-        input: [
-          {
-            role: 'user',
-            content: [
+      const response = await withOcrTimeout(
+        () =>
+          openai.responses.create({
+            model: 'gpt-5.4',
+            input: [
               {
-                type: 'input_text',
-                text: prompt
-              },
-              {
-                type: 'input_image',
-                image_url: `data:${mimeType};base64,${base64}`
+                role: 'user',
+                content: [
+                  {
+                    type: 'input_text',
+                    text: prompt
+                  },
+                  {
+                    type: 'input_image',
+                    image_url: `data:${mimeType};base64,${base64}`
+                  }
+                ]
               }
             ]
-          }
-        ]
-      });
+          }),
+        timeoutMs
+      );
 
       text =
         response.output_text?.trim() ||
         response?.output?.[0]?.content?.[0]?.text?.trim() ||
         '';
     } else {
-      throw createHttpError(500, `Unknown OCR backend: ${OCR_BACKEND}`);
+      throw createHttpError(500, `Unknown OCR backend: ${ocrBackend}`);
     }
+  } catch (error) {
+    if (error?.code === 'OCR_TIMEOUT' || error?.name === 'AbortError') {
+      await writeEmptyPageText(textAbsolute);
+      return {
+        source: 'file',
+        text: '',
+        url: `/data/${textRelative}`,
+        absolutePath: textAbsolute
+      };
+    }
+    throw error;
   }
 
   if (!text) {

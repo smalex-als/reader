@@ -493,6 +493,19 @@ export default function App() {
     () => parseStreamLocator(streamState.status === 'streaming' ? streamState.pageKey : null),
     [streamState.pageKey, streamState.status]
   );
+  const activeTextParagraph = useMemo(() => {
+    if (streamState.status !== 'streaming' || typeof streamState.pageKey !== 'string') {
+      return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
+    }
+    const match = streamState.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+    if (!match) {
+      return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
+    }
+    return {
+      mode: match[1] as 'chapter' | 'narration',
+      startIndex: Number.parseInt(match[2], 10)
+    };
+  }, [streamState.pageKey, streamState.status]);
   const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
   const previousStreamStatusRef = useRef(streamState.status);
 
@@ -1500,7 +1513,9 @@ export default function App() {
       refreshToken: chapterViewRefresh,
       onFirstParagraphReady: setFirstChapterParagraph,
       onPlayParagraph: handlePlayChapterParagraph,
-      onPlayAudio: handlePlayFloatingAudio
+      onPlayAudio: handlePlayFloatingAudio,
+      playingParagraphStart: activeTextParagraph.startIndex,
+      playingParagraphMode: activeTextParagraph.mode
     },
     audioViewProps: {
       bookId,
