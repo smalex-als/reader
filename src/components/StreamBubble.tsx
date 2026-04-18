@@ -3,6 +3,9 @@ import { useStreamUi } from '@/hooks/useStreamUi';
 
 interface StreamBubbleProps {
   streamState: StreamState;
+  streamVoice: string;
+  streamVoiceOptions: readonly string[];
+  onStreamVoiceChange: (voice: string) => void;
   showAutoFollow?: boolean;
   autoFollowEnabled?: boolean;
   onToggleAutoFollow?: () => void;
@@ -12,6 +15,9 @@ interface StreamBubbleProps {
 
 export default function StreamBubble({
   streamState,
+  streamVoice,
+  streamVoiceOptions,
+  onStreamVoiceChange,
   showAutoFollow = false,
   autoFollowEnabled = false,
   onToggleAutoFollow,
@@ -23,6 +29,11 @@ export default function StreamBubble({
   const minutes = Math.floor(playedSeconds / 60);
   const seconds = playedSeconds % 60;
   const timeLabel = `${minutes}:${String(seconds).padStart(2, '0')}`;
+  const formatVoiceLabel = (voice: string) => {
+    const withoutLocale = voice.startsWith('en-') ? voice.slice(3) : voice;
+    const [name, variant] = withoutLocale.split('_');
+    return variant ? `${name} - ${variant}` : name;
+  };
 
   if (!isVisible) {
     return null;
@@ -63,6 +74,22 @@ export default function StreamBubble({
       <span className="stream-bubble-time" aria-live="polite">
         {timeLabel}
       </span>
+      <span className="stream-bubble-divider" aria-hidden="true" />
+      <label className="stream-bubble-voice-label">
+        <select
+          className="select stream-bubble-voice-select"
+          value={streamVoice}
+          onChange={(event) => onStreamVoiceChange(event.target.value)}
+          aria-label="Streaming voice"
+          title="Streaming voice"
+        >
+          {streamVoiceOptions.map((voice) => (
+            <option key={voice} value={voice}>
+              {formatVoiceLabel(voice)}
+            </option>
+          ))}
+        </select>
+      </label>
       {showAutoFollow ? (
         <>
           <span className="stream-bubble-divider" aria-hidden="true" />

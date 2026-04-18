@@ -1517,6 +1517,23 @@ body {
   color: rgba(213, 229, 242, 0.92);
 }
 
+.stream-bubble-voice-label {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.stream-bubble-voice-select {
+  min-width: 8.75rem;
+  max-width: 10.5rem;
+  padding: 0.35rem 1.8rem 0.35rem 0.55rem;
+  border-radius: 999px;
+  border-color: rgba(213, 229, 242, 0.18);
+  background: rgba(10, 18, 28, 0.42);
+  font-size: 0.8rem;
+  line-height: 1.1;
+}
+
 .stream-bubble-paused {
   background: linear-gradient(145deg, rgba(40, 55, 75, 0.92), rgba(18, 24, 34, 0.92));
   border-color: rgba(130, 180, 255, 0.4);
@@ -2919,6 +2936,12 @@ body {
   .stream-bubble-time {
     min-width: 2.8rem;
     font-size: 0.85rem;
+  }
+
+  .stream-bubble-voice-select {
+    min-width: 7.2rem;
+    max-width: 8.4rem;
+    font-size: 0.75rem;
   }
 
   .stream-bubble-divider {

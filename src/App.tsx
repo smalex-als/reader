@@ -464,7 +464,8 @@ export default function App() {
     handlePlayChapterParagraph,
     handlePlaySingleStream,
     handleStopStream,
-    handleToggleStreamPause
+    handleToggleStreamPause,
+    restartStreamFromPageKey
   } = useStreamSequence({
     viewMode,
     isTextBook,
@@ -1016,11 +1017,19 @@ export default function App() {
 
   const handleStreamVoiceChange = useCallback(
     (voice: string) => {
-      if (isStreamVoice(voice)) {
-        setStreamVoice(voice);
+      if (!isStreamVoice(voice)) {
+        return;
+      }
+      setStreamVoice(voice);
+      if (
+        (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused') &&
+        typeof streamState.pageKey === 'string' &&
+        streamState.pageKey
+      ) {
+        void restartStreamFromPageKey(streamState.pageKey, voice);
       }
     },
-    [isStreamVoice, setStreamVoice]
+    [isStreamVoice, restartStreamFromPageKey, setStreamVoice, streamState.pageKey, streamState.status]
   );
 
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
@@ -1119,7 +1128,15 @@ export default function App() {
     setSettingsOpen,
     openHelp,
     closeHelp,
-    openBookModal
+    openBookModal,
+    onOpenQuiz: () => {
+      setSettingsOpen(false);
+      void handleOpenQuiz();
+    },
+    onOpenVocabulary: () => {
+      setSettingsOpen(false);
+      void handleOpenVocabulary();
+    }
   });
 
   const toolbarProps = {
@@ -1525,6 +1542,9 @@ export default function App() {
     },
     streamBubbleProps: {
       streamState,
+      streamVoice,
+      streamVoiceOptions: STREAM_VOICE_OPTIONS,
+      onStreamVoiceChange: handleStreamVoiceChange,
       showAutoFollow: viewMode === 'scroll',
       autoFollowEnabled: autoFollowStream,
       onToggleAutoFollow: () => setAutoFollowStream((prev) => !prev),

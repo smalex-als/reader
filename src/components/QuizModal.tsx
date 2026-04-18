@@ -153,7 +153,9 @@ export default function QuizModal({
                   <p className="quiz-question-prompt">{currentQuestion.prompt}</p>
                   <button
                     type="button"
-                    className={`button button-secondary ${isCurrentQuestionStreaming ? 'button-active' : ''}`}
+                    className={`button button-secondary modal-icon-button ${
+                      isCurrentQuestionStreaming ? 'button-active' : ''
+                    }`}
                     onClick={() => {
                       if (isCurrentQuestionStreaming) {
                         onStopAudio();
@@ -178,8 +180,18 @@ export default function QuizModal({
                         .join('\n\n');
                       onStreamQuestion(spokenText, currentIndex);
                     }}
+                    aria-label={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
+                    title={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
                   >
-                    {isCurrentQuestionStreaming ? 'Stop Audio' : 'Play Audio'}
+                    {isCurrentQuestionStreaming ? (
+                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor" />
+                      </svg>
+                    )}
                   </button>
                 </div>
                 <label className="quiz-autoplay-toggle">

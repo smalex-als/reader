@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { makeStreamLocator } from '@/lib/streamLocator';
+import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import { splitStreamChunks, stripMarkdown } from '@/lib/streamText';
 import type { PageText, StreamState, ToastMessage } from '@/types/app';
 
@@ -209,13 +209,14 @@ export function useStreamSequence({
   );
 
   const enqueueChunks = useCallback(
-    (fullText: string, startIndex: number, baseKey: string) => {
+    (fullText: string, startIndex: number, baseKey: string, voiceOverride?: string) => {
+      const voice = voiceOverride ?? streamVoice;
       const chunks = splitStreamChunks(fullText, startIndex);
       for (let index = 1; index < chunks.length; index += 1) {
         enqueueStream({
           text: chunks[index],
           pageKey: `${baseKey}#chunk-${index}`,
-          voice: streamVoice
+          voice
         });
       }
       return chunks;
@@ -224,7 +225,8 @@ export function useStreamSequence({
   );
 
   const fillParagraphBuffer = useCallback(
-    (runId: number) => {
+    (runId: number, voiceOverride?: string) => {
+      const voice = voiceOverride ?? streamVoice;
       const buffer = paragraphBufferRef.current;
       if (!buffer || buffer.runId !== runId) {
         return;
@@ -237,7 +239,7 @@ export function useStreamSequence({
         enqueueStream({
           text: nextSegment.text,
           pageKey: nextSegment.pageKey,
-          voice: streamVoice
+          voice
         });
         buffer.queuedAhead += 1;
       }
@@ -246,7 +248,8 @@ export function useStreamSequence({
   );
 
   const fillScrollBuffer = useCallback(
-    async (runId: number) => {
+    async (runId: number, voiceOverride?: string) => {
+      const voice = voiceOverride ?? streamVoice;
       const buffer = scrollBufferRef.current;
       if (!buffer || buffer.runId !== runId || buffer.filling) {
         return;
@@ -283,7 +286,7 @@ export function useStreamSequence({
           enqueueStream({
             text: nextSegment.text,
             pageKey: nextSegment.pageKey,
-            voice: streamVoice
+            voice
           });
           buffer.queuedAhead += 1;
         }
@@ -298,7 +301,14 @@ export function useStreamSequence({
   );
 
   const startScrollPageSequence = useCallback(
-    async (imageUrl: string, pageText: PageText, startBlockId?: string, continueAcrossPages = true) => {
+    async (
+      imageUrl: string,
+      pageText: PageText,
+      startBlockId?: string,
+      continueAcrossPages = true,
+      voiceOverride?: string
+    ) => {
+      const voice = voiceOverride ?? streamVoice;
       const allSegments = getPageStreamSegments(pageText, imageUrl);
       if (allSegments.length === 0) {
         showToast('No page text available to stream', 'error');
@@ -355,9 +365,9 @@ export function useStreamSequence({
       await startStream({
         text: segments[0].text,
         pageKey: segments[0].pageKey,
-        voice: streamVoice
+        voice
       });
-      void fillScrollBuffer(runId);
+      void fillScrollBuffer(runId, voice);
     },
     [
       currentPage,
@@ -376,7 +386,14 @@ export function useStreamSequence({
   );
 
   const startStreamSequenceFromText = useCallback(
-    async (fullText: string, startIndex: number, baseKey: string, source: 'page' | 'chapter' | 'paragraph') => {
+    async (
+      fullText: string,
+      startIndex: number,
+      baseKey: string,
+      source: 'page' | 'chapter' | 'paragraph',
+      voiceOverride?: string
+    ) => {
+      const voice = voiceOverride ?? streamVoice;
       lastStreamSourceRef.current = { type: source, fullText, startIndex, baseKey };
       autoAdvanceRef.current = (source === 'page' || source === 'chapter') && viewMode !== 'scroll';
       if (isStreamBusy(streamState.status)) {
@@ -403,8 +420,8 @@ export function useStreamSequence({
           queuedAhead: 0,
           lastActivePageKey: paragraphSegments[0].pageKey
         };
-        await startStream({ text: paragraphSegments[0].text, pageKey: paragraphSegments[0].pageKey, voice: streamVoice });
-        fillParagraphBuffer(runId);
+        await startStream({ text: paragraphSegments[0].text, pageKey: paragraphSegments[0].pageKey, voice });
+        fillParagraphBuffer(runId, voice);
         return;
       }
       const chunks = splitStreamChunks(fullText, startIndex);
@@ -412,8 +429,8 @@ export function useStreamSequence({
         showToast('No text available to stream', 'error');
         return;
       }
-      await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice: streamVoice });
-      enqueueChunks(fullText, startIndex, baseKey);
+      await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice });
+      enqueueChunks(fullText, startIndex, baseKey, voice);
     },
     [
       enqueueChunks,
@@ -491,7 +508,8 @@ export function useStreamSequence({
   );
 
   const handlePlaySingleStream = useCallback(
-    async (payload: { text: string; pageKey: string }) => {
+    async (payload: { text: string; pageKey: string }, voiceOverride?: string) => {
+      const voice = voiceOverride ?? streamVoice;
       const trimmed = stripMarkdown(payload.text).trim();
       if (!trimmed) {
         showToast('No text available to stream', 'error');
@@ -508,13 +526,13 @@ export function useStreamSequence({
       pendingSingleStreamRef.current = null;
       stopAudio();
       stopStreamSequence();
-      await startStream({ text: trimmed, pageKey: payload.pageKey, voice: streamVoice });
+      await startStream({ text: trimmed, pageKey: payload.pageKey, voice });
     },
     [isStreamBusy, showToast, startStream, stopAudio, stopStream, stopStreamSequence, streamState.status, streamVoice]
   );
 
   const handlePlayPageBlock = useCallback(
-    async (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
+    async (payload: { imageUrl: string; startIndex: number; blockId: string }, voiceOverride?: string) => {
       if (!payload.imageUrl) {
         return;
       }
@@ -525,10 +543,16 @@ export function useStreamSequence({
         return;
       }
       if (pageText) {
-        await startScrollPageSequence(payload.imageUrl, pageText, payload.blockId, viewMode === 'scroll');
+        await startScrollPageSequence(payload.imageUrl, pageText, payload.blockId, viewMode === 'scroll', voiceOverride);
         return;
       }
-      await startStreamSequenceFromText(textValue, payload.startIndex, makeStreamLocator(payload.imageUrl, payload.blockId), 'page');
+      await startStreamSequenceFromText(
+        textValue,
+        payload.startIndex,
+        makeStreamLocator(payload.imageUrl, payload.blockId),
+        'page',
+        voiceOverride
+      );
     },
     [
       currentImage,
@@ -555,6 +579,41 @@ export function useStreamSequence({
       await pauseStream();
     }
   }, [pauseStream, resumeStream, streamState.status]);
+
+  const restartStreamFromPageKey = useCallback(
+    async (pageKey: string, voiceOverride: string) => {
+      const locator = parseStreamLocator(pageKey);
+      if (locator?.imageUrl && locator.blockId) {
+        await handlePlayPageBlock(
+          {
+            imageUrl: locator.imageUrl,
+            startIndex: 0,
+            blockId: locator.blockId
+          },
+          voiceOverride
+        );
+        return;
+      }
+
+      const paragraphMatch = pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+      if (paragraphMatch && firstChapterParagraph) {
+        await startStreamSequenceFromText(
+          firstChapterParagraph.fullText,
+          Number.parseInt(paragraphMatch[2], 10),
+          firstChapterParagraph.key,
+          'paragraph',
+          voiceOverride
+        );
+        return;
+      }
+
+      const single = lastStreamSourceRef.current;
+      if (single?.type === 'single' && single.pageKey === pageKey) {
+        await handlePlaySingleStream({ text: single.text, pageKey }, voiceOverride);
+      }
+    },
+    [firstChapterParagraph, handlePlayPageBlock, handlePlaySingleStream, startStreamSequenceFromText]
+  );
 
   useEffect(() => {
     const buffer = scrollBufferRef.current;
@@ -634,6 +693,7 @@ export function useStreamSequence({
     handlePlayChapterParagraph,
     handlePlaySingleStream,
     handleStopStream,
-    handleToggleStreamPause
+    handleToggleStreamPause,
+    restartStreamFromPageKey
   };
 }

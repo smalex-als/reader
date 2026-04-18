@@ -54,6 +54,8 @@ type HotkeysOptions = {
   openHelp: () => void;
   closeHelp: () => void;
   openBookModal: () => void;
+  onOpenQuiz: () => void;
+  onOpenVocabulary: () => void;
 };
 
 function isTextInput(element: EventTarget | null) {
@@ -114,6 +116,8 @@ export function useHotkeys({
   openHelp,
   closeHelp,
   openBookModal,
+  onOpenQuiz,
+  onOpenVocabulary
 }: HotkeysOptions) {
   const hotkeys = useMemo(
     () => [
@@ -137,6 +141,8 @@ export function useHotkeys({
       { keys: '1', action: 'Switch to page view' },
       { keys: '2', action: 'Switch to scroll view' },
       { keys: '3', action: 'Switch to text view' },
+      { keys: '7', action: 'Open quiz' },
+      { keys: '8', action: 'Open vocabulary' },
       { keys: 'P', action: 'Play/Pause audio' },
       { keys: 'S', action: 'Play/Stop stream audio' },
       { keys: 'G', action: 'Focus Go To input' },
@@ -277,6 +283,14 @@ export function useHotkeys({
         case '3':
           event.preventDefault();
           setViewMode('text');
+          break;
+        case '7':
+          event.preventDefault();
+          onOpenQuiz();
+          break;
+        case '8':
+          event.preventDefault();
+          onOpenVocabulary();
           break;
         case 'p':
           event.preventDefault();
@@ -442,7 +456,9 @@ export function useHotkeys({
     toggleTextModal,
     triggerBackgroundOcr,
     toggleOcrEditMode,
-    gotoInputRef
+    gotoInputRef,
+    onOpenQuiz,
+    onOpenVocabulary
   ]);
 
   return { hotkeys };
