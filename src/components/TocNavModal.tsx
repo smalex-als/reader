@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import CloseIcon from '@/components/CloseIcon';
 import type { TocEntry } from '@/types/app';
 import { getDetailedTocLevel } from '@/lib/toc';
 
@@ -82,8 +83,14 @@ export default function TocNavModal({
       <div className="modal modal-toc">
         <header className="modal-header">
           <h2 className="modal-title">Table of Contents</h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close table of contents"
+            title="Close table of contents"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section ref={modalBodyRef} className="modal-body">

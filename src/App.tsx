@@ -136,6 +136,9 @@ export default function App() {
     helpOpen,
     openHelp,
     closeHelp,
+    listeningDashboardOpen,
+    openListeningDashboard,
+    closeListeningDashboard,
     ocrQueueOpen,
     setOcrQueueOpen,
     openOcrQueue,
@@ -1136,6 +1139,10 @@ export default function App() {
     onOpenVocabulary: () => {
       setSettingsOpen(false);
       void handleOpenVocabulary();
+    },
+    onOpenListeningDashboard: () => {
+      setSettingsOpen(false);
+      openListeningDashboard();
     }
   });
 
@@ -1229,6 +1236,10 @@ export default function App() {
     onOpenHelp: () => {
       setSettingsOpen(false);
       openHelp();
+    },
+    onOpenListeningDashboard: () => {
+      setSettingsOpen(false);
+      openListeningDashboard();
     },
     onOpenOcrQueue: openOcrQueue,
     onOpenToc: () => {
@@ -1426,6 +1437,10 @@ export default function App() {
       onStopAudio: handleStopStream,
       onRegenerate: () => void handleRegenerateVocabulary(),
       onClose: handleCloseVocabulary
+    },
+    listeningDashboardModalProps: {
+      open: listeningDashboardOpen,
+      onClose: closeListeningDashboard
     }
   };
 

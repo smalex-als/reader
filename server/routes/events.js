@@ -6,6 +6,58 @@ import { DATA_DIR } from '../config.js';
 const router = express.Router();
 const STREAM_HISTORY_LOG = path.join(DATA_DIR, '.stream-history.log');
 
+function normalizeStreamSource(pageKey) {
+  if (typeof pageKey !== 'string' || !pageKey) {
+    return { sourceType: 'unknown', sourceLabel: 'Unknown' };
+  }
+  if (pageKey.startsWith('quiz::') && pageKey.endsWith('::answer')) {
+    return {
+      sourceType: 'quiz',
+      sourceLabel: 'Quiz'
+    };
+  }
+  if (pageKey.startsWith('quiz::')) {
+    return {
+      sourceType: 'quiz',
+      sourceLabel: 'Quiz'
+    };
+  }
+  if (pageKey.startsWith('vocabulary::')) {
+    return { sourceType: 'vocabulary', sourceLabel: 'Vocabulary' };
+  }
+  if (pageKey.startsWith('chapter::paragraph-start-')) {
+    return { sourceType: 'chapter', sourceLabel: 'Chapter Text' };
+  }
+  if (pageKey.startsWith('narration::paragraph-start-')) {
+    return { sourceType: 'narration', sourceLabel: 'Narration' };
+  }
+  if (pageKey.includes('::ocr-block-')) {
+    return { sourceType: 'page', sourceLabel: 'Page Audio' };
+  }
+  if (pageKey.startsWith('/data/') || pageKey.includes('#chunk-')) {
+    return { sourceType: 'page', sourceLabel: 'Page Audio' };
+  }
+  return { sourceType: 'single', sourceLabel: 'Single item' };
+}
+
+function buildEmptyDashboard() {
+  return {
+    generatedAt: new Date().toISOString(),
+    totals: {
+      sessions: 0,
+      totalSeconds: 0,
+      averageSeconds: 0,
+      daysActive: 0,
+      lastListenedAt: null
+    },
+    byDay: [],
+    bySource: [],
+    topBooks: [],
+    topChapters: [],
+    recentSessions: []
+  };
+}
+
 router.post('/api/events', async (req, res, next) => {
   try {
     const event = typeof req.body?.event === 'string' ? req.body.event.trim() : '';
@@ -64,6 +116,159 @@ router.post('/api/stream-history', async (req, res, next) => {
 
     await fs.appendFile(STREAM_HISTORY_LOG, `${JSON.stringify(payload)}\n`, 'utf8');
     res.status(202).json({ accepted: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/api/stream-history/dashboard', async (_req, res, next) => {
+  try {
+    let raw = '';
+    try {
+      raw = await fs.readFile(STREAM_HISTORY_LOG, 'utf8');
+    } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+        res.json(buildEmptyDashboard());
+        return;
+      }
+      throw error;
+    }
+
+    const entries = raw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter((entry) => entry && entry.type === 'stream_history');
+
+    if (entries.length === 0) {
+      res.json(buildEmptyDashboard());
+      return;
+    }
+
+    const byDay = new Map();
+    const bySource = new Map();
+    const byBook = new Map();
+    const byChapter = new Map();
+    const activeDays = new Set();
+    let totalSeconds = 0;
+    let lastListenedAt = null;
+
+    const normalizedEntries = entries
+      .map((entry) => {
+        const listenedSeconds = Number.isFinite(entry.listenedSeconds) ? entry.listenedSeconds : 0;
+        const timestamp = typeof entry.timestamp === 'string' ? entry.timestamp : new Date().toISOString();
+        const { sourceType, sourceLabel } = normalizeStreamSource(entry.pageKeyStart);
+        const day = timestamp.slice(0, 10);
+        activeDays.add(day);
+        totalSeconds += listenedSeconds;
+        if (!lastListenedAt || timestamp > lastListenedAt) {
+          lastListenedAt = timestamp;
+        }
+
+        const dayAggregate = byDay.get(day) ?? { date: day, sessions: 0, totalSeconds: 0 };
+        dayAggregate.sessions += 1;
+        dayAggregate.totalSeconds += listenedSeconds;
+        byDay.set(day, dayAggregate);
+
+        const sourceAggregate = bySource.get(sourceType) ?? { sourceType, label: sourceLabel, sessions: 0, totalSeconds: 0 };
+        sourceAggregate.sessions += 1;
+        sourceAggregate.totalSeconds += listenedSeconds;
+        bySource.set(sourceType, sourceAggregate);
+
+        const bookId = typeof entry.bookId === 'string' ? entry.bookId : 'unknown';
+        const bookAggregate = byBook.get(bookId) ?? { bookId, sessions: 0, totalSeconds: 0, lastListenedAt: null };
+        bookAggregate.sessions += 1;
+        bookAggregate.totalSeconds += listenedSeconds;
+        bookAggregate.lastListenedAt =
+          !bookAggregate.lastListenedAt || timestamp > bookAggregate.lastListenedAt ? timestamp : bookAggregate.lastListenedAt;
+        byBook.set(bookId, bookAggregate);
+
+        const chapterKey = `${bookId}::${entry.chapterNumber ?? 'none'}::${entry.chapterTitle ?? ''}`;
+        const chapterAggregate = byChapter.get(chapterKey) ?? {
+          bookId,
+          chapterNumber: Number.isInteger(entry.chapterNumber) ? entry.chapterNumber : null,
+          chapterTitle: typeof entry.chapterTitle === 'string' ? entry.chapterTitle : null,
+          sessions: 0,
+          totalSeconds: 0,
+          lastListenedAt: null
+        };
+        chapterAggregate.sessions += 1;
+        chapterAggregate.totalSeconds += listenedSeconds;
+        chapterAggregate.lastListenedAt =
+          !chapterAggregate.lastListenedAt || timestamp > chapterAggregate.lastListenedAt
+            ? timestamp
+            : chapterAggregate.lastListenedAt;
+        byChapter.set(chapterKey, chapterAggregate);
+
+        return {
+          timestamp,
+          bookId,
+          chapterNumber: Number.isInteger(entry.chapterNumber) ? entry.chapterNumber : null,
+          chapterTitle: typeof entry.chapterTitle === 'string' ? entry.chapterTitle : null,
+          sourceType,
+          sourceLabel,
+          listenedSeconds,
+          startedAt: typeof entry.startedAt === 'string' ? entry.startedAt : timestamp,
+          endedAt: typeof entry.endedAt === 'string' ? entry.endedAt : timestamp,
+          endReason:
+            entry.endReason === 'completed' ||
+            entry.endReason === 'stopped' ||
+            entry.endReason === 'interrupted' ||
+            entry.endReason === 'error' ||
+            entry.endReason === 'unload'
+              ? entry.endReason
+              : 'stopped'
+        };
+      });
+
+    const normalizedRecentSessions = normalizedEntries
+      .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
+      .reduce((groups, entry) => {
+        const previous = groups[groups.length - 1];
+        if (
+          previous &&
+          previous.bookId === entry.bookId &&
+          previous.chapterNumber === entry.chapterNumber &&
+          previous.chapterTitle === entry.chapterTitle &&
+          previous.sourceType === entry.sourceType
+        ) {
+          previous.listenedSeconds += entry.listenedSeconds;
+          previous.timestamp = previous.timestamp > entry.timestamp ? previous.timestamp : entry.timestamp;
+          previous.startedAt = previous.startedAt < entry.startedAt ? previous.startedAt : entry.startedAt;
+          previous.endedAt = previous.endedAt > entry.endedAt ? previous.endedAt : entry.endedAt;
+          previous.sessionCount += 1;
+          return groups;
+        }
+        groups.push({
+          ...entry,
+          sessionCount: 1
+        });
+        return groups;
+      }, [])
+      .slice(0, 25);
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      totals: {
+        sessions: entries.length,
+        totalSeconds: Math.round(totalSeconds * 1000) / 1000,
+        averageSeconds: entries.length > 0 ? Math.round((totalSeconds / entries.length) * 1000) / 1000 : 0,
+        daysActive: activeDays.size,
+        lastListenedAt
+      },
+      byDay: [...byDay.values()].sort((left, right) => left.date.localeCompare(right.date)).slice(-14),
+      bySource: [...bySource.values()].sort((left, right) => right.totalSeconds - left.totalSeconds),
+      topBooks: [...byBook.values()].sort((left, right) => right.totalSeconds - left.totalSeconds).slice(0, 8),
+      topChapters: [...byChapter.values()].sort((left, right) => right.totalSeconds - left.totalSeconds).slice(0, 8),
+      recentSessions: normalizedRecentSessions
+    });
   } catch (error) {
     next(error);
   }

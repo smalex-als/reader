@@ -1,3 +1,4 @@
+import CloseIcon from '@/components/CloseIcon';
 import type { Bookmark } from '@/types/app';
 
 interface BookmarksModalProps {
@@ -35,8 +36,14 @@ export default function BookmarksModal({
             Bookmarks
             {currentBook ? <span className="modal-marker">• {currentBook}</span> : null}
           </h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close bookmarks"
+            title="Close bookmarks"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">

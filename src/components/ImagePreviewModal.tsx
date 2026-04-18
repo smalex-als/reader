@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import CloseIcon from '@/components/CloseIcon';
 import type { ImagePreviewTarget } from '@/types/app';
 
 interface ImagePreviewModalProps {
@@ -40,8 +41,14 @@ export default function ImagePreviewModal({ open, preview, onClose }: ImagePrevi
       <div className="modal modal-image-preview">
         <header className="modal-header">
           <h2 className="modal-title">Image Preview</h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close image preview"
+            title="Close image preview"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">

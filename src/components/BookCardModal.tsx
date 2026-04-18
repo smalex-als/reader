@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import CloseIcon from '@/components/CloseIcon';
 import type { BookCard } from '@/types/app';
 
 const CATEGORY_SUGGESTIONS = [
@@ -101,8 +102,14 @@ export default function BookCardModal({ open, bookId, onClose, onSaved }: BookCa
       <div className="modal">
         <header className="modal-header">
           <h2 className="modal-title">Book Card</h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close book card"
+            title="Close book card"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">

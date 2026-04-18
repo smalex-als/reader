@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import CloseIcon from '@/components/CloseIcon';
 import type { SearchResult } from '@/types/app';
 
 interface SearchModalProps {
@@ -58,8 +59,14 @@ export default function SearchModal({
             Search
             {currentBook ? <span className="modal-marker">• {currentBook}</span> : null}
           </h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close search"
+            title="Close search"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">

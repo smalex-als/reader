@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import CloseIcon from '@/components/CloseIcon';
 import type { ChapterQuiz, StreamState } from '@/types/app';
 
 interface QuizModalProps {
@@ -123,8 +124,14 @@ export default function QuizModal({
             >
               Regenerate Quiz
             </button>
-            <button type="button" className="button button-ghost" onClick={onClose}>
-              Close
+            <button
+              type="button"
+              className="button button-ghost modal-icon-button"
+              onClick={onClose}
+              aria-label="Close quiz"
+              title="Close quiz"
+            >
+              <CloseIcon />
             </button>
           </div>
         </header>

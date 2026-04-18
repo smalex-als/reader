@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 export function useModalState() {
   const [helpOpen, setHelpOpen] = useState(false);
+  const [listeningDashboardOpen, setListeningDashboardOpen] = useState(false);
   const [ocrQueueOpen, setOcrQueueOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [bookCardOpen, setBookCardOpen] = useState(false);
@@ -11,6 +12,8 @@ export function useModalState() {
 
   const openHelp = useCallback(() => setHelpOpen(true), []);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
+  const openListeningDashboard = useCallback(() => setListeningDashboardOpen(true), []);
+  const closeListeningDashboard = useCallback(() => setListeningDashboardOpen(false), []);
   const openOcrQueue = useCallback(() => setOcrQueueOpen(true), []);
   const closeOcrQueue = useCallback(() => setOcrQueueOpen(false), []);
   const openSearch = useCallback(() => setSearchOpen(true), []);
@@ -29,6 +32,10 @@ export function useModalState() {
     setHelpOpen,
     openHelp,
     closeHelp,
+    listeningDashboardOpen,
+    setListeningDashboardOpen,
+    openListeningDashboard,
+    closeListeningDashboard,
     ocrQueueOpen,
     setOcrQueueOpen,
     openOcrQueue,

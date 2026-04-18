@@ -181,3 +181,62 @@ export interface StreamState {
   modelSeconds: number;
   error?: string;
 }
+
+export interface ListeningDashboardTotals {
+  sessions: number;
+  totalSeconds: number;
+  averageSeconds: number;
+  daysActive: number;
+  lastListenedAt: string | null;
+}
+
+export interface ListeningDashboardDay {
+  date: string;
+  sessions: number;
+  totalSeconds: number;
+}
+
+export interface ListeningDashboardSource {
+  sourceType: string;
+  label: string;
+  sessions: number;
+  totalSeconds: number;
+}
+
+export interface ListeningDashboardBook {
+  bookId: string;
+  sessions: number;
+  totalSeconds: number;
+  lastListenedAt: string | null;
+}
+
+export interface ListeningDashboardChapter {
+  bookId: string;
+  chapterNumber: number | null;
+  chapterTitle: string | null;
+  sessions: number;
+  totalSeconds: number;
+  lastListenedAt: string | null;
+}
+
+export interface ListeningDashboardSession {
+  timestamp: string;
+  bookId: string;
+  chapterNumber: number | null;
+  chapterTitle: string | null;
+  sourceType: string;
+  sourceLabel: string;
+  listenedSeconds: number;
+  sessionCount: number;
+  endReason: 'completed' | 'stopped' | 'interrupted' | 'error' | 'unload';
+}
+
+export interface ListeningDashboardData {
+  generatedAt: string;
+  totals: ListeningDashboardTotals;
+  byDay: ListeningDashboardDay[];
+  bySource: ListeningDashboardSource[];
+  topBooks: ListeningDashboardBook[];
+  topChapters: ListeningDashboardChapter[];
+  recentSessions: ListeningDashboardSession[];
+}

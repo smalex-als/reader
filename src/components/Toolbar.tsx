@@ -66,6 +66,7 @@ interface ToolbarProps {
   onOpenPrint: () => void;
   onShareLink: () => void;
   onOpenHelp: () => void;
+  onOpenListeningDashboard: () => void;
   onOpenOcrQueue: () => void;
   onOpenToc: () => void;
   onOpenTocManage: () => void;
@@ -140,6 +141,7 @@ export default function Toolbar({
   onOpenPrint,
   onShareLink,
   onOpenHelp,
+  onOpenListeningDashboard,
   onOpenOcrQueue,
   onOpenToc,
   onOpenTocManage,
@@ -602,6 +604,13 @@ export default function Toolbar({
             disabled={controlsDisabled || disableImageActions}
           >
             Batch OCR
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onOpenListeningDashboard}
+          >
+            Listening Dashboard
           </button>
           {showOcrStatus && (
             <div className="toolbar-status" role="status" aria-live="polite">

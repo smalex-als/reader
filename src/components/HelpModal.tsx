@@ -1,3 +1,5 @@
+import CloseIcon from '@/components/CloseIcon';
+
 interface Hotkey {
   keys: string;
   action: string;
@@ -19,8 +21,14 @@ export default function HelpModal({ open, hotkeys, onClose }: HelpModalProps) {
       <div className="modal">
         <header className="modal-header">
           <h2 className="modal-title">Keyboard shortcuts</h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close shortcuts"
+            title="Close shortcuts"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">

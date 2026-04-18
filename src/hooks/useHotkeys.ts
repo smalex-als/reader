@@ -56,6 +56,7 @@ type HotkeysOptions = {
   openBookModal: () => void;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
+  onOpenListeningDashboard: () => void;
 };
 
 function isTextInput(element: EventTarget | null) {
@@ -117,7 +118,8 @@ export function useHotkeys({
   closeHelp,
   openBookModal,
   onOpenQuiz,
-  onOpenVocabulary
+  onOpenVocabulary,
+  onOpenListeningDashboard
 }: HotkeysOptions) {
   const hotkeys = useMemo(
     () => [
@@ -130,7 +132,7 @@ export function useHotkeys({
       { keys: 'Shift + Space', action: 'Pan down' },
       { keys: '+ / =', action: 'Zoom in' },
       { keys: '-', action: 'Zoom out' },
-      { keys: '0', action: 'Reset zoom/rotation' },
+      { keys: '0', action: 'Open listening dashboard' },
       { keys: 'W', action: 'Fit width' },
       { keys: 'H', action: 'Fit height' },
       { keys: 'R', action: 'Rotate 90°' },
@@ -248,7 +250,7 @@ export function useHotkeys({
           break;
         case '0':
           event.preventDefault();
-          resetTransform();
+          onOpenListeningDashboard();
           break;
         case 'w':
           if (viewMode !== 'pages' || !currentImage) {
@@ -458,7 +460,8 @@ export function useHotkeys({
     toggleOcrEditMode,
     gotoInputRef,
     onOpenQuiz,
-    onOpenVocabulary
+    onOpenVocabulary,
+    onOpenListeningDashboard
   ]);
 
   return { hotkeys };

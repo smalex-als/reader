@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import CloseIcon from '@/components/CloseIcon';
 import type { PageText, PageTextOcrEngine } from '@/types/app';
 
 interface TextModalProps {
@@ -70,8 +71,14 @@ export default function TextModal({
             {title}
             {generatedMarker ? <span className="modal-marker">• Generated</span> : null}
           </h2>
-          <button type="button" className="button button-ghost" onClick={onClose} aria-label="Close">
-            X
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close text"
+            title="Close text"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body modal-body-text">

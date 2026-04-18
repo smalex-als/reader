@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
+import CloseIcon from '@/components/CloseIcon';
 import {
   loadBookMeta,
   loadBookSortMode,
@@ -193,8 +194,14 @@ export default function BookSelectModal({
       <div className="modal modal-wide book-select-modal">
         <header className="modal-header">
           <h2 className="modal-title">Select a book</h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close book selector"
+            title="Close book selector"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">

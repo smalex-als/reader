@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import CloseIcon from '@/components/CloseIcon';
 import type { ChapterVocabulary, StreamState } from '@/types/app';
 
 interface VocabularyModalProps {
@@ -139,8 +140,14 @@ export default function VocabularyModal({
               </svg>
               <span>Generate</span>
             </button>
-            <button type="button" className="button button-ghost" onClick={onClose}>
-              Close
+            <button
+              type="button"
+              className="button button-ghost modal-icon-button"
+              onClick={onClose}
+              aria-label="Close vocabulary"
+              title="Close vocabulary"
+            >
+              <CloseIcon />
             </button>
           </div>
         </header>

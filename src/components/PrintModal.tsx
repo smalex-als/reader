@@ -1,3 +1,5 @@
+import CloseIcon from '@/components/CloseIcon';
+
 interface PrintOption {
   id: string;
   label: string;
@@ -35,8 +37,14 @@ export default function PrintModal({
       <div className="modal">
         <header className="modal-header">
           <h2 className="modal-title">Create printable PDF</h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close print dialog"
+            title="Close print dialog"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">

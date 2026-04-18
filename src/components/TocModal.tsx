@@ -1,3 +1,4 @@
+import CloseIcon from '@/components/CloseIcon';
 import type { TocEntry } from '@/types/app';
 import { getDetailedTocLevel } from '@/lib/toc';
 
@@ -52,8 +53,14 @@ export default function TocModal({
       <div className="modal modal-toc">
         <header className="modal-header">
           <h2 className="modal-title">Edit Table of Contents</h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close table of contents editor"
+            title="Close table of contents editor"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">

@@ -1,3 +1,4 @@
+import CloseIcon from '@/components/CloseIcon';
 import type { OcrJob } from '@/hooks/useOcrQueue';
 
 interface OcrQueueModalProps {
@@ -67,8 +68,14 @@ export default function OcrQueueModal({
             Batch OCR
             <span className={`ocr-status ocr-status-${statusLabel.toLowerCase()}`}>{statusLabel}</span>
           </h2>
-          <button type="button" className="button button-ghost" onClick={onClose}>
-            Close
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={onClose}
+            aria-label="Close OCR queue"
+            title="Close OCR queue"
+          >
+            <CloseIcon />
           </button>
         </header>
         <section className="modal-body">
