@@ -155,8 +155,9 @@ export function useStreamSequence({
     startIndex: number;
     baseKey: string;
     source: 'page' | 'chapter' | 'paragraph';
+    voiceOverride?: string;
   } | null>(null);
-  const pendingSingleStreamRef = useRef<{ text: string; pageKey: string } | null>(null);
+  const pendingSingleStreamRef = useRef<{ text: string; pageKey: string; voiceOverride?: string } | null>(null);
   const lastStreamSourceRef = useRef<StreamSource | null>(null);
   const sequenceRunIdRef = useRef(0);
   const scrollBufferRef = useRef<{
@@ -397,7 +398,7 @@ export function useStreamSequence({
       lastStreamSourceRef.current = { type: source, fullText, startIndex, baseKey };
       autoAdvanceRef.current = (source === 'page' || source === 'chapter') && viewMode !== 'scroll';
       if (isStreamBusy(streamState.status)) {
-        pendingStreamSequenceRef.current = { fullText, startIndex, baseKey, source };
+        pendingStreamSequenceRef.current = { fullText, startIndex, baseKey, source, voiceOverride };
         stopStream();
         stopStreamSequence();
         return;
@@ -518,7 +519,7 @@ export function useStreamSequence({
       lastStreamSourceRef.current = { type: 'single', text: trimmed, pageKey: payload.pageKey };
       autoAdvanceRef.current = false;
       if (isStreamBusy(streamState.status)) {
-        pendingSingleStreamRef.current = { text: trimmed, pageKey: payload.pageKey };
+        pendingSingleStreamRef.current = { text: trimmed, pageKey: payload.pageKey, voiceOverride };
         stopStream();
         stopStreamSequence();
         return;
@@ -582,6 +583,12 @@ export function useStreamSequence({
 
   const restartStreamFromPageKey = useCallback(
     async (pageKey: string, voiceOverride: string) => {
+      const single = lastStreamSourceRef.current;
+      if (single?.type === 'single' && single.pageKey === pageKey) {
+        await handlePlaySingleStream({ text: single.text, pageKey }, voiceOverride);
+        return;
+      }
+
       const locator = parseStreamLocator(pageKey);
       if (locator?.imageUrl && locator.blockId) {
         await handlePlayPageBlock(
@@ -605,11 +612,6 @@ export function useStreamSequence({
           voiceOverride
         );
         return;
-      }
-
-      const single = lastStreamSourceRef.current;
-      if (single?.type === 'single' && single.pageKey === pageKey) {
-        await handlePlaySingleStream({ text: single.text, pageKey }, voiceOverride);
       }
     },
     [firstChapterParagraph, handlePlayPageBlock, handlePlaySingleStream, startStreamSequenceFromText]
@@ -670,7 +672,13 @@ export function useStreamSequence({
       return;
     }
     pendingStreamSequenceRef.current = null;
-    void startStreamSequenceFromText(pending.fullText, pending.startIndex, pending.baseKey, pending.source);
+    void startStreamSequenceFromText(
+      pending.fullText,
+      pending.startIndex,
+      pending.baseKey,
+      pending.source,
+      pending.voiceOverride
+    );
   }, [startStreamSequenceFromText, streamState.status]);
 
   useEffect(() => {
@@ -684,7 +692,11 @@ export function useStreamSequence({
     pendingSingleStreamRef.current = null;
     stopAudio();
     stopStreamSequence();
-    void startStream({ text: pending.text, pageKey: pending.pageKey, voice: streamVoice });
+    void startStream({
+      text: pending.text,
+      pageKey: pending.pageKey,
+      voice: pending.voiceOverride ?? streamVoice
+    });
   }, [startStream, stopAudio, stopStreamSequence, streamState.status, streamVoice]);
 
   return {
