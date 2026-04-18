@@ -36,10 +36,14 @@ type HotkeysOptions = {
   searchOpen: boolean;
   bookCardOpen: boolean;
   bookModalOpen: boolean;
+  imagePreviewOpen: boolean;
   ocrQueueOpen: boolean;
   tocOpen: boolean;
   tocManageOpen: boolean;
   settingsOpen: boolean;
+  quizOpen: boolean;
+  vocabularyOpen: boolean;
+  listeningDashboardOpen: boolean;
   closeTextModal: () => void;
   closeBookModal: () => void;
   closePrintModal: () => void;
@@ -99,10 +103,14 @@ export function useHotkeys({
   searchOpen,
   bookCardOpen,
   bookModalOpen,
+  imagePreviewOpen,
   ocrQueueOpen,
   tocOpen,
   tocManageOpen,
   settingsOpen,
+  quizOpen,
+  vocabularyOpen,
+  listeningDashboardOpen,
   closeTextModal,
   closeBookModal,
   closePrintModal,
@@ -170,10 +178,14 @@ export function useHotkeys({
           searchOpen ||
           bookCardOpen ||
           bookModalOpen ||
+          imagePreviewOpen ||
           ocrQueueOpen ||
           tocOpen ||
           tocManageOpen ||
-          settingsOpen
+          settingsOpen ||
+          quizOpen ||
+          vocabularyOpen ||
+          listeningDashboardOpen
         ) &&
         event.key !== 'Escape'
       ) {
@@ -437,6 +449,7 @@ export function useHotkeys({
     bookmarksOpen,
     searchOpen,
     bookCardOpen,
+    imagePreviewOpen,
     closeBookmarks,
     openSearch,
     closeSearch,
@@ -449,6 +462,9 @@ export function useHotkeys({
     tocOpen,
     tocManageOpen,
     settingsOpen,
+    quizOpen,
+    vocabularyOpen,
+    listeningDashboardOpen,
     setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,
