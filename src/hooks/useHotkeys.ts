@@ -17,7 +17,7 @@ type HotkeysOptions = {
   toggleTextModal: () => void;
   triggerBackgroundOcr: () => Promise<void> | void;
   toggleOcrEditMode: () => Promise<void> | void;
-  toggleViewMode: () => void;
+  setViewMode: (mode: ViewMode) => void;
   handlePrev: () => void;
   handleNext: () => void;
   audioStatus: AudioState['status'];
@@ -77,7 +77,7 @@ export function useHotkeys({
   toggleTextModal,
   triggerBackgroundOcr,
   toggleOcrEditMode,
-  toggleViewMode,
+  setViewMode,
   handlePrev,
   handleNext,
   audioStatus,
@@ -134,7 +134,9 @@ export function useHotkeys({
       { keys: 'T', action: 'Toggle page text' },
       { keys: 'O', action: 'Run Deepseek OCR in background' },
       { keys: 'E', action: 'Toggle OCR block edit mode' },
-      { keys: 'V', action: 'Toggle view mode' },
+      { keys: '1', action: 'Switch to page view' },
+      { keys: '2', action: 'Switch to scroll view' },
+      { keys: '3', action: 'Switch to text view' },
       { keys: 'P', action: 'Play/Pause audio' },
       { keys: 'S', action: 'Play/Stop stream audio' },
       { keys: 'G', action: 'Focus Go To input' },
@@ -264,9 +266,17 @@ export function useHotkeys({
           event.preventDefault();
           applyFilters({ invert: !settings.invert });
           break;
-        case 'v':
+        case '1':
           event.preventDefault();
-          toggleViewMode();
+          setViewMode('pages');
+          break;
+        case '2':
+          event.preventDefault();
+          setViewMode('scroll');
+          break;
+        case '3':
+          event.preventDefault();
+          setViewMode('text');
           break;
         case 'p':
           event.preventDefault();
@@ -402,7 +412,7 @@ export function useHotkeys({
     toggleFullscreen,
     handleNext,
     handlePrev,
-    toggleViewMode,
+    setViewMode,
     bookModalOpen,
     closeBookModal,
     openBookModal,

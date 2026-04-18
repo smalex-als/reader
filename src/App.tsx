@@ -753,21 +753,6 @@ export default function App() {
     [isTextBook, setViewMode]
   );
 
-  const toggleViewMode = useCallback(() => {
-    if (isTextBook) {
-      return;
-    }
-    setViewMode((prev) => {
-      if (prev === 'pages') {
-        return 'scroll';
-      }
-      if (prev === 'scroll') {
-        return 'text';
-      }
-      return 'pages';
-    });
-  }, [isTextBook, setViewMode]);
-
   const {
     bookmarks,
     bookmarksLoading,
@@ -1098,7 +1083,7 @@ export default function App() {
       }
     },
     toggleOcrEditMode: handleToggleOcrEditMode,
-    toggleViewMode,
+    setViewMode: handleViewModeChange,
     handlePrev,
     handleNext,
     audioStatus: audioState.status,
@@ -1200,8 +1185,14 @@ export default function App() {
       }
       void handleCreateChapter({ bookName: '', chapterTitle: '' });
     },
-    onOpenQuiz: () => void handleOpenQuiz(),
-    onOpenVocabulary: () => void handleOpenVocabulary(),
+    onOpenQuiz: () => {
+      setSettingsOpen(false);
+      void handleOpenQuiz();
+    },
+    onOpenVocabulary: () => {
+      setSettingsOpen(false);
+      void handleOpenVocabulary();
+    },
     quizDisabled: !bookId || !chapterNumber,
     currentChapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : null),
     gotoInputRef,
