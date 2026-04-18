@@ -4,6 +4,8 @@ import type { ListeningDashboardData } from '@/types/app';
 
 interface ListeningDashboardModalProps {
   open: boolean;
+  onOpenBook: (bookId: string) => void;
+  onOpenChapter: (bookId: string, chapterNumber: number | null) => void;
   onClose: () => void;
 }
 
@@ -47,7 +49,12 @@ function formatDay(value: string) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export default function ListeningDashboardModal({ open, onClose }: ListeningDashboardModalProps) {
+export default function ListeningDashboardModal({
+  open,
+  onOpenBook,
+  onOpenChapter,
+  onClose
+}: ListeningDashboardModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ListeningDashboardData | null>(null);
@@ -200,7 +207,12 @@ export default function ListeningDashboardModal({ open, onClose }: ListeningDash
                   <h3 className="listening-panel-title">Top Books</h3>
                   <div className="listening-table">
                     {data.topBooks.map((entry) => (
-                      <div key={entry.bookId} className="listening-table-row">
+                      <button
+                        key={entry.bookId}
+                        type="button"
+                        className="listening-table-row listening-table-button"
+                        onClick={() => onOpenBook(entry.bookId)}
+                      >
                         <div className="listening-table-main">
                           <strong>{entry.bookId}</strong>
                           <span>{entry.sessions} sessions</span>
@@ -209,7 +221,7 @@ export default function ListeningDashboardModal({ open, onClose }: ListeningDash
                           <strong>{formatDuration(entry.totalSeconds)}</strong>
                           <span>{formatDateTime(entry.lastListenedAt)}</span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </article>
@@ -218,9 +230,11 @@ export default function ListeningDashboardModal({ open, onClose }: ListeningDash
                   <h3 className="listening-panel-title">Top Chapters</h3>
                   <div className="listening-table">
                     {data.topChapters.map((entry, index) => (
-                      <div
+                      <button
                         key={`${entry.bookId}-${entry.chapterNumber ?? 'none'}-${index}`}
-                        className="listening-table-row"
+                        type="button"
+                        className="listening-table-row listening-table-button"
+                        onClick={() => onOpenChapter(entry.bookId, entry.chapterNumber)}
                       >
                         <div className="listening-table-main">
                           <strong>{entry.chapterTitle ?? `Chapter ${entry.chapterNumber ?? 'Unknown'}`}</strong>
@@ -230,7 +244,7 @@ export default function ListeningDashboardModal({ open, onClose }: ListeningDash
                           <strong>{formatDuration(entry.totalSeconds)}</strong>
                           <span>{entry.sessions} sessions</span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </article>
@@ -240,9 +254,15 @@ export default function ListeningDashboardModal({ open, onClose }: ListeningDash
                 <h3 className="listening-panel-title">Recent Sessions</h3>
                 <div className="listening-table listening-table-compact">
                   {data.recentSessions.map((entry, index) => (
-                    <div
+                    <button
                       key={`${entry.timestamp}-${entry.bookId}-${index}`}
-                      className="listening-table-row listening-table-row-multiline"
+                      type="button"
+                      className="listening-table-row listening-table-row-multiline listening-table-button"
+                      onClick={() =>
+                        entry.chapterNumber !== null
+                          ? onOpenChapter(entry.bookId, entry.chapterNumber)
+                          : onOpenBook(entry.bookId)
+                      }
                     >
                       <div className="listening-table-main">
                         <strong>{entry.chapterTitle ?? entry.bookId}</strong>
@@ -254,7 +274,7 @@ export default function ListeningDashboardModal({ open, onClose }: ListeningDash
                           {entry.endReason} · {formatDateTime(entry.timestamp)}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </section>

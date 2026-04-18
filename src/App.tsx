@@ -813,6 +813,45 @@ export default function App() {
     }
   }, [bookId, showToast]);
 
+  const handleOpenDashboardBook = useCallback(
+    (targetBookId: string) => {
+      closeListeningDashboard();
+      setBookId(targetBookId);
+    },
+    [closeListeningDashboard, setBookId]
+  );
+
+  const handleOpenDashboardChapter = useCallback(
+    async (targetBookId: string, targetChapterNumber: number | null) => {
+      if (!targetChapterNumber || targetChapterNumber < 1) {
+        closeListeningDashboard();
+        setBookId(targetBookId);
+        return;
+      }
+
+      let targetPage = targetChapterNumber - 1;
+      try {
+        const response = await fetchJson<{ toc: TocEntry[] }>(`/api/books/${encodeURIComponent(targetBookId)}/toc`);
+        const tocEntries = Array.isArray(response.toc) ? response.toc : [];
+        const tocEntry = tocEntries[targetChapterNumber - 1];
+        if (tocEntry && Number.isInteger(tocEntry.page)) {
+          targetPage = tocEntry.page;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+
+      saveLastPage(targetBookId, targetPage);
+      closeListeningDashboard();
+      if (bookId === targetBookId) {
+        renderPage(targetPage);
+        return;
+      }
+      setBookId(targetBookId);
+    },
+    [bookId, closeListeningDashboard, renderPage, setBookId]
+  );
+
   const handleSelectSearchResult = useCallback((result: SearchResult) => {
     closeSearch();
     renderPage(result.page);
@@ -1444,6 +1483,8 @@ export default function App() {
     },
     listeningDashboardModalProps: {
       open: listeningDashboardOpen,
+      onOpenBook: handleOpenDashboardBook,
+      onOpenChapter: handleOpenDashboardChapter,
       onClose: closeListeningDashboard
     }
   };

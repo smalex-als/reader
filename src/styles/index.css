@@ -1873,6 +1873,24 @@ body {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.listening-table-button {
+  width: 100%;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.listening-table-button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.listening-table-button:focus-visible {
+  outline: 2px solid rgba(96, 160, 255, 0.85);
+  outline-offset: 2px;
+}
+
 .listening-table-row-multiline {
   align-items: start;
 }

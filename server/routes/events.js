@@ -5,6 +5,7 @@ import { DATA_DIR } from '../config.js';
 
 const router = express.Router();
 const STREAM_HISTORY_LOG = path.join(DATA_DIR, '.stream-history.log');
+const SESSION_GROUP_GAP_MS = 60 * 1000;
 
 function normalizeStreamSource(pageKey) {
   if (typeof pageKey !== 'string' || !pageKey) {
@@ -152,60 +153,12 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
       return;
     }
 
-    const byDay = new Map();
-    const bySource = new Map();
-    const byBook = new Map();
-    const byChapter = new Map();
-    const activeDays = new Set();
-    let totalSeconds = 0;
-    let lastListenedAt = null;
-
     const normalizedEntries = entries
       .map((entry) => {
         const listenedSeconds = Number.isFinite(entry.listenedSeconds) ? entry.listenedSeconds : 0;
         const timestamp = typeof entry.timestamp === 'string' ? entry.timestamp : new Date().toISOString();
         const { sourceType, sourceLabel } = normalizeStreamSource(entry.pageKeyStart);
-        const day = timestamp.slice(0, 10);
-        activeDays.add(day);
-        totalSeconds += listenedSeconds;
-        if (!lastListenedAt || timestamp > lastListenedAt) {
-          lastListenedAt = timestamp;
-        }
-
-        const dayAggregate = byDay.get(day) ?? { date: day, sessions: 0, totalSeconds: 0 };
-        dayAggregate.sessions += 1;
-        dayAggregate.totalSeconds += listenedSeconds;
-        byDay.set(day, dayAggregate);
-
-        const sourceAggregate = bySource.get(sourceType) ?? { sourceType, label: sourceLabel, sessions: 0, totalSeconds: 0 };
-        sourceAggregate.sessions += 1;
-        sourceAggregate.totalSeconds += listenedSeconds;
-        bySource.set(sourceType, sourceAggregate);
-
         const bookId = typeof entry.bookId === 'string' ? entry.bookId : 'unknown';
-        const bookAggregate = byBook.get(bookId) ?? { bookId, sessions: 0, totalSeconds: 0, lastListenedAt: null };
-        bookAggregate.sessions += 1;
-        bookAggregate.totalSeconds += listenedSeconds;
-        bookAggregate.lastListenedAt =
-          !bookAggregate.lastListenedAt || timestamp > bookAggregate.lastListenedAt ? timestamp : bookAggregate.lastListenedAt;
-        byBook.set(bookId, bookAggregate);
-
-        const chapterKey = `${bookId}::${entry.chapterNumber ?? 'none'}::${entry.chapterTitle ?? ''}`;
-        const chapterAggregate = byChapter.get(chapterKey) ?? {
-          bookId,
-          chapterNumber: Number.isInteger(entry.chapterNumber) ? entry.chapterNumber : null,
-          chapterTitle: typeof entry.chapterTitle === 'string' ? entry.chapterTitle : null,
-          sessions: 0,
-          totalSeconds: 0,
-          lastListenedAt: null
-        };
-        chapterAggregate.sessions += 1;
-        chapterAggregate.totalSeconds += listenedSeconds;
-        chapterAggregate.lastListenedAt =
-          !chapterAggregate.lastListenedAt || timestamp > chapterAggregate.lastListenedAt
-            ? timestamp
-            : chapterAggregate.lastListenedAt;
-        byChapter.set(chapterKey, chapterAggregate);
 
         return {
           timestamp,
@@ -228,22 +181,30 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
         };
       });
 
-    const normalizedRecentSessions = normalizedEntries
-      .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
+    const groupedSessions = normalizedEntries
+      .sort((left, right) => left.startedAt.localeCompare(right.startedAt))
       .reduce((groups, entry) => {
         const previous = groups[groups.length - 1];
+        const previousEndedAt = previous ? Date.parse(previous.endedAt) : Number.NaN;
+        const currentStartedAt = Date.parse(entry.startedAt);
+        const withinGap =
+          Number.isFinite(previousEndedAt) &&
+          Number.isFinite(currentStartedAt) &&
+          currentStartedAt - previousEndedAt <= SESSION_GROUP_GAP_MS;
         if (
           previous &&
           previous.bookId === entry.bookId &&
           previous.chapterNumber === entry.chapterNumber &&
           previous.chapterTitle === entry.chapterTitle &&
-          previous.sourceType === entry.sourceType
+          previous.sourceType === entry.sourceType &&
+          withinGap
         ) {
           previous.listenedSeconds += entry.listenedSeconds;
           previous.timestamp = previous.timestamp > entry.timestamp ? previous.timestamp : entry.timestamp;
           previous.startedAt = previous.startedAt < entry.startedAt ? previous.startedAt : entry.startedAt;
           previous.endedAt = previous.endedAt > entry.endedAt ? previous.endedAt : entry.endedAt;
           previous.sessionCount += 1;
+          previous.endReason = entry.endReason;
           return groups;
         }
         groups.push({
@@ -251,15 +212,79 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
           sessionCount: 1
         });
         return groups;
-      }, [])
+      }, []);
+
+    const byDay = new Map();
+    const bySource = new Map();
+    const byBook = new Map();
+    const byChapter = new Map();
+    const activeDays = new Set();
+    let totalSeconds = 0;
+    let lastListenedAt = null;
+
+    for (const session of groupedSessions) {
+      const day = session.timestamp.slice(0, 10);
+      activeDays.add(day);
+      totalSeconds += session.listenedSeconds;
+      if (!lastListenedAt || session.timestamp > lastListenedAt) {
+        lastListenedAt = session.timestamp;
+      }
+
+      const dayAggregate = byDay.get(day) ?? { date: day, sessions: 0, totalSeconds: 0 };
+      dayAggregate.sessions += 1;
+      dayAggregate.totalSeconds += session.listenedSeconds;
+      byDay.set(day, dayAggregate);
+
+      const sourceAggregate =
+        bySource.get(session.sourceType) ?? {
+          sourceType: session.sourceType,
+          label: session.sourceLabel,
+          sessions: 0,
+          totalSeconds: 0
+        };
+      sourceAggregate.sessions += 1;
+      sourceAggregate.totalSeconds += session.listenedSeconds;
+      bySource.set(session.sourceType, sourceAggregate);
+
+      const bookAggregate =
+        byBook.get(session.bookId) ?? { bookId: session.bookId, sessions: 0, totalSeconds: 0, lastListenedAt: null };
+      bookAggregate.sessions += 1;
+      bookAggregate.totalSeconds += session.listenedSeconds;
+      bookAggregate.lastListenedAt =
+        !bookAggregate.lastListenedAt || session.timestamp > bookAggregate.lastListenedAt
+          ? session.timestamp
+          : bookAggregate.lastListenedAt;
+      byBook.set(session.bookId, bookAggregate);
+
+      const chapterKey = `${session.bookId}::${session.chapterNumber ?? 'none'}::${session.chapterTitle ?? ''}`;
+      const chapterAggregate = byChapter.get(chapterKey) ?? {
+        bookId: session.bookId,
+        chapterNumber: session.chapterNumber,
+        chapterTitle: session.chapterTitle,
+        sessions: 0,
+        totalSeconds: 0,
+        lastListenedAt: null
+      };
+      chapterAggregate.sessions += 1;
+      chapterAggregate.totalSeconds += session.listenedSeconds;
+      chapterAggregate.lastListenedAt =
+        !chapterAggregate.lastListenedAt || session.timestamp > chapterAggregate.lastListenedAt
+          ? session.timestamp
+          : chapterAggregate.lastListenedAt;
+      byChapter.set(chapterKey, chapterAggregate);
+    }
+
+    const normalizedRecentSessions = groupedSessions
+      .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
       .slice(0, 25);
 
     res.json({
       generatedAt: new Date().toISOString(),
       totals: {
-        sessions: entries.length,
+        sessions: groupedSessions.length,
         totalSeconds: Math.round(totalSeconds * 1000) / 1000,
-        averageSeconds: entries.length > 0 ? Math.round((totalSeconds / entries.length) * 1000) / 1000 : 0,
+        averageSeconds:
+          groupedSessions.length > 0 ? Math.round((totalSeconds / groupedSessions.length) * 1000) / 1000 : 0,
         daysActive: activeDays.size,
         lastListenedAt
       },
