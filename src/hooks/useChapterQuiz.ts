@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChapterQuiz } from '@/types/app';
 
 type ChapterRange = {
@@ -17,6 +17,14 @@ export function useChapterQuiz({ bookId, chapterNumber, chapterRange }: UseChapt
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
   const [quiz, setQuiz] = useState<ChapterQuiz | null>(null);
+  const requestIdRef = useRef(0);
+
+  useEffect(() => {
+    requestIdRef.current += 1;
+    setQuiz(null);
+    setQuizError(null);
+    setQuizLoading(false);
+  }, [bookId, chapterNumber]);
 
   const loadQuiz = useCallback(async (force = false) => {
     if (!bookId || !chapterNumber) {
@@ -29,6 +37,9 @@ export function useChapterQuiz({ bookId, chapterNumber, chapterRange }: UseChapt
     setQuizOpen(true);
     setQuizLoading(true);
     setQuizError(null);
+    setQuiz(null);
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
 
     try {
       const baseUrl = `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/quiz`;
@@ -60,6 +71,9 @@ export function useChapterQuiz({ bookId, chapterNumber, chapterRange }: UseChapt
         file?: string;
       };
 
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       setQuiz({
         chapterNumber: payload.chapterNumber,
         title: payload.title,
@@ -68,11 +82,16 @@ export function useChapterQuiz({ bookId, chapterNumber, chapterRange }: UseChapt
         file: payload.file
       });
     } catch (error) {
+      if (requestIdRef.current !== requestId) {
+        return;
+      }
       const message = error instanceof Error ? error.message : 'Unable to load quiz.';
       setQuizError(message);
       setQuiz(null);
     } finally {
-      setQuizLoading(false);
+      if (requestIdRef.current === requestId) {
+        setQuizLoading(false);
+      }
     }
   }, [bookId, chapterNumber, chapterRange]);
 

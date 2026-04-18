@@ -1391,7 +1391,10 @@ export default function App() {
       onStopAudio: handleStopStream,
       onAutoPlayEnabledChange: setQuizAutoPlayEnabled,
       onRegenerate: () => void handleRegenerateQuiz(),
-      onClose: handleCloseQuiz
+      onClose: () => {
+        handleStopStream();
+        handleCloseQuiz();
+      }
     },
     imagePreviewModalProps: {
       open: imagePreview !== null,
