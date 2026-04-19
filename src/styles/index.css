@@ -279,6 +279,10 @@ body {
 }
 
 .memory-card-text {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.35rem;
   font-size: 1.40rem;
   line-height: 1.7;
   color: var(--text-viewer-fg);
@@ -1822,6 +1826,16 @@ body {
 
 .modal-vocabulary .modal-body {
   overflow: hidden;
+}
+
+.modal-memory-card {
+  width: min(1120px, calc(100vw - 2rem));
+  height: min(94vh, 1040px);
+  max-height: min(94vh, 1040px);
+}
+
+.modal-memory-card .modal-body {
+  overflow: auto;
 }
 
 .modal-listening-dashboard {

@@ -59,7 +59,7 @@ export default function MemoryCardModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-vocabulary">
+      <div className="modal modal-memory-card">
         <header className="modal-header">
           <h2 className="modal-title">
             Memory Card
