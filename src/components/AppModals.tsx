@@ -16,6 +16,7 @@ import QuizModal from '@/components/QuizModal';
 import ImagePreviewModal from '@/components/ImagePreviewModal';
 import VocabularyModal from '@/components/VocabularyModal';
 import ListeningDashboardModal from '@/components/ListeningDashboardModal';
+import MemoryCardModal from '@/components/MemoryCardModal';
 
 type ToastProps = ComponentProps<typeof Toast>;
 type PrintModalProps = ComponentProps<typeof PrintModal>;
@@ -33,6 +34,7 @@ type QuizModalProps = ComponentProps<typeof QuizModal>;
 type ImagePreviewModalProps = ComponentProps<typeof ImagePreviewModal>;
 type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
 type ListeningDashboardModalProps = ComponentProps<typeof ListeningDashboardModal>;
+type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
@@ -52,6 +54,7 @@ interface AppModalsProps {
   imagePreviewModalProps: ImagePreviewModalProps;
   vocabularyModalProps: VocabularyModalProps;
   listeningDashboardModalProps: ListeningDashboardModalProps;
+  memoryCardModalProps: MemoryCardModalProps;
 }
 
 function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
@@ -78,7 +81,8 @@ export default function AppModals({
   quizModalProps,
   imagePreviewModalProps,
   vocabularyModalProps,
-  listeningDashboardModalProps
+  listeningDashboardModalProps,
+  memoryCardModalProps
 }: AppModalsProps) {
   return (
     <>
@@ -95,6 +99,7 @@ export default function AppModals({
       {renderInPortal(<SettingsModal {...settingsModalProps} />, portalTarget)}
       {renderInPortal(<QuizModal {...quizModalProps} />, portalTarget)}
       {renderInPortal(<VocabularyModal {...vocabularyModalProps} />, portalTarget)}
+      {renderInPortal(<MemoryCardModal {...memoryCardModalProps} />, portalTarget)}
       {renderInPortal(<ListeningDashboardModal {...listeningDashboardModalProps} />, portalTarget)}
       {renderInPortal(<ImagePreviewModal {...imagePreviewModalProps} />, portalTarget)}
       <OcrQueueModal {...ocrQueueModalProps} />

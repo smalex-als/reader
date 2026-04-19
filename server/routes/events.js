@@ -26,6 +26,9 @@ function normalizeStreamSource(pageKey) {
   if (pageKey.startsWith('vocabulary::')) {
     return { sourceType: 'vocabulary', sourceLabel: 'Vocabulary' };
   }
+  if (pageKey.startsWith('memory-card::')) {
+    return { sourceType: 'memory-card', sourceLabel: 'Memory Card' };
+  }
   if (pageKey.startsWith('chapter::paragraph-start-')) {
     return { sourceType: 'chapter', sourceLabel: 'Chapter Text' };
   }

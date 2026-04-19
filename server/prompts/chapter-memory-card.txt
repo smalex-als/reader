@@ -1,0 +1,10 @@
+Extract the most important information from the chapter text I provide.
+
+Output requirements:
+- produce a very short memory card in English
+- return plain text only
+- keep it concise and high-signal
+- prefer 3 to 6 short bullet points or a very short compact paragraph
+- focus only on the main ideas, names, events, concepts, or takeaways
+- do not include filler, introductions, or conclusions
+- do not mention that this is a summary

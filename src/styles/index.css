@@ -278,6 +278,35 @@ body {
   padding-right: 0.2rem;
 }
 
+.memory-card-text {
+  font-size: 1.40rem;
+  line-height: 1.7;
+  color: var(--text-viewer-fg);
+}
+
+.memory-card-text > :first-child {
+  margin-top: 0;
+}
+
+.memory-card-text > :last-child {
+  margin-bottom: 0;
+}
+
+.memory-card-text p,
+.memory-card-text ul,
+.memory-card-text ol {
+  margin: 0 0 0.85rem;
+}
+
+.memory-card-text ul,
+.memory-card-text ol {
+  padding-left: 1.25rem;
+}
+
+.memory-card-text li + li {
+  margin-top: 2.50rem;
+}
+
 .study-vocabulary-item {
   display: flex;
   flex-direction: column;

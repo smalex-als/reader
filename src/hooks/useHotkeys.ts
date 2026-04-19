@@ -43,6 +43,7 @@ type HotkeysOptions = {
   settingsOpen: boolean;
   quizOpen: boolean;
   vocabularyOpen: boolean;
+  memoryCardOpen: boolean;
   listeningDashboardOpen: boolean;
   closeTextModal: () => void;
   closeBookModal: () => void;
@@ -60,6 +61,7 @@ type HotkeysOptions = {
   openBookModal: () => void;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
+  onOpenMemoryCard: () => void;
   onOpenListeningDashboard: () => void;
 };
 
@@ -110,6 +112,7 @@ export function useHotkeys({
   settingsOpen,
   quizOpen,
   vocabularyOpen,
+  memoryCardOpen,
   listeningDashboardOpen,
   closeTextModal,
   closeBookModal,
@@ -127,6 +130,7 @@ export function useHotkeys({
   openBookModal,
   onOpenQuiz,
   onOpenVocabulary,
+  onOpenMemoryCard,
   onOpenListeningDashboard
 }: HotkeysOptions) {
   const hotkeys = useMemo(
@@ -185,6 +189,7 @@ export function useHotkeys({
           settingsOpen ||
           quizOpen ||
           vocabularyOpen ||
+          memoryCardOpen ||
           listeningDashboardOpen
         ) &&
         event.key !== 'Escape'
@@ -464,6 +469,7 @@ export function useHotkeys({
     settingsOpen,
     quizOpen,
     vocabularyOpen,
+    memoryCardOpen,
     listeningDashboardOpen,
     setOcrQueueOpen,
     setTocOpen,
@@ -477,6 +483,7 @@ export function useHotkeys({
     gotoInputRef,
     onOpenQuiz,
     onOpenVocabulary,
+    onOpenMemoryCard,
     onOpenListeningDashboard
   ]);
 

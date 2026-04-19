@@ -38,6 +38,7 @@ import {
   deleteChapterTextVersion,
   listChapterTextVersions
 } from '../lib/chapterTextVersions.js';
+import { generateChapterMemoryCard, loadChapterMemoryCard } from '../lib/memoryCard.js';
 import { generateChapterQuiz, loadChapterQuiz } from '../lib/quiz.js';
 import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabulary.js';
 import { createImagePreviewCrop } from '../lib/imagePreview.js';
@@ -445,6 +446,31 @@ router.get('/api/books/:id/chapters/:chapter/quiz', asyncHandler(async (req, res
   const bookId = normalizeBookId(req.params.id);
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const result = await loadChapterQuiz({ bookId, chapterNumber });
+  res.json({ book: bookId, ...result });
+}));
+
+router.get('/api/books/:id/chapters/:chapter/memory-card', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const result = await loadChapterMemoryCard({ bookId, chapterNumber });
+  res.json({ book: bookId, ...result });
+}));
+
+router.post('/api/books/:id/chapters/:chapter/memory-card', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const force = req.body?.force === true;
+  const pageStart =
+    typeof req.body?.pageStart === 'number' ? req.body.pageStart : Number.parseInt(req.body?.pageStart, 10);
+  const pageEnd =
+    typeof req.body?.pageEnd === 'number' ? req.body.pageEnd : Number.parseInt(req.body?.pageEnd, 10);
+  const result = await generateChapterMemoryCard({
+    bookId,
+    chapterNumber,
+    force,
+    pageStart: Number.isInteger(pageStart) ? pageStart : null,
+    pageEnd: Number.isInteger(pageEnd) ? pageEnd : null
+  });
   res.json({ book: bookId, ...result });
 }));
 

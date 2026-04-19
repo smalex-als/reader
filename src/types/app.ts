@@ -77,6 +77,14 @@ export interface ChapterVocabulary {
   file?: string;
 }
 
+export interface ChapterMemoryCard {
+  chapterNumber: number;
+  title: string;
+  text: string;
+  source: 'file' | 'openai';
+  file?: string;
+}
+
 export interface ChapterTextPrompt {
   id: string;
   name: string;

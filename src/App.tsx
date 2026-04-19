@@ -7,6 +7,7 @@ import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
+import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useModalState } from '@/hooks/useModalState';
 import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
@@ -336,6 +337,19 @@ export default function App() {
     regenerateVocabulary: handleRegenerateVocabulary,
     closeVocabulary: handleCloseVocabulary
   } = useChapterVocabulary({
+    bookId,
+    chapterNumber,
+    chapterRange
+  });
+  const {
+    memoryCardOpen,
+    memoryCard,
+    memoryCardLoading,
+    memoryCardError,
+    openMemoryCard: handleOpenMemoryCard,
+    regenerateMemoryCard: handleRegenerateMemoryCard,
+    closeMemoryCard: handleCloseMemoryCard
+  } = useChapterMemoryCard({
     bookId,
     chapterNumber,
     chapterRange
@@ -993,6 +1007,18 @@ export default function App() {
       showToast('Unable to copy vocabulary', 'error');
     }
   }, [showToast]);
+  const handleCopyMemoryCard = useCallback(async (textValue: string) => {
+    if (!textValue.trim()) {
+      showToast('No memory card available to copy', 'error');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(textValue);
+      showToast('Copied memory card to clipboard', 'success');
+    } catch {
+      showToast('Unable to copy memory card', 'error');
+    }
+  }, [showToast]);
 
   const handleShareLink = useCallback(async () => {
     if (!bookId || navigationCount === 0) {
@@ -1160,6 +1186,7 @@ export default function App() {
     settingsOpen,
     quizOpen,
     vocabularyOpen,
+    memoryCardOpen,
     listeningDashboardOpen,
     closeTextModal,
     closeBookModal,
@@ -1182,6 +1209,10 @@ export default function App() {
     onOpenVocabulary: () => {
       setSettingsOpen(false);
       void handleOpenVocabulary();
+    },
+    onOpenMemoryCard: () => {
+      setSettingsOpen(false);
+      void handleOpenMemoryCard();
     },
     onOpenListeningDashboard: () => {
       setSettingsOpen(false);
@@ -1259,6 +1290,10 @@ export default function App() {
     onOpenVocabulary: () => {
       setSettingsOpen(false);
       void handleOpenVocabulary();
+    },
+    onOpenMemoryCard: () => {
+      setSettingsOpen(false);
+      void handleOpenMemoryCard();
     },
     quizDisabled: !bookId || !chapterNumber,
     currentChapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : null),
@@ -1480,6 +1515,27 @@ export default function App() {
       onStopAudio: handleStopStream,
       onRegenerate: () => void handleRegenerateVocabulary(),
       onClose: handleCloseVocabulary
+    },
+    memoryCardModalProps: {
+      open: memoryCardOpen,
+      loading: memoryCardLoading,
+      error: memoryCardError,
+      chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
+      memoryCard,
+      streamState,
+      onCopyText: handleCopyMemoryCard,
+      onPlayAudio: (text: string, chapterNumberValue: number) => {
+        void handlePlaySingleStream({
+          text,
+          pageKey: `memory-card::chapter-${chapterNumberValue}`
+        });
+      },
+      onStopAudio: handleStopStream,
+      onRegenerate: () => void handleRegenerateMemoryCard(),
+      onClose: () => {
+        handleStopStream();
+        handleCloseMemoryCard();
+      }
     },
     listeningDashboardModalProps: {
       open: listeningDashboardOpen,
