@@ -7,6 +7,7 @@ type ChapterRange = {
 } | null;
 
 type AudioJobStatus = {
+  provider?: 'default' | 'xai';
   status: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
   error?: string | null;
   audioUrl?: string | null;
@@ -16,7 +17,12 @@ type AudioJobStatus = {
 type ChapterAudioStatusEntry = {
   chapterNumber: number;
   latestVersionId?: string | null;
-  audio?: { ready?: boolean; url?: string | null; versionId?: string | null };
+  audio?: {
+    ready?: boolean;
+    url?: string | null;
+    versionId?: string | null;
+    provider?: 'default' | 'xai';
+  };
 };
 
 type UseChapterTextVersionsOptions = {
@@ -315,6 +321,7 @@ export function useChapterTextVersions({
           return;
         }
         setAudioJob({
+          provider: job.provider ?? undefined,
           status: job.status,
           error: job.error ?? null,
           audioUrl: job.audioUrl ?? null,
@@ -381,7 +388,7 @@ export function useChapterTextVersions({
     }
   }, [bookId, canGenerate, chapterNumber, chapterRange, generating]);
 
-  const handleGenerateAudio = useCallback(async () => {
+  const handleGenerateAudioWithProvider = useCallback(async (provider: 'default' | 'xai') => {
     if (!canGenerateAudio || !bookId || !chapterNumber || audioGenerating) {
       return;
     }
@@ -394,7 +401,11 @@ export function useChapterTextVersions({
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ voice: streamVoice, versionId: selectedVersionId })
+          body: JSON.stringify({
+            voice: provider === 'xai' ? 'Eve' : streamVoice,
+            versionId: selectedVersionId,
+            provider
+          })
         }
       );
       if (!response.ok) {
@@ -405,6 +416,7 @@ export function useChapterTextVersions({
       };
       if (payload?.job?.status) {
         setAudioJob({
+          provider: payload.job.provider ?? provider,
           status: payload.job.status,
           error: payload.job.error ?? null,
           audioUrl: payload.job.audioUrl ?? null,
@@ -422,6 +434,14 @@ export function useChapterTextVersions({
       setAudioGenerating(false);
     }
   }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, scheduleAudioPoll, selectedVersionId, streamVoice]);
+
+  const handleGenerateAudio = useCallback(() => {
+    return handleGenerateAudioWithProvider('default');
+  }, [handleGenerateAudioWithProvider]);
+
+  const handleGenerateXaiAudio = useCallback(() => {
+    return handleGenerateAudioWithProvider('xai');
+  }, [handleGenerateAudioWithProvider]);
 
   const handleCreateVersion = useCallback(async () => {
     if (!canCreateVersion || !bookId || !chapterNumber || versionSaving) {
@@ -579,6 +599,7 @@ export function useChapterTextVersions({
     canGenerateAudio,
     handleGenerate,
     handleGenerateAudio,
+    handleGenerateXaiAudio,
     handleCreateVersion,
     handleDeleteVersion,
     handleCancelAudioJob

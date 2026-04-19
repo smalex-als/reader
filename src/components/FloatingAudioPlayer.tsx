@@ -4,11 +4,18 @@ export type FloatingAudioTrack = {
   title: string;
   url: string;
   subtitle?: string;
+  kind?: 'page-tts' | 'text-tts' | 'file';
+  provider?: 'openai' | 'xai' | null;
+  pageKey?: string | null;
 };
 
 interface FloatingAudioPlayerProps {
   track: FloatingAudioTrack | null;
   onClose: () => void;
+  onPlaybackStateChange?: (
+    state: 'loading' | 'playing' | 'paused' | 'ended' | 'error',
+    track: FloatingAudioTrack
+  ) => void;
 }
 
 function formatTime(value: number) {
@@ -20,7 +27,11 @@ function formatTime(value: number) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPlayerProps) {
+export default function FloatingAudioPlayer({
+  track,
+  onClose,
+  onPlaybackStateChange
+}: FloatingAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -49,9 +60,30 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
       }
       setCurrentTime(audio.currentTime || 0);
     };
-    const handlePlay = () => setPlaying(true);
-    const handlePause = () => setPlaying(false);
-    const handleEnded = () => setPlaying(false);
+    const handlePlay = () => {
+      setPlaying(true);
+      if (track) {
+        onPlaybackStateChange?.('playing', track);
+      }
+    };
+    const handlePause = () => {
+      setPlaying(false);
+      if (track) {
+        onPlaybackStateChange?.('paused', track);
+      }
+    };
+    const handleEnded = () => {
+      setPlaying(false);
+      if (track) {
+        onPlaybackStateChange?.('ended', track);
+      }
+    };
+    const handleError = () => {
+      setPlaying(false);
+      if (track) {
+        onPlaybackStateChange?.('error', track);
+      }
+    };
     audio.addEventListener('loadedmetadata', handleLoaded);
     audio.addEventListener('durationchange', handleLoaded);
     audio.addEventListener('loadeddata', handleLoaded);
@@ -59,6 +91,7 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoaded);
       audio.removeEventListener('durationchange', handleLoaded);
@@ -67,8 +100,9 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
     };
-  }, [seeking]);
+  }, [onPlaybackStateChange, seeking, track]);
 
   useEffect(() => {
     if (!track) {
@@ -88,6 +122,7 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
     audio.currentTime = 0;
     audio.src = track.url;
     audio.load();
+    onPlaybackStateChange?.('loading', track);
     const nextDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
     if (nextDuration) {
       setDuration(nextDuration);
@@ -95,7 +130,7 @@ export default function FloatingAudioPlayer({ track, onClose }: FloatingAudioPla
     audio.play().catch(() => {
       setPlaying(false);
     });
-  }, [track?.url]);
+  }, [onPlaybackStateChange, track]);
 
   const togglePlayback = useCallback(async () => {
     const audio = audioRef.current;

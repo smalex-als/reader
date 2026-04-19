@@ -8,6 +8,7 @@ import {
   prepareChapterAudio,
   streamChapterAudioChunk
 } from './streamAudio.js';
+import { generateChapterXaiAudio } from './chapterXaiAudio.js';
 
 const JOB_STORE_PATH = path.join(DATA_DIR, 'chapter-audio-jobs.json');
 const activeSignals = new Map();
@@ -51,6 +52,7 @@ function normalizeJob(job) {
   return {
     bookId: job.bookId,
     chapterNumber: job.chapterNumber,
+    provider: job.provider === 'xai' ? 'xai' : 'default',
     status: job.status ?? 'queued',
     versionId: typeof job.versionId === 'string' ? job.versionId : 'base',
     startedAt: job.startedAt ?? null,
@@ -115,11 +117,12 @@ async function finalizeFailure(bookId, chapterNumber, error) {
   });
 }
 
-async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = null }) {
+async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = null, provider = 'default' }) {
   const key = getJobKey(bookId, chapterNumber);
   let preparation = null;
   try {
     await updateJob(bookId, chapterNumber, {
+      provider,
       status: 'running',
       versionId: versionId ?? 'base',
       startedAt: new Date().toISOString(),
@@ -132,9 +135,22 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
       return;
     }
 
-    preparation = await prepareChapterAudio({ bookId, chapterNumber, versionId });
+    if (provider === 'xai') {
+      const result = await generateChapterXaiAudio({ bookId, chapterNumber, versionId, voice });
+      await updateJob(bookId, chapterNumber, {
+        provider,
+        status: 'completed',
+        versionId: result.versionId ?? versionId ?? 'base',
+        audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
+        error: null
+      });
+      return;
+    }
+
+    preparation = await prepareChapterAudio({ bookId, chapterNumber, versionId, provider });
     if ('existingAudioUrl' in preparation) {
       await updateJob(bookId, chapterNumber, {
+        provider,
         status: 'completed',
         versionId: preparation.versionId ?? versionId ?? 'base',
         audioUrl: preparation.existingAudioUrl,
@@ -182,7 +198,8 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
       pcmPath: preparation.pcmPath,
       pcmLength,
       metaPath: preparation.metaPath,
-      versionId: preparation.versionId
+      versionId: preparation.versionId,
+      provider
     });
 
     const mp3Stat = await safeStat(preparation.mp3Path);
@@ -190,6 +207,7 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
       throw createHttpError(502, 'Failed to save chapter audio');
     }
     await updateJob(bookId, chapterNumber, {
+      provider,
       status: 'completed',
       versionId: preparation.versionId ?? versionId ?? 'base',
       audioUrl: preparation.mp3Url,
@@ -211,20 +229,28 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
   }
 }
 
-export async function enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId = null }) {
+export async function enqueueChapterAudioJob({
+  bookId,
+  chapterNumber,
+  voice,
+  versionId = null,
+  provider = 'default'
+}) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
   }
   const existing = await getChapterAudioJob(bookId, chapterNumber);
   if (
     (existing?.status === 'queued' || existing?.status === 'running') &&
-    (existing.versionId ?? 'base') === (versionId ?? 'base')
+    (existing.versionId ?? 'base') === (versionId ?? 'base') &&
+    (existing.provider ?? 'default') === provider
   ) {
     return existing;
   }
   const job = await upsertJob({
     bookId,
     chapterNumber,
+    provider,
     status: 'queued',
     versionId: versionId ?? 'base',
     startedAt: null,
@@ -233,9 +259,9 @@ export async function enqueueChapterAudioJob({ bookId, chapterNumber, voice, ver
     audioUrl: existing?.audioUrl ?? null
   });
   const key = getJobKey(bookId, chapterNumber);
-  activeSignals.set(key, { canceled: false, voice, versionId: versionId ?? 'base' });
+  activeSignals.set(key, { canceled: false, voice, versionId: versionId ?? 'base', provider });
   setImmediate(() => {
-    void runChapterAudioJob({ bookId, chapterNumber, voice, versionId });
+    void runChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider });
   });
   return job;
 }

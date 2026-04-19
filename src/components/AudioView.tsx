@@ -23,10 +23,17 @@ type AudioChapter = {
   title: string;
   page: number;
   latestVersionId: string;
-  audio: { ready: boolean; url: string; versionId?: string | null; durationSeconds?: number | null };
+  audio: {
+    ready: boolean;
+    url: string;
+    versionId?: string | null;
+    durationSeconds?: number | null;
+    provider?: 'default' | 'xai';
+  };
 };
 
 type AudioJobStatus = {
+  provider?: 'default' | 'xai';
   status: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
   error?: string | null;
   audioUrl?: string | null;
@@ -135,7 +142,12 @@ export default function AudioView({
           throw new Error(await readErrorMessage(response));
         }
         const payload = (await response.json()) as {
-          job?: { status?: AudioJobStatus['status']; error?: string | null; audioUrl?: string | null };
+          job?: {
+            provider?: AudioJobStatus['provider'];
+            status?: AudioJobStatus['status'];
+            error?: string | null;
+            audioUrl?: string | null;
+          };
         };
         const job = payload?.job;
         const status = job?.status;
@@ -146,6 +158,7 @@ export default function AudioView({
         setAudioJobs((prev) => ({
           ...prev,
           [chapterNumber]: {
+            provider: job.provider ?? undefined,
             status,
             error: job.error ?? null,
             audioUrl: job.audioUrl ?? null
@@ -175,7 +188,7 @@ export default function AudioView({
   }, [pollAudioJobStatus]);
 
   const handleGenerateAudio = useCallback(
-    async (chapterNumber: number, versionId: string) => {
+    async (chapterNumber: number, versionId: string, provider: 'default' | 'xai' = 'default') => {
       if (!bookId || audioBusy[chapterNumber]) {
         return;
       }
@@ -187,14 +200,23 @@ export default function AudioView({
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ voice: streamVoice, versionId })
+            body: JSON.stringify({
+              voice: provider === 'xai' ? 'Eve' : streamVoice,
+              versionId,
+              provider
+            })
           }
         );
         if (!response.ok) {
           throw new Error(await readErrorMessage(response));
         }
         const payload = (await response.json()) as {
-          job?: { status?: AudioJobStatus['status']; error?: string | null; audioUrl?: string | null };
+          job?: {
+            provider?: AudioJobStatus['provider'];
+            status?: AudioJobStatus['status'];
+            error?: string | null;
+            audioUrl?: string | null;
+          };
         };
         const job = payload?.job;
         const status = job?.status;
@@ -202,6 +224,7 @@ export default function AudioView({
           setAudioJobs((prev) => ({
             ...prev,
             [chapterNumber]: {
+              provider: job.provider ?? provider,
               status,
               error: job.error ?? null,
               audioUrl: job.audioUrl ?? null
@@ -297,9 +320,6 @@ export default function AudioView({
                 : 'Generate audio';
               const actionDisabled =
                 audioBusy[entry.chapterNumber] || isAudioJobActive;
-              const handleAction = () => {
-                void handleGenerateAudio(entry.chapterNumber, latestVersionId);
-              };
               return (
                 <article key={`${entry.title}-${entry.page}-${entry.chapterNumber}`} className="audio-row">
                   <div className="audio-row-main">
@@ -316,14 +336,30 @@ export default function AudioView({
                   </div>
                   <div className="audio-row-actions">
                     {showAction ? (
-                      <button
-                        type="button"
-                        className="button"
-                        onClick={handleAction}
-                        disabled={actionDisabled}
-                      >
-                        {actionLabel}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className="button"
+                          onClick={() =>
+                            void handleGenerateAudio(entry.chapterNumber, latestVersionId, 'default')
+                          }
+                          disabled={actionDisabled}
+                        >
+                          {isAudioJobActive && jobStatus?.provider !== 'xai' ? actionLabel : 'Generate audio'}
+                        </button>
+                        <button
+                          type="button"
+                          className="button button-secondary"
+                          onClick={() => void handleGenerateAudio(entry.chapterNumber, latestVersionId, 'xai')}
+                          disabled={actionDisabled}
+                        >
+                          {isAudioJobActive && jobStatus?.provider === 'xai'
+                            ? jobStatus.status === 'queued'
+                              ? 'xAI queued…'
+                              : 'Generating xAI…'
+                            : 'Generate xAI'}
+                        </button>
+                      </>
                     ) : null}
                     {isAudioJobActive ? (
                       <button

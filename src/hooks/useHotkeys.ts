@@ -22,6 +22,7 @@ type HotkeysOptions = {
   handleNext: () => void;
   audioStatus: AudioState['status'];
   playAudio: () => Promise<void> | void;
+  playXaiAudio: () => Promise<void> | void;
   stopAudio: () => void;
   stopStream: () => void;
   streamStatus: StreamState['status'];
@@ -91,6 +92,7 @@ export function useHotkeys({
   handleNext,
   audioStatus,
   playAudio,
+  playXaiAudio,
   stopAudio,
   stopStream,
   streamStatus,
@@ -158,6 +160,7 @@ export function useHotkeys({
       { keys: '7', action: 'Open quiz' },
       { keys: '8', action: 'Open vocabulary' },
       { keys: 'P', action: 'Play/Pause audio' },
+      { keys: 'X', action: 'Play xAI TTS' },
       { keys: 'S', action: 'Play/Stop stream audio' },
       { keys: 'G', action: 'Focus Go To input' },
       { keys: 'F', action: 'Toggle fullscreen' },
@@ -320,6 +323,15 @@ export function useHotkeys({
             void playAudio();
           }
           break;
+        case 'x':
+          event.preventDefault();
+          if (audioStatus === 'playing') {
+            stopAudio();
+          } else {
+            stopStream();
+            void playXaiAudio();
+          }
+          break;
         case 's':
           event.preventDefault();
           if (streamStatus === 'streaming' || streamStatus === 'connecting' || streamStatus === 'paused') {
@@ -428,6 +440,7 @@ export function useHotkeys({
     applyZoomModeWithAlign,
     audioStatus,
     playAudio,
+    playXaiAudio,
     resetTransform,
     updatePan,
     settings.invert,

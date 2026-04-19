@@ -2,8 +2,8 @@ export function deriveTextUrl(imageUrl: string) {
   return replaceExtension(imageUrl, '.txt');
 }
 
-export function deriveAudioUrl(imageUrl: string) {
-  return replaceExtension(imageUrl, '.mp3');
+export function deriveAudioUrl(imageUrl: string, provider: 'openai' | 'xai' = 'openai') {
+  return replaceExtension(imageUrl, provider === 'xai' ? '.xai.mp3' : '.mp3');
 }
 
 function replaceExtension(url: string, extension: string) {

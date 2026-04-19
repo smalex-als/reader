@@ -9,9 +9,16 @@ import { DEFAULT_VOICE, MAX_UPLOAD_BYTES, voiceProfiles } from '../config.js';
 import { createHttpError } from '../lib/errors.js';
 import { asyncHandler } from '../lib/async.js';
 import { loadPageText, savePageText } from '../lib/ocr.js';
-import { createPageAudioStream, handlePageAudio, resolvePageAudioOutput } from '../lib/audio.js';
+import {
+  createPageAudioStream,
+  createTextAudioStream,
+  handlePageAudio,
+  handleTextAudio,
+  resolvePageAudioOutput
+} from '../lib/audio.js';
 import { createBookFromPdf } from '../lib/pdf.js';
 import { invalidateSearchIndexForImage } from '../lib/search.js';
+import { generateXaiTtsDebugFile } from '../lib/xaiTts.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -57,14 +64,32 @@ router.post('/api/page-text', asyncHandler(async (req, res) => {
 }));
 
 router.post('/api/page-audio', asyncHandler(async (req, res) => {
-  const { image, voice } = req.body || {};
+  const { image, voice, provider } = req.body || {};
   if (!image) {
     throw createHttpError(400, 'Image is required');
   }
   const requestedVoiceId =
     typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
   const voiceProfile = voiceProfiles[requestedVoiceId] || voiceProfiles[DEFAULT_VOICE];
-  const result = await handlePageAudio({ image, voiceProfile });
+  const result = await handlePageAudio({
+    image,
+    voiceProfile,
+    provider: provider === 'xai' ? 'xai' : 'openai'
+  });
+  res.json(result);
+}));
+
+router.post('/api/text-audio', asyncHandler(async (req, res) => {
+  const { text, voice, provider } = req.body || {};
+  const requestedVoiceId =
+    typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
+  const voiceProfile = voiceProfiles[requestedVoiceId] || voiceProfiles[DEFAULT_VOICE];
+  const result = await handleTextAudio({
+    text,
+    voiceProfile,
+    provider: provider === 'xai' ? 'xai' : 'openai',
+    voice: typeof voice === 'string' ? voice.trim() : ''
+  });
   res.json(result);
 }));
 
@@ -115,6 +140,26 @@ router.get('/api/page-audio/stream', asyncHandler(async (req, res) => {
   res.end(fallback);
 }));
 
+router.post('/api/text-audio/stream', asyncHandler(async (req, res) => {
+  const { text, voice } = req.body || {};
+  const requestedVoiceId =
+    typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
+  const voiceProfile = voiceProfiles[requestedVoiceId] || voiceProfiles[DEFAULT_VOICE];
+  const speech = await createTextAudioStream({ text, voiceProfile });
+  const contentType = speech.headers.get('content-type') || 'audio/mpeg';
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Cache-Control', 'no-store');
+
+  const bodyStream = toNodeReadableStream(speech.body);
+  if (bodyStream) {
+    await pipeline(bodyStream, res);
+    return;
+  }
+
+  const fallback = Buffer.from(await speech.arrayBuffer());
+  res.end(fallback);
+}));
+
 router.post('/api/upload/pdf', upload.single('file'), asyncHandler(async (req, res) => {
   const file = req.file;
   if (!file) {
@@ -122,6 +167,16 @@ router.post('/api/upload/pdf', upload.single('file'), asyncHandler(async (req, r
   }
   const { bookId, manifest } = await createBookFromPdf(file.buffer, file.originalname || 'book.pdf');
   res.json({ book: bookId, manifest });
+}));
+
+router.post('/api/debug/xai-tts', asyncHandler(async (req, res) => {
+  const result = await generateXaiTtsDebugFile({
+    text: req.body?.text,
+    voice: req.body?.voice,
+    language: req.body?.language,
+    outputFormat: req.body?.output_format
+  });
+  res.json(result);
 }));
 
 export default router;

@@ -199,6 +199,7 @@ export interface AudioState {
   status: 'idle' | 'loading' | 'generating' | 'playing' | 'paused' | 'error';
   url: string | null;
   source: 'file' | 'ai' | null;
+  provider?: 'openai' | 'xai' | null;
   error?: string;
   currentPageKey: string | null;
 }

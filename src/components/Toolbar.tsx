@@ -45,6 +45,7 @@ interface ToolbarProps {
   fullscreen: boolean;
   audioState: AudioState;
   onPlayAudio: () => void;
+  onPlayXaiAudio: () => void;
   onStopAudio: () => void;
   streamState: StreamState;
   streamVoice: string;
@@ -121,6 +122,7 @@ export default function Toolbar({
   fullscreen,
   audioState,
   onPlayAudio,
+  onPlayXaiAudio,
   onStopAudio,
   streamState,
   streamVoice,
@@ -156,8 +158,12 @@ export default function Toolbar({
   const isModal = layout === 'modal';
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
-  const audioHandler = audioState.status === 'playing' ? onStopAudio : onPlayAudio;
-  const audioLabel = audioState.status === 'playing' ? 'Stop OpenAI TTS' : 'Play OpenAI TTS';
+  const openAiPlaying = audioState.status === 'playing' && audioState.provider !== 'xai';
+  const xaiPlaying = audioState.status === 'playing' && audioState.provider === 'xai';
+  const openAiAudioHandler = openAiPlaying ? onStopAudio : onPlayAudio;
+  const xaiAudioHandler = xaiPlaying ? onStopAudio : onPlayXaiAudio;
+  const openAiAudioLabel = openAiPlaying ? 'Stop OpenAI TTS' : 'Play OpenAI TTS';
+  const xaiAudioLabel = xaiPlaying ? 'Stop xAI TTS' : 'Play xAI TTS';
   const streamActive =
     streamState.status === 'streaming' ||
     streamState.status === 'connecting' ||
@@ -168,13 +174,13 @@ export default function Toolbar({
   const audioStatusMessage = (() => {
     switch (audioState.status) {
       case 'loading':
-        return 'Loading audio…';
+        return `Loading ${audioState.provider === 'xai' ? 'xAI' : 'OpenAI'} audio…`;
       case 'generating':
-        return 'Streaming OpenAI audio…';
+        return audioState.provider === 'xai' ? 'Generating xAI audio…' : 'Streaming OpenAI audio…';
       case 'playing':
-        return `Playing OpenAI audio${formattedSource ? ` (${formattedSource})` : ''}`;
+        return `Playing ${audioState.provider === 'xai' ? 'xAI' : 'OpenAI'} audio${formattedSource ? ` (${formattedSource})` : ''}`;
       case 'paused':
-        return `OpenAI audio paused${formattedSource ? ` (${formattedSource})` : ''}`;
+        return `${audioState.provider === 'xai' ? 'xAI' : 'OpenAI'} audio paused${formattedSource ? ` (${formattedSource})` : ''}`;
       case 'error':
         return audioState.error ?? 'Audio unavailable';
       default:
@@ -509,10 +515,18 @@ export default function Toolbar({
             <button
               type="button"
               className="button"
-              onClick={audioHandler}
+              onClick={openAiAudioHandler}
               disabled={controlsDisabled || audioBusy}
             >
-              {audioLabel}
+              {openAiAudioLabel}
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={xaiAudioHandler}
+              disabled={controlsDisabled || audioBusy}
+            >
+              {xaiAudioLabel}
             </button>
             {showAudioStatus && (
               <div className="toolbar-status" role="status" aria-live="polite">

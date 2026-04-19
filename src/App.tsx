@@ -359,8 +359,10 @@ export default function App() {
   const {
     audioState,
     playAudio,
+    playTextAudio,
     resetAudio,
     resetAudioCache,
+    syncFloatingAudioState,
     stopAudio
   } = useAudioController(currentImage, showToast);
   const { streamState, startStream, enqueueStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
@@ -384,17 +386,56 @@ export default function App() {
   } = usePageText(currentImage, showToast);
   const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('deepseek_ocr');
   const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
+  const [displayedChapterText, setDisplayedChapterText] = useState<{
+    text: string;
+    chapterTitle: string | null;
+    versionLabel: string | null;
+    versionId: string | null;
+  } | null>(null);
   const [autoFollowStream, setAutoFollowStream] = useState(true);
   const [selectedStreamBlockKey, setSelectedStreamBlockKey] = useState<string | null>(null);
   const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
     setFloatingAudio(payload);
   }, []);
   const handleCloseFloatingAudio = useCallback(() => {
+    if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
+      stopAudio();
+    }
     setFloatingAudio(null);
-  }, []);
+  }, [floatingAudio?.kind, stopAudio]);
+  const handlePlayPageAudio = useCallback(
+    async (provider: 'openai' | 'xai' = 'openai') => {
+      stopStream();
+      const track =
+        viewMode === 'text' && displayedChapterText?.text
+          ? await playTextAudio({
+              text: displayedChapterText.text,
+              title: provider === 'xai' ? 'xAI TTS' : 'OpenAI TTS',
+              subtitle: displayedChapterText.versionLabel ?? displayedChapterText.chapterTitle ?? 'Chapter text',
+              provider,
+              cacheKey: `${bookId ?? 'book'}:${chapterNumber ?? 'chapter'}:${displayedChapterText.versionId ?? 'base'}`
+            })
+          : await playAudio(provider);
+      if (track) {
+        setFloatingAudio(track);
+      }
+    },
+    [bookId, chapterNumber, displayedChapterText, playAudio, playTextAudio, stopStream, viewMode]
+  );
   useEffect(() => {
     setFloatingAudio(null);
   }, [bookId]);
+  useEffect(() => {
+    setDisplayedChapterText(null);
+  }, [bookId, chapterNumber]);
+  useEffect(() => {
+    if (audioState.status !== 'idle' && audioState.status !== 'error') {
+      return;
+    }
+    if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
+      setFloatingAudio(null);
+    }
+  }, [audioState.status, floatingAudio]);
   useEffect(() => {
     if (!bookId) {
       setQuizAutoPlayEnabled(true);
@@ -1164,7 +1205,8 @@ export default function App() {
     handlePrev,
     handleNext,
     audioStatus: audioState.status,
-    playAudio,
+    playAudio: () => handlePlayPageAudio('openai'),
+    playXaiAudio: () => handlePlayPageAudio('xai'),
     stopAudio,
     stopStream,
     streamStatus: streamState.status,
@@ -1266,8 +1308,10 @@ export default function App() {
     fullscreen: isFullscreen,
     audioState,
     onPlayAudio: () => {
-      stopStream();
-      void playAudio();
+      void handlePlayPageAudio('openai');
+    },
+    onPlayXaiAudio: () => {
+      void handlePlayPageAudio('xai');
     },
     onStopAudio: stopAudio,
     streamState,
@@ -1638,6 +1682,7 @@ export default function App() {
       onTextThemeChange: updateTextTheme,
       streamVoice,
       refreshToken: chapterViewRefresh,
+      onDisplayedTextChange: setDisplayedChapterText,
       onFirstParagraphReady: setFirstChapterParagraph,
       onPlayParagraph: handlePlayChapterParagraph,
       onPlayAudio: handlePlayFloatingAudio,
@@ -1669,7 +1714,8 @@ export default function App() {
     },
     floatingAudioPlayerProps: {
       track: floatingAudio,
-      onClose: handleCloseFloatingAudio
+      onClose: handleCloseFloatingAudio,
+      onPlaybackStateChange: syncFloatingAudioState
     },
     onOpenSettings: () => setSettingsOpen(true)
   };

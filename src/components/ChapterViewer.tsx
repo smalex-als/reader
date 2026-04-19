@@ -32,6 +32,12 @@ interface ChapterViewerProps {
   streamVoice: string;
   refreshToken?: number;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
+  onDisplayedTextChange?: (payload: {
+    text: string;
+    chapterTitle: string | null;
+    versionLabel: string | null;
+    versionId: string | null;
+  } | null) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   onPlayAudio: (payload: FloatingAudioTrack) => void;
   playingParagraphStart: number | null;
@@ -76,6 +82,7 @@ export default function ChapterViewer({
   streamVoice,
   refreshToken = 0,
   onFirstParagraphReady,
+  onDisplayedTextChange,
   onPlayParagraph,
   onPlayAudio,
   playingParagraphStart,
@@ -123,6 +130,7 @@ export default function ChapterViewer({
     canGenerateAudio,
     handleGenerate,
     handleGenerateAudio,
+    handleGenerateXaiAudio,
     handleCreateVersion,
     handleDeleteVersion,
     handleCancelAudioJob
@@ -194,6 +202,22 @@ export default function ChapterViewer({
       key: `chapter-${chapterNumber}-${selectedVersionId}-${hashText(firstParagraph)}-${startIndex}`
     });
   }, [chapterNumber, displayText, onFirstParagraphReady, selectedVersionId]);
+
+  useEffect(() => {
+    if (!onDisplayedTextChange) {
+      return;
+    }
+    if (!displayText || !chapterNumber) {
+      onDisplayedTextChange(null);
+      return;
+    }
+    onDisplayedTextChange({
+      text: displayText,
+      chapterTitle,
+      versionLabel: selectedVersion?.label ?? null,
+      versionId: selectedVersionId
+    });
+  }, [chapterNumber, chapterTitle, displayText, onDisplayedTextChange, selectedVersion?.label, selectedVersionId]);
 
   const closeVersionModal = useCallback(() => {
     if (versionSaving) {
@@ -349,20 +373,36 @@ export default function ChapterViewer({
             {settingsOpen ? 'Hide settings' : 'Text settings'}
           </button>
           {chapterNumber && !chapterAudioReady ? (
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => void handleGenerateAudio()}
-              disabled={!canGenerateAudio || audioGenerating || isAudioJobActive}
-            >
-              {isAudioJobActive
-                ? audioJob?.status === 'queued'
-                  ? 'Queued…'
-                  : 'Generating…'
-                : audioGenerating
-                  ? 'Starting…'
-                  : 'Generate Audio'}
-            </button>
+            <>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void handleGenerateAudio()}
+                disabled={!canGenerateAudio || audioGenerating || isAudioJobActive}
+              >
+                {isAudioJobActive && audioJob?.provider !== 'xai'
+                  ? audioJob?.status === 'queued'
+                    ? 'Queued…'
+                    : 'Generating…'
+                  : audioGenerating && audioJob?.provider !== 'xai'
+                    ? 'Starting…'
+                    : 'Generate Audio'}
+              </button>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void handleGenerateXaiAudio()}
+                disabled={!canGenerateAudio || audioGenerating || isAudioJobActive}
+              >
+                {isAudioJobActive && audioJob?.provider === 'xai'
+                  ? audioJob?.status === 'queued'
+                    ? 'xAI queued…'
+                    : 'Generating xAI…'
+                  : audioGenerating && audioJob?.provider === 'xai'
+                    ? 'Starting xAI…'
+                    : 'Generate xAI'}
+              </button>
+            </>
           ) : null}
           {chapterNumber && isAudioJobActive ? (
             <button type="button" className="button button-secondary" onClick={handleCancelAudioJob}>

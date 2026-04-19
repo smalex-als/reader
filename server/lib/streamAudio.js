@@ -17,6 +17,7 @@ const CHANNEL_COUNT = 1;
 const BIT_DEPTH = 16;
 const CHAPTER_PAD_LENGTH = 3;
 const STREAM_TEXT_LIMIT = 2000;
+const STREAM_QUERY_TEXT_LIMIT = 1200;
 const execFileAsync = promisify(execFile);
 
 function formatChapterFilename(chapterNumber) {
@@ -171,21 +172,64 @@ async function streamTextToPcm(text, voice) {
 }
 
 function splitTextForStreaming(input) {
-  return splitStreamChunks(input.trim(), 0).flatMap((chunk) => {
-    if (chunk.length <= STREAM_TEXT_LIMIT) {
-      return [chunk];
+  const splitForEncodedLength = (chunk) => {
+    const trimmed = chunk.trim();
+    if (!trimmed) {
+      return [];
     }
+    if (
+      trimmed.length <= STREAM_TEXT_LIMIT &&
+      encodeURIComponent(trimmed).length <= STREAM_QUERY_TEXT_LIMIT
+    ) {
+      return [trimmed];
+    }
+
     const parts = [];
-    let cursor = 0;
-    while (cursor < chunk.length) {
-      parts.push(chunk.slice(cursor, cursor + STREAM_TEXT_LIMIT).trim());
-      cursor += STREAM_TEXT_LIMIT;
+    let remaining = trimmed;
+    while (remaining.length > 0) {
+      let candidate = '';
+      let consumedLength = 0;
+      const words = remaining.split(/\s+/);
+
+      for (let index = 0; index < words.length; index += 1) {
+        const nextCandidate = candidate ? `${candidate} ${words[index]}` : words[index];
+        if (
+          nextCandidate.length > STREAM_TEXT_LIMIT ||
+          encodeURIComponent(nextCandidate).length > STREAM_QUERY_TEXT_LIMIT
+        ) {
+          if (!candidate) {
+            let sliceLength = Math.min(STREAM_TEXT_LIMIT, words[index].length);
+            while (sliceLength > 1) {
+              const slice = words[index].slice(0, sliceLength).trim();
+              if (encodeURIComponent(slice).length <= STREAM_QUERY_TEXT_LIMIT) {
+                candidate = slice;
+                consumedLength = sliceLength;
+                break;
+              }
+              sliceLength -= 1;
+            }
+          }
+          break;
+        }
+        candidate = nextCandidate;
+        consumedLength = candidate.length;
+      }
+
+      const nextPart = candidate.trim();
+      if (!nextPart) {
+        break;
+      }
+      parts.push(nextPart);
+      remaining = remaining.slice(consumedLength).trim();
     }
-    return parts.filter((part) => part.length > 0);
-  });
+
+    return parts;
+  };
+
+  return splitStreamChunks(input.trim(), 0).flatMap(splitForEncodedLength);
 }
 
-export async function prepareChapterAudio({ bookId, chapterNumber, versionId = null }) {
+export async function prepareChapterAudio({ bookId, chapterNumber, versionId = null, provider = 'default' }) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
   }
@@ -205,7 +249,10 @@ export async function prepareChapterAudio({ bookId, chapterNumber, versionId = n
     try {
       const rawMeta = await fs.readFile(metaPath, 'utf8');
       const meta = JSON.parse(rawMeta);
-      if ((meta?.versionId ?? 'base') === textVersion.versionId) {
+      if (
+        (meta?.versionId ?? 'base') === textVersion.versionId &&
+        (meta?.provider ?? 'default') === provider
+      ) {
         return {
           existingAudioUrl: `/data/${bookId}/${mp3Filename}`,
           versionId: textVersion.versionId
@@ -223,6 +270,7 @@ export async function prepareChapterAudio({ bookId, chapterNumber, versionId = n
 
   return {
     audioPath,
+    cleanText: cleaned,
     metaPath,
     pcmPath,
     mp3Path,
@@ -236,17 +284,13 @@ export async function streamChapterAudioChunk(text, voice) {
   return streamTextToPcm(text, voice);
 }
 
-export async function finalizeChapterAudio({ audioPath, mp3Path, pcmPath, pcmLength, metaPath, versionId }) {
-  const header = buildWavHeader(pcmLength);
-  const wavStream = createWriteStream(audioPath);
-  wavStream.write(header);
-  await pipeline(createReadStream(pcmPath), wavStream);
-  await encodeMp3(audioPath, mp3Path);
+export async function writeChapterAudioMeta({ metaPath, versionId, provider = 'default' }) {
   await fs.writeFile(
     metaPath,
     JSON.stringify(
       {
         versionId: versionId ?? 'base',
+        provider,
         generatedAt: new Date().toISOString()
       },
       null,
@@ -254,6 +298,28 @@ export async function finalizeChapterAudio({ audioPath, mp3Path, pcmPath, pcmLen
     ),
     'utf8'
   );
+}
+
+export async function finalizeDirectChapterAudio({ mp3Path, mp3Buffer, metaPath, versionId, provider = 'default' }) {
+  await fs.writeFile(mp3Path, mp3Buffer);
+  await writeChapterAudioMeta({ metaPath, versionId, provider });
+}
+
+export async function finalizeChapterAudio({
+  audioPath,
+  mp3Path,
+  pcmPath,
+  pcmLength,
+  metaPath,
+  versionId,
+  provider = 'default'
+}) {
+  const header = buildWavHeader(pcmLength);
+  const wavStream = createWriteStream(audioPath);
+  wavStream.write(header);
+  await pipeline(createReadStream(pcmPath), wavStream);
+  await encodeMp3(audioPath, mp3Path);
+  await writeChapterAudioMeta({ metaPath, versionId, provider });
   await fs.unlink(audioPath);
   await fs.unlink(pcmPath);
 }

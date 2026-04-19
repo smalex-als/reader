@@ -22,6 +22,7 @@ export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 export const STREAM_SERVER =
   process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'https://reader.test:3000';
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
+export const XAI_API_KEY = process.env.XAI_API_KEY || '';
 
 export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai'; // 'openai' | 'deepseek_ocr'
 export const OCR_TIMEOUT_MS = Number.parseInt(process.env.OCR_TIMEOUT_MS || '20000', 10);

@@ -107,6 +107,7 @@ async function loadChapterAudioMeta(bookId, chapterNumber) {
     const parsed = JSON.parse(raw);
     return {
       versionId: typeof parsed?.versionId === 'string' ? parsed.versionId : 'base',
+      provider: parsed?.provider === 'xai' ? 'xai' : 'default',
       generatedAt: typeof parsed?.generatedAt === 'string' ? parsed.generatedAt : null
     };
   } catch {
@@ -207,7 +208,8 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
           url: `/data/${bookId}/${audioFilename}`,
           bytes: audioSize,
           durationSeconds: audioDurationSeconds,
-          versionId: audioMeta?.versionId ?? null
+          versionId: audioMeta?.versionId ?? null,
+          provider: audioMeta?.provider ?? 'default'
         }
       };
     })
@@ -351,7 +353,8 @@ router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, r
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const voice = typeof req.body?.voice === 'string' ? req.body.voice.trim() : '';
   const versionId = typeof req.body?.versionId === 'string' ? req.body.versionId.trim() : null;
-  const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId });
+  const provider = req.body?.provider === 'xai' ? 'xai' : 'default';
+  const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider });
   res.json({ book: bookId, chapterNumber, job });
 }));
 
@@ -370,6 +373,7 @@ router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (
       job: {
         bookId,
         chapterNumber,
+        provider: audioMeta?.provider ?? 'default',
         status: 'completed',
         versionId: audioMeta?.versionId ?? 'base',
         startedAt: null,
