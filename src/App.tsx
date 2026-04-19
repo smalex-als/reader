@@ -181,6 +181,7 @@ export default function App() {
     bookId: string;
     chapterNumber: number | null;
     chapterTitle: string | null;
+    subchapterTitle: string | null;
     pageKeyStart: string | null;
     startedAt: string;
     lastPageKey: string | null;
@@ -310,6 +311,20 @@ export default function App() {
     !isTextBook && currentChapterIndex !== null
       ? sortedTocEntries[currentChapterIndex + 1]
       : null;
+  const currentSubchapterEntry = useMemo(() => {
+    if (sortedDetailedTocEntries.length === 0) {
+      return null;
+    }
+    const chapterStart = currentChapterEntry?.page ?? 0;
+    const chapterEnd = nextChapterEntry?.page ?? manifest.length;
+    const candidates = sortedDetailedTocEntries.filter((entry) => {
+      if (!Number.isInteger(entry.page)) {
+        return false;
+      }
+      return entry.page >= chapterStart && entry.page <= currentPage && entry.page < chapterEnd;
+    });
+    return candidates.length > 0 ? candidates[candidates.length - 1] : null;
+  }, [currentChapterEntry?.page, currentPage, manifest.length, nextChapterEntry?.page, sortedDetailedTocEntries]);
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
   const chapterRange =
     !isTextBook && currentChapterEntry
@@ -581,6 +596,7 @@ export default function App() {
         bookId,
         chapterNumber,
         chapterTitle: currentChapterEntry?.title ?? null,
+        subchapterTitle: currentSubchapterEntry?.title ?? null,
         pageKeyStart: streamState.pageKey,
         startedAt: new Date().toISOString(),
         lastPageKey: streamState.pageKey
@@ -606,6 +622,7 @@ export default function App() {
           bookId: session.bookId,
           chapterNumber: session.chapterNumber,
           chapterTitle: session.chapterTitle,
+          subchapterTitle: session.subchapterTitle,
           pageKeyStart: session.pageKeyStart,
           pageKeyEnd: session.lastPageKey ?? streamState.pageKey,
           startedAt: session.startedAt,
@@ -622,6 +639,7 @@ export default function App() {
     bookId,
     chapterNumber,
     currentChapterEntry,
+    currentSubchapterEntry,
     streamState.pageKey,
     streamState.playbackSeconds,
     streamState.status
@@ -641,6 +659,7 @@ export default function App() {
         bookId: session.bookId,
         chapterNumber: session.chapterNumber,
         chapterTitle: session.chapterTitle,
+        subchapterTitle: session.subchapterTitle,
         pageKeyStart: session.pageKeyStart,
         pageKeyEnd: session.lastPageKey ?? streamState.pageKey,
         startedAt: session.startedAt,

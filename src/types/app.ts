@@ -244,6 +244,7 @@ export interface ListeningDashboardChapter {
   bookId: string;
   chapterNumber: number | null;
   chapterTitle: string | null;
+  subchapterTitle?: string | null;
   sessions: number;
   totalSeconds: number;
   lastListenedAt: string | null;
@@ -254,6 +255,7 @@ export interface ListeningDashboardSession {
   bookId: string;
   chapterNumber: number | null;
   chapterTitle: string | null;
+  subchapterTitle?: string | null;
   sourceType: string;
   sourceLabel: string;
   listenedSeconds: number;

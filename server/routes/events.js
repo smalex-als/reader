@@ -103,6 +103,8 @@ router.post('/api/stream-history', async (req, res, next) => {
       bookId,
       chapterNumber: Number.isInteger(req.body?.chapterNumber) ? req.body.chapterNumber : null,
       chapterTitle: typeof req.body?.chapterTitle === 'string' ? req.body.chapterTitle.trim() || null : null,
+      subchapterTitle:
+        typeof req.body?.subchapterTitle === 'string' ? req.body.subchapterTitle.trim() || null : null,
       pageKeyStart: typeof req.body?.pageKeyStart === 'string' ? req.body.pageKeyStart : null,
       pageKeyEnd: typeof req.body?.pageKeyEnd === 'string' ? req.body.pageKeyEnd : null,
       startedAt: typeof req.body?.startedAt === 'string' ? req.body.startedAt : null,
@@ -168,6 +170,7 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
           bookId,
           chapterNumber: Number.isInteger(entry.chapterNumber) ? entry.chapterNumber : null,
           chapterTitle: typeof entry.chapterTitle === 'string' ? entry.chapterTitle : null,
+          subchapterTitle: typeof entry.subchapterTitle === 'string' ? entry.subchapterTitle : null,
           sourceType,
           sourceLabel,
           listenedSeconds,
@@ -199,6 +202,7 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
           previous.bookId === entry.bookId &&
           previous.chapterNumber === entry.chapterNumber &&
           previous.chapterTitle === entry.chapterTitle &&
+          previous.subchapterTitle === entry.subchapterTitle &&
           previous.sourceType === entry.sourceType &&
           withinGap
         ) {
@@ -259,11 +263,12 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
           : bookAggregate.lastListenedAt;
       byBook.set(session.bookId, bookAggregate);
 
-      const chapterKey = `${session.bookId}::${session.chapterNumber ?? 'none'}::${session.chapterTitle ?? ''}`;
+      const chapterKey = `${session.bookId}::${session.chapterNumber ?? 'none'}::${session.chapterTitle ?? ''}::${session.subchapterTitle ?? ''}`;
       const chapterAggregate = byChapter.get(chapterKey) ?? {
         bookId: session.bookId,
         chapterNumber: session.chapterNumber,
         chapterTitle: session.chapterTitle,
+        subchapterTitle: session.subchapterTitle,
         sessions: 0,
         totalSeconds: 0,
         lastListenedAt: null

@@ -238,7 +238,10 @@ export default function ListeningDashboardModal({
                       >
                         <div className="listening-table-main">
                           <strong>{entry.chapterTitle ?? `Chapter ${entry.chapterNumber ?? 'Unknown'}`}</strong>
-                          <span>{entry.bookId}</span>
+                          <span>
+                            {entry.bookId}
+                            {entry.subchapterTitle ? ` · ${entry.subchapterTitle}` : ''}
+                          </span>
                         </div>
                         <div className="listening-table-meta">
                           <strong>{formatDuration(entry.totalSeconds)}</strong>
@@ -266,7 +269,12 @@ export default function ListeningDashboardModal({
                     >
                       <div className="listening-table-main">
                         <strong>{entry.chapterTitle ?? entry.bookId}</strong>
-                        <span>{entry.bookId} · {entry.sourceLabel}</span>
+                        <span>
+                          {entry.bookId}
+                          {entry.subchapterTitle ? ` · ${entry.subchapterTitle}` : ''}
+                          {' · '}
+                          {entry.sourceLabel}
+                        </span>
                       </div>
                       <div className="listening-table-meta">
                         <strong>{formatDuration(entry.listenedSeconds)}</strong>
