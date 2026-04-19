@@ -237,11 +237,11 @@ export default function ListeningDashboardModal({
                         onClick={() => onOpenChapter(entry.bookId, entry.chapterNumber)}
                       >
                         <div className="listening-table-main">
-                          <strong>{entry.chapterTitle ?? `Chapter ${entry.chapterNumber ?? 'Unknown'}`}</strong>
-                          <span>
-                            {entry.bookId}
+                          <strong>
+                            {entry.chapterTitle ?? `Chapter ${entry.chapterNumber ?? 'Unknown'}`}
                             {entry.subchapterTitle ? ` · ${entry.subchapterTitle}` : ''}
-                          </span>
+                          </strong>
+                          <span>{entry.bookId}</span>
                         </div>
                         <div className="listening-table-meta">
                           <strong>{formatDuration(entry.totalSeconds)}</strong>
@@ -268,10 +268,12 @@ export default function ListeningDashboardModal({
                       }
                     >
                       <div className="listening-table-main">
-                        <strong>{entry.chapterTitle ?? entry.bookId}</strong>
+                        <strong>
+                          {entry.chapterTitle ?? entry.bookId}
+                          {entry.subchapterTitle ? ` · ${entry.subchapterTitle}` : ''}
+                        </strong>
                         <span>
                           {entry.bookId}
-                          {entry.subchapterTitle ? ` · ${entry.subchapterTitle}` : ''}
                           {' · '}
                           {entry.sourceLabel}
                         </span>
