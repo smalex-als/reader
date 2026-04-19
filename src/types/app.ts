@@ -77,6 +77,27 @@ export interface ChapterVocabulary {
   file?: string;
 }
 
+export interface ChapterTextPrompt {
+  id: string;
+  name: string;
+  template: string;
+  builtIn?: boolean;
+  createdAt?: string | null;
+}
+
+export interface ChapterTextVersion {
+  id: string;
+  index: number;
+  kind: 'base' | 'derived';
+  label: string;
+  file: string;
+  filename: string;
+  createdAt?: string | null;
+  promptId?: string | null;
+  promptName?: string | null;
+  deletable: boolean;
+}
+
 export interface ImagePreviewTarget {
   imageUrl: string;
   cropUrl: string;

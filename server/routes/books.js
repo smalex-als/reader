@@ -33,7 +33,11 @@ import {
   enqueueChapterAudioJob,
   getChapterAudioJob
 } from '../lib/chapterAudioJobs.js';
-import { generateChapterNarration } from '../lib/narration.js';
+import {
+  createChapterTextVersion,
+  deleteChapterTextVersion,
+  listChapterTextVersions
+} from '../lib/chapterTextVersions.js';
 import { generateChapterQuiz, loadChapterQuiz } from '../lib/quiz.js';
 import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabulary.js';
 import { createImagePreviewCrop } from '../lib/imagePreview.js';
@@ -87,6 +91,26 @@ async function resolveChapterAudioUrl(bookId, chapterNumber) {
   const audioPath = path.join(DATA_DIR, bookId, audioFilename);
   const audioStat = await safeStat(audioPath);
   return audioStat?.isFile?.() ? `/data/${bookId}/${audioFilename}` : null;
+}
+
+async function loadChapterAudioMeta(bookId, chapterNumber) {
+  const suffix = formatChapterSuffix(chapterNumber);
+  const metaFilename = `chapter${suffix}.mp3.meta.json`;
+  const metaPath = path.join(DATA_DIR, bookId, metaFilename);
+  const metaStat = await safeStat(metaPath);
+  if (!metaStat?.isFile()) {
+    return null;
+  }
+  try {
+    const raw = await fs.readFile(metaPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return {
+      versionId: typeof parsed?.versionId === 'string' ? parsed.versionId : 'base',
+      generatedAt: typeof parsed?.generatedAt === 'string' ? parsed.generatedAt : null
+    };
+  } catch {
+    return null;
+  }
 }
 
 router.get('/api/books', asyncHandler(async (_req, res) => {
@@ -161,15 +185,13 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
     toc.map(async (entry, index) => {
       const chapterNumber = index + 1;
       const suffix = formatChapterSuffix(chapterNumber);
-      const narrationFilename = `chapter${suffix}.narration.txt`;
       const audioFilename = `chapter${suffix}.mp3`;
-      const narrationPath = path.join(DATA_DIR, bookId, narrationFilename);
       const audioPath = path.join(DATA_DIR, bookId, audioFilename);
-      const [narrationStat, audioStat] = await Promise.all([
-        safeStat(narrationPath),
-        safeStat(audioPath)
+      const [versions, audioStat, audioMeta] = await Promise.all([
+        listChapterTextVersions({ bookId, chapterNumber }),
+        safeStat(audioPath),
+        loadChapterAudioMeta(bookId, chapterNumber)
       ]);
-      const narrationSize = narrationStat?.isFile?.() ? narrationStat.size : null;
       const audioSize = audioStat?.isFile?.() ? audioStat.size : null;
       const audioDurationSeconds = audioStat?.isFile?.()
         ? await getAudioDurationSeconds(audioPath)
@@ -178,16 +200,13 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
         chapterNumber,
         title: entry.title,
         page: entry.page,
-        narration: {
-          ready: Boolean(narrationStat?.isFile?.()),
-          url: `/data/${bookId}/${narrationFilename}`,
-          bytes: narrationSize
-        },
+        latestVersionId: versions.latestVersionId,
         audio: {
           ready: Boolean(audioStat?.isFile?.()),
           url: `/data/${bookId}/${audioFilename}`,
           bytes: audioSize,
-          durationSeconds: audioDurationSeconds
+          durationSeconds: audioDurationSeconds,
+          versionId: audioMeta?.versionId ?? null
         }
       };
     })
@@ -329,8 +348,9 @@ router.post('/api/books/:id/chapters/generate', asyncHandler(async (req, res) =>
 router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
-  const { voice } = req.body || {};
-  const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice });
+  const voice = typeof req.body?.voice === 'string' ? req.body.voice.trim() : '';
+  const versionId = typeof req.body?.versionId === 'string' ? req.body.versionId.trim() : null;
+  const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId });
   res.json({ book: bookId, chapterNumber, job });
 }));
 
@@ -338,7 +358,10 @@ router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (
   const bookId = normalizeBookId(req.params.id);
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const job = await getChapterAudioJob(bookId, chapterNumber);
-  const audioUrl = await resolveChapterAudioUrl(bookId, chapterNumber);
+  const [audioUrl, audioMeta] = await Promise.all([
+    resolveChapterAudioUrl(bookId, chapterNumber),
+    loadChapterAudioMeta(bookId, chapterNumber)
+  ]);
   if (!job && audioUrl) {
     res.json({
       book: bookId,
@@ -347,6 +370,7 @@ router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (
         bookId,
         chapterNumber,
         status: 'completed',
+        versionId: audioMeta?.versionId ?? 'base',
         startedAt: null,
         updatedAt: new Date().toISOString(),
         error: null,
@@ -377,7 +401,43 @@ router.post('/api/books/:id/chapters/:chapter/audio/cancel', asyncHandler(async 
 router.post('/api/books/:id/chapters/:chapter/narration', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
-  const result = await generateChapterNarration({ bookId, chapterNumber });
+  const result = await createChapterTextVersion({
+    bookId,
+    chapterNumber,
+    promptId: 'narration-default'
+  });
+  res.json({ book: bookId, chapterNumber, ...result });
+}));
+
+router.get('/api/books/:id/chapters/:chapter/text-versions', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const result = await listChapterTextVersions({ bookId, chapterNumber });
+  res.json({ book: bookId, ...result });
+}));
+
+router.post('/api/books/:id/chapters/:chapter/text-versions', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const result = await createChapterTextVersion({
+    bookId,
+    chapterNumber,
+    promptId: typeof req.body?.promptId === 'string' ? req.body.promptId.trim() : null,
+    customPrompt: typeof req.body?.customPrompt === 'string' ? req.body.customPrompt : '',
+    addToLibrary: req.body?.addToLibrary === true,
+    promptName: typeof req.body?.promptName === 'string' ? req.body.promptName : ''
+  });
+  res.json({ book: bookId, chapterNumber, ...result });
+}));
+
+router.delete('/api/books/:id/chapters/:chapter/text-versions/:versionId', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const result = await deleteChapterTextVersion({
+    bookId,
+    chapterNumber,
+    versionId: req.params.versionId
+  });
   res.json({ book: bookId, chapterNumber, ...result });
 }));
 

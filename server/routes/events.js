@@ -30,7 +30,7 @@ function normalizeStreamSource(pageKey) {
     return { sourceType: 'chapter', sourceLabel: 'Chapter Text' };
   }
   if (pageKey.startsWith('narration::paragraph-start-')) {
-    return { sourceType: 'narration', sourceLabel: 'Narration' };
+    return { sourceType: 'chapter', sourceLabel: 'Chapter Text' };
   }
   if (pageKey.includes('::ocr-block-')) {
     return { sourceType: 'page', sourceLabel: 'Page Audio' };

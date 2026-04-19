@@ -7,6 +7,7 @@ import { pipeline } from 'node:stream/promises';
 import { WebSocket } from 'undici';
 import { STREAM_SERVER, STREAM_VOICE } from '../config.js';
 import { assertBookDirectory } from './books.js';
+import { getChapterTextVersionText } from './chapterTextVersions.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
 import { splitStreamChunks, stripMarkdown } from './streamText.js';
@@ -20,10 +21,6 @@ const execFileAsync = promisify(execFile);
 
 function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
-}
-
-function formatNarrationFilename(chapterNumber) {
-  return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.narration.txt`;
 }
 
 async function encodeMp3(wavPath, mp3Path) {
@@ -188,44 +185,50 @@ function splitTextForStreaming(input) {
   });
 }
 
-export async function prepareChapterAudio({ bookId, chapterNumber }) {
+export async function prepareChapterAudio({ bookId, chapterNumber, versionId = null }) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
   }
 
   const directory = await assertBookDirectory(bookId);
   const chapterFilename = formatChapterFilename(chapterNumber);
-  const narrationFilename = formatNarrationFilename(chapterNumber);
-  const narrationPath = path.join(directory, narrationFilename);
-  const narrationStat = await safeStat(narrationPath);
-  if (!narrationStat?.isFile()) {
-    throw createHttpError(404, 'Narration file not found');
-  }
   const audioFilename = chapterFilename.replace(/\.txt$/i, '.wav');
   const audioPath = path.join(directory, audioFilename);
   const pcmFilename = audioFilename.replace(/\.wav$/i, '.pcm');
   const pcmPath = path.join(directory, pcmFilename);
   const mp3Filename = audioFilename.replace(/\.wav$/i, '.mp3');
   const mp3Path = path.join(directory, mp3Filename);
+  const metaPath = `${mp3Path}.meta.json`;
+  const textVersion = await getChapterTextVersionText({ bookId, chapterNumber, versionId });
   const existingMp3 = await safeStat(mp3Path);
   if (existingMp3?.isFile()) {
-    return {
-      existingAudioUrl: `/data/${bookId}/${mp3Filename}`
-    };
+    try {
+      const rawMeta = await fs.readFile(metaPath, 'utf8');
+      const meta = JSON.parse(rawMeta);
+      if ((meta?.versionId ?? 'base') === textVersion.versionId) {
+        return {
+          existingAudioUrl: `/data/${bookId}/${mp3Filename}`,
+          versionId: textVersion.versionId
+        };
+      }
+    } catch {
+      // force regeneration when metadata is missing or invalid
+    }
   }
 
-  const rawText = await fs.readFile(narrationPath, 'utf8');
-  const cleaned = stripMarkdown(rawText).trim();
+  const cleaned = stripMarkdown(textVersion.text).trim();
   if (!cleaned) {
     throw createHttpError(400, 'No text available for audio generation');
   }
 
   return {
     audioPath,
+    metaPath,
     pcmPath,
     mp3Path,
     mp3Url: `/data/${bookId}/${mp3Filename}`,
-    textChunks: splitTextForStreaming(cleaned)
+    textChunks: splitTextForStreaming(cleaned),
+    versionId: textVersion.versionId
   };
 }
 
@@ -233,12 +236,24 @@ export async function streamChapterAudioChunk(text, voice) {
   return streamTextToPcm(text, voice);
 }
 
-export async function finalizeChapterAudio({ audioPath, mp3Path, pcmPath, pcmLength }) {
+export async function finalizeChapterAudio({ audioPath, mp3Path, pcmPath, pcmLength, metaPath, versionId }) {
   const header = buildWavHeader(pcmLength);
   const wavStream = createWriteStream(audioPath);
   wavStream.write(header);
   await pipeline(createReadStream(pcmPath), wavStream);
   await encodeMp3(audioPath, mp3Path);
+  await fs.writeFile(
+    metaPath,
+    JSON.stringify(
+      {
+        versionId: versionId ?? 'base',
+        generatedAt: new Date().toISOString()
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
   await fs.unlink(audioPath);
   await fs.unlink(pcmPath);
 }

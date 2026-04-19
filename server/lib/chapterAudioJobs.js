@@ -52,6 +52,7 @@ function normalizeJob(job) {
     bookId: job.bookId,
     chapterNumber: job.chapterNumber,
     status: job.status ?? 'queued',
+    versionId: typeof job.versionId === 'string' ? job.versionId : 'base',
     startedAt: job.startedAt ?? null,
     updatedAt: job.updatedAt ?? null,
     error: job.error ?? null,
@@ -114,12 +115,13 @@ async function finalizeFailure(bookId, chapterNumber, error) {
   });
 }
 
-async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
+async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = null }) {
   const key = getJobKey(bookId, chapterNumber);
   let preparation = null;
   try {
     await updateJob(bookId, chapterNumber, {
       status: 'running',
+      versionId: versionId ?? 'base',
       startedAt: new Date().toISOString(),
       error: null
     });
@@ -130,10 +132,11 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
       return;
     }
 
-    preparation = await prepareChapterAudio({ bookId, chapterNumber });
+    preparation = await prepareChapterAudio({ bookId, chapterNumber, versionId });
     if ('existingAudioUrl' in preparation) {
       await updateJob(bookId, chapterNumber, {
         status: 'completed',
+        versionId: preparation.versionId ?? versionId ?? 'base',
         audioUrl: preparation.existingAudioUrl,
         error: null
       });
@@ -177,7 +180,9 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
       audioPath: preparation.audioPath,
       mp3Path: preparation.mp3Path,
       pcmPath: preparation.pcmPath,
-      pcmLength
+      pcmLength,
+      metaPath: preparation.metaPath,
+      versionId: preparation.versionId
     });
 
     const mp3Stat = await safeStat(preparation.mp3Path);
@@ -186,6 +191,7 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
     }
     await updateJob(bookId, chapterNumber, {
       status: 'completed',
+      versionId: preparation.versionId ?? versionId ?? 'base',
       audioUrl: preparation.mp3Url,
       error: null
     });
@@ -205,27 +211,31 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice }) {
   }
 }
 
-export async function enqueueChapterAudioJob({ bookId, chapterNumber, voice }) {
+export async function enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId = null }) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
   }
   const existing = await getChapterAudioJob(bookId, chapterNumber);
-  if (existing?.status === 'queued' || existing?.status === 'running') {
+  if (
+    (existing?.status === 'queued' || existing?.status === 'running') &&
+    (existing.versionId ?? 'base') === (versionId ?? 'base')
+  ) {
     return existing;
   }
   const job = await upsertJob({
     bookId,
     chapterNumber,
     status: 'queued',
+    versionId: versionId ?? 'base',
     startedAt: null,
     updatedAt: new Date().toISOString(),
     error: null,
     audioUrl: existing?.audioUrl ?? null
   });
   const key = getJobKey(bookId, chapterNumber);
-  activeSignals.set(key, { canceled: false, voice });
+  activeSignals.set(key, { canceled: false, voice, versionId: versionId ?? 'base' });
   setImmediate(() => {
-    void runChapterAudioJob({ bookId, chapterNumber, voice });
+    void runChapterAudioJob({ bookId, chapterNumber, voice, versionId });
   });
   return job;
 }

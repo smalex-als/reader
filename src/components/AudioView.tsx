@@ -13,16 +13,17 @@ interface AudioViewProps {
 }
 
 type ChapterStatus = {
-  narrationReady: boolean;
   audioReady: boolean;
+  latestVersionId: string;
+  audioVersionId: string | null;
 };
 
 type AudioChapter = {
   chapterNumber: number;
   title: string;
   page: number;
-  narration: { ready: boolean; url: string };
-  audio: { ready: boolean; url: string; durationSeconds?: number | null };
+  latestVersionId: string;
+  audio: { ready: boolean; url: string; versionId?: string | null; durationSeconds?: number | null };
 };
 
 type AudioJobStatus = {
@@ -51,7 +52,6 @@ export default function AudioView({
 }: AudioViewProps) {
   const [statusMap, setStatusMap] = useState<Record<number, ChapterStatus>>({});
   const [statusLoading, setStatusLoading] = useState(false);
-  const [narrationBusy, setNarrationBusy] = useState<Record<number, boolean>>({});
   const [audioBusy, setAudioBusy] = useState<Record<number, boolean>>({});
   const [errorMap, setErrorMap] = useState<Record<number, string | null>>({});
   const [chapters, setChapters] = useState<AudioChapter[]>([]);
@@ -78,8 +78,9 @@ export default function AudioView({
       const nextStatus: Record<number, ChapterStatus> = {};
       nextChapters.forEach((chapter) => {
         nextStatus[chapter.chapterNumber] = {
-          narrationReady: Boolean(chapter.narration?.ready),
-          audioReady: Boolean(chapter.audio?.ready)
+          audioReady: Boolean(chapter.audio?.ready),
+          latestVersionId: chapter.latestVersionId ?? 'base',
+          audioVersionId: chapter.audio?.versionId ?? null
         };
       });
       setStatusMap(nextStatus);
@@ -173,35 +174,8 @@ export default function AudioView({
     pollAudioJobStatusRef.current = pollAudioJobStatus;
   }, [pollAudioJobStatus]);
 
-  const handleGenerateNarration = useCallback(
-    async (chapterNumber: number) => {
-      if (!bookId || narrationBusy[chapterNumber]) {
-        return;
-      }
-      setNarrationBusy((prev) => ({ ...prev, [chapterNumber]: true }));
-      setErrorMap((prev) => ({ ...prev, [chapterNumber]: null }));
-      try {
-        const response = await fetch(
-          `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/narration`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' } }
-        );
-        if (!response.ok) {
-          throw new Error(await readErrorMessage(response));
-        }
-        showToast(`Narration saved for chapter ${chapterNumber}`, 'success');
-        await loadAudioStatus();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unable to generate narration.';
-        setErrorMap((prev) => ({ ...prev, [chapterNumber]: message }));
-      } finally {
-        setNarrationBusy((prev) => ({ ...prev, [chapterNumber]: false }));
-      }
-    },
-    [bookId, narrationBusy, loadAudioStatus, showToast]
-  );
-
   const handleGenerateAudio = useCallback(
-    async (chapterNumber: number) => {
+    async (chapterNumber: number, versionId: string) => {
       if (!bookId || audioBusy[chapterNumber]) {
         return;
       }
@@ -213,7 +187,7 @@ export default function AudioView({
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ voice: streamVoice })
+            body: JSON.stringify({ voice: streamVoice, versionId })
           }
         );
         if (!response.ok) {
@@ -306,33 +280,25 @@ export default function AudioView({
           <div className="audio-list">
             {chapters.map((entry) => {
               const chapterStatus = statusMap[entry.chapterNumber];
-              const narrationReady = chapterStatus?.narrationReady ?? false;
-              const audioReady = chapterStatus?.audioReady ?? false;
+              const latestVersionId = chapterStatus?.latestVersionId ?? entry.latestVersionId ?? 'base';
+              const audioReady =
+                (chapterStatus?.audioReady ?? false) &&
+                (chapterStatus?.audioVersionId ?? entry.audio?.versionId ?? null) === latestVersionId;
               const jobStatus = audioJobs[entry.chapterNumber];
               const isAudioJobActive =
                 jobStatus?.status === 'queued' || jobStatus?.status === 'running';
-              const canGenerateAudio = narrationReady;
               const showAction = !audioReady;
-              const actionLabel = narrationReady
-                ? isAudioJobActive
-                  ? jobStatus?.status === 'queued'
-                    ? 'Queued…'
-                    : 'Generating…'
-                  : audioBusy[entry.chapterNumber]
-                  ? 'Starting…'
-                  : 'Generate audio'
-                : narrationBusy[entry.chapterNumber]
-                ? 'Generating…'
-                : 'Generate narration';
-              const actionDisabled = narrationReady
-                ? audioBusy[entry.chapterNumber] || !canGenerateAudio || isAudioJobActive
-                : narrationBusy[entry.chapterNumber];
+              const actionLabel = isAudioJobActive
+                ? jobStatus?.status === 'queued'
+                  ? 'Queued…'
+                  : 'Generating…'
+                : audioBusy[entry.chapterNumber]
+                ? 'Starting…'
+                : 'Generate audio';
+              const actionDisabled =
+                audioBusy[entry.chapterNumber] || isAudioJobActive;
               const handleAction = () => {
-                if (narrationReady) {
-                  void handleGenerateAudio(entry.chapterNumber);
-                  return;
-                }
-                void handleGenerateNarration(entry.chapterNumber);
+                void handleGenerateAudio(entry.chapterNumber, latestVersionId);
               };
               return (
                 <article key={`${entry.title}-${entry.page}-${entry.chapterNumber}`} className="audio-row">

@@ -2,7 +2,11 @@ import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { CSSProperties, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import AddIcon from '@/components/AddIcon';
+import CloseIcon from '@/components/CloseIcon';
 import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import TrashIcon from '@/components/TrashIcon';
+import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 
 interface ChapterViewerProps {
   bookId: string | null;
@@ -38,6 +42,13 @@ type AudioJobStatus = {
   status: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
   error?: string | null;
   audioUrl?: string | null;
+  versionId?: string | null;
+};
+
+type ChapterAudioStatusEntry = {
+  chapterNumber: number;
+  latestVersionId?: string | null;
+  audio?: { ready?: boolean; url?: string | null; versionId?: string | null };
 };
 
 function formatChapterFilename(chapterNumber: number) {
@@ -66,6 +77,14 @@ function hashText(input: string) {
   return Math.abs(hash).toString(36);
 }
 
+async function readErrorMessage(response: Response) {
+  try {
+    const payload = (await response.json()) as { error?: string };
+    return payload?.error ?? `Request failed (${response.status})`;
+  } catch {
+    return `Request failed (${response.status})`;
+  }
+}
 
 export default function ChapterViewer({
   bookId,
@@ -88,30 +107,40 @@ export default function ChapterViewer({
   playingParagraphStart,
   playingParagraphMode
 }: ChapterViewerProps) {
-  const [contentMode, setContentMode] = useState<'chapter' | 'narration'>('chapter');
   const [chapterText, setChapterText] = useState('');
-  const [narrationText, setNarrationText] = useState('');
+  const [selectedText, setSelectedText] = useState('');
+  const [versions, setVersions] = useState<ChapterTextVersion[]>([]);
+  const [promptLibrary, setPromptLibrary] = useState<ChapterTextPrompt[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState('base');
   const [loading, setLoading] = useState(false);
-  const [narrationLoading, setNarrationLoading] = useState(false);
+  const [versionLoading, setVersionLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [missingFile, setMissingFile] = useState<string | null>(null);
-  const [narrationError, setNarrationError] = useState<string | null>(null);
-  const [missingNarrationFile, setMissingNarrationFile] = useState<string | null>(null);
+  const [versionError, setVersionError] = useState<string | null>(null);
   const [localRefreshToken, setLocalRefreshToken] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [audioGenerating, setAudioGenerating] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
-  const [narrationGenerating, setNarrationGenerating] = useState(false);
-  const [narrationStatus, setNarrationStatus] = useState<string | null>(null);
+  const [versionSaving, setVersionSaving] = useState(false);
+  const [versionStatus, setVersionStatus] = useState<string | null>(null);
   const [chapterAudioReady, setChapterAudioReady] = useState(false);
-  const [chapterNarrationReady, setChapterNarrationReady] = useState(false);
+  const [chapterAudioVersionId, setChapterAudioVersionId] = useState<string | null>(null);
   const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
   const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
+  const [selectedPromptId, setSelectedPromptId] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [promptName, setPromptName] = useState('');
+  const [savePromptToLibrary, setSavePromptToLibrary] = useState(false);
   const audioPollTimers = useRef<Map<number, number>>(new Map());
   const audioPollAttempts = useRef<Map<number, number>>(new Map());
   const audioPollRef = useRef<(chapterNumber: number) => void>();
   const onPlayParagraphRef = useRef(onPlayParagraph);
+  const selectedVersion = useMemo(
+    () => versions.find((version) => version.id === selectedVersionId) ?? versions[0] ?? null,
+    [selectedVersionId, versions]
+  );
 
   useEffect(() => {
     onPlayParagraphRef.current = onPlayParagraph;
@@ -142,13 +171,6 @@ export default function ChapterViewer({
     [textFontSize]
   );
 
-  const handleFontSizeChange = useCallback(
-    (value: number) => {
-      onTextFontSizeChange(value);
-    },
-    [onTextFontSizeChange]
-  );
-
   const chapterLabel = useMemo(() => {
     if (!chapterNumber) {
       return 'Chapter';
@@ -156,26 +178,101 @@ export default function ChapterViewer({
     return `Chapter ${chapterNumber}`;
   }, [chapterNumber]);
 
-  useEffect(() => {
-    setContentMode('chapter');
+  const handleFontSizeChange = useCallback(
+    (value: number) => {
+      onTextFontSizeChange(value);
+    },
+    [onTextFontSizeChange]
+  );
+
+  const loadChapterAudioStatus = useCallback(async () => {
+    if (!bookId || !chapterNumber) {
+      setChapterAudioReady(false);
+      setChapterAudioVersionId(null);
+      setChapterAudioUrl(null);
+      return;
+    }
+    try {
+      const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/audio`);
+      if (!response.ok) {
+        throw new Error(`Audio status failed: ${response.status}`);
+      }
+      const payload = (await response.json()) as {
+        chapters?: ChapterAudioStatusEntry[];
+      };
+      const entry = Array.isArray(payload.chapters)
+        ? payload.chapters.find((item) => item.chapterNumber === chapterNumber)
+        : null;
+      const audioVersionId = entry?.audio?.versionId ?? null;
+      const currentVersionId = selectedVersionId || entry?.latestVersionId || 'base';
+      setChapterAudioVersionId(audioVersionId);
+      setChapterAudioReady(Boolean(entry?.audio?.ready) && audioVersionId === currentVersionId);
+      setChapterAudioUrl(entry?.audio?.url ?? null);
+    } catch (err) {
+      console.warn('Failed to load chapter audio status', err);
+    }
+  }, [bookId, chapterNumber, selectedVersionId]);
+
+  const loadTextVersions = useCallback(async () => {
+    if (!bookId || !chapterNumber) {
+      setVersions([]);
+      setPromptLibrary([]);
+      setSelectedVersionId('base');
+      setVersionError(null);
+      setVersionLoading(false);
+      return;
+    }
+    setVersionLoading(true);
+    setVersionError(null);
+    try {
+      const response = await fetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/text-versions`
+      );
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+      const payload = (await response.json()) as {
+        latestVersionId?: string;
+        versions?: ChapterTextVersion[];
+        promptLibrary?: ChapterTextPrompt[];
+      };
+      const nextVersions = Array.isArray(payload.versions) ? payload.versions : [];
+      setVersions(nextVersions);
+      setPromptLibrary(Array.isArray(payload.promptLibrary) ? payload.promptLibrary : []);
+      const nextSelectedVersionId =
+        payload.latestVersionId ?? nextVersions[nextVersions.length - 1]?.id ?? 'base';
+      setSelectedVersionId((current) =>
+        current && nextVersions.some((version) => version.id === current) ? current : nextSelectedVersionId
+      );
+      setSelectedPromptId((current) => current || payload.promptLibrary?.[0]?.id || 'narration-default');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to load chapter text versions.';
+      setVersions([]);
+      setPromptLibrary([]);
+      setVersionError(message);
+    } finally {
+      setVersionLoading(false);
+    }
   }, [bookId, chapterNumber]);
 
   useEffect(() => {
     if (!bookId || !chapterNumber) {
       setChapterText('');
-      setNarrationText('');
+      setSelectedText('');
+      setVersions([]);
+      setPromptLibrary([]);
+      setSelectedVersionId('base');
       setError(null);
       setMissingFile(null);
       setLoading(false);
-      setNarrationLoading(false);
-      setNarrationError(null);
-      setMissingNarrationFile(null);
+      setVersionLoading(false);
+      setVersionError(null);
       setAudioGenerating(false);
       setAudioError(null);
-      setNarrationGenerating(false);
-      setNarrationStatus(null);
+      setVersionSaving(false);
+      setVersionStatus(null);
       setChapterAudioReady(false);
-      setChapterNarrationReady(false);
+      setChapterAudioVersionId(null);
       setChapterAudioUrl(null);
       setAudioJob(null);
       return;
@@ -186,11 +283,11 @@ export default function ChapterViewer({
     const url = `/data/${encodeURIComponent(bookId)}/${filename}`;
 
     setChapterText('');
+    setSelectedText('');
     setLoading(true);
     setError(null);
     setMissingFile(null);
-    setNarrationGenerating(false);
-    setNarrationStatus(null);
+    setVersionStatus(null);
 
     fetch(url)
       .then(async (response) => {
@@ -208,8 +305,7 @@ export default function ChapterViewer({
         if (canceled) {
           return;
         }
-        const trimmed = text.trim();
-        setChapterText(trimmed);
+        setChapterText(text.trim());
       })
       .catch((err: Error & { missingFile?: string }) => {
         if (canceled) {
@@ -231,89 +327,54 @@ export default function ChapterViewer({
   }, [bookId, chapterNumber, refreshToken, localRefreshToken]);
 
   useEffect(() => {
-    if (!bookId || !chapterNumber) {
-      setNarrationText('');
-      setNarrationError(null);
-      setMissingNarrationFile(null);
-      setNarrationLoading(false);
+    if (!bookId || !chapterNumber || missingFile) {
+      setVersions([]);
+      setPromptLibrary([]);
+      setSelectedVersionId('base');
       return;
     }
+    void loadTextVersions();
+  }, [bookId, chapterNumber, loadTextVersions, localRefreshToken, missingFile, refreshToken]);
 
+  useEffect(() => {
+    if (!bookId || !chapterNumber || !selectedVersion) {
+      setSelectedText('');
+      return;
+    }
+    if (selectedVersion.id === 'base') {
+      setSelectedText(chapterText);
+      return;
+    }
     let canceled = false;
-    const filename = `chapter${String(chapterNumber).padStart(3, '0')}.narration.txt`;
-    const url = `/data/${encodeURIComponent(bookId)}/${filename}`;
-
-    setNarrationText('');
-    setNarrationLoading(true);
-    setNarrationError(null);
-    setMissingNarrationFile(null);
-
-    fetch(url)
+    setVersionError(null);
+    setVersionLoading(true);
+    fetch(selectedVersion.file)
       .then(async (response) => {
         if (!response.ok) {
-          if (response.status === 404) {
-            const err = new Error('Narration text not found.');
-            (err as Error & { missingFile?: string }).missingFile = filename;
-            throw err;
-          }
-          throw new Error('Failed to load narration.');
+          throw new Error(`Failed to load version (${response.status})`);
         }
         return response.text();
       })
       .then((text) => {
-        if (canceled) {
-          return;
+        if (!canceled) {
+          setSelectedText(text.trim());
         }
-        setNarrationText(text.trim());
       })
-      .catch((err: Error & { missingFile?: string }) => {
-        if (canceled) {
-          return;
+      .catch((err) => {
+        if (!canceled) {
+          setSelectedText('');
+          setVersionError(err instanceof Error ? err.message : 'Unable to load chapter text version.');
         }
-        setNarrationText('');
-        setMissingNarrationFile(err.missingFile ?? null);
-        setNarrationError(err.message || 'Unable to load narration text.');
       })
       .finally(() => {
         if (!canceled) {
-          setNarrationLoading(false);
+          setVersionLoading(false);
         }
       });
-
     return () => {
       canceled = true;
     };
-  }, [bookId, chapterNumber, refreshToken, localRefreshToken]);
-
-  const loadChapterAudioStatus = useCallback(async () => {
-    if (!bookId || !chapterNumber) {
-      setChapterAudioReady(false);
-      setChapterNarrationReady(false);
-      setChapterAudioUrl(null);
-      return;
-    }
-    try {
-      const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/audio`);
-      if (!response.ok) {
-        throw new Error(`Audio status failed: ${response.status}`);
-      }
-      const payload = (await response.json()) as {
-        chapters?: Array<{
-          chapterNumber: number;
-          narration?: { ready?: boolean };
-          audio?: { ready?: boolean; url?: string; durationSeconds?: number | null };
-        }>;
-      };
-      const entry = Array.isArray(payload.chapters)
-        ? payload.chapters.find((item) => item.chapterNumber === chapterNumber)
-        : null;
-      setChapterNarrationReady(Boolean(entry?.narration?.ready));
-      setChapterAudioReady(Boolean(entry?.audio?.ready));
-      setChapterAudioUrl(entry?.audio?.url ?? null);
-    } catch (err) {
-      console.warn('Failed to load chapter audio status', err);
-    }
-  }, [bookId, chapterNumber]);
+  }, [bookId, chapterNumber, chapterText, selectedVersion]);
 
   useEffect(() => {
     void loadChapterAudioStatus();
@@ -330,18 +391,15 @@ export default function ChapterViewer({
     clearAudioPoll();
   }, [bookId, chapterNumber, clearAudioPoll]);
 
-  const scheduleAudioPoll = useCallback(
-    (currentChapter: number) => {
-      const attempt = (audioPollAttempts.current.get(currentChapter) ?? 0) + 1;
-      audioPollAttempts.current.set(currentChapter, attempt);
-      const delay = Math.min(1000 * 2 ** (attempt - 1), 10000);
-      const timer = window.setTimeout(() => {
-        audioPollRef.current?.(currentChapter);
-      }, delay);
-      audioPollTimers.current.set(currentChapter, timer);
-    },
-    []
-  );
+  const scheduleAudioPoll = useCallback((currentChapter: number) => {
+    const attempt = (audioPollAttempts.current.get(currentChapter) ?? 0) + 1;
+    audioPollAttempts.current.set(currentChapter, attempt);
+    const delay = Math.min(1000 * 2 ** (attempt - 1), 10000);
+    const timer = window.setTimeout(() => {
+      audioPollRef.current?.(currentChapter);
+    }, delay);
+    audioPollTimers.current.set(currentChapter, timer);
+  }, []);
 
   const pollAudioJobStatus = useCallback(
     async (currentChapter: number) => {
@@ -356,7 +414,7 @@ export default function ChapterViewer({
           throw new Error(`Audio status failed: ${response.status}`);
         }
         const payload = (await response.json()) as {
-          job?: { status?: AudioJobStatus['status']; error?: string | null; audioUrl?: string | null };
+          job?: AudioJobStatus;
         };
         const job = payload?.job;
         if (!job?.status) {
@@ -366,7 +424,8 @@ export default function ChapterViewer({
         setAudioJob({
           status: job.status,
           error: job.error ?? null,
-          audioUrl: job.audioUrl ?? null
+          audioUrl: job.audioUrl ?? null,
+          versionId: job.versionId ?? null
         });
         if (job.status === 'completed') {
           clearAudioPoll();
@@ -391,13 +450,16 @@ export default function ChapterViewer({
     audioPollRef.current = pollAudioJobStatus;
   }, [pollAudioJobStatus]);
 
+  const displayText = selectedVersionId === 'base' ? chapterText : selectedText;
+  const displayLoading = loading || versionLoading;
+  const displayError = error || versionError;
+
   useEffect(() => {
-    const activeText = contentMode === 'narration' ? narrationText : chapterText;
-    if (!activeText || !chapterNumber) {
+    if (!displayText || !chapterNumber) {
       onFirstParagraphReady(null);
       return;
     }
-    const paragraphs = activeText
+    const paragraphs = displayText
       .split(/\n\s*\n/)
       .map((value) => value.trim())
       .filter(Boolean);
@@ -406,17 +468,18 @@ export default function ChapterViewer({
       return;
     }
     const firstParagraph = paragraphs[0];
-    const startIndex = activeText.indexOf(firstParagraph);
-    const paragraphKey = `${contentMode}-${chapterNumber}-${hashText(firstParagraph)}-${startIndex}`;
+    const startIndex = displayText.indexOf(firstParagraph);
     onFirstParagraphReady({
-      fullText: activeText,
+      fullText: displayText,
       startIndex: Math.max(0, startIndex),
-      key: paragraphKey
+      key: `chapter-${chapterNumber}-${selectedVersionId}-${hashText(firstParagraph)}-${startIndex}`
     });
-  }, [chapterNumber, chapterText, contentMode, narrationText, onFirstParagraphReady]);
+  }, [chapterNumber, displayText, onFirstParagraphReady, selectedVersionId]);
+
   const canGenerate = Boolean(allowGenerate && bookId && chapterNumber && pageRange);
-  const canGenerateNarration = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
-  const canGenerateAudio = Boolean(canGenerateNarration && chapterNarrationReady);
+  const canCreateVersion = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
+  const canGenerateAudio = Boolean(bookId && chapterNumber && displayText && !displayLoading);
+
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !pageRange || generating) {
       return;
@@ -444,37 +507,39 @@ export default function ChapterViewer({
       setGenerating(false);
     }
   }, [bookId, canGenerate, chapterNumber, generating, pageRange]);
+
   const handleGenerateAudio = useCallback(async () => {
     if (!canGenerateAudio || !bookId || !chapterNumber || audioGenerating) {
       return;
     }
     setAudioGenerating(true);
     setAudioError(null);
-    setNarrationStatus(null);
+    setVersionStatus(null);
     try {
       const response = await fetch(
         `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/audio`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ voice: streamVoice })
+          body: JSON.stringify({ voice: streamVoice, versionId: selectedVersionId })
         }
       );
       if (!response.ok) {
         throw new Error(`Audio generation failed: ${response.status}`);
       }
       const payload = (await response.json()) as {
-        job?: { status?: AudioJobStatus['status']; error?: string | null; audioUrl?: string | null };
+        job?: AudioJobStatus;
       };
       if (payload?.job?.status) {
         setAudioJob({
           status: payload.job.status,
           error: payload.job.error ?? null,
-          audioUrl: payload.job.audioUrl ?? null
+          audioUrl: payload.job.audioUrl ?? null,
+          versionId: payload.job.versionId ?? selectedVersionId
         });
         scheduleAudioPoll(chapterNumber);
       } else {
-        setNarrationStatus('Audio job queued.');
+        setVersionStatus('Audio job queued.');
         scheduleAudioPoll(chapterNumber);
       }
     } catch (err) {
@@ -483,36 +548,107 @@ export default function ChapterViewer({
     } finally {
       setAudioGenerating(false);
     }
-  }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, scheduleAudioPoll, streamVoice]);
+  }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, scheduleAudioPoll, selectedVersionId, streamVoice]);
 
-  const handleGenerateNarration = useCallback(async () => {
-    if (!canGenerateNarration || !bookId || !chapterNumber || narrationGenerating) {
+  const handleCreateVersion = useCallback(async () => {
+    if (!canCreateVersion || !bookId || !chapterNumber || versionSaving) {
       return;
     }
-    setNarrationGenerating(true);
+    setVersionSaving(true);
     setAudioError(null);
-    setNarrationStatus(null);
+    setVersionStatus(null);
     try {
       const response = await fetch(
-        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/narration`,
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/text-versions`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            promptId: selectedPromptId || null,
+            customPrompt,
+            addToLibrary: savePromptToLibrary,
+            promptName
+          })
         }
       );
       if (!response.ok) {
-        throw new Error(`Narration generation failed: ${response.status}`);
+        throw new Error(await readErrorMessage(response));
       }
-      setNarrationStatus('Narration saved.');
-      setLocalRefreshToken((prev) => prev + 1);
+      const payload = (await response.json()) as {
+        latestVersionId?: string;
+        createdVersionId?: string;
+        versions?: ChapterTextVersion[];
+        promptLibrary?: ChapterTextPrompt[];
+      };
+      const nextVersions = Array.isArray(payload.versions) ? payload.versions : [];
+      setVersions(nextVersions);
+      setPromptLibrary(Array.isArray(payload.promptLibrary) ? payload.promptLibrary : []);
+      setSelectedVersionId(
+        payload.createdVersionId ?? payload.latestVersionId ?? nextVersions[nextVersions.length - 1]?.id ?? 'base'
+      );
+      setVersionStatus('Version saved.');
+      setVersionModalOpen(false);
+      setCustomPrompt('');
+      setPromptName('');
+      setSavePromptToLibrary(false);
       await loadChapterAudioStatus();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to generate narration.';
+      const message = err instanceof Error ? err.message : 'Unable to create chapter text version.';
       setAudioError(message);
     } finally {
-      setNarrationGenerating(false);
+      setVersionSaving(false);
     }
-  }, [bookId, canGenerateNarration, chapterNumber, loadChapterAudioStatus, narrationGenerating]);
+  }, [
+    bookId,
+    canCreateVersion,
+    chapterNumber,
+    customPrompt,
+    loadChapterAudioStatus,
+    promptName,
+    savePromptToLibrary,
+    selectedPromptId,
+    versionSaving
+  ]);
+
+  const handleDeleteVersion = useCallback(async () => {
+    if (!bookId || !chapterNumber || !selectedVersion || !selectedVersion.deletable || versionSaving) {
+      return;
+    }
+    const confirmed = window.confirm(`Delete ${selectedVersion.label}?`);
+    if (!confirmed) {
+      return;
+    }
+    setVersionSaving(true);
+    setAudioError(null);
+    setVersionStatus(null);
+    try {
+      const response = await fetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/text-versions/${selectedVersion.id}`,
+        {
+          method: 'DELETE'
+        }
+      );
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+      const payload = (await response.json()) as {
+        latestVersionId?: string;
+        versions?: ChapterTextVersion[];
+        promptLibrary?: ChapterTextPrompt[];
+      };
+      const nextVersions = Array.isArray(payload.versions) ? payload.versions : [];
+      setVersions(nextVersions);
+      setPromptLibrary(Array.isArray(payload.promptLibrary) ? payload.promptLibrary : []);
+      setSelectedVersionId(payload.latestVersionId ?? nextVersions[nextVersions.length - 1]?.id ?? 'base');
+      setVersionStatus('Version deleted.');
+      await loadChapterAudioStatus();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to delete chapter text version.';
+      setAudioError(message);
+    } finally {
+      setVersionSaving(false);
+    }
+  }, [bookId, chapterNumber, loadChapterAudioStatus, selectedVersion, versionSaving]);
 
   const handleCancelAudioJob = useCallback(async () => {
     if (!bookId || !chapterNumber) {
@@ -527,13 +663,12 @@ export default function ChapterViewer({
       if (!response.ok) {
         throw new Error(`Audio cancel failed: ${response.status}`);
       }
-      setAudioJob({ status: 'canceled', error: null, audioUrl: null });
+      setAudioJob({ status: 'canceled', error: null, audioUrl: null, versionId: selectedVersionId });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to cancel chapter audio.';
       setAudioError(message);
     }
-  }, [bookId, chapterNumber, clearAudioPoll]);
-
+  }, [bookId, chapterNumber, clearAudioPoll, selectedVersionId]);
 
   useEffect(() => {
     return () => {
@@ -542,27 +677,29 @@ export default function ChapterViewer({
   }, [clearAudioPoll]);
 
   const isAudioJobActive = audioJob?.status === 'queued' || audioJob?.status === 'running';
-  const audioActionLabel = chapterNarrationReady
-    ? isAudioJobActive
-      ? audioJob?.status === 'queued'
-        ? 'Queued…'
-        : 'Generating…'
-      : audioGenerating
-      ? 'Starting…'
-      : 'Generate Audio'
-    : narrationGenerating
-    ? 'Generating…'
-    : 'Generate Narration';
-  const audioActionDisabled = chapterNarrationReady
-    ? !canGenerateAudio || audioGenerating || isAudioJobActive
-    : !canGenerateNarration || narrationGenerating;
-  const handleAudioAction = useCallback(() => {
-    if (chapterNarrationReady) {
-      void handleGenerateAudio();
+  const selectedPromptTemplate =
+    customPrompt || promptLibrary.find((prompt) => prompt.id === selectedPromptId)?.template || '';
+
+  const closeVersionModal = useCallback(() => {
+    if (versionSaving) {
       return;
     }
-    void handleGenerateNarration();
-  }, [chapterNarrationReady, handleGenerateAudio, handleGenerateNarration]);
+    setVersionModalOpen(false);
+  }, [versionSaving]);
+
+  useEffect(() => {
+    if (!versionModalOpen) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeVersionModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [closeVersionModal, versionModalOpen]);
 
   const pageMeta = useMemo(() => {
     if (!pageRange) {
@@ -572,12 +709,6 @@ export default function ChapterViewer({
     const end = Math.max(start, pageRange.end);
     return `Pages ${start}-${end}`;
   }, [pageRange]);
-
-  const displayText = contentMode === 'narration' ? narrationText : chapterText;
-  const displayLoading = contentMode === 'narration' ? narrationLoading : loading;
-  const displayError = contentMode === 'narration' ? narrationError : error;
-  const displayMissingFile = contentMode === 'narration' ? missingNarrationFile : missingFile;
-  const contentModeLabel = contentMode === 'narration' ? 'Narration' : 'Chapter';
 
   const markdownComponents = useMemo(() => {
     const resolveStartIndex = (textValue: string, node?: any) => {
@@ -604,9 +735,9 @@ export default function ChapterViewer({
         const textValue = extractTextFromNode(children ?? '').trim();
         const startIndex = resolveStartIndex(textValue, node);
         const paragraphKey = chapterNumber
-          ? `${contentMode}-${chapterNumber}-${hashText(textValue)}-${startIndex}`
+          ? `chapter-${chapterNumber}-${selectedVersionId}-${hashText(textValue)}-${startIndex}`
           : '';
-        const isPlaying = playingParagraphStart === startIndex && playingParagraphMode === contentMode;
+        const isPlaying = playingParagraphStart === startIndex && playingParagraphMode === 'chapter';
         return (
           <Tag className="text-viewer-block" data-playing={isPlaying ? 'true' : 'false'}>
             {children}
@@ -643,7 +774,7 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, contentMode, displayText, playingParagraphMode, playingParagraphStart]);
+  }, [chapterNumber, displayText, playingParagraphMode, playingParagraphStart, selectedVersionId]);
 
   return (
     <div className="text-viewer" style={textStyle}>
@@ -654,27 +785,44 @@ export default function ChapterViewer({
         </div>
         {pageMeta ? <div className="text-viewer-meta">{pageMeta}</div> : null}
         <div className="text-viewer-actions">
-          {chapterNumber ? (
-            <div className="text-viewer-source segmented" role="tablist" aria-label="Displayed text source">
-              <button
-                type="button"
-                className={`segmented-item ${contentMode === 'chapter' ? 'segmented-item-active' : ''}`}
-                onClick={() => setContentMode('chapter')}
-                aria-selected={contentMode === 'chapter'}
-                role="tab"
+          {chapterNumber && versions.length > 0 ? (
+            <label className="text-viewer-version-select">
+              <span>Version</span>
+              <select
+                value={selectedVersionId}
+                onChange={(event) => setSelectedVersionId(event.target.value)}
+                disabled={displayLoading || versionSaving}
               >
-                Chapter
-              </button>
-              <button
-                type="button"
-                className={`segmented-item ${contentMode === 'narration' ? 'segmented-item-active' : ''}`}
-                onClick={() => setContentMode('narration')}
-                aria-selected={contentMode === 'narration'}
-                role="tab"
-              >
-                Narration
-              </button>
-            </div>
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id}>
+                    {version.label}
+                    {version.promptName ? ` · ${version.promptName}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button
+            type="button"
+            className="button button-ghost modal-icon-button"
+            onClick={() => setVersionModalOpen(true)}
+            disabled={!canCreateVersion || versionSaving}
+            aria-label="Create text version"
+            title="Create text version"
+          >
+            <AddIcon />
+          </button>
+          {selectedVersion?.deletable ? (
+            <button
+              type="button"
+              className="button button-ghost modal-icon-button"
+              onClick={() => void handleDeleteVersion()}
+              disabled={versionSaving}
+              aria-label="Delete selected version"
+              title="Delete selected version"
+            >
+              <TrashIcon />
+            </button>
           ) : null}
           <button
             type="button"
@@ -689,18 +837,20 @@ export default function ChapterViewer({
             <button
               type="button"
               className="button button-secondary"
-              onClick={handleAudioAction}
-              disabled={audioActionDisabled}
+              onClick={() => void handleGenerateAudio()}
+              disabled={!canGenerateAudio || audioGenerating || isAudioJobActive}
             >
-              {audioActionLabel}
+              {isAudioJobActive
+                ? audioJob?.status === 'queued'
+                  ? 'Queued…'
+                  : 'Generating…'
+                : audioGenerating
+                  ? 'Starting…'
+                  : 'Generate Audio'}
             </button>
           ) : null}
           {chapterNumber && isAudioJobActive ? (
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={handleCancelAudioJob}
-            >
+            <button type="button" className="button button-secondary" onClick={handleCancelAudioJob}>
               Cancel
             </button>
           ) : null}
@@ -712,7 +862,7 @@ export default function ChapterViewer({
                 onClick={() =>
                   onPlayAudio({
                     title: chapterTitle ?? `Chapter ${chapterNumber}`,
-                    subtitle: chapterNumber ? `Chapter ${chapterNumber}` : undefined,
+                    subtitle: selectedVersion?.label,
                     url: chapterAudioUrl
                   })
                 }
@@ -731,11 +881,7 @@ export default function ChapterViewer({
             </>
           ) : null}
           {allowEdit && chapterNumber ? (
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={onEditChapter}
-            >
+            <button type="button" className="button button-secondary" onClick={onEditChapter}>
               Edit
             </button>
           ) : null}
@@ -793,44 +939,17 @@ export default function ChapterViewer({
           <p className="text-viewer-status">No table of contents found. Use Edit TOC to add chapters.</p>
         )}
         {!tocLoading && chapterNumber && displayLoading && (
-          <p className="text-viewer-status">Loading {contentModeLabel.toLowerCase()} text…</p>
+          <p className="text-viewer-status">Loading chapter text…</p>
         )}
-        {!tocLoading &&
-          allowGenerate &&
-          chapterNumber &&
-          contentMode === 'chapter' &&
-          !displayLoading &&
-          displayMissingFile && (
+        {!tocLoading && allowGenerate && chapterNumber && !displayLoading && missingFile && (
           <div className="text-viewer-action">
-            <p className="text-viewer-status">{displayMissingFile} is missing. Generate it now?</p>
-            <button
-              type="button"
-              className="button"
-              onClick={handleGenerate}
-              disabled={!canGenerate || generating}
-            >
+            <p className="text-viewer-status">{missingFile} is missing. Generate it now?</p>
+            <button type="button" className="button" onClick={handleGenerate} disabled={!canGenerate || generating}>
               {generating ? 'Generating…' : 'Generate Chapter'}
             </button>
           </div>
         )}
-        {!tocLoading &&
-          chapterNumber &&
-          contentMode === 'narration' &&
-          !displayLoading &&
-          displayMissingFile && (
-          <div className="text-viewer-action">
-            <p className="text-viewer-status">{displayMissingFile} is missing. Generate it now?</p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => void handleGenerateNarration()}
-              disabled={!canGenerateNarration || narrationGenerating}
-            >
-              {narrationGenerating ? 'Generating…' : 'Generate Narration'}
-            </button>
-          </div>
-        )}
-        {!tocLoading && chapterNumber && !displayLoading && !displayMissingFile && displayError && (
+        {!tocLoading && chapterNumber && !displayLoading && !missingFile && displayError && (
           <p className="text-viewer-status">{displayError}</p>
         )}
         {!tocLoading && chapterNumber && !displayLoading && !displayError && displayText && (
@@ -844,12 +963,10 @@ export default function ChapterViewer({
           chapterNumber &&
           !displayLoading &&
           !generating &&
-          !displayMissingFile &&
+          !missingFile &&
           !displayError &&
-          !displayText && (
-          <p className="text-viewer-status">{contentModeLabel} text is empty.</p>
-        )}
-        {!tocLoading && allowGenerate && chapterNumber && contentMode === 'chapter' && !missingFile ? (
+          !displayText && <p className="text-viewer-status">Chapter text is empty.</p>}
+        {!tocLoading && allowGenerate && chapterNumber && !missingFile ? (
           <div className="text-viewer-regenerate">
             <button
               type="button"
@@ -861,26 +978,104 @@ export default function ChapterViewer({
             </button>
           </div>
         ) : null}
-        {!tocLoading && chapterNumber && contentMode === 'narration' && chapterNarrationReady ? (
-          <div className="text-viewer-regenerate">
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => void handleGenerateNarration()}
-              disabled={!canGenerateNarration || narrationGenerating}
-            >
-              {narrationGenerating ? 'Regenerating…' : 'Regenerate Narration'}
-            </button>
-          </div>
-        ) : null}
         {audioError ? <p className="text-viewer-status">{audioError}</p> : null}
         {audioJob?.status === 'failed' ? (
-          <p className="text-viewer-status">
-            {audioJob.error ?? 'Audio generation failed.'}
-          </p>
+          <p className="text-viewer-status">{audioJob.error ?? 'Audio generation failed.'}</p>
         ) : null}
-        {narrationStatus ? <p className="text-viewer-status">{narrationStatus}</p> : null}
+        {versionStatus ? <p className="text-viewer-status">{versionStatus}</p> : null}
+        {chapterAudioVersionId && chapterAudioVersionId !== selectedVersionId && chapterAudioUrl ? (
+          <p className="text-viewer-status">Existing MP3 belongs to another text version. Generate audio to update it.</p>
+        ) : null}
       </section>
+      {versionModalOpen ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal modal-wide text-version-modal">
+            <header className="modal-header">
+              <h2 className="modal-title">Create Text Version</h2>
+              <button
+                type="button"
+                className="button button-ghost modal-icon-button"
+                onClick={closeVersionModal}
+                aria-label="Close version modal"
+                title="Close version modal"
+                disabled={versionSaving}
+              >
+                <CloseIcon />
+              </button>
+            </header>
+            <section className="modal-body text-version-modal-body">
+              <div className="text-viewer-setting">
+                <span className="text-viewer-setting-label">Prompt</span>
+                <select
+                  className="text-viewer-select"
+                  value={selectedPromptId}
+                  onChange={(event) => setSelectedPromptId(event.target.value)}
+                  disabled={versionSaving}
+                >
+                  {promptLibrary.map((prompt) => (
+                    <option key={prompt.id} value={prompt.id}>
+                      {prompt.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="text-viewer-setting text-version-modal-field">
+                <span className="text-viewer-setting-label">Custom prompt</span>
+                <p className="text-viewer-placeholder-help">
+                  Available placeholders: <code>{'{{book_title}}'}</code>, <code>{'{{chapter_title}}'}</code>,{' '}
+                  <code>{'{{chapter_number}}'}</code>, <code>{'{{chapter_text}}'}</code>, <code>{'{{title}}'}</code>
+                </p>
+                <textarea
+                  className="modal-textarea text-viewer-prompt-textarea"
+                  value={customPrompt}
+                  onChange={(event) => setCustomPrompt(event.target.value)}
+                  placeholder={selectedPromptTemplate || 'Write a prompt with placeholders like {{book_title}}'}
+                  disabled={versionSaving}
+                />
+                <label className="text-viewer-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={savePromptToLibrary}
+                    onChange={(event) => setSavePromptToLibrary(event.target.checked)}
+                    disabled={versionSaving}
+                  />
+                  <span>Save this prompt to the library</span>
+                </label>
+              </div>
+              {savePromptToLibrary ? (
+                <div className="text-viewer-setting text-version-modal-field text-version-modal-field-compact">
+                  <span className="text-viewer-setting-label">Prompt name</span>
+                  <input
+                    className="text-viewer-input"
+                    value={promptName}
+                    onChange={(event) => setPromptName(event.target.value)}
+                    placeholder="Prompt name"
+                    disabled={versionSaving}
+                  />
+                </div>
+              ) : null}
+            </section>
+            <footer className="modal-footer modal-footer-right">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={closeVersionModal}
+                disabled={versionSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button"
+                onClick={() => void handleCreateVersion()}
+                disabled={!canCreateVersion || versionSaving}
+              >
+                {versionSaving ? 'Creating…' : 'Create Version'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
