@@ -10,6 +10,7 @@ type StreamHistoryPayload = {
   chapterNumber: number | null;
   chapterTitle: string | null;
   subchapterTitle?: string | null;
+  pageNumber?: number | null;
   pageKeyStart: string | null;
   pageKeyEnd: string | null;
   startedAt: string;

@@ -105,6 +105,7 @@ router.post('/api/stream-history', async (req, res, next) => {
       chapterTitle: typeof req.body?.chapterTitle === 'string' ? req.body.chapterTitle.trim() || null : null,
       subchapterTitle:
         typeof req.body?.subchapterTitle === 'string' ? req.body.subchapterTitle.trim() || null : null,
+      pageNumber: Number.isInteger(req.body?.pageNumber) ? req.body.pageNumber : null,
       pageKeyStart: typeof req.body?.pageKeyStart === 'string' ? req.body.pageKeyStart : null,
       pageKeyEnd: typeof req.body?.pageKeyEnd === 'string' ? req.body.pageKeyEnd : null,
       startedAt: typeof req.body?.startedAt === 'string' ? req.body.startedAt : null,
@@ -171,6 +172,9 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
           chapterNumber: Number.isInteger(entry.chapterNumber) ? entry.chapterNumber : null,
           chapterTitle: typeof entry.chapterTitle === 'string' ? entry.chapterTitle : null,
           subchapterTitle: typeof entry.subchapterTitle === 'string' ? entry.subchapterTitle : null,
+          pageNumber: Number.isInteger(entry.pageNumber) ? entry.pageNumber : null,
+          pageKeyStart: typeof entry.pageKeyStart === 'string' ? entry.pageKeyStart : null,
+          pageKeyEnd: typeof entry.pageKeyEnd === 'string' ? entry.pageKeyEnd : null,
           sourceType,
           sourceLabel,
           listenedSeconds,
@@ -210,6 +214,8 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
           previous.timestamp = previous.timestamp > entry.timestamp ? previous.timestamp : entry.timestamp;
           previous.startedAt = previous.startedAt < entry.startedAt ? previous.startedAt : entry.startedAt;
           previous.endedAt = previous.endedAt > entry.endedAt ? previous.endedAt : entry.endedAt;
+          previous.pageNumber = entry.pageNumber ?? previous.pageNumber;
+          previous.pageKeyEnd = entry.pageKeyEnd ?? previous.pageKeyEnd;
           previous.sessionCount += 1;
           previous.endReason = entry.endReason;
           return groups;
@@ -269,6 +275,8 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
         chapterNumber: session.chapterNumber,
         chapterTitle: session.chapterTitle,
         subchapterTitle: session.subchapterTitle,
+        pageNumber: session.pageNumber,
+        pageKeyEnd: session.pageKeyEnd,
         sessions: 0,
         totalSeconds: 0,
         lastListenedAt: null
@@ -279,6 +287,12 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
         !chapterAggregate.lastListenedAt || session.timestamp > chapterAggregate.lastListenedAt
           ? session.timestamp
           : chapterAggregate.lastListenedAt;
+      if (session.pageNumber !== null) {
+        chapterAggregate.pageNumber = session.pageNumber;
+      }
+      if (!chapterAggregate.pageKeyEnd || chapterAggregate.lastListenedAt === session.timestamp) {
+        chapterAggregate.pageKeyEnd = session.pageKeyEnd;
+      }
       byChapter.set(chapterKey, chapterAggregate);
     }
 

@@ -182,6 +182,7 @@ export default function App() {
     chapterNumber: number | null;
     chapterTitle: string | null;
     subchapterTitle: string | null;
+    pageNumber: number | null;
     pageKeyStart: string | null;
     startedAt: string;
     lastPageKey: string | null;
@@ -597,6 +598,7 @@ export default function App() {
         chapterNumber,
         chapterTitle: currentChapterEntry?.title ?? null,
         subchapterTitle: currentSubchapterEntry?.title ?? null,
+        pageNumber: currentPage,
         pageKeyStart: streamState.pageKey,
         startedAt: new Date().toISOString(),
         lastPageKey: streamState.pageKey
@@ -607,6 +609,9 @@ export default function App() {
 
     if (session && typeof streamState.pageKey === 'string' && streamState.pageKey) {
       session.lastPageKey = streamState.pageKey;
+    }
+    if (session) {
+      session.pageNumber = currentPage;
     }
 
     if (session && wasActive && !isActive) {
@@ -623,6 +628,7 @@ export default function App() {
           chapterNumber: session.chapterNumber,
           chapterTitle: session.chapterTitle,
           subchapterTitle: session.subchapterTitle,
+          pageNumber: session.pageNumber,
           pageKeyStart: session.pageKeyStart,
           pageKeyEnd: session.lastPageKey ?? streamState.pageKey,
           startedAt: session.startedAt,
@@ -638,6 +644,7 @@ export default function App() {
   }, [
     bookId,
     chapterNumber,
+    currentPage,
     currentChapterEntry,
     currentSubchapterEntry,
     streamState.pageKey,
@@ -660,6 +667,7 @@ export default function App() {
         chapterNumber: session.chapterNumber,
         chapterTitle: session.chapterTitle,
         subchapterTitle: session.subchapterTitle,
+        pageNumber: session.pageNumber,
         pageKeyStart: session.pageKeyStart,
         pageKeyEnd: session.lastPageKey ?? streamState.pageKey,
         startedAt: session.startedAt,
@@ -896,7 +904,13 @@ export default function App() {
   );
 
   const handleOpenDashboardChapter = useCallback(
-    async (targetBookId: string, targetChapterNumber: number | null) => {
+    async (
+      targetBookId: string,
+      targetChapterNumber: number | null,
+      _targetSubchapterTitle?: string | null,
+      targetPageNumber?: number | null,
+      _targetPageKeyEnd?: string | null
+    ) => {
       if (!targetChapterNumber || targetChapterNumber < 1) {
         closeListeningDashboard();
         setBookId(targetBookId);
@@ -905,10 +919,22 @@ export default function App() {
 
       let targetPage = targetChapterNumber - 1;
       try {
-        const response = await fetchJson<{ toc: TocEntry[] }>(`/api/books/${encodeURIComponent(targetBookId)}/toc`);
-        const tocEntries = Array.isArray(response.toc) ? response.toc : [];
+        const [manifestResponse, mainResponse] = await Promise.all([
+          fetchJson<{ manifest?: string[] }>(`/api/books/${encodeURIComponent(targetBookId)}/manifest`),
+          fetchJson<{ toc: TocEntry[] }>(`/api/books/${encodeURIComponent(targetBookId)}/toc`)
+        ]);
+        const manifestEntries = Array.isArray(manifestResponse.manifest) ? manifestResponse.manifest : [];
+        const tocEntries = Array.isArray(mainResponse.toc) ? mainResponse.toc : [];
+        const normalizedPageNumber = Number.isInteger(targetPageNumber) ? Number(targetPageNumber) : null;
+        if (
+          normalizedPageNumber !== null &&
+          normalizedPageNumber >= 0 &&
+          normalizedPageNumber < manifestEntries.length
+        ) {
+          targetPage = normalizedPageNumber;
+        }
         const tocEntry = tocEntries[targetChapterNumber - 1];
-        if (tocEntry && Number.isInteger(tocEntry.page)) {
+        if (targetPage === targetChapterNumber - 1 && tocEntry && Number.isInteger(tocEntry.page)) {
           targetPage = tocEntry.page;
         }
       } catch (error) {

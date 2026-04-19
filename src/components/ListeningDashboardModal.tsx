@@ -5,7 +5,13 @@ import type { ListeningDashboardData } from '@/types/app';
 interface ListeningDashboardModalProps {
   open: boolean;
   onOpenBook: (bookId: string) => void;
-  onOpenChapter: (bookId: string, chapterNumber: number | null) => void;
+  onOpenChapter: (
+    bookId: string,
+    chapterNumber: number | null,
+    subchapterTitle?: string | null,
+    pageNumber?: number | null,
+    pageKeyEnd?: string | null
+  ) => void;
   onClose: () => void;
 }
 
@@ -234,7 +240,15 @@ export default function ListeningDashboardModal({
                         key={`${entry.bookId}-${entry.chapterNumber ?? 'none'}-${index}`}
                         type="button"
                         className="listening-table-row listening-table-button"
-                        onClick={() => onOpenChapter(entry.bookId, entry.chapterNumber)}
+                        onClick={() =>
+                          onOpenChapter(
+                            entry.bookId,
+                            entry.chapterNumber,
+                            entry.subchapterTitle,
+                            entry.pageNumber,
+                            entry.pageKeyEnd
+                          )
+                        }
                       >
                         <div className="listening-table-main">
                           <strong>
@@ -263,7 +277,13 @@ export default function ListeningDashboardModal({
                       className="listening-table-row listening-table-row-multiline listening-table-button"
                       onClick={() =>
                         entry.chapterNumber !== null
-                          ? onOpenChapter(entry.bookId, entry.chapterNumber)
+                          ? onOpenChapter(
+                              entry.bookId,
+                              entry.chapterNumber,
+                              entry.subchapterTitle,
+                              entry.pageNumber,
+                              entry.pageKeyEnd
+                            )
                           : onOpenBook(entry.bookId)
                       }
                     >
