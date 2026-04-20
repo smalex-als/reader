@@ -1,7 +1,7 @@
 # Scanned Book Reader
 
-A Vite + React + TypeScript single-page app for browsing scanned books, paired with a lightweight
-Node/Express server for OCR and PDF tooling.
+A Vite + React + TypeScript single-page reader for scanned books and text books, paired with a
+Node/Express server for OCR, audio, chapter tools, search, and image enhancement.
 
 ## Features
 
@@ -11,9 +11,13 @@ Node/Express server for OCR and PDF tooling.
 - OCR block overlays on page images with click-to-stream playback.
 - OCR block edit mode to exclude/include blocks from speech directly on the page; exclusions are saved back into the OCR text file.
 - Page dimming controls for OCR overlays, including toolbar toggle and adjustable dim level.
-- Audio playback (reuse existing MP3s or generate with OpenAI).
-- Streaming audio via WebSocket (external stream server).
-- Bookmarks, table of contents (manual or generated), and print-to-PDF.
+- Page audio playback with `OpenAI TTS` and `xAI TTS`.
+- Streaming audio via WebSocket (external stream server), including a floating stream control bubble.
+- Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
+- Study tools per chapter: `Quiz`, `Vocabulary`, and `Memory Card`.
+- Listening dashboard backed by `.stream-history.log`, including grouped sessions, top books/chapters, and navigation back into the book.
+- Image preview modal with AI enhancement using OpenAI image editing for illustration-style rerenders.
+- Bookmarks, table of contents (manual or generated), detailed TOC support, search, and print-to-PDF.
 - PDF upload to convert scans into a new book (requires `pdftoppm`).
 
 ## Quick start
@@ -50,26 +54,35 @@ The server serves `dist/` if it exists, otherwise it serves the project root.
 ```
 data/
   .library-state.json
+  .stream-history.log
+  _generated/
   <bookId>/
     page-001.jpg
     page-001.txt
     page-001.mp3
+    chapter001.txt
+    chapter001.mp3
     bookmarks.txt
     toc.json
+    toc.detailed.json
 ```
 
 - Books are directories under `data/`.
 - `.library-state.json` stores shared reader library state (`lastBook`, per-book `lastPages`, `bookMeta`, and `bookSortMode`).
 - Supported page images: png, jpg, jpeg, gif, webp.
 - OCR text uses `.txt`, and audio uses `.mp3`.
+- Generated assets such as enhanced previews and text-audio files are stored under `data/_generated/`.
 - `bookmarks.txt` is a JSON array of `{ page, image, label }`.
 - `toc.json` is a JSON array of `{ title, page }` where `page` is 0-based.
+- `toc.detailed.json` stores subchapter-level entries for finer navigation and logging.
+- `.stream-history.log` stores listening history used by the dashboard.
 
 ## Configuration
 
 Server environment variables:
 
-- `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, and TTS audio generation)
+- `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, TTS, and image enhancement)
+- `XAI_API_KEY` (required for xAI TTS generation)
 - `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://reader.test:11434`)
 - `OCR_DEEPSEEK_MODEL` (default `deepseek-ocr`)
 - `OCR_DEEPSEEK_PROMPT` (default `\n<|grounding|>Convert the\ndocument to markdown.`)
@@ -97,16 +110,24 @@ Notes:
   with `<|speech_removed|><|/speech_removed|>` stay in the file but are skipped during speech playback.
 - Text books can be created by uploading chapter files; chapters are stored as `chapter###.txt` and TOC
   entries are created automatically.
+- Chapter text supports prompt-based derived versions. The base chapter text is preserved; derived versions can
+  be created and deleted from the text presentation UI.
 - Prompt text lives in `server/prompts/` for easy editing and review.
 - PDF upload uses `pdftoppm` from Poppler. Install it before using `/api/upload/pdf`.
+- Image enhancement in the preview window uses OpenAI image editing and currently targets illustration-style output.
 
 ## Useful hotkeys
 
+- `1`, `2`, `3`: switch between page / scroll / text view
+- `0`: open listening dashboard
 - `T`: open/close `Page Text`
 - `O`: run OCR for the current page in the background
 - `E`: toggle OCR block edit mode on the page
 - `S`: start/stop stream audio
-- `P`: play/stop page audio
+- `P`: play/stop `OpenAI TTS`
+- `X`: play/stop `xAI TTS`
+- `7`: open `Quiz`
+- `8`: open `Vocabulary`
 - `G`: focus the page number input
 - `F`: toggle fullscreen
 - `?`: open help
@@ -133,15 +154,25 @@ Chapters and narration:
 - `PUT /api/books/:id/chapters/:chapter`
 - `POST /api/books/:id/chapters/generate`
 - `POST /api/books/:id/chapters/:chapter/narration`
+- `GET /api/books/:id/chapters/:chapter/text-versions`
+- `POST /api/books/:id/chapters/:chapter/text-versions`
+- `DELETE /api/books/:id/chapters/:chapter/text-versions/:versionId`
 - `POST /api/books/:id/chapters/:chapter/audio`
 - `GET /api/books/:id/chapters/:chapter/audio/status`
 - `POST /api/books/:id/chapters/:chapter/audio/cancel`
 - `GET /api/books/:id/audio`
+- `GET/POST /api/books/:id/chapters/:chapter/quiz`
+- `GET/POST /api/books/:id/chapters/:chapter/vocabulary`
+- `GET/POST /api/books/:id/chapters/:chapter/memory-card`
 
 Page media:
 - `GET /api/page-text?image=/data/...`
 - `POST /api/page-audio`
 - `GET /api/page-audio/stream`
+- `POST /api/text-audio`
+- `POST /api/text-audio/stream`
+- `GET /api/books/:id/image-preview?...`
+- `POST /api/books/:id/image-preview/enhance`
 
 Bookmarks and table of contents:
 - `GET/POST/DELETE /api/books/:id/bookmarks`
@@ -151,4 +182,5 @@ Bookmarks and table of contents:
 Search and health:
 - `GET /api/books/:id/search`
 - `POST /api/books/:id/search/index`
+- `GET /api/stream-history/dashboard`
 - `GET /api/health`
