@@ -13,7 +13,7 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - Page dimming controls for OCR overlays, including toolbar toggle and adjustable dim level.
 - Page audio playback with `OpenAI TTS` and `xAI TTS`.
 - Streaming audio via WebSocket (external stream server), including a floating stream control bubble.
-- Backend streaming audio test endpoints for raw PCM, complete WAV output, and experimental streaming WAV output.
+- Backend streaming audio test endpoints for raw PCM and experimental streaming WAV output.
 - Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
 - Study tools per chapter: `Quiz`, `Vocabulary`, and `Memory Card`.
 - Listening dashboard backed by `.stream-history.log`, including grouped sessions, top books/chapters, and navigation back into the book.
@@ -139,7 +139,7 @@ Notes:
 These scripts are intended for backend verification and latency comparison.
 
 - `scripts/test-stream-audio-wav-stream.txt`: shared long-form sample text for stream tests.
-- `scripts/test-stream-audio-wav-stream.sh`: exercises `POST /api/stream-audio/wav-stream` and plays the response through `ffplay` or `mpv`.
+- `scripts/test-stream-audio-wav-stream.sh`: exercises `POST /api/stream-audio/wav` and plays the response through `ffplay` or `mpv`.
 - `scripts/test-stream-audio-pcm.sh`: exercises `POST /api/stream-audio/pcm` and plays raw PCM with the correct player flags.
 - `scripts/test-openai-stream-audio-wav.sh`: sends the same sample text directly to OpenAI TTS and plays the result for comparison with the local streaming backend.
 
@@ -147,7 +147,7 @@ Examples:
 
 ```bash
 ./scripts/test-stream-audio-pcm.sh
-STREAM_WAV_ENDPOINT='http://localhost:3000/api/stream-audio/wav-stream' ./scripts/test-stream-audio-wav-stream.sh
+STREAM_WAV_ENDPOINT='http://localhost:3000/api/stream-audio/wav' ./scripts/test-stream-audio-wav-stream.sh
 ./scripts/test-openai-stream-audio-wav.sh
 ```
 
@@ -191,8 +191,7 @@ Page media:
 - `POST /api/text-audio`
 - `POST /api/text-audio/stream`
 - `POST /api/stream-audio/pcm`
-- `POST /api/stream-audio/wav`
-- `POST /api/stream-audio/wav-stream`
+- `POST /api/stream-audio/wav` — not used by the app; manual/backend test only, experimental streaming WAV
 - `GET /api/books/:id/image-preview?...`
 - `POST /api/books/:id/image-preview/enhance`
 
@@ -205,4 +204,4 @@ Search and health:
 - `GET /api/books/:id/search`
 - `POST /api/books/:id/search/index`
 - `GET /api/stream-history/dashboard`
-- `GET /api/health`
+- `GET /api/health` — not used by the app; manual/backend test only

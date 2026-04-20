@@ -472,13 +472,6 @@ export function createTextPcmStream(text, voice, signal, requestId = createStrea
   return output;
 }
 
-export async function createTextWavBuffer(text, voice, signal, requestId = createStreamLogId()) {
-  const pcmStream = createTextPcmStream(text, voice, signal, requestId);
-  const pcmBuffer = await readStreamToBuffer(pcmStream, signal);
-  const wavHeader = buildWavHeader(pcmBuffer.length);
-  return Buffer.concat([wavHeader, pcmBuffer]);
-}
-
 export function createTextWavStream(text, voice, signal, requestId = createStreamLogId()) {
   const pcmStream = createTextPcmStream(text, voice, signal, requestId);
   const output = new PassThrough();
