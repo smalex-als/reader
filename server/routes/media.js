@@ -18,6 +18,12 @@ import {
 } from '../lib/audio.js';
 import { createBookFromPdf } from '../lib/pdf.js';
 import { invalidateSearchIndexForImage } from '../lib/search.js';
+import {
+  createTextPcmStream,
+  PCM_STREAM_BIT_DEPTH,
+  PCM_STREAM_CHANNEL_COUNT,
+  PCM_STREAM_SAMPLE_RATE
+} from '../lib/streamAudio.js';
 import { generateXaiTtsDebugFile } from '../lib/xaiTts.js';
 
 const router = express.Router();
@@ -158,6 +164,62 @@ router.post('/api/text-audio/stream', asyncHandler(async (req, res) => {
 
   const fallback = Buffer.from(await speech.arrayBuffer());
   res.end(fallback);
+}));
+
+router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
+  const { text, voice } = req.body || {};
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const abortController = new AbortController();
+  const handleRequestAborted = () => {
+    console.log(`[stream-audio][${requestId}] request-aborted`, {
+      reqAborted: req.aborted,
+      resWritableEnded: res.writableEnded
+    });
+    abortController.abort();
+  };
+  const handleResponseClosed = () => {
+    if (res.writableEnded) {
+      console.log(`[stream-audio][${requestId}] response-closed-after-finish`);
+      return;
+    }
+    console.log(`[stream-audio][${requestId}] response-closed-early`, {
+      reqAborted: req.aborted,
+      resWritableEnded: res.writableEnded
+    });
+    abortController.abort();
+  };
+  req.once('aborted', handleRequestAborted);
+  res.once('close', handleResponseClosed);
+  console.log(`[stream-audio][${requestId}] route-start`, {
+    textLength: typeof text === 'string' ? text.length : 0,
+    voice: typeof voice === 'string' ? voice.trim() : ''
+  });
+  const pcmStream = createTextPcmStream(
+    text,
+    typeof voice === 'string' ? voice.trim() : '',
+    abortController.signal,
+    requestId
+  );
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Audio-Format', 'pcm_s16le');
+  res.setHeader('X-Audio-Sample-Rate', String(PCM_STREAM_SAMPLE_RATE));
+  res.setHeader('X-Audio-Channels', String(PCM_STREAM_CHANNEL_COUNT));
+  res.setHeader('X-Audio-Bit-Depth', String(PCM_STREAM_BIT_DEPTH));
+  try {
+    await pipeline(pcmStream, res);
+    console.log(`[stream-audio][${requestId}] route-complete`);
+  } catch (error) {
+    if (abortController.signal.aborted || req.aborted || !res.writable) {
+      console.log(`[stream-audio][${requestId}] route-cancelled`);
+      return;
+    }
+    console.log(`[stream-audio][${requestId}] route-error`, error);
+    throw error;
+  } finally {
+    req.off('aborted', handleRequestAborted);
+    res.off('close', handleResponseClosed);
+  }
 }));
 
 router.post('/api/upload/pdf', upload.single('file'), asyncHandler(async (req, res) => {

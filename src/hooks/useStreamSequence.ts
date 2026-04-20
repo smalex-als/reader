@@ -55,6 +55,7 @@ type ActiveStreamStatus = 'connecting' | 'streaming' | 'paused';
 const ACTIVE_STREAM_STATUSES = new Set<ActiveStreamStatus>(['connecting', 'streaming', 'paused']);
 const SCROLL_STREAM_LOOKAHEAD = 2;
 const PARAGRAPH_STREAM_LOOKAHEAD = 2;
+const STREAM_RESTART_DELAY_MS = 120;
 
 function getTextModeFromBaseKey(baseKey: string) {
   if (baseKey.startsWith('narration-')) {
@@ -176,14 +177,23 @@ export function useStreamSequence({
   } | null>(null);
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
   const autoAdvanceRef = useRef(false);
+  const pendingRestartTimerRef = useRef<number | null>(null);
+
+  const clearPendingRestartTimer = useCallback(() => {
+    if (pendingRestartTimerRef.current !== null) {
+      window.clearTimeout(pendingRestartTimerRef.current);
+      pendingRestartTimerRef.current = null;
+    }
+  }, []);
 
   const stopStreamSequence = useCallback(() => {
+    clearPendingRestartTimer();
     sequenceRunIdRef.current += 1;
     scrollBufferRef.current = null;
     paragraphBufferRef.current = null;
     streamSequenceRef.current = null;
     setStreamSequenceActive(false);
-  }, []);
+  }, [clearPendingRestartTimer]);
 
   const isStreamBusy = useCallback(
     (status: StreamState['status']) => ACTIVE_STREAM_STATUSES.has(status as ActiveStreamStatus),
@@ -665,39 +675,59 @@ export function useStreamSequence({
 
   useEffect(() => {
     if (streamState.status !== 'idle') {
+      clearPendingRestartTimer();
       return;
     }
     const pending = pendingStreamSequenceRef.current;
     if (!pending) {
       return;
     }
-    pendingStreamSequenceRef.current = null;
-    void startStreamSequenceFromText(
-      pending.fullText,
-      pending.startIndex,
-      pending.baseKey,
-      pending.source,
-      pending.voiceOverride
-    );
-  }, [startStreamSequenceFromText, streamState.status]);
+    clearPendingRestartTimer();
+    pendingRestartTimerRef.current = window.setTimeout(() => {
+      pendingRestartTimerRef.current = null;
+      const nextPending = pendingStreamSequenceRef.current;
+      if (!nextPending || streamState.status !== 'idle') {
+        return;
+      }
+      pendingStreamSequenceRef.current = null;
+      void startStreamSequenceFromText(
+        nextPending.fullText,
+        nextPending.startIndex,
+        nextPending.baseKey,
+        nextPending.source,
+        nextPending.voiceOverride
+      );
+    }, STREAM_RESTART_DELAY_MS);
+  }, [clearPendingRestartTimer, startStreamSequenceFromText, streamState.status]);
 
   useEffect(() => {
     if (streamState.status !== 'idle') {
+      clearPendingRestartTimer();
       return;
     }
     const pending = pendingSingleStreamRef.current;
     if (!pending) {
       return;
     }
-    pendingSingleStreamRef.current = null;
-    stopAudio();
-    stopStreamSequence();
-    void startStream({
-      text: pending.text,
-      pageKey: pending.pageKey,
-      voice: pending.voiceOverride ?? streamVoice
-    });
-  }, [startStream, stopAudio, stopStreamSequence, streamState.status, streamVoice]);
+    clearPendingRestartTimer();
+    pendingRestartTimerRef.current = window.setTimeout(() => {
+      pendingRestartTimerRef.current = null;
+      const nextPending = pendingSingleStreamRef.current;
+      if (!nextPending || streamState.status !== 'idle') {
+        return;
+      }
+      pendingSingleStreamRef.current = null;
+      stopAudio();
+      stopStreamSequence();
+      void startStream({
+        text: nextPending.text,
+        pageKey: nextPending.pageKey,
+        voice: nextPending.voiceOverride ?? streamVoice
+      });
+    }, STREAM_RESTART_DELAY_MS);
+  }, [clearPendingRestartTimer, startStream, stopAudio, stopStreamSequence, streamState.status, streamVoice]);
+
+  useEffect(() => () => clearPendingRestartTimer(), [clearPendingRestartTimer]);
 
   return {
     startStreamSequence,

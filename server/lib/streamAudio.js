@@ -2,9 +2,10 @@ import fs from 'node:fs/promises';
 import { createReadStream, createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import { PassThrough } from 'node:stream';
 import { promisify } from 'node:util';
 import { pipeline } from 'node:stream/promises';
-import { WebSocket } from 'undici';
+import { Agent, WebSocket } from 'undici';
 import { STREAM_SERVER, STREAM_VOICE } from '../config.js';
 import { assertBookDirectory } from './books.js';
 import { getChapterTextVersionText } from './chapterTextVersions.js';
@@ -19,6 +20,62 @@ const CHAPTER_PAD_LENGTH = 3;
 const STREAM_TEXT_LIMIT = 2000;
 const STREAM_QUERY_TEXT_LIMIT = 1200;
 const execFileAsync = promisify(execFile);
+export const PCM_STREAM_SAMPLE_RATE = SAMPLE_RATE;
+export const PCM_STREAM_CHANNEL_COUNT = CHANNEL_COUNT;
+export const PCM_STREAM_BIT_DEPTH = BIT_DEPTH;
+const READER_TEST_HOSTNAME = 'reader.test';
+const EMPTY_AUDIO_RETRY_LIMIT = 2;
+const EMPTY_AUDIO_RETRY_DELAY_MS = 120;
+const insecureReaderTestDispatcher = new Agent({
+  connect: {
+    rejectUnauthorized: false
+  }
+});
+
+function createAbortError() {
+  const error = new Error('Streaming audio aborted');
+  error.name = 'AbortError';
+  return error;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function createStreamLogId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function resolveStreamDispatcher(wsUrl) {
+  return wsUrl.hostname === READER_TEST_HOSTNAME ? insecureReaderTestDispatcher : undefined;
+}
+
+function buildStreamServerUrl(text, voice) {
+  if (!STREAM_SERVER) {
+    throw createHttpError(500, 'Streaming server is not configured');
+  }
+  console.log('[stream-audio] stream-server', STREAM_SERVER);
+  const params = new URLSearchParams();
+  params.set('text', text);
+  const selectedVoice = typeof voice === 'string' && voice.trim() ? voice.trim() : STREAM_VOICE;
+  if (selectedVoice) {
+    params.set('voice', selectedVoice);
+  }
+  params.set('cfg', '1.5');
+  params.set('steps', '5');
+
+  const wsUrl = new URL('/stream', STREAM_SERVER);
+  if (wsUrl.protocol === 'https:') {
+    wsUrl.protocol = 'wss:';
+  } else if (wsUrl.protocol === 'http:') {
+    wsUrl.protocol = 'ws:';
+  } else if (wsUrl.protocol !== 'ws:' && wsUrl.protocol !== 'wss:') {
+    wsUrl.protocol = 'ws:';
+  }
+  wsUrl.search = params.toString();
+  console.log('[stream-audio] websocket-url', wsUrl.toString());
+  return wsUrl;
+}
 
 function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
@@ -55,34 +112,14 @@ function buildWavHeader(dataLength) {
 }
 
 async function streamTextToPcm(text, voice) {
-  if (!STREAM_SERVER) {
-    throw createHttpError(500, 'Streaming server is not configured');
-  }
-  console.log('[stream-audio] stream-server', STREAM_SERVER);
-  const params = new URLSearchParams();
-  params.set('text', text);
-  const selectedVoice = typeof voice === 'string' && voice.trim() ? voice.trim() : STREAM_VOICE;
-  if (selectedVoice) {
-    params.set('voice', selectedVoice);
-  }
-  params.set('cfg', '1.5');
-  params.set('steps', '5');
-
-  const wsUrl = new URL('/stream', STREAM_SERVER);
-  if (wsUrl.protocol === 'https:') {
-    wsUrl.protocol = 'wss:';
-  } else if (wsUrl.protocol === 'http:') {
-    wsUrl.protocol = 'ws:';
-  } else if (wsUrl.protocol !== 'ws:' && wsUrl.protocol !== 'wss:') {
-    wsUrl.protocol = 'ws:';
-  }
-  wsUrl.search = params.toString();
-  console.log('[stream-audio] websocket-url', wsUrl.toString());
+  const wsUrl = buildStreamServerUrl(text, voice);
   return await new Promise((resolve, reject) => {
     const chunks = [];
     let closed = false;
     let finished = false;
-    const socket = new WebSocket(wsUrl);
+    const socket = new WebSocket(wsUrl, {
+      dispatcher: resolveStreamDispatcher(wsUrl)
+    });
     socket.binaryType = 'arraybuffer';
 
     const finalize = (error) => {
@@ -171,6 +208,160 @@ async function streamTextToPcm(text, voice) {
   });
 }
 
+async function streamSingleTextSegmentToWritableOnce(text, voice, writable, signal, context = {}) {
+  const wsUrl = buildStreamServerUrl(text, voice);
+  return await new Promise((resolve, reject) => {
+    let closed = false;
+    let finished = false;
+    let aborted = false;
+    let bytesWritten = 0;
+    const logPrefix = `[stream-audio][${context.requestId ?? 'n/a'}][chunk ${context.chunkIndex ?? '?'}]`;
+    const socket = new WebSocket(wsUrl, {
+      dispatcher: resolveStreamDispatcher(wsUrl)
+    });
+    socket.binaryType = 'arraybuffer';
+    console.log(`${logPrefix} websocket-open`, {
+      voice: voice || STREAM_VOICE || '',
+      textLength: typeof text === 'string' ? text.length : 0
+    });
+
+    const handleAbort = () => {
+      aborted = true;
+      console.log(`${logPrefix} abort`);
+      finalize(createAbortError());
+    };
+    if (signal) {
+      if (signal.aborted) {
+        handleAbort();
+        return;
+      }
+      signal.addEventListener('abort', handleAbort, { once: true });
+    }
+
+    const finalize = (error) => {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      if (signal) {
+        signal.removeEventListener('abort', handleAbort);
+      }
+      if (!closed) {
+        try {
+          socket.close();
+        } catch {
+          // ignore close errors
+        }
+      }
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(bytesWritten);
+    };
+
+    socket.addEventListener('message', async (event) => {
+      if (aborted) {
+        return;
+      }
+      try {
+        if (typeof event.data === 'string') {
+          try {
+            const payload = JSON.parse(event.data);
+            const audioCandidates = [
+              payload?.audio,
+              payload?.data?.audio,
+              payload?.data?.audio_b64,
+              payload?.data?.pcm,
+              payload?.data?.pcm_b64,
+              payload?.data?.chunk,
+              payload?.data?.chunk_b64,
+              payload?.data?.payload
+            ];
+            const audioValue = audioCandidates.find((value) => typeof value === 'string' && value.length > 0);
+            if (audioValue) {
+              const buffer = Buffer.from(audioValue, 'base64');
+              bytesWritten += buffer.length;
+              writable.write(buffer);
+            } else if (Array.isArray(payload?.data?.audio)) {
+              const buffer = Buffer.from(payload.data.audio);
+              bytesWritten += buffer.length;
+              writable.write(buffer);
+            }
+          } catch {
+            // ignore malformed payloads
+          }
+          return;
+        }
+        if (event.data instanceof Blob) {
+          const buffer = Buffer.from(await event.data.arrayBuffer());
+          bytesWritten += buffer.length;
+          writable.write(buffer);
+          return;
+        }
+        if (event.data instanceof ArrayBuffer) {
+          const buffer = Buffer.from(event.data);
+          bytesWritten += buffer.length;
+          writable.write(buffer);
+          return;
+        }
+        if (ArrayBuffer.isView(event.data)) {
+          const buffer = Buffer.from(event.data.buffer);
+          bytesWritten += buffer.length;
+          writable.write(buffer);
+          return;
+        }
+        const buffer = Buffer.from(event.data);
+        bytesWritten += buffer.length;
+        writable.write(buffer);
+      } catch (error) {
+        finalize(error);
+      }
+    });
+
+    socket.addEventListener('error', (event) => {
+      console.log(`${logPrefix} websocket-error`, event);
+      finalize(createHttpError(502, 'Streaming audio connection failed'));
+    });
+
+    socket.addEventListener('close', () => {
+      console.log(`${logPrefix} websocket-close`, { aborted, bytesWritten });
+      closed = true;
+      if (!aborted && bytesWritten === 0) {
+        finalize(createHttpError(502, 'Streaming service returned no audio'));
+        return;
+      }
+      finalize();
+    });
+  });
+}
+
+async function streamSingleTextSegmentToWritable(text, voice, writable, signal, context = {}) {
+  let lastError;
+  for (let attempt = 1; attempt <= EMPTY_AUDIO_RETRY_LIMIT; attempt += 1) {
+    try {
+      return await streamSingleTextSegmentToWritableOnce(text, voice, writable, signal, {
+        ...context,
+        attempt
+      });
+    } catch (error) {
+      lastError = error;
+      if (signal?.aborted || error?.name === 'AbortError') {
+        throw error;
+      }
+      if (error?.message !== 'Streaming service returned no audio' || attempt >= EMPTY_AUDIO_RETRY_LIMIT) {
+        throw error;
+      }
+      console.log(
+        `[stream-audio][${context.requestId ?? 'n/a'}][chunk ${context.chunkIndex ?? '?'}] empty-audio-retry`,
+        { attempt }
+      );
+      await sleep(EMPTY_AUDIO_RETRY_DELAY_MS);
+    }
+  }
+  throw lastError;
+}
+
 function splitTextForStreaming(input) {
   const splitForEncodedLength = (chunk) => {
     const trimmed = chunk.trim();
@@ -227,6 +418,51 @@ function splitTextForStreaming(input) {
   };
 
   return splitStreamChunks(input.trim(), 0).flatMap(splitForEncodedLength);
+}
+
+export function createTextPcmStream(text, voice, signal, requestId = createStreamLogId()) {
+  const cleaned = stripMarkdown(typeof text === 'string' ? text : '').trim();
+  if (!cleaned) {
+    throw createHttpError(400, 'No text available for audio generation');
+  }
+
+  const output = new PassThrough();
+  const chunks = splitTextForStreaming(cleaned);
+  let totalBytesWritten = 0;
+  console.log(`[stream-audio][${requestId}] pcm-stream-start`, {
+    textLength: cleaned.length,
+    chunkCount: chunks.length,
+    voice: voice || STREAM_VOICE || ''
+  });
+
+  void (async () => {
+    try {
+      for (let index = 0; index < chunks.length; index += 1) {
+        const chunk = chunks[index];
+        if (signal?.aborted) {
+          throw createAbortError();
+        }
+        totalBytesWritten += await streamSingleTextSegmentToWritable(chunk, voice, output, signal, {
+          requestId,
+          chunkIndex: index + 1
+        });
+      }
+      console.log(`[stream-audio][${requestId}] pcm-stream-complete`, {
+        totalBytesWritten
+      });
+      output.end();
+    } catch (error) {
+      if ((error && error.name === 'AbortError') || signal?.aborted) {
+        console.log(`[stream-audio][${requestId}] pcm-stream-aborted`);
+        output.end();
+        return;
+      }
+      console.log(`[stream-audio][${requestId}] pcm-stream-error`, error);
+      output.destroy(error);
+    }
+  })();
+
+  return output;
 }
 
 export async function prepareChapterAudio({ bookId, chapterNumber, versionId = null, provider = 'default' }) {
