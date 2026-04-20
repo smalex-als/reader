@@ -23,6 +23,7 @@ const execFileAsync = promisify(execFile);
 export const PCM_STREAM_SAMPLE_RATE = SAMPLE_RATE;
 export const PCM_STREAM_CHANNEL_COUNT = CHANNEL_COUNT;
 export const PCM_STREAM_BIT_DEPTH = BIT_DEPTH;
+export const PCM_STREAM_MIME_TYPE = 'audio/wav';
 const READER_TEST_HOSTNAME = 'reader.test';
 const EMPTY_AUDIO_RETRY_LIMIT = 2;
 const EMPTY_AUDIO_RETRY_DELAY_MS = 120;
@@ -54,7 +55,6 @@ function buildStreamServerUrl(text, voice) {
   if (!STREAM_SERVER) {
     throw createHttpError(500, 'Streaming server is not configured');
   }
-  console.log('[stream-audio] stream-server', STREAM_SERVER);
   const params = new URLSearchParams();
   params.set('text', text);
   const selectedVoice = typeof voice === 'string' && voice.trim() ? voice.trim() : STREAM_VOICE;
@@ -73,7 +73,6 @@ function buildStreamServerUrl(text, voice) {
     wsUrl.protocol = 'ws:';
   }
   wsUrl.search = params.toString();
-  console.log('[stream-audio] websocket-url', wsUrl.toString());
   return wsUrl;
 }
 
@@ -109,6 +108,40 @@ function buildWavHeader(dataLength) {
   buffer.writeUInt32LE(dataLength, 40);
 
   return buffer;
+}
+
+function buildStreamingWavHeader() {
+  const blockAlign = (CHANNEL_COUNT * BIT_DEPTH) / 8;
+  const byteRate = SAMPLE_RATE * blockAlign;
+  const buffer = Buffer.alloc(44);
+  const unknownLength = 0xffffffff;
+
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(unknownLength, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(CHANNEL_COUNT, 22);
+  buffer.writeUInt32LE(SAMPLE_RATE, 24);
+  buffer.writeUInt32LE(byteRate, 28);
+  buffer.writeUInt16LE(blockAlign, 32);
+  buffer.writeUInt16LE(BIT_DEPTH, 34);
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(unknownLength, 40);
+
+  return buffer;
+}
+
+async function readStreamToBuffer(stream, signal) {
+  const chunks = [];
+  for await (const chunk of stream) {
+    if (signal?.aborted) {
+      throw createAbortError();
+    }
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
 }
 
 async function streamTextToPcm(text, voice) {
@@ -184,24 +217,20 @@ async function streamTextToPcm(text, voice) {
       }
       if (ArrayBuffer.isView(event.data)) {
         chunks.push(Buffer.from(event.data.buffer));
-        console.log('[stream-audio] message-arraybufferview', { bytes: event.data.byteLength });
         return;
       }
       try {
         chunks.push(Buffer.from(event.data));
-        console.log('[stream-audio] message-buffer', { bytes: event.data.length });
       } catch {
         // ignore unknown payloads
       }
     });
 
     socket.addEventListener('error', (event) => {
-      console.log('[stream-audio] websocket-error', event);
       finalize(createHttpError(502, 'Streaming audio connection failed'));
     });
 
     socket.addEventListener('close', () => {
-      console.log('[stream-audio] websocket-close');
       closed = true;
       finalize();
     });
@@ -215,19 +244,13 @@ async function streamSingleTextSegmentToWritableOnce(text, voice, writable, sign
     let finished = false;
     let aborted = false;
     let bytesWritten = 0;
-    const logPrefix = `[stream-audio][${context.requestId ?? 'n/a'}][chunk ${context.chunkIndex ?? '?'}]`;
     const socket = new WebSocket(wsUrl, {
       dispatcher: resolveStreamDispatcher(wsUrl)
     });
     socket.binaryType = 'arraybuffer';
-    console.log(`${logPrefix} websocket-open`, {
-      voice: voice || STREAM_VOICE || '',
-      textLength: typeof text === 'string' ? text.length : 0
-    });
 
     const handleAbort = () => {
       aborted = true;
-      console.log(`${logPrefix} abort`);
       finalize(createAbortError());
     };
     if (signal) {
@@ -320,12 +343,10 @@ async function streamSingleTextSegmentToWritableOnce(text, voice, writable, sign
     });
 
     socket.addEventListener('error', (event) => {
-      console.log(`${logPrefix} websocket-error`, event);
       finalize(createHttpError(502, 'Streaming audio connection failed'));
     });
 
     socket.addEventListener('close', () => {
-      console.log(`${logPrefix} websocket-close`, { aborted, bytesWritten });
       closed = true;
       if (!aborted && bytesWritten === 0) {
         finalize(createHttpError(502, 'Streaming service returned no audio'));
@@ -352,10 +373,6 @@ async function streamSingleTextSegmentToWritable(text, voice, writable, signal, 
       if (error?.message !== 'Streaming service returned no audio' || attempt >= EMPTY_AUDIO_RETRY_LIMIT) {
         throw error;
       }
-      console.log(
-        `[stream-audio][${context.requestId ?? 'n/a'}][chunk ${context.chunkIndex ?? '?'}] empty-audio-retry`,
-        { attempt }
-      );
       await sleep(EMPTY_AUDIO_RETRY_DELAY_MS);
     }
   }
@@ -429,11 +446,6 @@ export function createTextPcmStream(text, voice, signal, requestId = createStrea
   const output = new PassThrough();
   const chunks = splitTextForStreaming(cleaned);
   let totalBytesWritten = 0;
-  console.log(`[stream-audio][${requestId}] pcm-stream-start`, {
-    textLength: cleaned.length,
-    chunkCount: chunks.length,
-    voice: voice || STREAM_VOICE || ''
-  });
 
   void (async () => {
     try {
@@ -447,17 +459,39 @@ export function createTextPcmStream(text, voice, signal, requestId = createStrea
           chunkIndex: index + 1
         });
       }
-      console.log(`[stream-audio][${requestId}] pcm-stream-complete`, {
-        totalBytesWritten
-      });
       output.end();
     } catch (error) {
       if ((error && error.name === 'AbortError') || signal?.aborted) {
-        console.log(`[stream-audio][${requestId}] pcm-stream-aborted`);
         output.end();
         return;
       }
-      console.log(`[stream-audio][${requestId}] pcm-stream-error`, error);
+      output.destroy(error);
+    }
+  })();
+
+  return output;
+}
+
+export async function createTextWavBuffer(text, voice, signal, requestId = createStreamLogId()) {
+  const pcmStream = createTextPcmStream(text, voice, signal, requestId);
+  const pcmBuffer = await readStreamToBuffer(pcmStream, signal);
+  const wavHeader = buildWavHeader(pcmBuffer.length);
+  return Buffer.concat([wavHeader, pcmBuffer]);
+}
+
+export function createTextWavStream(text, voice, signal, requestId = createStreamLogId()) {
+  const pcmStream = createTextPcmStream(text, voice, signal, requestId);
+  const output = new PassThrough();
+  output.write(buildStreamingWavHeader());
+
+  void (async () => {
+    try {
+      await pipeline(pcmStream, output, { signal });
+    } catch (error) {
+      if ((error && error.name === 'AbortError') || signal?.aborted) {
+        output.end();
+        return;
+      }
       output.destroy(error);
     }
   })();

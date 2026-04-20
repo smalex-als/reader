@@ -1,0 +1,11 @@
+This is a long streaming audio test for the wav-stream endpoint.
+
+The goal is to verify that playback begins before the server finishes sending the full response body. If the player starts speaking while the network request is still active, then the backend is progressively streaming audio instead of buffering the complete file first.
+
+To make this behavior easier to hear, this sample text is intentionally long. It contains several paragraphs and a mix of ordinary prose and technical language. That should give the text to speech pipeline enough time to produce multiple chunks of audio.
+
+Here is a paragraph with system design vocabulary. A distributed system often includes queues, caches, shards, replicas, background jobs, durable logs, consistency tradeoffs, retries, circuit breakers, and failure recovery. When testing streaming audio, we want to observe whether the user can hear the first phrases before the final chunks are generated.
+
+Here is a paragraph with more narrative language. Alice was beginning to get very tired of sitting by her sister on the bank and of having nothing to do. Once or twice she had peeped into the book her sister was reading, but it had no pictures or conversations in it, and what is the use of a book, thought Alice, without pictures or conversations.
+
+And here is one more paragraph to stretch the duration further. If everything is working correctly, the command line player should begin audible playback while curl is still connected to the server. That is the exact behavior we are trying to validate with this backend test.

@@ -13,6 +13,7 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - Page dimming controls for OCR overlays, including toolbar toggle and adjustable dim level.
 - Page audio playback with `OpenAI TTS` and `xAI TTS`.
 - Streaming audio via WebSocket (external stream server), including a floating stream control bubble.
+- Backend streaming audio test endpoints for raw PCM, complete WAV output, and experimental streaming WAV output.
 - Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
 - Study tools per chapter: `Quiz`, `Vocabulary`, and `Memory Card`.
 - Listening dashboard backed by `.stream-history.log`, including grouped sessions, top books/chapters, and navigation back into the book.
@@ -91,6 +92,7 @@ Server environment variables:
 - `HTTPS_KEY_PATH` and `HTTPS_CERT_PATH` to enable HTTPS
 - `STREAM_SERVER` (WebSocket server for streaming audio; defaults to `VITE_STREAM_SERVER`)
 - `STREAM_VOICE` (default stream voice id; defaults to `VITE_STREAM_VOICE`)
+- `OCR_TIMEOUT_MS` (timeout for OCR requests in milliseconds; default `20000`. On timeout the server writes an empty page text file and returns empty OCR text.)
 - `MAX_UPLOAD_MB` (max upload size for multipart uploads like PDF import; default `300`)
 
 Front-end environment variables:
@@ -132,6 +134,23 @@ Notes:
 - `F`: toggle fullscreen
 - `?`: open help
 
+## Streaming audio test scripts
+
+These scripts are intended for backend verification and latency comparison.
+
+- `scripts/test-stream-audio-wav-stream.txt`: shared long-form sample text for stream tests.
+- `scripts/test-stream-audio-wav-stream.sh`: exercises `POST /api/stream-audio/wav-stream` and plays the response through `ffplay` or `mpv`.
+- `scripts/test-stream-audio-pcm.sh`: exercises `POST /api/stream-audio/pcm` and plays raw PCM with the correct player flags.
+- `scripts/test-openai-stream-audio-wav.sh`: sends the same sample text directly to OpenAI TTS and plays the result for comparison with the local streaming backend.
+
+Examples:
+
+```bash
+./scripts/test-stream-audio-pcm.sh
+STREAM_WAV_ENDPOINT='http://localhost:3000/api/stream-audio/wav-stream' ./scripts/test-stream-audio-wav-stream.sh
+./scripts/test-openai-stream-audio-wav.sh
+```
+
 ## API highlights
 
 Library state:
@@ -171,6 +190,9 @@ Page media:
 - `GET /api/page-audio/stream`
 - `POST /api/text-audio`
 - `POST /api/text-audio/stream`
+- `POST /api/stream-audio/pcm`
+- `POST /api/stream-audio/wav`
+- `POST /api/stream-audio/wav-stream`
 - `GET /api/books/:id/image-preview?...`
 - `POST /api/books/:id/image-preview/enhance`
 

@@ -20,8 +20,11 @@ import { createBookFromPdf } from '../lib/pdf.js';
 import { invalidateSearchIndexForImage } from '../lib/search.js';
 import {
   createTextPcmStream,
+  createTextWavStream,
+  createTextWavBuffer,
   PCM_STREAM_BIT_DEPTH,
   PCM_STREAM_CHANNEL_COUNT,
+  PCM_STREAM_MIME_TYPE,
   PCM_STREAM_SAMPLE_RATE
 } from '../lib/streamAudio.js';
 import { generateXaiTtsDebugFile } from '../lib/xaiTts.js';
@@ -171,29 +174,15 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const abortController = new AbortController();
   const handleRequestAborted = () => {
-    console.log(`[stream-audio][${requestId}] request-aborted`, {
-      reqAborted: req.aborted,
-      resWritableEnded: res.writableEnded
-    });
     abortController.abort();
   };
   const handleResponseClosed = () => {
-    if (res.writableEnded) {
-      console.log(`[stream-audio][${requestId}] response-closed-after-finish`);
-      return;
+    if (!res.writableEnded) {
+      abortController.abort();
     }
-    console.log(`[stream-audio][${requestId}] response-closed-early`, {
-      reqAborted: req.aborted,
-      resWritableEnded: res.writableEnded
-    });
-    abortController.abort();
   };
   req.once('aborted', handleRequestAborted);
   res.once('close', handleResponseClosed);
-  console.log(`[stream-audio][${requestId}] route-start`, {
-    textLength: typeof text === 'string' ? text.length : 0,
-    voice: typeof voice === 'string' ? voice.trim() : ''
-  });
   const pcmStream = createTextPcmStream(
     text,
     typeof voice === 'string' ? voice.trim() : '',
@@ -208,13 +197,90 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
   res.setHeader('X-Audio-Bit-Depth', String(PCM_STREAM_BIT_DEPTH));
   try {
     await pipeline(pcmStream, res);
-    console.log(`[stream-audio][${requestId}] route-complete`);
   } catch (error) {
     if (abortController.signal.aborted || req.aborted || !res.writable) {
-      console.log(`[stream-audio][${requestId}] route-cancelled`);
       return;
     }
-    console.log(`[stream-audio][${requestId}] route-error`, error);
+    throw error;
+  } finally {
+    req.off('aborted', handleRequestAborted);
+    res.off('close', handleResponseClosed);
+  }
+}));
+
+router.post('/api/stream-audio/wav', asyncHandler(async (req, res) => {
+  const { text, voice } = req.body || {};
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const abortController = new AbortController();
+  const handleRequestAborted = () => {
+    abortController.abort();
+  };
+  const handleResponseClosed = () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+    }
+  };
+  req.once('aborted', handleRequestAborted);
+  res.once('close', handleResponseClosed);
+
+  try {
+    const wavBuffer = await createTextWavBuffer(
+      text,
+      typeof voice === 'string' ? voice.trim() : '',
+      abortController.signal,
+      requestId
+    );
+    if (abortController.signal.aborted || req.aborted || !res.writable) {
+      return;
+    }
+    res.setHeader('Content-Type', PCM_STREAM_MIME_TYPE);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Disposition', 'inline; filename="stream-audio.wav"');
+    res.setHeader('Content-Length', String(wavBuffer.length));
+    res.end(wavBuffer);
+  } catch (error) {
+    if (abortController.signal.aborted || req.aborted || !res.writable) {
+      return;
+    }
+    throw error;
+  } finally {
+    req.off('aborted', handleRequestAborted);
+    res.off('close', handleResponseClosed);
+  }
+}));
+
+router.post('/api/stream-audio/wav-stream', asyncHandler(async (req, res) => {
+  const { text, voice } = req.body || {};
+  const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const abortController = new AbortController();
+  const handleRequestAborted = () => {
+    abortController.abort();
+  };
+  const handleResponseClosed = () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+    }
+  };
+  req.once('aborted', handleRequestAborted);
+  res.once('close', handleResponseClosed);
+
+  const wavStream = createTextWavStream(
+    text,
+    typeof voice === 'string' ? voice.trim() : '',
+    abortController.signal,
+    requestId
+  );
+  res.setHeader('Content-Type', PCM_STREAM_MIME_TYPE);
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Content-Disposition', 'inline; filename="stream-audio-streaming.wav"');
+  res.setHeader('X-Audio-Streaming', 'wav');
+
+  try {
+    await pipeline(wavStream, res);
+  } catch (error) {
+    if (abortController.signal.aborted || req.aborted || !res.writable) {
+      return;
+    }
     throw error;
   } finally {
     req.off('aborted', handleRequestAborted);

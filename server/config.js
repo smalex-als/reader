@@ -20,7 +20,7 @@ export const DEFAULT_VOICE = 'santa';
 export const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 export const STREAM_SERVER =
-  process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'https://reader.test:3000';
+  process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'http://192.168.1.174:3005';
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
 
