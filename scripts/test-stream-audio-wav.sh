@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-TEXT_FILE="${1:-$ROOT_DIR/scripts/test-stream-audio-wav-stream.txt}"
+TEXT_FILE="${1:-$ROOT_DIR/scripts/test-stream-audio-wav.txt}"
 ENDPOINT="${STREAM_WAV_ENDPOINT:-http://localhost:3000/api/stream-audio/wav}"
 VOICE="${STREAM_WAV_VOICE:-alloy}"
 
