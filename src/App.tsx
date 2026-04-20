@@ -133,6 +133,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<ToolbarTab>('reading');
   const [imagePreview, setImagePreview] = useState<ImagePreviewTarget | null>(null);
+  const [enhancedImagePreviewUrls, setEnhancedImagePreviewUrls] = useState<Record<string, string>>({});
   const {
     helpOpen,
     openHelp,
@@ -1205,14 +1206,18 @@ export default function App() {
         right: String(right),
         bottom: String(bottom)
       });
+      const previewKey = `${bookId}:${imageFilename}:${left}:${top}:${right}:${bottom}`;
       setImagePreview({
+        bookId,
+        imageFilename,
         imageUrl: payload.imageUrl,
         bounds: payload.bounds,
         caption: payload.caption ?? null,
-        cropUrl: `/api/books/${encodeURIComponent(bookId)}/image-preview?${params.toString()}`
+        cropUrl: `/api/books/${encodeURIComponent(bookId)}/image-preview?${params.toString()}`,
+        enhancedUrl: enhancedImagePreviewUrls[previewKey] ?? null
       });
     },
-    [bookId]
+    [bookId, enhancedImagePreviewUrls]
   );
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
@@ -1585,6 +1590,29 @@ export default function App() {
     imagePreviewModalProps: {
       open: imagePreview !== null,
       preview: imagePreview,
+      onEnhanced: (url: string) => {
+        if (!imagePreview) {
+          return;
+        }
+        const [left, top, right, bottom] = imagePreview.bounds;
+        const previewKey = `${imagePreview.bookId}:${imagePreview.imageFilename}:${left}:${top}:${right}:${bottom}`;
+        setEnhancedImagePreviewUrls((prev) => {
+          if (!url) {
+            const next = { ...prev };
+            delete next[previewKey];
+            return next;
+          }
+          return { ...prev, [previewKey]: url };
+        });
+        setImagePreview((current) =>
+          current
+            ? {
+                ...current,
+                enhancedUrl: url || null
+              }
+            : current
+        );
+      },
       onClose: () => setImagePreview(null)
     },
     vocabularyModalProps: {

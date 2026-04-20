@@ -107,8 +107,11 @@ export interface ChapterTextVersion {
 }
 
 export interface ImagePreviewTarget {
+  bookId: string;
+  imageFilename: string;
   imageUrl: string;
   cropUrl: string;
+  enhancedUrl?: string | null;
   bounds: [number, number, number, number];
   caption?: string | null;
 }

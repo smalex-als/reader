@@ -1,11 +1,14 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { assertBookDirectory } from './books.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
+import { getOpenAI } from './openai.js';
+import { DATA_DIR } from '../config.js';
 
 const execFileAsync = promisify(execFile);
 const OCR_COORDINATE_SPACE = 1000;
@@ -127,6 +130,51 @@ async function resolveSourceImagePath(bookId, imageFilename) {
   return { sourcePath, imageFilename: normalized };
 }
 
+function buildEnhancePrompt(caption) {
+  const basePrompt =
+    'Re-render this cropped image as a professionally made illustration. Preserve the entire original crop, composition, pose, framing, and meaning. Do not zoom in, do not crop tighter, do not cut off edges, and do not reframe the subject. Make the final result look like polished editorial or book illustration work created by a skilled human illustrator. Use strong intentional shapes, confident clean line work, controlled lighting, refined detail, subtle texture, and a cohesive tasteful palette. The result should feel publishable, elegant, and visually designed. Do not make it look like a photograph, a cheap AI render, or a glossy digital effect. Do not invent new objects, do not distort faces or anatomy, and do not add decorative clutter.';
+  const normalizedCaption =
+    typeof caption === 'string' ? caption.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  return normalizedCaption ? `${basePrompt} Context: ${normalizedCaption}.` : basePrompt;
+}
+
+function chooseEditSize(width, height) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return '1024x1024';
+  }
+  const ratio = width / height;
+  if (ratio >= 1.15) {
+    return '1536x1024';
+  }
+  if (ratio <= 1 / 1.15) {
+    return '1024x1536';
+  }
+  return '1024x1024';
+}
+
+function makeEnhancedPreviewFileInfo({ bookId, imageFilename, bounds, caption }) {
+  const digest = crypto
+    .createHash('sha1')
+    .update(
+      JSON.stringify({
+        bookId,
+        imageFilename,
+        bounds,
+        caption,
+        model: 'gpt-image-1.5',
+        prompt: buildEnhancePrompt(caption)
+      })
+    )
+    .digest('hex')
+    .slice(0, 20);
+  const filename = `image-preview-${digest}.png`;
+  const relativePath = path.join('_generated', 'image-preview', filename);
+  return {
+    outputPath: path.join(DATA_DIR, relativePath),
+    url: `/data/${relativePath.replace(/\\/g, '/')}`
+  };
+}
+
 export async function createImagePreviewCrop({ bookId, imageFilename, bounds }) {
   const normalizedBounds = normalizeCropBounds(bounds);
   const { sourcePath } = await resolveSourceImagePath(bookId, imageFilename);
@@ -156,5 +204,67 @@ export async function createImagePreviewCrop({ bookId, imageFilename, bounds }) 
     throw createHttpError(500, 'Failed to crop image preview. Ensure sips or ImageMagick is available.');
   }
 
-  return tempPath;
+  return {
+    tempPath,
+    cropWidth,
+    cropHeight
+  };
+}
+
+export async function createEnhancedImagePreview({
+  bookId,
+  imageFilename,
+  bounds,
+  caption = null
+}) {
+  const { tempPath: croppedPath, cropWidth, cropHeight } = await createImagePreviewCrop({
+    bookId,
+    imageFilename,
+    bounds
+  });
+  const { outputPath, url } = makeEnhancedPreviewFileInfo({ bookId, imageFilename, bounds, caption });
+
+  try {
+    const existing = await safeStat(outputPath);
+    if (existing?.isFile()) {
+      return { filePath: outputPath, url };
+    }
+    const imageBuffer = await fs.readFile(croppedPath);
+    getOpenAI();
+    const form = new FormData();
+    form.append('model', 'gpt-image-1.5');
+    form.append('prompt', buildEnhancePrompt(caption));
+    form.append('size', chooseEditSize(cropWidth, cropHeight));
+    form.append('image', new Blob([imageBuffer], { type: 'image/png' }), 'preview.png');
+
+    const response = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: form
+    });
+
+    if (!response.ok) {
+      let detail = '';
+      try {
+        detail = await response.text();
+      } catch {
+        detail = '';
+      }
+      throw createHttpError(502, detail || `Image enhancement failed: ${response.status}`);
+    }
+
+    const payload = await response.json();
+    const imageBase64 = payload?.data?.[0]?.b64_json;
+    if (typeof imageBase64 !== 'string' || !imageBase64) {
+      throw createHttpError(502, 'OpenAI did not return an enhanced image');
+    }
+
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await fs.writeFile(outputPath, Buffer.from(imageBase64, 'base64'));
+    return { filePath: outputPath, url };
+  } finally {
+    await fs.rm(path.dirname(croppedPath), { recursive: true, force: true }).catch(() => {});
+  }
 }

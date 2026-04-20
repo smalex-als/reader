@@ -41,7 +41,7 @@ import {
 import { generateChapterMemoryCard, loadChapterMemoryCard } from '../lib/memoryCard.js';
 import { generateChapterQuiz, loadChapterQuiz } from '../lib/quiz.js';
 import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabulary.js';
-import { createImagePreviewCrop } from '../lib/imagePreview.js';
+import { createEnhancedImagePreview, createImagePreviewCrop } from '../lib/imagePreview.js';
 import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
 import {
   addTextChapter,
@@ -148,7 +148,7 @@ router.get('/api/books/:id/image-preview', asyncHandler(async (req, res) => {
   const top = Number(req.query.top);
   const right = Number(req.query.right);
   const bottom = Number(req.query.bottom);
-  const tempPath = await createImagePreviewCrop({
+  const { tempPath } = await createImagePreviewCrop({
     bookId,
     imageFilename: image,
     bounds: [left, top, right, bottom]
@@ -160,6 +160,20 @@ router.get('/api/books/:id/image-preview', asyncHandler(async (req, res) => {
       res.status(error.statusCode || 500).end();
     }
   });
+}));
+
+router.post('/api/books/:id/image-preview/enhance', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const imageFilename = typeof req.body?.image === 'string' ? req.body.image : '';
+  const bounds = Array.isArray(req.body?.bounds) ? req.body.bounds : null;
+  const caption = typeof req.body?.caption === 'string' ? req.body.caption : null;
+  const result = await createEnhancedImagePreview({
+    bookId,
+    imageFilename,
+    bounds,
+    caption
+  });
+  res.json(result);
 }));
 
 router.put('/api/books/:id/meta', asyncHandler(async (req, res) => {
