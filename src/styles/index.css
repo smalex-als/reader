@@ -1321,6 +1321,74 @@ body {
   flex-direction: column;
 }
 
+.text-viewer-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.text-viewer-layout[data-outline-open='false'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.text-viewer-outline {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: calc(100vh - 10rem);
+  min-height: 0;
+  padding: 0.9rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--text-viewer-border-soft);
+  background: var(--text-viewer-panel-bg);
+  overflow: auto;
+}
+
+.text-viewer-outline-header {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14rem;
+  color: var(--text-viewer-subtle);
+}
+
+.text-viewer-outline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.text-viewer-outline-item {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--text-viewer-muted);
+  text-align: left;
+  line-height: 1.35;
+}
+
+.text-viewer-outline-item[data-level='2'] {
+  padding-left: 1rem;
+}
+
+.text-viewer-outline-item[data-level='3'] {
+  padding-left: 1.45rem;
+}
+
+.text-viewer-outline-item[data-active='true'] {
+  background: var(--text-viewer-bg-soft);
+  color: var(--text-viewer-strong);
+}
+
+.text-viewer-outline-item:hover {
+  background: var(--text-viewer-bg-faint);
+  color: var(--text-viewer-strong);
+}
+
 .text-viewer-regenerate {
   margin-top: 1.5rem;
   display: flex;
@@ -1354,6 +1422,7 @@ body {
   font-size: var(--text-viewer-font-size, 1rem);
   line-height: 1.7;
   color: var(--text-viewer-fg);
+  min-width: 0;
 }
 
 .chapter-editor {
@@ -1571,6 +1640,17 @@ body {
   border: none;
   border-top: 1px solid var(--text-viewer-border);
   margin: 1.5rem 0;
+}
+
+@media (max-width: 980px) {
+  .text-viewer-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .text-viewer-outline {
+    position: static;
+    max-height: 14rem;
+  }
 }
 
 .page-footer {

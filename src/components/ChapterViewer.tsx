@@ -44,6 +44,13 @@ interface ChapterViewerProps {
   playingParagraphMode: 'chapter' | 'narration' | null;
 }
 
+type TextOutlineItem = {
+  id: string;
+  title: string;
+  level: 1 | 2 | 3;
+  offset: number;
+};
+
 function extractTextFromNode(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
     return String(node);
@@ -64,6 +71,90 @@ function hashText(input: string) {
     hash |= 0;
   }
   return Math.abs(hash).toString(36);
+}
+
+function slugifyHeading(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/[`*_~[\]()]+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function normalizeOutlineTitle(input: string) {
+  return input
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/[`*_~[\]()]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseFallbackOutline(input: string): TextOutlineItem[] {
+  const items: TextOutlineItem[] = [];
+  const seen = new Map<string, number>();
+  const paragraphPattern = /\S[\s\S]*?(?=(?:\n\s*\n)|$)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = paragraphPattern.exec(input)) !== null) {
+    const rawParagraph = match[0]?.trim();
+    if (!rawParagraph) {
+      continue;
+    }
+    const firstLine = normalizeOutlineTitle(rawParagraph.split('\n')[0] ?? '');
+    if (!firstLine) {
+      continue;
+    }
+    const isCompact = rawParagraph.length <= 120;
+    const hasFewWords = firstLine.split(/\s+/).length <= 10;
+    const looksLikeHeading = !/[.!?]$/.test(firstLine) || /^chapter\b/i.test(firstLine) || /:$/.test(firstLine);
+    if (!isCompact || !hasFewWords || !looksLikeHeading) {
+      continue;
+    }
+    const baseId = slugifyHeading(firstLine) || `section-${items.length + 1}`;
+    const duplicateIndex = seen.get(baseId) ?? 0;
+    seen.set(baseId, duplicateIndex + 1);
+    items.push({
+      id: duplicateIndex === 0 ? baseId : `${baseId}-${duplicateIndex + 1}`,
+      title: firstLine.replace(/:$/, ''),
+      level: /^chapter\b/i.test(firstLine) ? 1 : 2,
+      offset: match.index
+    });
+  }
+
+  return items;
+}
+
+function parseTextOutline(input: string): TextOutlineItem[] {
+  if (!input) {
+    return [];
+  }
+  const items: TextOutlineItem[] = [];
+  const seen = new Map<string, number>();
+  const lines = input.split('\n');
+  let offset = 0;
+  for (const line of lines) {
+    const match = line.match(/^(#{1,3})\s+(.+?)\s*$/);
+    if (match) {
+      const level = match[1].length as 1 | 2 | 3;
+      const title = match[2].trim();
+      if (title) {
+        const baseId = slugifyHeading(title) || `section-${items.length + 1}`;
+        const duplicateIndex = seen.get(baseId) ?? 0;
+        seen.set(baseId, duplicateIndex + 1);
+        items.push({
+          id: duplicateIndex === 0 ? baseId : `${baseId}-${duplicateIndex + 1}`,
+          title,
+          level,
+          offset
+        });
+      }
+    }
+    offset += line.length + 1;
+  }
+  return items.length > 0 ? items : parseFallbackOutline(input);
 }
 
 export default function ChapterViewer({
@@ -90,7 +181,10 @@ export default function ChapterViewer({
 }: ChapterViewerProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [versionModalOpen, setVersionModalOpen] = useState(false);
+  const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
+  const [outlineOpen, setOutlineOpen] = useState(true);
   const onPlayParagraphRef = useRef(onPlayParagraph);
+  const textViewerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     onPlayParagraphRef.current = onPlayParagraph;
@@ -146,6 +240,7 @@ export default function ChapterViewer({
   const selectedVersionIdRef = useRef(selectedVersionId);
   const playingParagraphStartRef = useRef(playingParagraphStart);
   const playingParagraphModeRef = useRef(playingParagraphMode);
+  const outlineByOffsetRef = useRef<Map<number, TextOutlineItem>>(new Map());
 
   useEffect(() => {
     displayTextRef.current = displayText;
@@ -191,6 +286,24 @@ export default function ChapterViewer({
     () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
     [textFontSize]
   );
+  const outlineItems = useMemo(() => parseTextOutline(displayText ?? ''), [displayText]);
+  const outlineByOffset = useMemo(() => new Map(outlineItems.map((item) => [item.offset, item])), [outlineItems]);
+
+  useEffect(() => {
+    outlineByOffsetRef.current = outlineByOffset;
+  }, [outlineByOffset]);
+
+  useEffect(() => {
+    setActiveOutlineId(outlineItems[0]?.id ?? null);
+  }, [outlineItems]);
+
+  useEffect(() => {
+    if (outlineItems.length === 0) {
+      setOutlineOpen(false);
+      return;
+    }
+    setOutlineOpen(true);
+  }, [outlineItems.length]);
 
   const chapterLabel = useMemo(() => {
     if (!chapterNumber) {
@@ -265,6 +378,47 @@ export default function ChapterViewer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [closeVersionModal, versionModalOpen]);
 
+  const handleOutlineSelect = useCallback((id: string) => {
+    setActiveOutlineId(id);
+    const container = textViewerRef.current;
+    const target = container?.querySelector<HTMLElement>(`[data-outline-id="${id}"]`);
+    if (!container || !target) {
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const top = container.scrollTop + (targetRect.top - containerRect.top) - 24;
+    container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    const container = textViewerRef.current;
+    if (!container || outlineItems.length === 0) {
+      return;
+    }
+    const updateActiveOutline = () => {
+      const headings = [...container.querySelectorAll<HTMLElement>('[data-outline-id]')];
+      if (headings.length === 0) {
+        return;
+      }
+      const containerRect = container.getBoundingClientRect();
+      let nextActiveId = headings[0]?.dataset.outlineId ?? null;
+      for (const heading of headings) {
+        const rect = heading.getBoundingClientRect();
+        if (rect.top - containerRect.top <= 96) {
+          nextActiveId = heading.dataset.outlineId ?? nextActiveId;
+        } else {
+          break;
+        }
+      }
+      setActiveOutlineId((current) => (current === nextActiveId ? current : nextActiveId));
+    };
+
+    updateActiveOutline();
+    container.addEventListener('scroll', updateActiveOutline, { passive: true });
+    return () => container.removeEventListener('scroll', updateActiveOutline);
+  }, [outlineItems]);
+
   const pageMeta = useMemo(() => {
     if (!pageRange) {
       return null;
@@ -299,6 +453,7 @@ export default function ChapterViewer({
       return ({ children, node }: { children?: ReactNode; node?: any }) => {
         const textValue = extractTextFromNode(children ?? '').trim();
         const startIndex = resolveStartIndex(textValue, node);
+        const outlineItem = outlineByOffsetRef.current.get(node?.position?.start?.offset);
         const currentChapterNumber = chapterNumberRef.current;
         const currentSelectedVersionId = selectedVersionIdRef.current;
         const paragraphKey = currentChapterNumber
@@ -307,7 +462,12 @@ export default function ChapterViewer({
         const isPlaying =
           playingParagraphStartRef.current === startIndex && playingParagraphModeRef.current === 'chapter';
         return (
-          <Tag className="text-viewer-block" data-playing={isPlaying ? 'true' : 'false'}>
+          <Tag
+            id={outlineItem?.id}
+            className="text-viewer-block"
+            data-playing={isPlaying ? 'true' : 'false'}
+            data-outline-id={outlineItem?.id ?? undefined}
+          >
             {children}
             {textValue ? (
               <button
@@ -345,7 +505,7 @@ export default function ChapterViewer({
   }, []);
 
   return (
-    <div className="text-viewer" style={textStyle}>
+    <div ref={textViewerRef} className="text-viewer" style={textStyle}>
       <header className="text-viewer-header">
         <div className="text-viewer-title">
           <span className="text-viewer-label">{chapterLabel}</span>
@@ -401,6 +561,17 @@ export default function ChapterViewer({
           >
             {settingsOpen ? 'Hide settings' : 'Text settings'}
           </button>
+          {outlineItems.length > 0 ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => setOutlineOpen((prev) => !prev)}
+              aria-expanded={outlineOpen}
+              aria-controls="text-viewer-outline"
+            >
+              {outlineOpen ? 'Hide outline' : 'Show outline'}
+            </button>
+          ) : null}
           {chapterNumber && !chapterAudioReady ? (
             <>
               <button
@@ -537,10 +708,31 @@ export default function ChapterViewer({
           <p className="text-viewer-status">{displayError}</p>
         )}
         {!tocLoading && chapterNumber && !displayLoading && !displayError && displayText && (
-          <div className="text-viewer-markdown">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {displayText}
-            </ReactMarkdown>
+          <div className="text-viewer-layout" data-outline-open={outlineOpen ? 'true' : 'false'}>
+            {outlineOpen && outlineItems.length > 0 ? (
+              <aside className="text-viewer-outline" id="text-viewer-outline" aria-label="Text outline">
+                <div className="text-viewer-outline-header">Outline</div>
+                <div className="text-viewer-outline-list">
+                  {outlineItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="text-viewer-outline-item"
+                      data-level={item.level}
+                      data-active={activeOutlineId === item.id ? 'true' : 'false'}
+                      onClick={() => handleOutlineSelect(item.id)}
+                    >
+                      {item.title}
+                    </button>
+                  ))}
+                </div>
+              </aside>
+            ) : null}
+            <div className="text-viewer-markdown">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {displayText}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
         {!tocLoading &&
