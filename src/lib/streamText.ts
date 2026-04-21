@@ -9,6 +9,7 @@ const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
 const INLINE_MATH_PATTERN = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$([^$\n]+)\$/g;
 const HTTP_METHOD_PATTERN = /\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(\/[^\s,;)"']*)/g;
 const NUMERIC_CITATION_PATTERN = /\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]/g;
+const DASH_LIKE_PATTERN = /[‐‑‒–—―−]+/g;
 
 function speakIdentifier(identifier: string) {
   return identifier
@@ -216,9 +217,16 @@ function normalizeSpokenTemperatureUnits(text: string) {
   });
 }
 
+function normalizeTypographyForSpeech(text: string) {
+  return text
+    .replace(DASH_LIKE_PATTERN, ' - ')
+    .replace(/[ \t]+-[ \t]+/g, ', ');
+}
+
 export function stripMarkdown(text: string) {
   let output = text;
   output = normalizeApiExamples(output);
+  output = normalizeTypographyForSpeech(output);
   output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
     normalizeFormulaText(inlineRound || inlineSquare || inlineDollar || '')
   );

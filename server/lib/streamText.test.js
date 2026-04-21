@@ -107,6 +107,15 @@ test('normalizes numeric citations into speakable references', () => {
   assert.equal(output, 'Places API reference 7 and Yelp business endpoints reference 8 are common examples.');
 });
 
+test('normalizes unicode dashes into smooth speech pauses', () => {
+  const input =
+    'Police cars in Germany — with lights and registration marks — were seen nearby. Two-phase commit – Saga.';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'Police cars in Germany, with lights and registration marks, were seen nearby. Two-phase commit, Saga.');
+});
+
 test('does not treat bracketed hash slot ranges as citations', () => {
   const input =
     'The first node contains hash slots \\([0, 5500]\\).\n- The second node contains hash slots \\([5501, 11000]\\).';
