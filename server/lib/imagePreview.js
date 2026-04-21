@@ -161,7 +161,7 @@ function makeEnhancedPreviewFileInfo({ bookId, imageFilename, bounds, caption })
         imageFilename,
         bounds,
         caption,
-        model: 'gpt-image-1.5',
+        model: 'gpt-image-2',
         prompt: buildEnhancePrompt(caption)
       })
     )
@@ -232,7 +232,7 @@ export async function createEnhancedImagePreview({
     const imageBuffer = await fs.readFile(croppedPath);
     getOpenAI();
     const form = new FormData();
-    form.append('model', 'gpt-image-1.5');
+    form.append('model', 'gpt-image-2');
     form.append('prompt', buildEnhancePrompt(caption));
     form.append('size', chooseEditSize(cropWidth, cropHeight));
     form.append('image', new Blob([imageBuffer], { type: 'image/png' }), 'preview.png');
