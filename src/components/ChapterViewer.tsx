@@ -141,6 +141,31 @@ export default function ChapterViewer({
     refreshToken,
     streamVoice
   });
+  const displayTextRef = useRef(displayText);
+  const chapterNumberRef = useRef(chapterNumber);
+  const selectedVersionIdRef = useRef(selectedVersionId);
+  const playingParagraphStartRef = useRef(playingParagraphStart);
+  const playingParagraphModeRef = useRef(playingParagraphMode);
+
+  useEffect(() => {
+    displayTextRef.current = displayText;
+  }, [displayText]);
+
+  useEffect(() => {
+    chapterNumberRef.current = chapterNumber;
+  }, [chapterNumber]);
+
+  useEffect(() => {
+    selectedVersionIdRef.current = selectedVersionId;
+  }, [selectedVersionId]);
+
+  useEffect(() => {
+    playingParagraphStartRef.current = playingParagraphStart;
+  }, [playingParagraphStart]);
+
+  useEffect(() => {
+    playingParagraphModeRef.current = playingParagraphMode;
+  }, [playingParagraphMode]);
 
   const FONT_SIZE_OPTIONS = [
     { label: 'Compact', value: 18 },
@@ -251,18 +276,19 @@ export default function ChapterViewer({
 
   const markdownComponents = useMemo(() => {
     const resolveStartIndex = (textValue: string, node?: any) => {
-      if (!displayText) {
+      const currentDisplayText = displayTextRef.current;
+      if (!currentDisplayText) {
         return 0;
       }
       const nodeOffset = node?.position?.start?.offset;
       if (typeof nodeOffset === 'number') {
-        const lineStart = displayText.lastIndexOf('\n', nodeOffset - 1);
+        const lineStart = currentDisplayText.lastIndexOf('\n', nodeOffset - 1);
         return lineStart === -1 ? 0 : lineStart + 1;
       }
       if (textValue) {
-        const foundIndex = displayText.indexOf(textValue);
+        const foundIndex = currentDisplayText.indexOf(textValue);
         if (foundIndex !== -1) {
-          const lineStart = displayText.lastIndexOf('\n', foundIndex - 1);
+          const lineStart = currentDisplayText.lastIndexOf('\n', foundIndex - 1);
           return lineStart === -1 ? 0 : lineStart + 1;
         }
       }
@@ -273,10 +299,13 @@ export default function ChapterViewer({
       return ({ children, node }: { children?: ReactNode; node?: any }) => {
         const textValue = extractTextFromNode(children ?? '').trim();
         const startIndex = resolveStartIndex(textValue, node);
-        const paragraphKey = chapterNumber
-          ? `chapter-${chapterNumber}-${selectedVersionId}-${hashText(textValue)}-${startIndex}`
+        const currentChapterNumber = chapterNumberRef.current;
+        const currentSelectedVersionId = selectedVersionIdRef.current;
+        const paragraphKey = currentChapterNumber
+          ? `chapter-${currentChapterNumber}-${currentSelectedVersionId}-${hashText(textValue)}-${startIndex}`
           : '';
-        const isPlaying = playingParagraphStart === startIndex && playingParagraphMode === 'chapter';
+        const isPlaying =
+          playingParagraphStartRef.current === startIndex && playingParagraphModeRef.current === 'chapter';
         return (
           <Tag className="text-viewer-block" data-playing={isPlaying ? 'true' : 'false'}>
             {children}
@@ -286,7 +315,7 @@ export default function ChapterViewer({
                 className="text-paragraph-stream"
                 onClick={() =>
                   onPlayParagraphRef.current({
-                    fullText: displayText,
+                    fullText: displayTextRef.current,
                     startIndex,
                     key: paragraphKey
                   })
@@ -313,7 +342,7 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, displayText, playingParagraphMode, playingParagraphStart, selectedVersionId]);
+  }, []);
 
   return (
     <div className="text-viewer" style={textStyle}>
