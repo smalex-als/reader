@@ -6,6 +6,7 @@ import { DATA_DIR } from '../config.js';
 const router = express.Router();
 const STREAM_HISTORY_LOG = path.join(DATA_DIR, '.stream-history.log');
 const SESSION_GROUP_GAP_MS = 60 * 1000;
+const RECENT_SESSION_GROUP_GAP_MS = 15 * 60 * 1000;
 
 function normalizeStreamSource(pageKey) {
   if (typeof pageKey !== 'string' || !pageKey) {
@@ -60,6 +61,25 @@ function buildEmptyDashboard() {
     topChapters: [],
     recentSessions: []
   };
+}
+
+function buildSemanticSessionKey(entry) {
+  return [
+    entry.bookId,
+    entry.chapterNumber ?? 'none',
+    entry.chapterTitle ?? '',
+    entry.subchapterTitle ?? '',
+    entry.sourceType
+  ].join('::');
+}
+
+function areEntriesCloseInTime(left, right, gapMs) {
+  const leftTimestamp = Date.parse(left.timestamp);
+  const rightTimestamp = Date.parse(right.timestamp);
+  if (!Number.isFinite(leftTimestamp) || !Number.isFinite(rightTimestamp)) {
+    return false;
+  }
+  return Math.abs(leftTimestamp - rightTimestamp) <= gapMs;
 }
 
 router.post('/api/events', async (req, res, next) => {
@@ -298,6 +318,23 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
 
     const normalizedRecentSessions = groupedSessions
       .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
+      .reduce((merged, entry) => {
+        const previous = merged[merged.length - 1];
+        if (
+          previous &&
+          buildSemanticSessionKey(previous) === buildSemanticSessionKey(entry) &&
+          areEntriesCloseInTime(previous, entry, RECENT_SESSION_GROUP_GAP_MS)
+        ) {
+          previous.listenedSeconds += entry.listenedSeconds;
+          previous.startedAt = previous.startedAt < entry.startedAt ? previous.startedAt : entry.startedAt;
+          previous.endedAt = previous.endedAt > entry.endedAt ? previous.endedAt : entry.endedAt;
+          previous.pageNumber = previous.pageNumber ?? entry.pageNumber;
+          previous.pageKeyEnd = previous.pageKeyEnd ?? entry.pageKeyEnd;
+          return merged;
+        }
+        merged.push({ ...entry });
+        return merged;
+      }, [])
       .slice(0, 25);
 
     res.json({
