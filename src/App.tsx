@@ -585,6 +585,28 @@ export default function App() {
       startIndex: Number.parseInt(match[2], 10)
     };
   }, [streamState.pageKey, streamState.status]);
+  const handlePlayVisibleStream = useCallback(async () => {
+    if (viewMode === 'text') {
+      if (!displayedChapterText?.text?.trim()) {
+        showToast('No visible chapter text available to stream', 'error');
+        return;
+      }
+      await handlePlayChapterParagraph({
+        fullText: displayedChapterText.text,
+        startIndex: 0,
+        key: `chapter-${chapterNumber ?? 'unknown'}-${displayedChapterText.versionId ?? 'base'}`
+      });
+      return;
+    }
+    await startStreamSequence();
+  }, [
+    chapterNumber,
+    displayedChapterText,
+    handlePlayChapterParagraph,
+    showToast,
+    startStreamSequence,
+    viewMode
+  ]);
   const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
   const previousStreamStatusRef = useRef(streamState.status);
 
@@ -1264,7 +1286,7 @@ export default function App() {
     stopStream,
     streamStatus: streamState.status,
     handleStopStream,
-    handlePlayStream: startStreamSequence,
+    handlePlayStream: handlePlayVisibleStream,
     gotoInputRef,
     toggleFullscreen,
     textModalOpen,
@@ -1373,7 +1395,7 @@ export default function App() {
     streamVoice,
     streamVoiceOptions: STREAM_VOICE_OPTIONS,
     onStreamVoiceChange: handleStreamVoiceChange,
-    onPlayStream: () => void startStreamSequence(),
+    onPlayStream: () => void handlePlayVisibleStream(),
     onStopStream: handleStopStream,
     onCreateChapter: () => {
       if (!isTextBook) {

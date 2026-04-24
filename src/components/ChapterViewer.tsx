@@ -319,6 +319,18 @@ export default function ChapterViewer({
     [onTextFontSizeChange]
   );
 
+  const handleVersionChange = useCallback(
+    (nextVersionId: string) => {
+      if (nextVersionId === selectedVersionId) {
+        return;
+      }
+      onFirstParagraphReady(null);
+      onDisplayedTextChange?.(null);
+      setSelectedVersionId(nextVersionId);
+    },
+    [onDisplayedTextChange, onFirstParagraphReady, selectedVersionId, setSelectedVersionId]
+  );
+
   useEffect(() => {
     if (!displayText || !chapterNumber) {
       onFirstParagraphReady(null);
@@ -518,7 +530,7 @@ export default function ChapterViewer({
               <span>Version</span>
               <select
                 value={selectedVersionId}
-                onChange={(event) => setSelectedVersionId(event.target.value)}
+                onChange={(event) => handleVersionChange(event.target.value)}
                 disabled={displayLoading || versionSaving}
               >
                 {versions.map((version) => (

@@ -55,6 +55,7 @@ export function useChapterTextVersions({
 }: UseChapterTextVersionsOptions) {
   const [chapterText, setChapterText] = useState('');
   const [selectedText, setSelectedText] = useState('');
+  const [selectedTextVersionId, setSelectedTextVersionId] = useState<string | null>(null);
   const [versions, setVersions] = useState<ChapterTextVersion[]>([]);
   const [promptLibrary, setPromptLibrary] = useState<ChapterTextPrompt[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState('base');
@@ -160,6 +161,7 @@ export function useChapterTextVersions({
     if (!bookId || !chapterNumber) {
       setChapterText('');
       setSelectedText('');
+      setSelectedTextVersionId(null);
       setVersions([]);
       setPromptLibrary([]);
       setSelectedVersionId('base');
@@ -185,6 +187,7 @@ export function useChapterTextVersions({
 
     setChapterText('');
     setSelectedText('');
+    setSelectedTextVersionId(null);
     setLoading(true);
     setError(null);
     setMissingFile(null);
@@ -238,15 +241,19 @@ export function useChapterTextVersions({
   useEffect(() => {
     if (!bookId || !chapterNumber || !selectedVersion) {
       setSelectedText('');
+      setSelectedTextVersionId(null);
       return;
     }
     if (selectedVersion.id === 'base') {
       setSelectedText(chapterText);
+      setSelectedTextVersionId('base');
       return;
     }
     let canceled = false;
     setVersionError(null);
     setVersionLoading(true);
+    setSelectedText('');
+    setSelectedTextVersionId(null);
     fetch(selectedVersion.file)
       .then(async (response) => {
         if (!response.ok) {
@@ -257,11 +264,13 @@ export function useChapterTextVersions({
       .then((text) => {
         if (!canceled) {
           setSelectedText(text.trim());
+          setSelectedTextVersionId(selectedVersion.id);
         }
       })
       .catch((err) => {
         if (!canceled) {
           setSelectedText('');
+          setSelectedTextVersionId(null);
           setVersionError(err instanceof Error ? err.message : 'Unable to load chapter text version.');
         }
       })
@@ -350,8 +359,21 @@ export function useChapterTextVersions({
     audioPollRef.current = pollAudioJobStatus;
   }, [pollAudioJobStatus]);
 
-  const displayText = selectedVersionId === 'base' ? chapterText : selectedText;
-  const displayLoading = loading || versionLoading;
+  const derivedTextPending = Boolean(
+    bookId &&
+      chapterNumber &&
+      selectedVersionId !== 'base' &&
+      selectedVersion &&
+      selectedTextVersionId !== selectedVersionId &&
+      !versionError
+  );
+  const displayText =
+    selectedVersionId === 'base'
+      ? chapterText
+      : selectedTextVersionId === selectedVersionId
+        ? selectedText
+        : '';
+  const displayLoading = loading || versionLoading || derivedTextPending;
   const displayError = error || versionError;
   const canGenerate = Boolean(bookId && chapterNumber && chapterRange);
   const canCreateVersion = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
