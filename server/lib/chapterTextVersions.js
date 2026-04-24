@@ -455,6 +455,19 @@ export async function createChapterTextVersion({
 
   const selectedModel = sanitizeVersionModel(model);
   const openai = getOpenAI();
+  // eslint-disable-next-line no-console
+  console.log('Creating chapter text version via OpenAI', {
+    bookId,
+    chapterNumber,
+    sourceVersionId: sourceTextVersion.versionId,
+    model: selectedModel,
+    promptId: selectedPrompt?.id ?? null,
+    promptName: selectedPrompt?.name ?? sanitizePromptName(promptName) ?? null,
+    customPrompt: Boolean(explicitPrompt),
+    addToLibrary: Boolean(explicitPrompt && addToLibrary),
+    sourceChars: chapterText.length,
+    promptChars: promptText.length
+  });
   const response = await openai.chat.completions.create({
     model: selectedModel,
     messages: [
