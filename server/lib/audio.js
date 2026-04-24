@@ -112,6 +112,11 @@ export async function createTextAudioStream({ text, voiceProfile }) {
   return createSpeechResponse({ spokenText, voiceProfile, responseFormat: 'mp3' });
 }
 
+export async function createTextPcmSpeechStream({ text, voiceProfile }) {
+  const { spokenText } = resolveTextSpeechInput(text);
+  return createSpeechResponse({ spokenText, voiceProfile, responseFormat: 'pcm' });
+}
+
 export async function handlePageAudio({ image, voiceProfile, provider = 'openai' }) {
   const { relative, spokenText } = await resolvePageSpeechInput(image);
   const baseName = relative.replace(/\.[^.]+$/, '');

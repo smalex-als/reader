@@ -1,6 +1,10 @@
 import type { AudioState, StreamState } from '@/types/app';
 
 export type ToolbarTab = 'reading' | 'image' | 'audio' | 'study' | 'tools';
+type StreamVoiceOption = {
+  id: string;
+  label: string;
+};
 
 interface ToolbarProps {
   layout?: 'panel' | 'modal';
@@ -49,7 +53,7 @@ interface ToolbarProps {
   onStopAudio: () => void;
   streamState: StreamState;
   streamVoice: string;
-  streamVoiceOptions: readonly string[];
+  streamVoiceOptions: readonly StreamVoiceOption[];
   onStreamVoiceChange: (voice: string) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
@@ -205,11 +209,6 @@ export default function Toolbar({
     const failedLabel = ocrQueueFailed > 0 ? ` · ${ocrQueueFailed} failed` : '';
     return `${statusLabel} · ${ocrQueueProcessed}/${ocrQueueTotal}${failedLabel}`;
   })();
-  const formatVoiceLabel = (voice: string) => {
-    const withoutLocale = voice.startsWith('en-') ? voice.slice(3) : voice;
-    const [name, variant] = withoutLocale.split('_');
-    return variant ? `${name} - ${variant}` : name;
-  };
   const showReadingTab = !isModal || activeTab === 'reading';
   const showImageTab = !isModal || activeTab === 'image';
   const showAudioTab = !isModal || activeTab === 'audio';
@@ -543,6 +542,7 @@ export default function Toolbar({
         <div className="toolbar-group">
           <span className="toolbar-group-title">Stream</span>
           <label className="toolbar-field">
+            Voice
             <select
               className="select"
               value={streamVoice}
@@ -550,8 +550,8 @@ export default function Toolbar({
               onChange={(event) => onStreamVoiceChange(event.target.value)}
             >
               {streamVoiceOptions.map((voice) => (
-                <option key={voice} value={voice}>
-                  {formatVoiceLabel(voice)}
+                <option key={voice.id} value={voice.id}>
+                  {voice.label}
                 </option>
               ))}
             </select>

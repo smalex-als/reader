@@ -431,7 +431,11 @@ export function useStreamSequence({
           queuedAhead: 0,
           lastActivePageKey: paragraphSegments[0].pageKey
         };
-        await startStream({ text: paragraphSegments[0].text, pageKey: paragraphSegments[0].pageKey, voice });
+        await startStream({
+          text: paragraphSegments[0].text,
+          pageKey: paragraphSegments[0].pageKey,
+          voice
+        });
         fillParagraphBuffer(runId, voice);
         return;
       }
@@ -440,7 +444,11 @@ export function useStreamSequence({
         showToast('No text available to stream', 'error');
         return;
       }
-      await startStream({ text: chunks[0], pageKey: `${baseKey}#chunk-0`, voice });
+      await startStream({
+        text: chunks[0],
+        pageKey: `${baseKey}#chunk-0`,
+        voice
+      });
       enqueueChunks(fullText, startIndex, baseKey, voice);
     },
     [

@@ -41,15 +41,17 @@ export function useAudioController(
       title,
       subtitle,
       provider = 'openai',
+      voice,
       cacheKey
     }: {
       text: string;
       title: string;
       subtitle?: string;
       provider?: 'openai' | 'xai';
+      voice?: string;
       cacheKey: string;
     }) => {
-      const trackKey = `text:${provider}:${cacheKey}`;
+      const trackKey = `text:${provider}:${voice ?? 'default'}:${cacheKey}`;
       if (
         audioState.currentPageKey === trackKey &&
         audioState.provider === provider &&
@@ -85,7 +87,7 @@ export function useAudioController(
             body: JSON.stringify({
               text,
               provider,
-              voice: provider === 'xai' ? 'Eve' : undefined
+              voice: provider === 'xai' ? 'Eve' : voice
             })
           });
           if (!response.ok) {
@@ -134,7 +136,7 @@ export function useAudioController(
     [audioCache, audioState.currentPageKey, audioState.provider, audioState.status, showToast]
   );
 
-  const playAudio = useCallback(async (provider: 'openai' | 'xai' = 'openai') => {
+  const playAudio = useCallback(async (provider: 'openai' | 'xai' = 'openai', voice?: string) => {
     if (!currentImage) {
       return null;
     }
@@ -163,15 +165,20 @@ export function useAudioController(
       if (provider === 'openai' && entry?.url && entry.url.endsWith('.xai.mp3')) {
         entry = undefined;
       }
+      if (provider === 'openai' && voice) {
+        entry = undefined;
+      }
       if (!entry) {
         const directUrl = deriveAudioUrl(currentImage, provider);
-        try {
-          const headResponse = await fetch(directUrl, { method: 'HEAD' });
-          if (headResponse.ok) {
-            entry = { url: directUrl, source: 'file' };
+        if (provider !== 'openai' || !voice) {
+          try {
+            const headResponse = await fetch(directUrl, { method: 'HEAD' });
+            if (headResponse.ok) {
+              entry = { url: directUrl, source: 'file' };
+            }
+          } catch {
+            // try API
           }
-        } catch {
-          // try API
         }
       }
 
@@ -203,6 +210,9 @@ export function useAudioController(
           const params = new URLSearchParams();
           params.set('image', currentImage);
           params.set('t', String(Date.now()));
+          if (voice) {
+            params.set('voice', voice);
+          }
           entry = {
             url: `/api/page-audio/stream?${params.toString()}`,
             source: 'ai'

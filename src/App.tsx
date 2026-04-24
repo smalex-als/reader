@@ -14,7 +14,7 @@ import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useStreamSequence } from '@/hooks/useStreamSequence';
-import { DEFAULT_STREAM_VOICE, useStreamingAudio } from '@/hooks/useStreamingAudio';
+import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToast } from '@/hooks/useToast';
@@ -44,26 +44,12 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return (await response.json()) as T;
 }
 
-const STREAM_VOICE_OPTIONS = [
-  'en-Breeze_woman',
-  'en-Brutalon_man',
-  'en-Carter_man',
-  'en-Clarion_man',
-  'en-Clarissa_woman',
-  'en-Davis_man',
-  'en-Emma_woman',
-  'en-Frank_man',
-  'en-Grace_woman',
-  'en-Gravitar_man',
-  'en-Gravus_man',
-  'en-MechCorsair_man',
-  'en-Mike_man',
-  'en-Oldenheart_man',
-  'en-Silkvox_man',
-  'en-Snarkling_woman',
-  'en-Soother_woman'
-] as const;
-type StreamVoice = (typeof STREAM_VOICE_OPTIONS)[number];
+type StreamVoice = string;
+type StreamVoiceOption = {
+  id: string;
+  label: string;
+  provider: 'openai' | 'streaming';
+};
 
 const TEXT_FONT_SIZE_OPTIONS = [18, 20, 24, 26, 28, 30, 34];
 const TEXT_THEME_OPTIONS = [
@@ -121,14 +107,6 @@ function createDefaultSettings(): AppSettings {
   return { ...DEFAULT_SETTINGS, pan: { ...DEFAULT_SETTINGS.pan } };
 }
 
-function isStreamVoice(value: string): value is StreamVoice {
-  return STREAM_VOICE_OPTIONS.includes(value as StreamVoice);
-}
-
-function getDefaultStreamVoice(): StreamVoice {
-  return isStreamVoice(DEFAULT_STREAM_VOICE) ? DEFAULT_STREAM_VOICE : STREAM_VOICE_OPTIONS[0];
-}
-
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<ToolbarTab>('reading');
@@ -171,7 +149,9 @@ export default function App() {
     startIndex: number;
     key: string;
   } | null>(null);
-  const [streamVoice, setStreamVoice] = useState<StreamVoice>(() => getDefaultStreamVoice());
+  const [streamVoiceOptions, setStreamVoiceOptions] = useState<StreamVoiceOption[]>([]);
+  const [defaultStreamVoice, setDefaultStreamVoice] = useState<StreamVoice>('');
+  const [streamVoice, setStreamVoice] = useState<StreamVoice>('');
   const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -212,6 +192,50 @@ export default function App() {
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
   const tocEntriesRef = useRef<React.Dispatch<React.SetStateAction<TocEntry[]>> | null>(null);
+  const isStreamVoice = useCallback(
+    (value: string): value is StreamVoice => streamVoiceOptions.length === 0 || streamVoiceOptions.some((voice) => voice.id === value),
+    [streamVoiceOptions]
+  );
+  const getDefaultStreamVoice = useCallback(
+    () => defaultStreamVoice || streamVoiceOptions[0]?.id || '',
+    [defaultStreamVoice, streamVoiceOptions]
+  );
+  const getStreamVoiceProvider = useCallback(
+    (voice: string) => streamVoiceOptions.find((option) => option.id === voice)?.provider ?? null,
+    [streamVoiceOptions]
+  );
+  useEffect(() => {
+    let cancelled = false;
+    void fetchJson<{ defaultVoice?: string; voices?: StreamVoiceOption[] }>('/api/stream-audio/voices')
+      .then((payload) => {
+        if (cancelled) {
+          return;
+        }
+        const voices = Array.isArray(payload.voices)
+          ? payload.voices.filter(
+              (voice) =>
+                typeof voice.id === 'string' &&
+                voice.id.trim() &&
+                typeof voice.label === 'string' &&
+                (voice.provider === 'openai' || voice.provider === 'streaming')
+            )
+          : [];
+        const defaultVoice =
+          typeof payload.defaultVoice === 'string' && voices.some((voice) => voice.id === payload.defaultVoice)
+            ? payload.defaultVoice
+            : voices[0]?.id ?? '';
+        setStreamVoiceOptions(voices);
+        setDefaultStreamVoice(defaultVoice);
+        setStreamVoice((previous) => (previous && voices.some((voice) => voice.id === previous) ? previous : defaultVoice));
+      })
+      .catch((error) => {
+        console.error('Unable to load streaming voices', error);
+        showToast('Unable to load streaming voices', 'error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showToast]);
   const {
     books,
     bookId,
@@ -386,6 +410,8 @@ export default function App() {
     stopAudio
   } = useAudioController(currentImage, showToast);
   const { streamState, startStream, enqueueStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
+  const openAiVoice = getStreamVoiceProvider(streamVoice) === 'openai' ? streamVoice : undefined;
+  const chapterAudioVoice = getStreamVoiceProvider(streamVoice) === 'streaming' ? streamVoice : getDefaultStreamVoice();
   const isListening = audioState.status === 'playing' || streamState.status === 'streaming';
   useWakeLock(isFullscreen && isListening);
   const {
@@ -433,14 +459,15 @@ export default function App() {
               title: provider === 'xai' ? 'xAI TTS' : 'OpenAI TTS',
               subtitle: displayedChapterText.versionLabel ?? displayedChapterText.chapterTitle ?? 'Chapter text',
               provider,
+              voice: provider === 'openai' ? openAiVoice : undefined,
               cacheKey: `${bookId ?? 'book'}:${chapterNumber ?? 'chapter'}:${displayedChapterText.versionId ?? 'base'}`
             })
-          : await playAudio(provider);
+          : await playAudio(provider, provider === 'openai' ? openAiVoice : undefined);
       if (track) {
         setFloatingAudio(track);
       }
     },
-    [bookId, chapterNumber, displayedChapterText, playAudio, playTextAudio, stopStream, viewMode]
+    [bookId, chapterNumber, displayedChapterText, openAiVoice, playAudio, playTextAudio, stopStream, viewMode]
   );
   useEffect(() => {
     setFloatingAudio(null);
@@ -854,7 +881,6 @@ export default function App() {
       });
     }
   }, [settings.textTheme, setSettings]);
-
   const handleViewModeChange = useCallback(
     (mode: 'pages' | 'scroll' | 'text' | 'audio') => {
       if (isTextBook && (mode === 'pages' || mode === 'scroll')) {
@@ -1195,12 +1221,8 @@ export default function App() {
     });
   }, [bookId, currentPage, navigationCount, viewMode]);
 
-  const handleStreamVoiceChange = useCallback(
+  const restartActiveStream = useCallback(
     (voice: string) => {
-      if (!isStreamVoice(voice)) {
-        return;
-      }
-      setStreamVoice(voice);
       if (
         (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused') &&
         typeof streamState.pageKey === 'string' &&
@@ -1209,7 +1231,18 @@ export default function App() {
         void restartStreamFromPageKey(streamState.pageKey, voice);
       }
     },
-    [isStreamVoice, restartStreamFromPageKey, setStreamVoice, streamState.pageKey, streamState.status]
+    [restartStreamFromPageKey, streamState.pageKey, streamState.status]
+  );
+
+  const handleActiveStreamVoiceChange = useCallback(
+    (voice: string) => {
+      if (!isStreamVoice(voice)) {
+        return;
+      }
+      setStreamVoice(voice);
+      restartActiveStream(voice);
+    },
+    [isStreamVoice, restartActiveStream, setStreamVoice]
   );
 
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
@@ -1393,8 +1426,8 @@ export default function App() {
     onStopAudio: stopAudio,
     streamState,
     streamVoice,
-    streamVoiceOptions: STREAM_VOICE_OPTIONS,
-    onStreamVoiceChange: handleStreamVoiceChange,
+    streamVoiceOptions,
+    onStreamVoiceChange: handleActiveStreamVoiceChange,
     onPlayStream: () => void handlePlayVisibleStream(),
     onStopStream: handleStopStream,
     onCreateChapter: () => {
@@ -1791,7 +1824,7 @@ export default function App() {
       onTextFontSizeChange: updateTextFontSize,
       textTheme: settings.textTheme,
       onTextThemeChange: updateTextTheme,
-      streamVoice,
+      streamVoice: chapterAudioVoice,
       refreshToken: chapterViewRefresh,
       onDisplayedTextChange: setDisplayedChapterText,
       onFirstParagraphReady: setFirstChapterParagraph,
@@ -1804,7 +1837,7 @@ export default function App() {
       bookId,
       tocEntries: sortedTocEntries,
       tocLoading,
-      streamVoice,
+      streamVoice: chapterAudioVoice,
       showToast,
       onOpenChapterText: (pageIndex: number) => {
         setViewMode('text');
@@ -1815,8 +1848,8 @@ export default function App() {
     streamBubbleProps: {
       streamState,
       streamVoice,
-      streamVoiceOptions: STREAM_VOICE_OPTIONS,
-      onStreamVoiceChange: handleStreamVoiceChange,
+      streamVoiceOptions,
+      onStreamVoiceChange: handleActiveStreamVoiceChange,
       showAutoFollow: viewMode === 'scroll',
       autoFollowEnabled: autoFollowStream,
       onToggleAutoFollow: () => setAutoFollowStream((prev) => !prev),

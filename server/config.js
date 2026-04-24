@@ -23,6 +23,25 @@ export const STREAM_SERVER =
   process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'http://192.168.1.174:3005';
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
+export const LOCAL_STREAM_VOICES = [
+  'en-Breeze_woman',
+  'en-Brutalon_man',
+  'en-Carter_man',
+  'en-Clarion_man',
+  'en-Clarissa_woman',
+  'en-Davis_man',
+  'en-Emma_woman',
+  'en-Frank_man',
+  'en-Grace_woman',
+  'en-Gravitar_man',
+  'en-Gravus_man',
+  'en-MechCorsair_man',
+  'en-Mike_man',
+  'en-Oldenheart_man',
+  'en-Silkvox_man',
+  'en-Snarkling_woman',
+  'en-Soother_woman'
+];
 
 export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai'; // 'openai' | 'deepseek_ocr'
 export const OCR_TIMEOUT_MS = Number.parseInt(process.env.OCR_TIMEOUT_MS || '20000', 10);
@@ -97,6 +116,7 @@ Pronunciation: Clear, articulate, and exaggerated in key festive phrases to main
 Pause: Brief pauses after each option and statement to allow for processing and to add a natural flow to the message.`
   }
 };
+export const DEFAULT_STREAM_VOICE = STREAM_VOICE || DEFAULT_VOICE || 'en-Mike_man';
 
 export const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 export const PDF_EXTENSIONS = new Set(['.pdf']);

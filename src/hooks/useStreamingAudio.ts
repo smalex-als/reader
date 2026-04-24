@@ -390,7 +390,15 @@ export function useStreamingAudio(
   );
 
   const startStream = useCallback(
-    async ({ text, pageKey, voice }: { text: string; pageKey: string; voice?: string }) => {
+    async ({
+      text,
+      pageKey,
+      voice,
+    }: {
+      text: string;
+      pageKey: string;
+      voice?: string;
+    }) => {
       const cleaned = stripMarkdown(text).trim();
       if (!cleaned) {
         showToast('No text available to stream', 'error');
@@ -444,7 +452,15 @@ export function useStreamingAudio(
   );
 
   const enqueueStream = useCallback(
-    ({ text, pageKey, voice }: { text: string; pageKey: string; voice?: string }) => {
+    ({
+      text,
+      pageKey,
+      voice,
+    }: {
+      text: string;
+      pageKey: string;
+      voice?: string;
+    }) => {
       const cleaned = stripMarkdown(text).trim();
       if (!cleaned || stopRequestedRef.current || sessionRef.current === 0) {
         return;
