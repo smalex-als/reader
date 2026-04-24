@@ -17,6 +17,7 @@ import ImagePreviewModal from '@/components/ImagePreviewModal';
 import VocabularyModal from '@/components/VocabularyModal';
 import ListeningDashboardModal from '@/components/ListeningDashboardModal';
 import MemoryCardModal from '@/components/MemoryCardModal';
+import PromptEditorModal from '@/components/PromptEditorModal';
 
 type ToastProps = ComponentProps<typeof Toast>;
 type PrintModalProps = ComponentProps<typeof PrintModal>;
@@ -35,6 +36,7 @@ type ImagePreviewModalProps = ComponentProps<typeof ImagePreviewModal>;
 type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
 type ListeningDashboardModalProps = ComponentProps<typeof ListeningDashboardModal>;
 type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
+type PromptEditorModalProps = ComponentProps<typeof PromptEditorModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
@@ -55,6 +57,7 @@ interface AppModalsProps {
   vocabularyModalProps: VocabularyModalProps;
   listeningDashboardModalProps: ListeningDashboardModalProps;
   memoryCardModalProps: MemoryCardModalProps;
+  promptEditorModalProps: PromptEditorModalProps;
 }
 
 function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
@@ -82,7 +85,8 @@ export default function AppModals({
   imagePreviewModalProps,
   vocabularyModalProps,
   listeningDashboardModalProps,
-  memoryCardModalProps
+  memoryCardModalProps,
+  promptEditorModalProps
 }: AppModalsProps) {
   return (
     <>
@@ -100,6 +104,7 @@ export default function AppModals({
       {renderInPortal(<QuizModal {...quizModalProps} />, portalTarget)}
       {renderInPortal(<VocabularyModal {...vocabularyModalProps} />, portalTarget)}
       {renderInPortal(<MemoryCardModal {...memoryCardModalProps} />, portalTarget)}
+      {renderInPortal(<PromptEditorModal {...promptEditorModalProps} />, portalTarget)}
       {renderInPortal(<ListeningDashboardModal {...listeningDashboardModalProps} />, portalTarget)}
       {renderInPortal(<ImagePreviewModal {...imagePreviewModalProps} />, portalTarget)}
       <OcrQueueModal {...ocrQueueModalProps} />

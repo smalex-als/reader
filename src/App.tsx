@@ -153,6 +153,9 @@ export default function App() {
     bookCardBookId,
     openBookCard,
     closeBookCard,
+    promptEditorOpen,
+    openPromptEditor,
+    closePromptEditor,
     editorOpen,
     setEditorOpen,
     editorChapterNumber,
@@ -1280,6 +1283,7 @@ export default function App() {
     vocabularyOpen,
     memoryCardOpen,
     listeningDashboardOpen,
+    promptEditorOpen,
     closeTextModal,
     closeBookModal,
     closePrintModal,
@@ -1287,6 +1291,7 @@ export default function App() {
     openSearch,
     closeSearch,
     closeBookCard,
+    closePromptEditor,
     setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,
@@ -1412,6 +1417,10 @@ export default function App() {
     onOpenListeningDashboard: () => {
       setSettingsOpen(false);
       openListeningDashboard();
+    },
+    onOpenPromptEditor: () => {
+      setSettingsOpen(false);
+      openPromptEditor();
     },
     onOpenOcrQueue: openOcrQueue,
     onOpenToc: () => {
@@ -1659,6 +1668,13 @@ export default function App() {
       onOpenBook: handleOpenDashboardBook,
       onOpenChapter: handleOpenDashboardChapter,
       onClose: closeListeningDashboard
+    },
+    promptEditorModalProps: {
+      open: promptEditorOpen,
+      onClose: closePromptEditor,
+      onChanged: () => {
+        setChapterViewRefresh((prev) => prev + 1);
+      }
     }
   };
 

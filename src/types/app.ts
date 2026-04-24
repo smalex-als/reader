@@ -91,6 +91,7 @@ export interface ChapterTextPrompt {
   template: string;
   builtIn?: boolean;
   createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface ChapterTextVersion {

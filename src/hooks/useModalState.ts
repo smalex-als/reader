@@ -7,6 +7,7 @@ export function useModalState() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [bookCardOpen, setBookCardOpen] = useState(false);
   const [bookCardBookId, setBookCardBookId] = useState<string | null>(null);
+  const [promptEditorOpen, setPromptEditorOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorChapterNumber, setEditorChapterNumber] = useState<number | null>(null);
 
@@ -26,6 +27,8 @@ export function useModalState() {
     setBookCardOpen(false);
     setBookCardBookId(null);
   }, []);
+  const openPromptEditor = useCallback(() => setPromptEditorOpen(true), []);
+  const closePromptEditor = useCallback(() => setPromptEditorOpen(false), []);
 
   return {
     helpOpen,
@@ -50,6 +53,10 @@ export function useModalState() {
     setBookCardBookId,
     openBookCard,
     closeBookCard,
+    promptEditorOpen,
+    setPromptEditorOpen,
+    openPromptEditor,
+    closePromptEditor,
     editorOpen,
     setEditorOpen,
     editorChapterNumber,

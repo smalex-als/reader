@@ -1,0 +1,88 @@
+Take the multi-page system design interview chapter text I give you and compress it into a high-signal review extract that can be reread quickly before an interview.
+
+Goal:
+- produce a compact 1 to 2 page extract
+- optimize for recall, not completeness
+- keep only the ideas that materially help someone remember the design and explain it under pressure
+
+What this extract is for:
+- a fast refresher before an interview
+- a memory aid after the full chapter has already been read
+- a compact review document, not a full rewrite and not a tiny memory card
+- a way to reconstruct the design discussion from memory without rereading the full chapter
+
+Core rules:
+- write in clear direct English
+- keep the strongest technical signal
+- remove filler, repeated dialogue, and interview theater
+- compress obvious material aggressively
+- expand only the parts that matter for design reasoning
+- do not preserve the chapter’s original pacing if it wastes space
+- preserve concrete numbers, constraints, bottlenecks, and architectural pivots when they affect the design
+- if the chapter contains multiple candidate designs, explain why the final one wins
+
+What to include:
+- the real problem framing
+- the few requirements and constraints that actually drive the design
+- the scale assumptions that change architecture choices
+- the core design and why it fits
+- the write path and read path if they matter
+- the critical data model or state model
+- tradeoffs between the main candidate approaches
+- correctness risks, failure modes, and recovery points
+- the first important scaling boundary or limitation
+- interviewer-ready talking points: what to say, what to avoid, and what decision demonstrates senior judgment
+- the final recommended design intuition
+
+What to exclude or compress heavily:
+- repetitive interviewer / candidate dialogue
+- broad textbook explanations of common components
+- generic advice that applies to any system design problem
+- low-value API boilerplate
+- restatements that do not add new insight
+- long intros and long conclusions
+- implementation trivia that does not change the architecture
+- definitions of standard components unless the chapter uses them in a non-obvious way
+
+Writing style:
+- sound like a sharp senior engineer preparing notes for review
+- prefer dense but readable explanation
+- use short sections with descriptive headings
+- use bullets where they improve scanability
+- keep paragraphs compact
+- avoid fluff and motivational language
+- be specific: name the component, responsibility, data shape, constraint, or tradeoff instead of saying "use a database" or "scale the system"
+
+Output structure:
+- start with a short section: "Core idea"
+- then use concise sections such as:
+  - Problem and constraints
+  - Scale that matters
+  - Chosen design
+  - Data model / state model
+  - Critical flows
+  - Tradeoffs
+  - Failure modes and correctness
+  - Limits and evolution
+  - Interview takeaway
+- merge or omit sections when they are not useful
+- do not include every listed section mechanically; optimize for the chapter's actual content
+
+Length target:
+- aim for roughly 700 to 1200 words
+- short enough to reread quickly
+- long enough to preserve the important architecture and tradeoffs
+- if the chapter is very dense, prefer the upper end of the range; if it is repetitive, prefer the lower end
+
+Important:
+- do not produce a generic summary
+- do not turn it into flashcards
+- do not make it conversational
+- do not add information not supported by the source
+- make the output feel like an interview review sheet derived from the chapter
+- if the source is ambiguous, keep the ambiguity visible instead of inventing missing details
+
+Output requirements:
+- output only the final extract
+- no markdown fences
+- no meta commentary about what you did

@@ -46,6 +46,7 @@ type HotkeysOptions = {
   vocabularyOpen: boolean;
   memoryCardOpen: boolean;
   listeningDashboardOpen: boolean;
+  promptEditorOpen: boolean;
   closeTextModal: () => void;
   closeBookModal: () => void;
   closePrintModal: () => void;
@@ -53,6 +54,7 @@ type HotkeysOptions = {
   openSearch: () => void;
   closeSearch: () => void;
   closeBookCard: () => void;
+  closePromptEditor: () => void;
   setOcrQueueOpen: (open: boolean) => void;
   setTocOpen: (open: boolean) => void;
   setTocManageOpen: (open: boolean) => void;
@@ -116,6 +118,7 @@ export function useHotkeys({
   vocabularyOpen,
   memoryCardOpen,
   listeningDashboardOpen,
+  promptEditorOpen,
   closeTextModal,
   closeBookModal,
   closePrintModal,
@@ -123,6 +126,7 @@ export function useHotkeys({
   openSearch,
   closeSearch,
   closeBookCard,
+  closePromptEditor,
   setOcrQueueOpen,
   setTocOpen,
   setTocManageOpen,
@@ -193,7 +197,8 @@ export function useHotkeys({
           quizOpen ||
           vocabularyOpen ||
           memoryCardOpen ||
-          listeningDashboardOpen
+          listeningDashboardOpen ||
+          promptEditorOpen
         ) &&
         event.key !== 'Escape'
       ) {
@@ -428,6 +433,9 @@ export function useHotkeys({
           if (bookCardOpen) {
             closeBookCard();
           }
+          if (promptEditorOpen) {
+            closePromptEditor();
+          }
           break;
         default:
           break;
@@ -472,6 +480,7 @@ export function useHotkeys({
     openSearch,
     closeSearch,
     closeBookCard,
+    closePromptEditor,
     closePrintModal,
     ocrQueueOpen,
     streamStatus,
@@ -484,6 +493,7 @@ export function useHotkeys({
     vocabularyOpen,
     memoryCardOpen,
     listeningDashboardOpen,
+    promptEditorOpen,
     setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,

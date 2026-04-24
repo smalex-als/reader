@@ -34,9 +34,13 @@ import {
   getChapterAudioJob
 } from '../lib/chapterAudioJobs.js';
 import {
+  addPromptToLibrary,
   createChapterTextVersion,
   deleteChapterTextVersion,
-  listChapterTextVersions
+  deletePromptFromLibrary,
+  listChapterTextPromptLibrary,
+  listChapterTextVersions,
+  updatePromptInLibrary
 } from '../lib/chapterTextVersions.js';
 import { generateChapterMemoryCard, loadChapterMemoryCard } from '../lib/memoryCard.js';
 import { generateChapterQuiz, loadChapterQuiz } from '../lib/quiz.js';
@@ -133,6 +137,33 @@ router.get('/api/library/state', asyncHandler(async (_req, res) => {
 router.put('/api/library/state', asyncHandler(async (req, res) => {
   const state = await updateLibraryState(req.body || {});
   res.json(state);
+}));
+
+router.get('/api/chapter-text-prompts', asyncHandler(async (_req, res) => {
+  const library = await listChapterTextPromptLibrary();
+  res.json(library);
+}));
+
+router.post('/api/chapter-text-prompts', asyncHandler(async (req, res) => {
+  const { library, prompt } = await addPromptToLibrary({
+    name: typeof req.body?.name === 'string' ? req.body.name : '',
+    template: typeof req.body?.template === 'string' ? req.body.template : ''
+  });
+  res.json({ ...library, prompt });
+}));
+
+router.put('/api/chapter-text-prompts/:promptId', asyncHandler(async (req, res) => {
+  const library = await updatePromptInLibrary({
+    promptId: req.params.promptId,
+    name: typeof req.body?.name === 'string' ? req.body.name : '',
+    template: typeof req.body?.template === 'string' ? req.body.template : ''
+  });
+  res.json(library);
+}));
+
+router.delete('/api/chapter-text-prompts/:promptId', asyncHandler(async (req, res) => {
+  const library = await deletePromptFromLibrary({ promptId: req.params.promptId });
+  res.json(library);
 }));
 
 router.get('/api/books/:id/meta', asyncHandler(async (req, res) => {

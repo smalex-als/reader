@@ -4,7 +4,7 @@ import { assertBookDirectory, loadBookCard } from './books.js';
 import { loadToc } from './toc.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
-import { CHAPTER_NARRATION_PROMPT, DATA_DIR } from '../config.js';
+import { CHAPTER_NARRATION_PROMPT, CHAPTER_REVIEW_EXTRACT_PROMPT, DATA_DIR } from '../config.js';
 import { getOpenAI } from './openai.js';
 
 const CHAPTER_PAD_LENGTH = 3;
@@ -35,8 +35,54 @@ function getDefaultPromptLibrary() {
         template: CHAPTER_NARRATION_PROMPT,
         builtIn: true,
         createdAt: new Date(0).toISOString()
+      },
+      {
+        id: 'review-extract-default',
+        name: 'Review Extract',
+        template: CHAPTER_REVIEW_EXTRACT_PROMPT,
+        builtIn: true,
+        createdAt: new Date(0).toISOString()
       }
     ]
+  };
+}
+
+function normalizePromptEntry(prompt, fallback = {}) {
+  const id = typeof prompt?.id === 'string' && prompt.id.trim() ? prompt.id.trim() : fallback.id;
+  const name = sanitizePromptName(prompt?.name) || fallback.name || '';
+  const template = sanitizeTemplate(prompt?.template) || fallback.template || '';
+  if (!id || !name || !template) {
+    return null;
+  }
+  return {
+    id,
+    name,
+    template,
+    builtIn: Boolean(fallback.builtIn || prompt?.builtIn),
+    createdAt:
+      typeof prompt?.createdAt === 'string'
+        ? prompt.createdAt
+        : typeof fallback.createdAt === 'string'
+        ? fallback.createdAt
+        : null,
+    updatedAt: typeof prompt?.updatedAt === 'string' ? prompt.updatedAt : null
+  };
+}
+
+function mergePromptLibrary(existing) {
+  const defaults = getDefaultPromptLibrary();
+  const existingPrompts = Array.isArray(existing?.prompts) ? existing.prompts : [];
+  const defaultIds = new Set(defaults.prompts.map((prompt) => prompt.id));
+  const mergedDefaults = defaults.prompts.map((defaultPrompt) => {
+    const override = existingPrompts.find((prompt) => prompt?.id === defaultPrompt.id);
+    return normalizePromptEntry(override || defaultPrompt, defaultPrompt);
+  });
+  const customPrompts = existingPrompts
+    .filter((prompt) => prompt?.id && !defaultIds.has(prompt.id))
+    .map((prompt) => normalizePromptEntry(prompt))
+    .filter(Boolean);
+  return {
+    prompts: [...mergedDefaults, ...customPrompts].filter(Boolean)
   };
 }
 
@@ -75,11 +121,7 @@ async function writeJsonFile(filePath, value) {
 
 async function ensurePromptLibrary() {
   const existing = await readJsonFile(GLOBAL_PROMPTS_PATH, null);
-  const defaults = getDefaultPromptLibrary();
-  const prompts = Array.isArray(existing?.prompts) ? existing.prompts : defaults.prompts;
-  const merged = {
-    prompts: [...defaults.prompts, ...prompts.filter((prompt) => prompt?.id !== 'narration-default')]
-  };
+  const merged = mergePromptLibrary(existing);
   if (!existing) {
     await fs.mkdir(DATA_DIR, { recursive: true });
     await writeJsonFile(GLOBAL_PROMPTS_PATH, merged);
@@ -87,7 +129,11 @@ async function ensurePromptLibrary() {
   return merged;
 }
 
-async function addPromptToLibrary({ name, template }) {
+export async function listChapterTextPromptLibrary() {
+  return ensurePromptLibrary();
+}
+
+export async function addPromptToLibrary({ name, template }) {
   const promptName = sanitizePromptName(name);
   const promptTemplate = sanitizeTemplate(template);
   if (!promptName) {
@@ -116,6 +162,57 @@ async function addPromptToLibrary({ name, template }) {
   };
   await writeJsonFile(GLOBAL_PROMPTS_PATH, nextLibrary);
   return { library: nextLibrary, prompt };
+}
+
+export async function updatePromptInLibrary({ promptId, name, template }) {
+  const id = typeof promptId === 'string' ? promptId.trim() : '';
+  if (!id) {
+    throw createHttpError(400, 'Prompt id is required');
+  }
+  const promptName = sanitizePromptName(name);
+  const promptTemplate = sanitizeTemplate(template);
+  if (!promptName) {
+    throw createHttpError(400, 'Prompt name is required');
+  }
+  if (!promptTemplate) {
+    throw createHttpError(400, 'Prompt text is required');
+  }
+  const library = await ensurePromptLibrary();
+  const current = library.prompts.find((prompt) => prompt.id === id);
+  if (!current) {
+    throw createHttpError(404, 'Prompt was not found');
+  }
+  const nextPrompt = {
+    ...current,
+    name: promptName,
+    template: promptTemplate,
+    updatedAt: new Date().toISOString()
+  };
+  const nextLibrary = {
+    prompts: library.prompts.map((prompt) => (prompt.id === id ? nextPrompt : prompt))
+  };
+  await writeJsonFile(GLOBAL_PROMPTS_PATH, nextLibrary);
+  return nextLibrary;
+}
+
+export async function deletePromptFromLibrary({ promptId }) {
+  const id = typeof promptId === 'string' ? promptId.trim() : '';
+  if (!id) {
+    throw createHttpError(400, 'Prompt id is required');
+  }
+  const library = await ensurePromptLibrary();
+  const current = library.prompts.find((prompt) => prompt.id === id);
+  if (!current) {
+    throw createHttpError(404, 'Prompt was not found');
+  }
+  if (current.builtIn) {
+    throw createHttpError(400, 'Built-in prompts cannot be deleted');
+  }
+  const nextLibrary = {
+    prompts: library.prompts.filter((prompt) => prompt.id !== id)
+  };
+  await writeJsonFile(GLOBAL_PROMPTS_PATH, nextLibrary);
+  return nextLibrary;
 }
 
 async function assertBaseChapter({ bookId, chapterNumber }) {

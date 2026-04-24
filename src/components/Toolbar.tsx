@@ -69,6 +69,7 @@ interface ToolbarProps {
   onShareLink: () => void;
   onOpenHelp: () => void;
   onOpenListeningDashboard: () => void;
+  onOpenPromptEditor: () => void;
   onOpenOcrQueue: () => void;
   onOpenToc: () => void;
   onOpenTocManage: () => void;
@@ -146,6 +147,7 @@ export default function Toolbar({
   onShareLink,
   onOpenHelp,
   onOpenListeningDashboard,
+  onOpenPromptEditor,
   onOpenOcrQueue,
   onOpenToc,
   onOpenTocManage,
@@ -635,6 +637,13 @@ export default function Toolbar({
             onClick={onOpenListeningDashboard}
           >
             Listening Dashboard
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onOpenPromptEditor}
+          >
+            Prompts
           </button>
           {showOcrStatus && (
             <div className="toolbar-status" role="status" aria-live="polite">
