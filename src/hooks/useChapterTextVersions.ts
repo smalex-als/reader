@@ -75,6 +75,8 @@ export function useChapterTextVersions({
   const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
   const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState('');
+  const [sourceVersionId, setSourceVersionId] = useState('base');
+  const [versionModel, setVersionModel] = useState('gpt-5.4');
   const [customPrompt, setCustomPrompt] = useState('');
   const [promptName, setPromptName] = useState('');
   const [savePromptToLibrary, setSavePromptToLibrary] = useState(false);
@@ -120,6 +122,7 @@ export function useChapterTextVersions({
       setVersions([]);
       setPromptLibrary([]);
       setSelectedVersionId('base');
+      setSourceVersionId('base');
       setVersionError(null);
       setVersionLoading(false);
       return;
@@ -146,6 +149,9 @@ export function useChapterTextVersions({
       setSelectedVersionId((current) =>
         current && nextVersions.some((version) => version.id === current) ? current : nextSelectedVersionId
       );
+      setSourceVersionId((current) =>
+        current && nextVersions.some((version) => version.id === current) ? current : nextSelectedVersionId
+      );
       setSelectedPromptId((current) => current || payload.promptLibrary?.[0]?.id || 'narration-default');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to load chapter text versions.';
@@ -165,6 +171,7 @@ export function useChapterTextVersions({
       setVersions([]);
       setPromptLibrary([]);
       setSelectedVersionId('base');
+      setSourceVersionId('base');
       setError(null);
       setMissingFile(null);
       setLoading(false);
@@ -233,6 +240,7 @@ export function useChapterTextVersions({
       setVersions([]);
       setPromptLibrary([]);
       setSelectedVersionId('base');
+      setSourceVersionId('base');
       return;
     }
     void loadTextVersions();
@@ -480,6 +488,8 @@ export function useChapterTextVersions({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             promptId: selectedPromptId || null,
+            sourceVersionId,
+            model: versionModel,
             customPrompt,
             addToLibrary: savePromptToLibrary,
             promptName
@@ -498,9 +508,10 @@ export function useChapterTextVersions({
       const nextVersions = Array.isArray(payload.versions) ? payload.versions : [];
       setVersions(nextVersions);
       setPromptLibrary(Array.isArray(payload.promptLibrary) ? payload.promptLibrary : []);
-      setSelectedVersionId(
-        payload.createdVersionId ?? payload.latestVersionId ?? nextVersions[nextVersions.length - 1]?.id ?? 'base'
-      );
+      const nextVersionId =
+        payload.createdVersionId ?? payload.latestVersionId ?? nextVersions[nextVersions.length - 1]?.id ?? 'base';
+      setSelectedVersionId(nextVersionId);
+      setSourceVersionId(nextVersionId);
       setVersionStatus('Version saved.');
       setCustomPrompt('');
       setPromptName('');
@@ -523,6 +534,8 @@ export function useChapterTextVersions({
     promptName,
     savePromptToLibrary,
     selectedPromptId,
+    sourceVersionId,
+    versionModel,
     versionSaving
   ]);
 
@@ -596,6 +609,10 @@ export function useChapterTextVersions({
     selectedVersion,
     selectedVersionId,
     setSelectedVersionId,
+    sourceVersionId,
+    setSourceVersionId,
+    versionModel,
+    setVersionModel,
     selectedPromptId,
     setSelectedPromptId,
     customPrompt,

@@ -199,6 +199,10 @@ export default function ChapterViewer({
     selectedVersion,
     selectedVersionId,
     setSelectedVersionId,
+    sourceVersionId,
+    setSourceVersionId,
+    versionModel,
+    setVersionModel,
     selectedPromptId,
     setSelectedPromptId,
     customPrompt,
@@ -211,7 +215,6 @@ export default function ChapterViewer({
     generating,
     canGenerate,
     missingFile,
-    audioGenerating,
     audioError,
     versionSaving,
     versionStatus,
@@ -221,10 +224,7 @@ export default function ChapterViewer({
     audioJob,
     isAudioJobActive,
     canCreateVersion,
-    canGenerateAudio,
     handleGenerate,
-    handleGenerateAudio,
-    handleGenerateXaiAudio,
     handleCreateVersion,
     handleDeleteVersion,
     handleCancelAudioJob
@@ -376,6 +376,11 @@ export default function ChapterViewer({
     setVersionModalOpen(false);
   }, [versionSaving]);
 
+  const openVersionModal = useCallback(() => {
+    setSourceVersionId(selectedVersionId || 'base');
+    setVersionModalOpen(true);
+  }, [selectedVersionId, setSourceVersionId]);
+
   useEffect(() => {
     if (!versionModalOpen) {
       return;
@@ -519,7 +524,7 @@ export default function ChapterViewer({
     };
 
     const renderList = (Tag: 'ul' | 'ol') => {
-      return ({ children, node }: { children?: ReactNode; node?: any }) => {
+      return ({ children, node, ...props }: any) => {
         const textValue = extractTextFromNode(children ?? '').trim();
         const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
         const currentChapterNumber = chapterNumberRef.current;
@@ -529,8 +534,8 @@ export default function ChapterViewer({
           : '';
         const isPlaying = isPlayingRange(startIndex, endIndex);
         return (
-          <Tag className="text-viewer-block text-viewer-list-block" data-playing={isPlaying ? 'true' : 'false'}>
-            {children}
+          <div className="text-viewer-block text-viewer-list-block" data-playing={isPlaying ? 'true' : 'false'}>
+            <Tag {...props}>{children}</Tag>
             {textValue ? (
               <button
                 type="button"
@@ -550,7 +555,7 @@ export default function ChapterViewer({
                 </svg>
               </button>
             ) : null}
-          </Tag>
+          </div>
         );
       };
     };
@@ -597,7 +602,7 @@ export default function ChapterViewer({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={() => setVersionModalOpen(true)}
+            onClick={openVersionModal}
             disabled={!canCreateVersion || versionSaving}
             aria-label="Create text version"
             title="Create text version"
@@ -635,38 +640,6 @@ export default function ChapterViewer({
             >
               {outlineOpen ? 'Hide outline' : 'Show outline'}
             </button>
-          ) : null}
-          {chapterNumber && !chapterAudioReady ? (
-            <>
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={() => void handleGenerateAudio()}
-                disabled={!canGenerateAudio || audioGenerating || isAudioJobActive}
-              >
-                {isAudioJobActive && audioJob?.provider !== 'xai'
-                  ? audioJob?.status === 'queued'
-                    ? 'Queued…'
-                    : 'Generating…'
-                  : audioGenerating && audioJob?.provider !== 'xai'
-                    ? 'Starting…'
-                    : 'Generate Audio'}
-              </button>
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={() => void handleGenerateXaiAudio()}
-                disabled={!canGenerateAudio || audioGenerating || isAudioJobActive}
-              >
-                {isAudioJobActive && audioJob?.provider === 'xai'
-                  ? audioJob?.status === 'queued'
-                    ? 'xAI queued…'
-                    : 'Generating xAI…'
-                  : audioGenerating && audioJob?.provider === 'xai'
-                    ? 'Starting xAI…'
-                    : 'Generate xAI'}
-              </button>
-            </>
           ) : null}
           {chapterNumber && isAudioJobActive ? (
             <button type="button" className="button button-secondary" onClick={handleCancelAudioJob}>
@@ -829,6 +802,11 @@ export default function ChapterViewer({
       </section>
       <CreateTextVersionModal
         open={versionModalOpen}
+        versions={versions}
+        sourceVersionId={sourceVersionId}
+        onSourceVersionIdChange={setSourceVersionId}
+        versionModel={versionModel}
+        onVersionModelChange={setVersionModel}
         promptLibrary={promptLibrary}
         selectedPromptId={selectedPromptId}
         onSelectedPromptIdChange={setSelectedPromptId}

@@ -9,6 +9,7 @@ import { getOpenAI } from './openai.js';
 
 const CHAPTER_PAD_LENGTH = 3;
 const GLOBAL_PROMPTS_PATH = path.join(DATA_DIR, '.chapter-text-prompts.json');
+const CHAPTER_TEXT_VERSION_MODELS = new Set(['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano']);
 
 function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
@@ -101,6 +102,11 @@ function sanitizePromptName(value) {
 
 function sanitizeTemplate(value) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function sanitizeVersionModel(value) {
+  const model = typeof value === 'string' ? value.trim() : '';
+  return CHAPTER_TEXT_VERSION_MODELS.has(model) ? model : 'gpt-5.4';
 }
 
 async function readJsonFile(filePath, fallback) {
@@ -399,13 +405,20 @@ Source chapter text:
 export async function createChapterTextVersion({
   bookId,
   chapterNumber,
+  sourceVersionId = 'base',
+  model = 'gpt-5.4',
   promptId = null,
   customPrompt = '',
   addToLibrary = false,
   promptName = ''
 }) {
   const { directory, chapterFilename, chapterPath } = await assertBaseChapter({ bookId, chapterNumber });
-  const chapterText = (await fs.readFile(chapterPath, 'utf8')).trim();
+  const sourceTextVersion = await getChapterTextVersionText({
+    bookId,
+    chapterNumber,
+    versionId: sourceVersionId || 'base'
+  });
+  const chapterText = sourceTextVersion.text.trim();
   if (!chapterText) {
     throw createHttpError(400, 'No chapter text available');
   }
@@ -440,9 +453,10 @@ export async function createChapterTextVersion({
     throw createHttpError(400, 'Prompt resolved to empty text');
   }
 
+  const selectedModel = sanitizeVersionModel(model);
   const openai = getOpenAI();
   const response = await openai.chat.completions.create({
-    model: 'gpt-5.4',
+    model: selectedModel,
     messages: [
       {
         role: 'developer',
@@ -473,6 +487,8 @@ export async function createChapterTextVersion({
     index: nextIndex,
     filename: formatDerivedVersionFilename(chapterNumber, nextIndex),
     createdAt: new Date().toISOString(),
+    sourceVersionId: sourceTextVersion.versionId,
+    model: selectedModel,
     promptId: selectedPrompt?.id ?? null,
     promptName: selectedPrompt?.name ?? sanitizePromptName(promptName) ?? null
   };

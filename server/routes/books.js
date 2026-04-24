@@ -472,6 +472,8 @@ router.post('/api/books/:id/chapters/:chapter/text-versions', asyncHandler(async
   const result = await createChapterTextVersion({
     bookId,
     chapterNumber,
+    sourceVersionId: typeof req.body?.sourceVersionId === 'string' ? req.body.sourceVersionId.trim() : 'base',
+    model: typeof req.body?.model === 'string' ? req.body.model.trim() : 'gpt-5.4',
     promptId: typeof req.body?.promptId === 'string' ? req.body.promptId.trim() : null,
     customPrompt: typeof req.body?.customPrompt === 'string' ? req.body.customPrompt : '',
     addToLibrary: req.body?.addToLibrary === true,

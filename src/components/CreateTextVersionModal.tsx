@@ -1,8 +1,13 @@
 import CloseIcon from '@/components/CloseIcon';
-import type { ChapterTextPrompt } from '@/types/app';
+import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 
 interface CreateTextVersionModalProps {
   open: boolean;
+  versions: ChapterTextVersion[];
+  sourceVersionId: string;
+  onSourceVersionIdChange: (value: string) => void;
+  versionModel: string;
+  onVersionModelChange: (value: string) => void;
   promptLibrary: ChapterTextPrompt[];
   selectedPromptId: string;
   onSelectedPromptIdChange: (value: string) => void;
@@ -21,6 +26,11 @@ interface CreateTextVersionModalProps {
 
 export default function CreateTextVersionModal({
   open,
+  versions,
+  sourceVersionId,
+  onSourceVersionIdChange,
+  versionModel,
+  onVersionModelChange,
   promptLibrary,
   selectedPromptId,
   onSelectedPromptIdChange,
@@ -57,20 +67,51 @@ export default function CreateTextVersionModal({
           </button>
         </header>
         <section className="modal-body text-version-modal-body">
-          <div className="text-viewer-setting">
-            <span className="text-viewer-setting-label">Prompt</span>
-            <select
-              className="text-viewer-select"
-              value={selectedPromptId}
-              onChange={(event) => onSelectedPromptIdChange(event.target.value)}
-              disabled={versionSaving}
-            >
-              {promptLibrary.map((prompt) => (
-                <option key={prompt.id} value={prompt.id}>
-                  {prompt.name}
-                </option>
-              ))}
-            </select>
+          <div className="text-version-modal-controls">
+            <label className="text-viewer-setting text-version-modal-control">
+              <span className="text-viewer-setting-label">Create from</span>
+              <select
+                className="text-viewer-select"
+                value={sourceVersionId}
+                onChange={(event) => onSourceVersionIdChange(event.target.value)}
+                disabled={versionSaving}
+              >
+                {versions.map((version) => (
+                  <option key={version.id} value={version.id}>
+                    {version.label}
+                    {version.promptName ? ` · ${version.promptName}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-viewer-setting text-version-modal-control">
+              <span className="text-viewer-setting-label">Prompt</span>
+              <select
+                className="text-viewer-select"
+                value={selectedPromptId}
+                onChange={(event) => onSelectedPromptIdChange(event.target.value)}
+                disabled={versionSaving}
+              >
+                {promptLibrary.map((prompt) => (
+                  <option key={prompt.id} value={prompt.id}>
+                    {prompt.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-viewer-setting text-version-modal-control">
+              <span className="text-viewer-setting-label">Model</span>
+              <select
+                className="text-viewer-select"
+                value={versionModel}
+                onChange={(event) => onVersionModelChange(event.target.value)}
+                disabled={versionSaving}
+              >
+                <option value="gpt-5.4">gpt-5.4</option>
+                <option value="gpt-5.4-mini">gpt-5.4-mini</option>
+                <option value="gpt-5.4-nano">gpt-5.4-nano</option>
+              </select>
+            </label>
           </div>
           <div className="text-viewer-setting text-version-modal-field">
             <span className="text-viewer-setting-label">Custom prompt</span>
@@ -97,7 +138,7 @@ export default function CreateTextVersionModal({
             </label>
           </div>
           {savePromptToLibrary ? (
-            <div className="text-viewer-setting text-version-modal-field text-version-modal-field-compact">
+            <label className="text-viewer-setting text-version-modal-field text-version-modal-field-compact">
               <span className="text-viewer-setting-label">Prompt name</span>
               <input
                 className="text-viewer-input"
@@ -106,7 +147,7 @@ export default function CreateTextVersionModal({
                 placeholder="Prompt name"
                 disabled={versionSaving}
               />
-            </div>
+            </label>
           ) : null}
         </section>
         <footer className="modal-footer modal-footer-right">

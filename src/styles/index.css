@@ -847,7 +847,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.75rem 2rem;
+  padding: 1.75rem 5.25rem 1.75rem 2rem;
   gap: 1.5rem;
   overflow: auto;
   color: var(--text-viewer-fg);
@@ -865,7 +865,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  flex: 1;
+  flex: 1 1 14rem;
   min-width: 0;
 }
 
@@ -895,8 +895,25 @@ body {
 .text-viewer-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
   flex-wrap: wrap;
+  flex: 1 1 34rem;
+  min-width: min(100%, 22rem);
+  max-width: 100%;
+}
+
+.text-viewer-actions .button {
+  min-height: 2.2rem;
+  padding: 0.45rem 0.72rem;
+  white-space: nowrap;
+}
+
+.text-viewer-actions .modal-icon-button {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
 }
 
 .text-viewer-source {
@@ -907,6 +924,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  max-width: 22rem;
   color: var(--text-viewer-muted);
   font-size: 0.85rem;
 }
@@ -949,7 +969,8 @@ body {
 .text-version-modal {
   width: min(72rem, calc(100vw - 2rem));
   max-width: min(72rem, calc(100vw - 2rem));
-  min-height: min(44rem, calc(100vh - 2rem));
+  height: min(44rem, calc(100vh - 2rem));
+  min-height: 0;
 }
 
 .text-version-modal-body {
@@ -958,22 +979,36 @@ body {
   gap: 1rem;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+.text-version-modal-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(10rem, 0.7fr);
+  gap: 0.85rem;
+}
+
+.text-version-modal-control {
+  align-items: stretch;
 }
 
 .text-version-modal-field {
   flex-direction: column;
   align-items: stretch;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
 .text-version-modal-field-compact {
   flex: 0 0 auto;
+  align-self: stretch;
 }
 
 .text-viewer-select,
 .text-viewer-input,
 .text-viewer-version-select select {
+  width: 100%;
+  min-width: 0;
   min-height: 2.3rem;
   padding: 0.55rem 0.7rem;
   border-radius: 0.7rem;
@@ -987,9 +1022,16 @@ body {
 }
 
 .text-viewer-prompt-textarea {
-  min-height: 16rem;
+  min-height: 0;
   width: 100%;
   flex: 1;
+  resize: none;
+}
+
+.text-version-modal .modal-textarea.text-viewer-prompt-textarea {
+  min-height: 0;
+  height: 100%;
+  resize: none;
 }
 
 .text-viewer-checkbox {
@@ -1602,7 +1644,7 @@ body {
 }
 
 .text-viewer-markdown p {
-  margin: 0 0 1rem;
+  margin: 0 0 0.9rem;
 }
 
 .text-viewer-block {
@@ -1628,13 +1670,13 @@ body {
 }
 
 .text-viewer-markdown p.text-viewer-block {
-  margin: 0 0 1rem;
+  margin: 0 0 0.9rem;
 }
 
-.text-viewer-markdown ul.text-viewer-list-block,
-.text-viewer-markdown ol.text-viewer-list-block {
-  margin-top: 0;
-  margin-bottom: 1rem;
+.text-viewer-list-block > ul,
+.text-viewer-list-block > ol {
+  margin: 0 0 0.75rem;
+  padding-left: 1.45rem;
 }
 
 .text-paragraph-stream {
@@ -1684,12 +1726,85 @@ body {
 
 .text-viewer-markdown ul,
 .text-viewer-markdown ol {
-  margin: 0 0 1rem;
-  padding-left: 1.5rem;
+  margin: 0 0 0.75rem;
+  padding-left: 1.45rem;
 }
 
 .text-viewer-markdown li {
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.18rem;
+  padding-left: 0.12rem;
+}
+
+.text-viewer-markdown li > p {
+  margin: 0.15rem 0 0.35rem;
+}
+
+.text-viewer-markdown li > p:last-child {
+  margin-bottom: 0;
+}
+
+.text-viewer-markdown li > ul,
+.text-viewer-markdown li > ol {
+  margin-top: 0.2rem;
+  margin-bottom: 0.28rem;
+}
+
+.text-viewer-markdown li + li {
+  margin-top: 0.14rem;
+}
+
+.text-viewer-markdown ol > li::marker {
+  font-weight: 650;
+  color: var(--text-viewer-strong);
+}
+
+.text-viewer-markdown ul {
+  list-style: none;
+}
+
+.text-viewer-markdown ul > li {
+  position: relative;
+}
+
+.text-viewer-markdown ul > li::before {
+  content: '-';
+  position: absolute;
+  top: 0;
+  left: -0.95rem;
+  color: var(--text-viewer-muted);
+  opacity: 0.78;
+}
+
+.text-viewer-list-block + .text-viewer-list-block {
+  margin-top: -0.35rem;
+}
+
+.text-viewer-markdown p.text-viewer-block + .text-viewer-list-block,
+.text-viewer-markdown h1.text-viewer-block + .text-viewer-list-block,
+.text-viewer-markdown h2.text-viewer-block + .text-viewer-list-block,
+.text-viewer-markdown h3.text-viewer-block + .text-viewer-list-block,
+.text-viewer-markdown h4.text-viewer-block + .text-viewer-list-block,
+.text-viewer-markdown h5.text-viewer-block + .text-viewer-list-block,
+.text-viewer-markdown h6.text-viewer-block + .text-viewer-list-block {
+  margin-top: -0.55rem;
+}
+
+.text-viewer-list-block > ul > li,
+.text-viewer-list-block > ol > li {
+  line-height: 1.52;
+}
+
+.text-viewer-list-block > ul > li + li,
+.text-viewer-list-block > ol > li + li {
+  margin-top: 0.24rem;
+}
+
+.text-viewer-list-block > ol > li {
+  padding-left: 0.22rem;
+}
+
+.text-viewer-list-block > ul > li {
+  color: var(--text-viewer-muted);
 }
 
 .text-viewer-markdown blockquote {
@@ -1744,6 +1859,23 @@ body {
 }
 
 @media (max-width: 980px) {
+  .text-viewer {
+    padding-right: 1.25rem;
+  }
+
+  .text-viewer-actions {
+    justify-content: flex-start;
+    flex-basis: 100%;
+  }
+
+  .text-viewer-version-select {
+    max-width: 100%;
+  }
+
+  .text-version-modal-controls {
+    grid-template-columns: 1fr;
+  }
+
   .text-viewer-layout {
     grid-template-columns: minmax(0, 1fr);
   }
