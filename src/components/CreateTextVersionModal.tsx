@@ -76,7 +76,8 @@ export default function CreateTextVersionModal({
             <span className="text-viewer-setting-label">Custom prompt</span>
             <p className="text-viewer-placeholder-help">
               Available placeholders: <code>{'{{book_title}}'}</code>, <code>{'{{chapter_title}}'}</code>,{' '}
-              <code>{'{{chapter_number}}'}</code>, <code>{'{{chapter_text}}'}</code>, <code>{'{{title}}'}</code>
+              <code>{'{{chapter_number}}'}</code>, <code>{'{{chapter_text}}'}</code>, <code>{'{{title}}'}</code>.
+              If none are used, book/chapter context and source text are appended automatically.
             </p>
             <textarea
               className="modal-textarea text-viewer-prompt-textarea"

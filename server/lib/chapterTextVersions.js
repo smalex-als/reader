@@ -377,6 +377,25 @@ function applyPromptTemplate(template, placeholders) {
   });
 }
 
+function hasPromptPlaceholders(template) {
+  return /\{\{\s*[a-z0-9_]+\s*\}\}/i.test(template);
+}
+
+function ensurePromptTemplateContext(template) {
+  if (hasPromptPlaceholders(template)) {
+    return template;
+  }
+  return `${template}
+
+Context:
+Book title: {{book_title}}
+Chapter title: {{chapter_title}}
+Chapter number: {{chapter_number}}
+
+Source chapter text:
+{{chapter_text}}`;
+}
+
 export async function createChapterTextVersion({
   bookId,
   chapterNumber,
@@ -416,7 +435,7 @@ export async function createChapterTextVersion({
   }
 
   const placeholders = await buildPromptInput({ bookId, chapterNumber, chapterText });
-  const promptText = applyPromptTemplate(template, placeholders).trim();
+  const promptText = applyPromptTemplate(ensurePromptTemplateContext(template), placeholders).trim();
   if (!promptText) {
     throw createHttpError(400, 'Prompt resolved to empty text');
   }

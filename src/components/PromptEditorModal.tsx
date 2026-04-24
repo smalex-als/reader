@@ -215,7 +215,8 @@ export default function PromptEditorModal({ open, onClose, onChanged }: PromptEd
             <p className="prompt-editor-subtitle">
               These prompts are used when creating article/text versions. Available placeholders:{' '}
               <code>{'{{book_title}}'}</code>, <code>{'{{chapter_title}}'}</code>,{' '}
-              <code>{'{{chapter_number}}'}</code>, <code>{'{{chapter_text}}'}</code>, <code>{'{{title}}'}</code>
+              <code>{'{{chapter_number}}'}</code>, <code>{'{{chapter_text}}'}</code>, <code>{'{{title}}'}</code>.
+              If a prompt has none, source context is appended automatically before GPT receives it.
             </p>
           </div>
           <button
