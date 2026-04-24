@@ -50,6 +50,7 @@ type StreamVoiceOption = {
   label: string;
   provider: 'openai' | 'streaming';
 };
+const PLAYBACK_RATE_OPTIONS = [1, 1.25, 1.5] as const;
 
 const TEXT_FONT_SIZE_OPTIONS = [18, 20, 24, 26, 28, 30, 34];
 const TEXT_THEME_OPTIONS = [
@@ -103,6 +104,10 @@ function normalizeTextTheme(value: string): TextTheme {
   return TEXT_THEME_OPTIONS.includes(value as TextTheme) ? (value as TextTheme) : 'dark';
 }
 
+function normalizePlaybackRate(value: number): number {
+  return PLAYBACK_RATE_OPTIONS.includes(value as (typeof PLAYBACK_RATE_OPTIONS)[number]) ? value : 1;
+}
+
 function createDefaultSettings(): AppSettings {
   return { ...DEFAULT_SETTINGS, pan: { ...DEFAULT_SETTINGS.pan } };
 }
@@ -152,6 +157,7 @@ export default function App() {
   const [streamVoiceOptions, setStreamVoiceOptions] = useState<StreamVoiceOption[]>([]);
   const [defaultStreamVoice, setDefaultStreamVoice] = useState<StreamVoice>('');
   const [streamVoice, setStreamVoice] = useState<StreamVoice>('');
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -1244,6 +1250,9 @@ export default function App() {
     },
     [isStreamVoice, restartActiveStream, setStreamVoice]
   );
+  const handlePlaybackRateChange = useCallback((rate: number) => {
+    setPlaybackRate(normalizePlaybackRate(rate));
+  }, []);
 
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
   const closeBookModal = useCallback(() => setBookModalOpen(false), [setBookModalOpen]);
@@ -1428,6 +1437,9 @@ export default function App() {
     streamVoice,
     streamVoiceOptions,
     onStreamVoiceChange: handleActiveStreamVoiceChange,
+    playbackRate,
+    playbackRateOptions: PLAYBACK_RATE_OPTIONS,
+    onPlaybackRateChange: handlePlaybackRateChange,
     onPlayStream: () => void handlePlayVisibleStream(),
     onStopStream: handleStopStream,
     onCreateChapter: () => {
@@ -1858,6 +1870,9 @@ export default function App() {
     },
     floatingAudioPlayerProps: {
       track: floatingAudio,
+      playbackRate,
+      playbackRateOptions: PLAYBACK_RATE_OPTIONS,
+      onPlaybackRateChange: handlePlaybackRateChange,
       onClose: handleCloseFloatingAudio,
       onPlaybackStateChange: syncFloatingAudioState
     },

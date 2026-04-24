@@ -55,6 +55,9 @@ interface ToolbarProps {
   streamVoice: string;
   streamVoiceOptions: readonly StreamVoiceOption[];
   onStreamVoiceChange: (voice: string) => void;
+  playbackRate: number;
+  playbackRateOptions: readonly number[];
+  onPlaybackRateChange: (rate: number) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
   onCreateChapter: () => void;
@@ -133,6 +136,9 @@ export default function Toolbar({
   streamVoice,
   streamVoiceOptions,
   onStreamVoiceChange,
+  playbackRate,
+  playbackRateOptions,
+  onPlaybackRateChange,
   onPlayStream,
   onStopStream,
   onCreateChapter,
@@ -529,6 +535,21 @@ export default function Toolbar({
             >
               {xaiAudioLabel}
             </button>
+            <label className="toolbar-field">
+              Speed
+              <select
+                className="select"
+                value={playbackRate}
+                disabled={controlsDisabled}
+                onChange={(event) => onPlaybackRateChange(Number(event.target.value))}
+              >
+                {playbackRateOptions.map((rate) => (
+                  <option key={rate} value={rate}>
+                    {rate}x
+                  </option>
+                ))}
+              </select>
+            </label>
             {showAudioStatus && (
               <div className="toolbar-status" role="status" aria-live="polite">
                 {audioBusy && <span className="toolbar-spinner" aria-hidden />}

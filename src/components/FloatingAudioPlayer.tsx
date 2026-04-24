@@ -11,6 +11,9 @@ export type FloatingAudioTrack = {
 
 interface FloatingAudioPlayerProps {
   track: FloatingAudioTrack | null;
+  playbackRate: number;
+  playbackRateOptions: readonly number[];
+  onPlaybackRateChange: (rate: number) => void;
   onClose: () => void;
   onPlaybackStateChange?: (
     state: 'loading' | 'playing' | 'paused' | 'ended' | 'error',
@@ -29,6 +32,9 @@ function formatTime(value: number) {
 
 export default function FloatingAudioPlayer({
   track,
+  playbackRate,
+  playbackRateOptions,
+  onPlaybackRateChange,
   onClose,
   onPlaybackStateChange
 }: FloatingAudioPlayerProps) {
@@ -43,6 +49,7 @@ export default function FloatingAudioPlayer({
       audioRef.current = new Audio();
     }
     const audio = audioRef.current;
+    audio.playbackRate = playbackRate;
     const handleLoaded = () => {
       const nextDuration = Number.isFinite(audio.duration)
         ? audio.duration
@@ -102,7 +109,13 @@ export default function FloatingAudioPlayer({
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [onPlaybackStateChange, seeking, track]);
+  }, [onPlaybackStateChange, playbackRate, seeking, track]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
 
   useEffect(() => {
     if (!track) {
@@ -187,6 +200,19 @@ export default function FloatingAudioPlayer({
           <span className="floating-audio-time" aria-live="polite">
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
+          <select
+            className="select floating-audio-speed"
+            value={playbackRate}
+            onChange={(event) => onPlaybackRateChange(Number(event.target.value))}
+            aria-label="Playback speed"
+            title="Playback speed"
+          >
+            {playbackRateOptions.map((rate) => (
+              <option key={rate} value={rate}>
+                {rate}x
+              </option>
+            ))}
+          </select>
           <input
             type="range"
             className="floating-audio-range"
