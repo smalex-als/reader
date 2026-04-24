@@ -1607,19 +1607,24 @@ body {
 
 .text-viewer-block {
   position: relative;
+  isolation: isolate;
   padding-right: 3.4rem;
 }
 
 .text-viewer-block[data-playing='true'] {
-  background: rgba(92, 210, 164, 0.16);
-  box-shadow:
-    inset 4px 0 0 rgba(92, 210, 164, 0.95),
-    0 0 0 1px rgba(92, 210, 164, 0.28);
-  border-radius: 0.55rem;
-  padding-left: 0.8rem;
-  padding-top: 0.35rem;
-  padding-bottom: 0.35rem;
-  margin-left: -0.8rem;
+  color: var(--text-viewer-strong);
+}
+
+.text-viewer-block[data-playing='true']::before {
+  content: '';
+  position: absolute;
+  inset: -0.28rem -0.45rem -0.28rem -0.7rem;
+  z-index: -1;
+  border-radius: 0.65rem;
+  background:
+    linear-gradient(90deg, rgba(92, 210, 164, 0.24), rgba(92, 210, 164, 0.08) 46%, transparent),
+    rgba(92, 210, 164, 0.055);
+  box-shadow: inset 3px 0 0 rgba(92, 210, 164, 0.92);
 }
 
 .text-viewer-markdown p.text-viewer-block {
