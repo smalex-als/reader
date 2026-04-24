@@ -9,6 +9,7 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
       STREAM_SERVER: http://host.docker.internal:3005
       OCR_BACKEND: ${OCR_BACKEND:-deepseek_ocr}
       OCR_DEEPSEEK_HOST: http://host.docker.internal:11434

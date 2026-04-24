@@ -10,6 +10,7 @@ import {
   DEFAULT_VOICE,
   LOCAL_STREAM_VOICES,
   MAX_UPLOAD_BYTES,
+  XAI_STREAM_VOICES,
   voiceProfiles
 } from '../config.js';
 import { createHttpError } from '../lib/errors.js';
@@ -33,7 +34,7 @@ import {
   PCM_STREAM_MIME_TYPE,
   PCM_STREAM_SAMPLE_RATE
 } from '../lib/streamAudio.js';
-import { generateXaiTtsDebugFile } from '../lib/xaiTts.js';
+import { generateXaiTtsDebugFile, generateXaiTtsPcmBuffer } from '../lib/xaiTts.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -60,10 +61,11 @@ function resolveVoiceProfile(voice) {
   return voiceProfiles[DEFAULT_VOICE];
 }
 
-function formatVoiceLabel(voice) {
-  if (!voice.startsWith('en-')) {
-    return `${voice.charAt(0).toUpperCase()}${voice.slice(1)} - OpenAI`;
-  }
+function formatProviderVoiceLabel(voice) {
+  return `${voice.charAt(0).toUpperCase()}${voice.slice(1)}`;
+}
+
+function formatLocalVoiceLabel(voice) {
   const withoutLocale = voice.slice(3);
   const [name, variant] = withoutLocale.split('_');
   return variant ? `${name} - ${variant}` : name;
@@ -73,13 +75,19 @@ function createStreamVoiceOptions() {
   return [
     ...Object.entries(voiceProfiles).map(([id, profile]) => ({
       id,
-      label: `${formatVoiceLabel(id)} (${profile.openAiVoice})`,
+      label: `${formatProviderVoiceLabel(id)} - OpenAI (${profile.openAiVoice})`,
       provider: 'openai',
       openAiVoice: profile.openAiVoice
     })),
+    ...XAI_STREAM_VOICES.map((voice) => ({
+      id: `xai_${voice}`,
+      label: `${formatProviderVoiceLabel(voice)} - xAI`,
+      provider: 'xai',
+      xaiVoice: voice
+    })),
     ...LOCAL_STREAM_VOICES.map((id) => ({
       id,
-      label: formatVoiceLabel(id),
+      label: formatLocalVoiceLabel(id),
       provider: 'streaming'
     }))
   ];
@@ -213,6 +221,7 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
   const requestedVoice =
     typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
   const voiceProfile = voiceProfiles[requestedVoice];
+  const xaiVoice = requestedVoice.startsWith('xai_') ? requestedVoice.slice(4) : '';
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const abortController = new AbortController();
   const handleRequestAborted = () => {
@@ -244,6 +253,15 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
       }
       const fallback = Buffer.from(await speech.arrayBuffer());
       res.end(fallback);
+      return;
+    }
+    if (XAI_STREAM_VOICES.includes(xaiVoice)) {
+      const pcmBuffer = await generateXaiTtsPcmBuffer({
+        text,
+        voice: xaiVoice,
+        sampleRate: PCM_STREAM_SAMPLE_RATE
+      });
+      res.end(pcmBuffer);
       return;
     }
 

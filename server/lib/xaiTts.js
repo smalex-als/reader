@@ -28,16 +28,21 @@ function sanitizeText(value) {
 }
 
 function buildPayload({ text, voice = 'Eve', language = 'en', outputFormat }) {
+  const codec = outputFormat?.codec || 'mp3';
+  const sampleRate = outputFormat?.sample_rate || 44100;
+  const bitRate = outputFormat?.bit_rate || 128000;
+  const sanitizedOutputFormat = {
+    codec,
+    sample_rate: sampleRate
+  };
+  if (codec === 'mp3') {
+    sanitizedOutputFormat.bit_rate = bitRate;
+  }
   return {
     text: sanitizeText(text),
     voice_id: sanitizeVoice(voice),
     language: sanitizeLanguage(language),
-    output_format: {
-      codec: 'mp3',
-      sample_rate: 44100,
-      bit_rate: 128000,
-      ...(outputFormat && typeof outputFormat === 'object' ? outputFormat : {})
-    }
+    output_format: sanitizedOutputFormat
   };
 }
 
@@ -111,4 +116,16 @@ export async function generateXaiTtsAudioBuffer({
     throw createHttpError(502, 'xAI TTS returned empty audio');
   }
   return audioBuffer;
+}
+
+export async function generateXaiTtsPcmBuffer({ text, voice = 'Eve', language = 'en', sampleRate = 24000 }) {
+  return generateXaiTtsAudioBuffer({
+    text,
+    voice,
+    language,
+    outputFormat: {
+      codec: 'pcm',
+      sample_rate: sampleRate
+    }
+  });
 }

@@ -42,6 +42,7 @@ export const LOCAL_STREAM_VOICES = [
   'en-Snarkling_woman',
   'en-Soother_woman'
 ];
+export const XAI_STREAM_VOICES = ['ara', 'eve', 'leo', 'rex', 'sal'];
 
 export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai'; // 'openai' | 'deepseek_ocr'
 export const OCR_TIMEOUT_MS = Number.parseInt(process.env.OCR_TIMEOUT_MS || '20000', 10);
@@ -128,6 +129,20 @@ Dialect: Strong New York accent, with dropped "r"s, sharp consonants, and classi
 Pronunciation: Quick and clipped, with a rhythm that mimics the natural hustle of a busy city conversation.
 
 Features: Uses informal, straight-to-the-point language, throws in some dry humor, and keeps the energy just on the edge of impatience but still helpful.`
+  },
+  bedtime_story: {
+    openAiVoice: 'coral',
+    instructions: `Identity: Bedtime Story
+
+Affect: A gentle, curious narrator with a British accent, guiding a magical, child-friendly adventure through a fairy tale world.
+
+Tone: Magical, warm, and inviting, creating a sense of wonder and excitement for young listeners.
+
+Pacing: Steady and measured, with slight pauses to emphasize magical moments and maintain the storytelling flow.
+
+Emotion: Wonder, curiosity, and a sense of adventure, with a lighthearted and positive vibe throughout.
+
+Pronunciation: Clear and precise, with an emphasis on storytelling, ensuring the words are easy to follow and enchanting to listen to.`
   }
 };
 export const DEFAULT_STREAM_VOICE = STREAM_VOICE || DEFAULT_VOICE || 'en-Mike_man';
