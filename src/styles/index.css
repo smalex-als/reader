@@ -1626,6 +1626,20 @@ body {
   margin: 0 0 1rem;
 }
 
+.text-viewer-markdown ul.text-viewer-list-block,
+.text-viewer-markdown ol.text-viewer-list-block {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.text-viewer-list-item {
+  margin-bottom: 0.35rem;
+}
+
+.text-viewer-list-item:last-child {
+  margin-bottom: 0;
+}
+
 .text-paragraph-stream {
   position: absolute;
   top: 0;

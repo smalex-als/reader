@@ -64,6 +64,16 @@ function extractTextFromNode(node: ReactNode): string {
   return '';
 }
 
+function hasNestedMarkdownBlock(node: ReactNode): boolean {
+  if (Array.isArray(node)) {
+    return node.some(hasNestedMarkdownBlock);
+  }
+  if (!isValidElement(node)) {
+    return false;
+  }
+  return ['p', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(String(node.type));
+}
+
 function hashText(input: string) {
   let hash = 0;
   for (let index = 0; index < input.length; index += 1) {
@@ -441,38 +451,51 @@ export default function ChapterViewer({
   }, [pageRange]);
 
   const markdownComponents = useMemo(() => {
-    const resolveStartIndex = (textValue: string, node?: any) => {
+    const resolveTextRange = (textValue: string, node?: any) => {
       const currentDisplayText = displayTextRef.current;
       if (!currentDisplayText) {
-        return 0;
+        return { start: 0, end: 0 };
       }
       const nodeOffset = node?.position?.start?.offset;
       if (typeof nodeOffset === 'number') {
         const lineStart = currentDisplayText.lastIndexOf('\n', nodeOffset - 1);
-        return lineStart === -1 ? 0 : lineStart + 1;
+        const start = lineStart === -1 ? 0 : lineStart + 1;
+        const nodeEnd = node?.position?.end?.offset;
+        const end = typeof nodeEnd === 'number' && nodeEnd > start ? nodeEnd : start + textValue.length;
+        return { start, end };
       }
       if (textValue) {
         const foundIndex = currentDisplayText.indexOf(textValue);
         if (foundIndex !== -1) {
           const lineStart = currentDisplayText.lastIndexOf('\n', foundIndex - 1);
-          return lineStart === -1 ? 0 : lineStart + 1;
+          const start = lineStart === -1 ? 0 : lineStart + 1;
+          return { start, end: foundIndex + textValue.length };
         }
       }
-      return 0;
+      return { start: 0, end: 0 };
+    };
+
+    const isPlayingRange = (startIndex: number, endIndex: number) => {
+      const playingStart = playingParagraphStartRef.current;
+      return (
+        playingStart !== null &&
+        playingParagraphModeRef.current === 'chapter' &&
+        playingStart >= startIndex &&
+        playingStart < Math.max(endIndex, startIndex + 1)
+      );
     };
 
     const renderBlock = (Tag: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
       return ({ children, node }: { children?: ReactNode; node?: any }) => {
         const textValue = extractTextFromNode(children ?? '').trim();
-        const startIndex = resolveStartIndex(textValue, node);
+        const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
         const outlineItem = outlineByOffsetRef.current.get(node?.position?.start?.offset);
         const currentChapterNumber = chapterNumberRef.current;
         const currentSelectedVersionId = selectedVersionIdRef.current;
         const paragraphKey = currentChapterNumber
           ? `chapter-${currentChapterNumber}-${currentSelectedVersionId}-${hashText(textValue)}-${startIndex}`
           : '';
-        const isPlaying =
-          playingParagraphStartRef.current === startIndex && playingParagraphModeRef.current === 'chapter';
+        const isPlaying = isPlayingRange(startIndex, endIndex);
         return (
           <Tag
             id={outlineItem?.id}
@@ -505,8 +528,84 @@ export default function ChapterViewer({
       };
     };
 
+    const renderList = (Tag: 'ul' | 'ol') => {
+      return ({ children, node }: { children?: ReactNode; node?: any }) => {
+        const textValue = extractTextFromNode(children ?? '').trim();
+        const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
+        const currentChapterNumber = chapterNumberRef.current;
+        const currentSelectedVersionId = selectedVersionIdRef.current;
+        const paragraphKey = currentChapterNumber
+          ? `chapter-${currentChapterNumber}-${currentSelectedVersionId}-${hashText(textValue)}-${startIndex}`
+          : '';
+        const isPlaying = isPlayingRange(startIndex, endIndex);
+        return (
+          <Tag className="text-viewer-block text-viewer-list-block" data-playing={isPlaying ? 'true' : 'false'}>
+            {children}
+            {textValue ? (
+              <button
+                type="button"
+                className="text-paragraph-stream"
+                onClick={() =>
+                  onPlayParagraphRef.current({
+                    fullText: displayTextRef.current,
+                    startIndex,
+                    key: paragraphKey
+                  })
+                }
+                aria-label="Play list from here"
+                title="Play list from here"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M8 5v14l11-7-11-7z" />
+                </svg>
+              </button>
+            ) : null}
+          </Tag>
+        );
+      };
+    };
+
+    const renderListItem = ({ children, node }: { children?: ReactNode; node?: any }) => {
+      const textValue = extractTextFromNode(children ?? '').trim();
+      const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
+      const currentChapterNumber = chapterNumberRef.current;
+      const currentSelectedVersionId = selectedVersionIdRef.current;
+      const paragraphKey = currentChapterNumber
+        ? `chapter-${currentChapterNumber}-${currentSelectedVersionId}-${hashText(textValue)}-${startIndex}`
+        : '';
+      const isPlaying = isPlayingRange(startIndex, endIndex);
+      const hasNestedBlock = hasNestedMarkdownBlock(children);
+      return (
+        <li className="text-viewer-block text-viewer-list-item" data-playing={isPlaying ? 'true' : 'false'}>
+          {children}
+          {textValue && !hasNestedBlock ? (
+            <button
+              type="button"
+              className="text-paragraph-stream"
+              onClick={() =>
+                onPlayParagraphRef.current({
+                  fullText: displayTextRef.current,
+                  startIndex,
+                  key: paragraphKey
+                })
+              }
+              aria-label="Play list item from here"
+              title="Play list item from here"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M8 5v14l11-7-11-7z" />
+              </svg>
+            </button>
+          ) : null}
+        </li>
+      );
+    };
+
     return {
       p: renderBlock('p'),
+      ul: renderList('ul'),
+      ol: renderList('ol'),
+      li: renderListItem,
       h1: renderBlock('h1'),
       h2: renderBlock('h2'),
       h3: renderBlock('h3'),
