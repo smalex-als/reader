@@ -64,16 +64,6 @@ function extractTextFromNode(node: ReactNode): string {
   return '';
 }
 
-function hasNestedMarkdownBlock(node: ReactNode): boolean {
-  if (Array.isArray(node)) {
-    return node.some(hasNestedMarkdownBlock);
-  }
-  if (!isValidElement(node)) {
-    return false;
-  }
-  return ['p', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(String(node.type));
-}
-
 function hashText(input: string) {
   let hash = 0;
   for (let index = 0; index < input.length; index += 1) {
@@ -565,47 +555,10 @@ export default function ChapterViewer({
       };
     };
 
-    const renderListItem = ({ children, node }: { children?: ReactNode; node?: any }) => {
-      const textValue = extractTextFromNode(children ?? '').trim();
-      const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
-      const currentChapterNumber = chapterNumberRef.current;
-      const currentSelectedVersionId = selectedVersionIdRef.current;
-      const paragraphKey = currentChapterNumber
-        ? `chapter-${currentChapterNumber}-${currentSelectedVersionId}-${hashText(textValue)}-${startIndex}`
-        : '';
-      const isPlaying = isPlayingRange(startIndex, endIndex);
-      const hasNestedBlock = hasNestedMarkdownBlock(children);
-      return (
-        <li className="text-viewer-block text-viewer-list-item" data-playing={isPlaying ? 'true' : 'false'}>
-          {children}
-          {textValue && !hasNestedBlock ? (
-            <button
-              type="button"
-              className="text-paragraph-stream"
-              onClick={() =>
-                onPlayParagraphRef.current({
-                  fullText: displayTextRef.current,
-                  startIndex,
-                  key: paragraphKey
-                })
-              }
-              aria-label="Play list item from here"
-              title="Play list item from here"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M8 5v14l11-7-11-7z" />
-              </svg>
-            </button>
-          ) : null}
-        </li>
-      );
-    };
-
     return {
       p: renderBlock('p'),
       ul: renderList('ul'),
       ol: renderList('ol'),
-      li: renderListItem,
       h1: renderBlock('h1'),
       h2: renderBlock('h2'),
       h3: renderBlock('h3'),
