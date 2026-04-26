@@ -601,9 +601,28 @@ export function useStreamSequence({
 
   const restartStreamFromPageKey = useCallback(
     async (pageKey: string, voiceOverride: string) => {
-      const single = lastStreamSourceRef.current;
-      if (single?.type === 'single' && single.pageKey === pageKey) {
-        await handlePlaySingleStream({ text: single.text, pageKey }, voiceOverride);
+      const source = lastStreamSourceRef.current;
+      if (source?.type === 'single' && source.pageKey === pageKey) {
+        await handlePlaySingleStream({ text: source.text, pageKey }, voiceOverride);
+        return;
+      }
+
+      const paragraphMatch = pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+      if (paragraphMatch) {
+        const startIndex = Number.parseInt(paragraphMatch[2], 10);
+        if (source && (source.type === 'chapter' || source.type === 'paragraph')) {
+          await startStreamSequenceFromText(source.fullText, startIndex, source.baseKey, 'paragraph', voiceOverride);
+          return;
+        }
+        if (firstChapterParagraph) {
+          await startStreamSequenceFromText(
+            firstChapterParagraph.fullText,
+            startIndex,
+            firstChapterParagraph.key,
+            'paragraph',
+            voiceOverride
+          );
+        }
         return;
       }
 
@@ -620,15 +639,8 @@ export function useStreamSequence({
         return;
       }
 
-      const paragraphMatch = pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
-      if (paragraphMatch && firstChapterParagraph) {
-        await startStreamSequenceFromText(
-          firstChapterParagraph.fullText,
-          Number.parseInt(paragraphMatch[2], 10),
-          firstChapterParagraph.key,
-          'paragraph',
-          voiceOverride
-        );
+      if (source?.type === 'page' && (pageKey === source.baseKey || pageKey.startsWith(`${source.baseKey}#chunk-`))) {
+        await startStreamSequenceFromText(source.fullText, source.startIndex, source.baseKey, 'page', voiceOverride);
         return;
       }
     },

@@ -11,6 +11,9 @@ export function parseStreamLocator(pageKey: string | null): StreamLocator | null
   if (!pageKey) {
     return null;
   }
+  if (pageKey.startsWith('chapter::') || pageKey.startsWith('narration::')) {
+    return null;
+  }
   const separatorIndex = pageKey.indexOf('::');
   if (separatorIndex === -1) {
     return { imageUrl: pageKey, blockId: null };
