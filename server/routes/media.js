@@ -52,6 +52,58 @@ function toNodeReadableStream(streamBody) {
   return null;
 }
 
+async function writeStreamResponse(stream, res, setHeaders) {
+  let started = false;
+
+  for await (const chunk of stream) {
+    if (!chunk || chunk.length === 0) {
+      continue;
+    }
+    if (!started) {
+      setHeaders();
+      started = true;
+    }
+    if (!res.write(chunk)) {
+      await new Promise((resolve, reject) => {
+        const cleanup = () => {
+          res.off('drain', handleDrain);
+          res.off('error', handleError);
+          res.off('close', handleClose);
+        };
+        const handleDrain = () => {
+          cleanup();
+          resolve();
+        };
+        const handleError = (error) => {
+          cleanup();
+          reject(error);
+        };
+        const handleClose = () => {
+          cleanup();
+          reject(createHttpError(499, 'Client closed request'));
+        };
+        res.once('drain', handleDrain);
+        res.once('error', handleError);
+        res.once('close', handleClose);
+      });
+    }
+  }
+
+  if (!started) {
+    setHeaders();
+  }
+  res.end();
+}
+
+function setPcmStreamHeaders(res) {
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Audio-Format', 'pcm_s16le');
+  res.setHeader('X-Audio-Sample-Rate', String(PCM_STREAM_SAMPLE_RATE));
+  res.setHeader('X-Audio-Channels', String(PCM_STREAM_CHANNEL_COUNT));
+  res.setHeader('X-Audio-Bit-Depth', String(PCM_STREAM_BIT_DEPTH));
+}
+
 function resolveVoiceProfile(voice) {
   const requestedVoiceId =
     typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
@@ -234,12 +286,6 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
   };
   req.once('aborted', handleRequestAborted);
   res.once('close', handleResponseClosed);
-  res.setHeader('Content-Type', 'application/octet-stream');
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('X-Audio-Format', 'pcm_s16le');
-  res.setHeader('X-Audio-Sample-Rate', String(PCM_STREAM_SAMPLE_RATE));
-  res.setHeader('X-Audio-Channels', String(PCM_STREAM_CHANNEL_COUNT));
-  res.setHeader('X-Audio-Bit-Depth', String(PCM_STREAM_BIT_DEPTH));
   try {
     if (voiceProfile) {
       const speech = await createTextPcmSpeechStream({
@@ -248,10 +294,11 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
       });
       const bodyStream = toNodeReadableStream(speech.body);
       if (bodyStream) {
-        await pipeline(bodyStream, res);
+        await writeStreamResponse(bodyStream, res, () => setPcmStreamHeaders(res));
         return;
       }
       const fallback = Buffer.from(await speech.arrayBuffer());
+      setPcmStreamHeaders(res);
       res.end(fallback);
       return;
     }
@@ -261,6 +308,7 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
         voice: xaiVoice,
         sampleRate: PCM_STREAM_SAMPLE_RATE
       });
+      setPcmStreamHeaders(res);
       res.end(pcmBuffer);
       return;
     }
@@ -271,9 +319,13 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
       abortController.signal,
       requestId
     );
-    await pipeline(pcmStream, res);
+    await writeStreamResponse(pcmStream, res, () => setPcmStreamHeaders(res));
   } catch (error) {
     if (abortController.signal.aborted || req.aborted || !res.writable) {
+      return;
+    }
+    if (res.headersSent) {
+      res.destroy(error);
       return;
     }
     throw error;
