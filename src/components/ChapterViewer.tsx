@@ -29,7 +29,9 @@ interface ChapterViewerProps {
     | 'light'
     | 'warm';
   onTextThemeChange: (value: string) => void;
-  streamVoice: string;
+  mp3Voice: string;
+  mp3VoiceOptions: readonly { id: string; label: string }[];
+  onMp3VoiceChange: (voice: string) => void;
   refreshToken?: number;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onDisplayedTextChange?: (payload: {
@@ -170,7 +172,9 @@ export default function ChapterViewer({
   onTextFontSizeChange,
   textTheme,
   onTextThemeChange,
-  streamVoice,
+  mp3Voice,
+  mp3VoiceOptions,
+  onMp3VoiceChange,
   refreshToken = 0,
   onFirstParagraphReady,
   onDisplayedTextChange,
@@ -216,6 +220,7 @@ export default function ChapterViewer({
     canGenerate,
     missingFile,
     audioError,
+    audioGenerating,
     versionSaving,
     versionStatus,
     chapterAudioReady,
@@ -224,7 +229,9 @@ export default function ChapterViewer({
     audioJob,
     isAudioJobActive,
     canCreateVersion,
+    canGenerateAudio,
     handleGenerate,
+    handleGenerateAudio,
     handleCreateVersion,
     handleDeleteVersion,
     handleCancelAudioJob
@@ -233,7 +240,7 @@ export default function ChapterViewer({
     chapterNumber,
     chapterRange: pageRange,
     refreshToken,
-    streamVoice
+    mp3Voice
   });
   const displayTextRef = useRef(displayText);
   const chapterNumberRef = useRef(chapterNumber);
@@ -639,6 +646,36 @@ export default function ChapterViewer({
               aria-controls="text-viewer-outline"
             >
               {outlineOpen ? 'Hide outline' : 'Show outline'}
+            </button>
+          ) : null}
+          {chapterNumber && mp3VoiceOptions.length > 0 ? (
+            <label className="text-viewer-version-select">
+              <span>MP3 voice</span>
+              <select
+                value={mp3Voice}
+                onChange={(event) => onMp3VoiceChange(event.target.value)}
+                disabled={isAudioJobActive || audioGenerating}
+              >
+                {mp3VoiceOptions.map((voice) => (
+                  <option key={voice.id} value={voice.id}>
+                    {voice.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {chapterNumber ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => void handleGenerateAudio()}
+              disabled={!canGenerateAudio || audioGenerating || isAudioJobActive || !mp3Voice}
+            >
+              {audioGenerating
+                ? 'Queuing MP3…'
+                : chapterAudioReady && chapterAudioVersionId === selectedVersionId
+                  ? 'Regenerate MP3'
+                  : 'Generate MP3'}
             </button>
           ) : null}
           {chapterNumber && isAudioJobActive ? (

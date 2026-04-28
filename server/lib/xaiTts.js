@@ -10,7 +10,8 @@ function sanitizeVoice(value) {
   if (typeof value !== 'string' || !value.trim()) {
     return 'Eve';
   }
-  return value.trim();
+  const trimmed = value.trim();
+  return trimmed.toLowerCase().startsWith('xai_') ? trimmed.slice(4) : trimmed;
 }
 
 function sanitizeLanguage(value) {

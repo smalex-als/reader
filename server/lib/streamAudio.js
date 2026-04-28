@@ -80,6 +80,21 @@ function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
 }
 
+function normalizeAudioVersionId(versionId) {
+  return typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
+}
+
+function sanitizeAudioVersionSuffix(versionId) {
+  return normalizeAudioVersionId(versionId).replace(/[^a-zA-Z0-9._-]+/g, '_');
+}
+
+export function formatChapterAudioFilename(chapterNumber, versionId = 'base', extension = '.mp3') {
+  const baseName = formatChapterFilename(chapterNumber).replace(/\.txt$/i, '');
+  const normalizedVersionId = normalizeAudioVersionId(versionId);
+  const versionSuffix = normalizedVersionId === 'base' ? '' : `.${sanitizeAudioVersionSuffix(normalizedVersionId)}`;
+  return `${baseName}${versionSuffix}${extension}`;
+}
+
 async function encodeMp3(wavPath, mp3Path) {
   try {
     await execFileAsync('lame', ['--silent', '-h', wavPath, mp3Path]);
@@ -498,15 +513,15 @@ export async function prepareChapterAudio({ bookId, chapterNumber, versionId = n
   }
 
   const directory = await assertBookDirectory(bookId);
+  const textVersion = await getChapterTextVersionText({ bookId, chapterNumber, versionId });
   const chapterFilename = formatChapterFilename(chapterNumber);
-  const audioFilename = chapterFilename.replace(/\.txt$/i, '.wav');
+  const audioFilename = formatChapterAudioFilename(chapterNumber, textVersion.versionId, '.wav');
   const audioPath = path.join(directory, audioFilename);
   const pcmFilename = audioFilename.replace(/\.wav$/i, '.pcm');
   const pcmPath = path.join(directory, pcmFilename);
   const mp3Filename = audioFilename.replace(/\.wav$/i, '.mp3');
   const mp3Path = path.join(directory, mp3Filename);
   const metaPath = `${mp3Path}.meta.json`;
-  const textVersion = await getChapterTextVersionText({ bookId, chapterNumber, versionId });
   const existingMp3 = await safeStat(mp3Path);
   if (existingMp3?.isFile()) {
     try {

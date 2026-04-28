@@ -6,7 +6,9 @@ interface AudioViewProps {
   bookId: string | null;
   tocEntries: TocEntry[];
   tocLoading: boolean;
-  streamVoice: string;
+  mp3Voice: string;
+  mp3VoiceOptions: readonly { id: string; label: string }[];
+  onMp3VoiceChange: (voice: string) => void;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   onOpenChapterText: (pageIndex: number) => void;
   onPlayAudio: (payload: FloatingAudioTrack) => void;
@@ -28,12 +30,12 @@ type AudioChapter = {
     url: string;
     versionId?: string | null;
     durationSeconds?: number | null;
-    provider?: 'default' | 'xai';
+    provider?: 'default' | 'xai' | 'yandex';
   };
 };
 
 type AudioJobStatus = {
-  provider?: 'default' | 'xai';
+  provider?: 'default' | 'xai' | 'yandex';
   status: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
   error?: string | null;
   audioUrl?: string | null;
@@ -52,7 +54,9 @@ export default function AudioView({
   bookId,
   tocEntries,
   tocLoading,
-  streamVoice,
+  mp3Voice,
+  mp3VoiceOptions,
+  onMp3VoiceChange,
   showToast,
   onOpenChapterText,
   onPlayAudio
@@ -188,7 +192,7 @@ export default function AudioView({
   }, [pollAudioJobStatus]);
 
   const handleGenerateAudio = useCallback(
-    async (chapterNumber: number, versionId: string, provider: 'default' | 'xai' = 'default') => {
+    async (chapterNumber: number, versionId: string, provider: 'default' | 'xai' | 'yandex' = 'default') => {
       if (!bookId || audioBusy[chapterNumber]) {
         return;
       }
@@ -201,7 +205,7 @@ export default function AudioView({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              voice: provider === 'xai' ? 'Eve' : streamVoice,
+              voice: mp3Voice,
               versionId,
               provider
             })
@@ -242,7 +246,7 @@ export default function AudioView({
         setAudioBusy((prev) => ({ ...prev, [chapterNumber]: false }));
       }
     },
-    [audioBusy, bookId, schedulePoll, showToast, streamVoice]
+    [audioBusy, bookId, mp3Voice, schedulePoll, showToast]
   );
 
   const handleCancelAudioJob = useCallback(
@@ -291,6 +295,22 @@ export default function AudioView({
             ? 'Loading table of contents…'
             : `${chapters.length} chapter${chapters.length === 1 ? '' : 's'}`}
         </div>
+        {mp3VoiceOptions.length > 0 ? (
+          <label className="toolbar-field">
+            MP3 voice
+            <select
+              className="select"
+              value={mp3Voice}
+              onChange={(event) => onMp3VoiceChange(event.target.value)}
+            >
+              {mp3VoiceOptions.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </header>
       <section className="audio-viewer-body">
         {tocLoading || statusLoading ? (
@@ -320,6 +340,18 @@ export default function AudioView({
                 : 'Generate audio';
               const actionDisabled =
                 audioBusy[entry.chapterNumber] || isAudioJobActive;
+              const selectedMp3Provider = mp3Voice.startsWith('xai_')
+                ? 'xai'
+                : mp3Voice.startsWith('yandex_')
+                  ? 'yandex'
+                  : 'default';
+              const generateLabel = isAudioJobActive
+                ? actionLabel
+                : selectedMp3Provider === 'yandex'
+                  ? 'Generate Yandex'
+                  : selectedMp3Provider === 'xai'
+                    ? 'Generate xAI'
+                    : 'Generate audio';
               return (
                 <article key={`${entry.title}-${entry.page}-${entry.chapterNumber}`} className="audio-row">
                   <div className="audio-row-main">
@@ -341,23 +373,15 @@ export default function AudioView({
                           type="button"
                           className="button"
                           onClick={() =>
-                            void handleGenerateAudio(entry.chapterNumber, latestVersionId, 'default')
+                            void handleGenerateAudio(
+                              entry.chapterNumber,
+                              latestVersionId,
+                              selectedMp3Provider
+                            )
                           }
                           disabled={actionDisabled}
                         >
-                          {isAudioJobActive && jobStatus?.provider !== 'xai' ? actionLabel : 'Generate audio'}
-                        </button>
-                        <button
-                          type="button"
-                          className="button button-secondary"
-                          onClick={() => void handleGenerateAudio(entry.chapterNumber, latestVersionId, 'xai')}
-                          disabled={actionDisabled}
-                        >
-                          {isAudioJobActive && jobStatus?.provider === 'xai'
-                            ? jobStatus.status === 'queued'
-                              ? 'xAI queued…'
-                              : 'Generating xAI…'
-                            : 'Generate xAI'}
+                          {generateLabel}
                         </button>
                       </>
                     ) : null}

@@ -4,6 +4,7 @@ const SETTINGS_KEY = 'scanned-reader:settings';
 const BOOK_KEY = 'scanned-reader:lastBook';
 const PAGE_KEY = 'scanned-reader:lastPage';
 const STREAM_VOICE_KEY = 'scanned-reader:streamVoice';
+const MP3_VOICE_KEY = 'scanned-reader:mp3Voice';
 const QUIZ_AUTOPLAY_KEY = 'scanned-reader:quizAutoplay';
 const BOOK_META_KEY = 'scanned-reader:bookMeta';
 const BOOK_SORT_MODE_KEY = 'scanned-reader:bookSortMode';
@@ -156,6 +157,21 @@ export function saveStreamVoiceForBook(bookId: string, voice: string) {
   writeJson(STREAM_VOICE_KEY, voices);
 }
 
+export function loadMp3VoiceForBook(bookId: string): string | null {
+  const voices = readJson<Record<string, string>>(MP3_VOICE_KEY);
+  if (!voices) {
+    return null;
+  }
+  const voice = voices[bookId];
+  return typeof voice === 'string' ? voice : null;
+}
+
+export function saveMp3VoiceForBook(bookId: string, voice: string) {
+  const voices = readJson<Record<string, string>>(MP3_VOICE_KEY) ?? {};
+  voices[bookId] = voice;
+  writeJson(MP3_VOICE_KEY, voices);
+}
+
 export function loadQuizAutoplayForBook(bookId: string): boolean | null {
   const values = readJson<Record<string, boolean>>(QUIZ_AUTOPLAY_KEY);
   if (!values) {
@@ -215,6 +231,12 @@ export function removeBookStorage(bookId: string) {
   if (bookId in voices) {
     delete voices[bookId];
     writeJson(STREAM_VOICE_KEY, voices);
+  }
+
+  const mp3Voices = readJson<Record<string, string>>(MP3_VOICE_KEY) ?? {};
+  if (bookId in mp3Voices) {
+    delete mp3Voices[bookId];
+    writeJson(MP3_VOICE_KEY, mp3Voices);
   }
 
   const quizAutoplay = readJson<Record<string, boolean>>(QUIZ_AUTOPLAY_KEY) ?? {};

@@ -20,7 +20,8 @@ function sanitizeVoice(value) {
   if (typeof value !== 'string' || !value.trim()) {
     return 'alena';
   }
-  return value.trim();
+  const trimmed = value.trim();
+  return trimmed.toLowerCase().startsWith('yandex_') ? trimmed.slice(7) : trimmed;
 }
 
 function clampInt16(value) {
@@ -65,10 +66,11 @@ function resamplePcmS16Le(buffer, sourceSampleRate, targetSampleRate) {
   return output;
 }
 
-export async function generateYandexTtsPcmBuffer({
+async function requestYandexTtsBuffer({
   text,
   voice = 'alena',
-  sampleRate = 24000,
+  format = 'mp3',
+  sampleRate,
   signal
 }) {
   const spokenText = sanitizeText(text);
@@ -82,20 +84,17 @@ export async function generateYandexTtsPcmBuffer({
     throw createHttpError(500, 'YANDEX_FOLDER_ID is not configured');
   }
 
-  const sourceSampleRate =
-    Number.isFinite(YANDEX_TTS_SAMPLE_RATE) && YANDEX_TTS_SAMPLE_RATE > 0
-      ? YANDEX_TTS_SAMPLE_RATE
-      : 48000;
-
   const params = new URLSearchParams({
     text: spokenText,
     lang: YANDEX_TTS_LANG,
     voice: sanitizeVoice(voice),
     speed: YANDEX_TTS_SPEED,
-    format: 'lpcm',
-    sampleRateHertz: String(sourceSampleRate),
+    format,
     folderId: YANDEX_FOLDER_ID
   });
+  if (format === 'lpcm' && sampleRate) {
+    params.set('sampleRateHertz', String(sampleRate));
+  }
 
   const response = await fetch(YANDEX_TTS_URL, {
     method: 'POST',
@@ -121,5 +120,38 @@ export async function generateYandexTtsPcmBuffer({
   if (!audioBuffer.length) {
     throw createHttpError(502, 'Yandex TTS returned empty audio');
   }
+  return audioBuffer;
+}
+
+export async function generateYandexTtsAudioBuffer({
+  text,
+  voice = 'alena',
+  signal
+}) {
+  return requestYandexTtsBuffer({
+    text,
+    voice,
+    format: 'mp3',
+    signal
+  });
+}
+
+export async function generateYandexTtsPcmBuffer({
+  text,
+  voice = 'alena',
+  sampleRate = 24000,
+  signal
+}) {
+  const sourceSampleRate =
+    Number.isFinite(YANDEX_TTS_SAMPLE_RATE) && YANDEX_TTS_SAMPLE_RATE > 0
+      ? YANDEX_TTS_SAMPLE_RATE
+      : 48000;
+  const audioBuffer = await requestYandexTtsBuffer({
+    text,
+    voice,
+    format: 'lpcm',
+    sampleRate: sourceSampleRate,
+    signal
+  });
   return resamplePcmS16Le(audioBuffer, sourceSampleRate, sampleRate);
 }

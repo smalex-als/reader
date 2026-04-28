@@ -9,6 +9,7 @@ import {
   streamChapterAudioChunk
 } from './streamAudio.js';
 import { generateChapterXaiAudio } from './chapterXaiAudio.js';
+import { generateChapterYandexAudio } from './chapterYandexAudio.js';
 
 const JOB_STORE_PATH = path.join(DATA_DIR, 'chapter-audio-jobs.json');
 const activeSignals = new Map();
@@ -52,7 +53,7 @@ function normalizeJob(job) {
   return {
     bookId: job.bookId,
     chapterNumber: job.chapterNumber,
-    provider: job.provider === 'xai' ? 'xai' : 'default',
+    provider: job.provider === 'xai' || job.provider === 'yandex' ? job.provider : 'default',
     status: job.status ?? 'queued',
     versionId: typeof job.versionId === 'string' ? job.versionId : 'base',
     startedAt: job.startedAt ?? null,
@@ -137,6 +138,18 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
 
     if (provider === 'xai') {
       const result = await generateChapterXaiAudio({ bookId, chapterNumber, versionId, voice });
+      await updateJob(bookId, chapterNumber, {
+        provider,
+        status: 'completed',
+        versionId: result.versionId ?? versionId ?? 'base',
+        audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
+        error: null
+      });
+      return;
+    }
+
+    if (provider === 'yandex') {
+      const result = await generateChapterYandexAudio({ bookId, chapterNumber, versionId, voice });
       await updateJob(bookId, chapterNumber, {
         provider,
         status: 'completed',
@@ -256,7 +269,12 @@ export async function enqueueChapterAudioJob({
     startedAt: null,
     updatedAt: new Date().toISOString(),
     error: null,
-    audioUrl: existing?.audioUrl ?? null
+    audioUrl:
+      existing &&
+      (existing.versionId ?? 'base') === (versionId ?? 'base') &&
+      (existing.provider ?? 'default') === provider
+        ? existing.audioUrl ?? null
+        : null
   });
   const key = getJobKey(bookId, chapterNumber);
   activeSignals.set(key, { canceled: false, voice, versionId: versionId ?? 'base', provider });

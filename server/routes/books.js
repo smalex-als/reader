@@ -47,6 +47,7 @@ import { generateChapterQuiz, loadChapterQuiz } from '../lib/quiz.js';
 import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabulary.js';
 import { createEnhancedImagePreview, createImagePreviewCrop } from '../lib/imagePreview.js';
 import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
+import { formatChapterAudioFilename } from '../lib/streamAudio.js';
 import {
   addTextChapter,
   createTextBook,
@@ -90,17 +91,15 @@ async function getAudioDurationSeconds(filePath) {
   }
 }
 
-async function resolveChapterAudioUrl(bookId, chapterNumber) {
-  const suffix = formatChapterSuffix(chapterNumber);
-  const audioFilename = `chapter${suffix}.mp3`;
+async function resolveChapterAudioUrl(bookId, chapterNumber, versionId = 'base') {
+  const audioFilename = formatChapterAudioFilename(chapterNumber, versionId);
   const audioPath = path.join(DATA_DIR, bookId, audioFilename);
   const audioStat = await safeStat(audioPath);
   return audioStat?.isFile?.() ? `/data/${bookId}/${audioFilename}` : null;
 }
 
-async function loadChapterAudioMeta(bookId, chapterNumber) {
-  const suffix = formatChapterSuffix(chapterNumber);
-  const metaFilename = `chapter${suffix}.mp3.meta.json`;
+async function loadChapterAudioMeta(bookId, chapterNumber, versionId = 'base') {
+  const metaFilename = `${formatChapterAudioFilename(chapterNumber, versionId)}.meta.json`;
   const metaPath = path.join(DATA_DIR, bookId, metaFilename);
   const metaStat = await safeStat(metaPath);
   if (!metaStat?.isFile()) {
@@ -111,7 +110,7 @@ async function loadChapterAudioMeta(bookId, chapterNumber) {
     const parsed = JSON.parse(raw);
     return {
       versionId: typeof parsed?.versionId === 'string' ? parsed.versionId : 'base',
-      provider: parsed?.provider === 'xai' ? 'xai' : 'default',
+      provider: parsed?.provider === 'xai' || parsed?.provider === 'yandex' ? parsed.provider : 'default',
       generatedAt: typeof parsed?.generatedAt === 'string' ? parsed.generatedAt : null
     };
   } catch {
@@ -227,17 +226,23 @@ router.get('/api/books/:id/manifest', asyncHandler(async (req, res) => {
 
 router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
+  res.setHeader('Cache-Control', 'no-store');
   const toc = await loadToc(bookId);
   const chapters = await Promise.all(
     toc.map(async (entry, index) => {
       const chapterNumber = index + 1;
-      const suffix = formatChapterSuffix(chapterNumber);
-      const audioFilename = `chapter${suffix}.mp3`;
+      const versions = await listChapterTextVersions({ bookId, chapterNumber }).catch((error) => {
+        if (error?.status === 404) {
+          return null;
+        }
+        throw error;
+      });
+      const latestVersionId = versions?.latestVersionId ?? 'base';
+      const audioFilename = formatChapterAudioFilename(chapterNumber, latestVersionId);
       const audioPath = path.join(DATA_DIR, bookId, audioFilename);
-      const [versions, audioStat, audioMeta] = await Promise.all([
-        listChapterTextVersions({ bookId, chapterNumber }),
+      const [audioStat, audioMeta] = await Promise.all([
         safeStat(audioPath),
-        loadChapterAudioMeta(bookId, chapterNumber)
+        loadChapterAudioMeta(bookId, chapterNumber, latestVersionId)
       ]);
       const audioSize = audioStat?.isFile?.() ? audioStat.size : null;
       const audioDurationSeconds = audioStat?.isFile?.()
@@ -247,7 +252,7 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
         chapterNumber,
         title: entry.title,
         page: entry.page,
-        latestVersionId: versions.latestVersionId,
+        latestVersionId,
         audio: {
           ready: Boolean(audioStat?.isFile?.()),
           url: `/data/${bookId}/${audioFilename}`,
@@ -398,18 +403,23 @@ router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, r
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const voice = typeof req.body?.voice === 'string' ? req.body.voice.trim() : '';
   const versionId = typeof req.body?.versionId === 'string' ? req.body.versionId.trim() : null;
-  const provider = req.body?.provider === 'xai' ? 'xai' : 'default';
+  const provider =
+    req.body?.provider === 'xai' || req.body?.provider === 'yandex' ? req.body.provider : 'default';
   const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider });
   res.json({ book: bookId, chapterNumber, job });
 }));
 
 router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
+  res.setHeader('Cache-Control', 'no-store');
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const requestedVersionId =
+    typeof req.query.versionId === 'string' && req.query.versionId.trim() ? req.query.versionId.trim() : 'base';
   const job = await getChapterAudioJob(bookId, chapterNumber);
+  const lookupVersionId = job?.versionId ?? requestedVersionId;
   const [audioUrl, audioMeta] = await Promise.all([
-    resolveChapterAudioUrl(bookId, chapterNumber),
-    loadChapterAudioMeta(bookId, chapterNumber)
+    resolveChapterAudioUrl(bookId, chapterNumber, lookupVersionId),
+    loadChapterAudioMeta(bookId, chapterNumber, lookupVersionId)
   ]);
   if (!job && audioUrl) {
     res.json({

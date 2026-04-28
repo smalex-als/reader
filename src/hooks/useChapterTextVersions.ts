@@ -7,22 +7,11 @@ type ChapterRange = {
 } | null;
 
 type AudioJobStatus = {
-  provider?: 'default' | 'xai';
+  provider?: 'default' | 'xai' | 'yandex';
   status: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
   error?: string | null;
   audioUrl?: string | null;
   versionId?: string | null;
-};
-
-type ChapterAudioStatusEntry = {
-  chapterNumber: number;
-  latestVersionId?: string | null;
-  audio?: {
-    ready?: boolean;
-    url?: string | null;
-    versionId?: string | null;
-    provider?: 'default' | 'xai';
-  };
 };
 
 type UseChapterTextVersionsOptions = {
@@ -30,7 +19,7 @@ type UseChapterTextVersionsOptions = {
   chapterNumber: number | null;
   chapterRange: ChapterRange;
   refreshToken?: number;
-  streamVoice: string;
+  mp3Voice: string;
 };
 
 function formatChapterFilename(chapterNumber: number) {
@@ -51,7 +40,7 @@ export function useChapterTextVersions({
   chapterNumber,
   chapterRange,
   refreshToken = 0,
-  streamVoice
+  mp3Voice
 }: UseChapterTextVersionsOptions) {
   const [chapterText, setChapterText] = useState('');
   const [selectedText, setSelectedText] = useState('');
@@ -97,21 +86,22 @@ export function useChapterTextVersions({
       return;
     }
     try {
-      const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/audio`);
+      const params = new URLSearchParams({ versionId: selectedVersionId || 'base' });
+      const response = await fetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/audio/status?${params.toString()}`
+      );
       if (!response.ok) {
         throw new Error(`Audio status failed: ${response.status}`);
       }
       const payload = (await response.json()) as {
-        chapters?: ChapterAudioStatusEntry[];
+        job?: AudioJobStatus | null;
       };
-      const entry = Array.isArray(payload.chapters)
-        ? payload.chapters.find((item) => item.chapterNumber === chapterNumber)
-        : null;
-      const audioVersionId = entry?.audio?.versionId ?? null;
-      const currentVersionId = selectedVersionId || entry?.latestVersionId || 'base';
+      const job = payload.job ?? null;
+      const audioVersionId = job?.status === 'completed' ? job.versionId ?? null : null;
+      const currentVersionId = selectedVersionId || 'base';
       setChapterAudioVersionId(audioVersionId);
-      setChapterAudioReady(Boolean(entry?.audio?.ready) && audioVersionId === currentVersionId);
-      setChapterAudioUrl(entry?.audio?.url ?? null);
+      setChapterAudioReady(Boolean(job?.audioUrl) && audioVersionId === currentVersionId);
+      setChapterAudioUrl(job?.audioUrl ?? null);
     } catch (err) {
       console.warn('Failed to load chapter audio status', err);
     }
@@ -418,7 +408,7 @@ export function useChapterTextVersions({
     }
   }, [bookId, canGenerate, chapterNumber, chapterRange, generating]);
 
-  const handleGenerateAudioWithProvider = useCallback(async (provider: 'default' | 'xai') => {
+  const handleGenerateAudioWithProvider = useCallback(async (provider: 'default' | 'xai' | 'yandex') => {
     if (!canGenerateAudio || !bookId || !chapterNumber || audioGenerating) {
       return;
     }
@@ -432,7 +422,7 @@ export function useChapterTextVersions({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            voice: provider === 'xai' ? 'Eve' : streamVoice,
+            voice: mp3Voice,
             versionId: selectedVersionId,
             provider
           })
@@ -463,15 +453,12 @@ export function useChapterTextVersions({
     } finally {
       setAudioGenerating(false);
     }
-  }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, scheduleAudioPoll, selectedVersionId, streamVoice]);
+  }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, mp3Voice, scheduleAudioPoll, selectedVersionId]);
 
   const handleGenerateAudio = useCallback(() => {
-    return handleGenerateAudioWithProvider('default');
-  }, [handleGenerateAudioWithProvider]);
-
-  const handleGenerateXaiAudio = useCallback(() => {
-    return handleGenerateAudioWithProvider('xai');
-  }, [handleGenerateAudioWithProvider]);
+    const provider = mp3Voice.startsWith('xai_') ? 'xai' : mp3Voice.startsWith('yandex_') ? 'yandex' : 'default';
+    return handleGenerateAudioWithProvider(provider);
+  }, [handleGenerateAudioWithProvider, mp3Voice]);
 
   const handleCreateVersion = useCallback(async () => {
     if (!canCreateVersion || !bookId || !chapterNumber || versionSaving) {
@@ -638,7 +625,6 @@ export function useChapterTextVersions({
     canGenerateAudio,
     handleGenerate,
     handleGenerateAudio,
-    handleGenerateXaiAudio,
     handleCreateVersion,
     handleDeleteVersion,
     handleCancelAudioJob

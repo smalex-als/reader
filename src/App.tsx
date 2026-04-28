@@ -24,7 +24,13 @@ import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
 import { logStreamHistory, trackEvent } from '@/lib/analytics';
-import { loadQuizAutoplayForBook, saveLastPage, saveQuizAutoplayForBook } from '@/lib/storage';
+import {
+  loadMp3VoiceForBook,
+  loadQuizAutoplayForBook,
+  saveLastPage,
+  saveMp3VoiceForBook,
+  saveQuizAutoplayForBook
+} from '@/lib/storage';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import type {
   AppSettings,
@@ -157,6 +163,7 @@ export default function App() {
   const [streamVoiceOptions, setStreamVoiceOptions] = useState<StreamVoiceOption[]>([]);
   const [defaultStreamVoice, setDefaultStreamVoice] = useState<StreamVoice>('');
   const [streamVoice, setStreamVoice] = useState<StreamVoice>('');
+  const [mp3Voice, setMp3Voice] = useState<StreamVoice>('');
   const [playbackRate, setPlaybackRate] = useState(1);
   const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -209,6 +216,14 @@ export default function App() {
   const getStreamVoiceProvider = useCallback(
     (voice: string) => streamVoiceOptions.find((option) => option.id === voice)?.provider ?? null,
     [streamVoiceOptions]
+  );
+  const mp3VoiceOptions = useMemo(
+    () => streamVoiceOptions.filter((option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'),
+    [streamVoiceOptions]
+  );
+  const getDefaultMp3Voice = useCallback(
+    () => mp3VoiceOptions.find((option) => option.provider === 'streaming')?.id || mp3VoiceOptions[0]?.id || '',
+    [mp3VoiceOptions]
   );
   useEffect(() => {
     let cancelled = false;
@@ -313,6 +328,29 @@ export default function App() {
   useEffect(() => {
     tocEntriesRef.current = setTocEntries;
   }, [setTocEntries]);
+  useEffect(() => {
+    if (mp3VoiceOptions.length === 0) {
+      setMp3Voice('');
+      return;
+    }
+    const storedVoice = bookId ? loadMp3VoiceForBook(bookId) : null;
+    const nextVoice =
+      storedVoice && mp3VoiceOptions.some((option) => option.id === storedVoice)
+        ? storedVoice
+        : getDefaultMp3Voice();
+    setMp3Voice((previous) =>
+      previous && mp3VoiceOptions.some((option) => option.id === previous) && !storedVoice ? previous : nextVoice
+    );
+  }, [bookId, getDefaultMp3Voice, mp3VoiceOptions]);
+  useEffect(() => {
+    if (!bookId || !mp3Voice || !mp3VoiceOptions.some((option) => option.id === mp3Voice)) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      saveMp3VoiceForBook(bookId, mp3Voice);
+    }, 150);
+    return () => window.clearTimeout(timeout);
+  }, [bookId, mp3Voice, mp3VoiceOptions]);
   const visibleTocEntries = tocVariant === 'detailed' ? detailedTocEntries : tocEntries;
   const visibleSortedTocEntries =
     tocVariant === 'detailed' ? sortedDetailedTocEntries : sortedTocEntries;
@@ -420,7 +458,6 @@ export default function App() {
   } = useAudioController(currentImage, showToast);
   const { streamState, startStream, enqueueStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
   const openAiVoice = getStreamVoiceProvider(streamVoice) === 'openai' ? streamVoice : undefined;
-  const chapterAudioVoice = getStreamVoiceProvider(streamVoice) === 'streaming' ? streamVoice : getDefaultStreamVoice();
   const isListening = audioState.status === 'playing' || streamState.status === 'streaming';
   useWakeLock(isFullscreen && isListening);
   const {
@@ -1253,6 +1290,15 @@ export default function App() {
     },
     [isStreamVoice, restartActiveStream, setStreamVoice]
   );
+  const handleMp3VoiceChange = useCallback(
+    (voice: string) => {
+      if (!mp3VoiceOptions.some((option) => option.id === voice)) {
+        return;
+      }
+      setMp3Voice(voice);
+    },
+    [mp3VoiceOptions]
+  );
   const handlePlaybackRateChange = useCallback((rate: number) => {
     setPlaybackRate(normalizePlaybackRate(rate));
   }, []);
@@ -1839,7 +1885,9 @@ export default function App() {
       onTextFontSizeChange: updateTextFontSize,
       textTheme: settings.textTheme,
       onTextThemeChange: updateTextTheme,
-      streamVoice: chapterAudioVoice,
+      mp3Voice,
+      mp3VoiceOptions,
+      onMp3VoiceChange: handleMp3VoiceChange,
       refreshToken: chapterViewRefresh,
       onDisplayedTextChange: setDisplayedChapterText,
       onFirstParagraphReady: setFirstChapterParagraph,
@@ -1852,7 +1900,9 @@ export default function App() {
       bookId,
       tocEntries: sortedTocEntries,
       tocLoading,
-      streamVoice: chapterAudioVoice,
+      mp3Voice,
+      mp3VoiceOptions,
+      onMp3VoiceChange: handleMp3VoiceChange,
       showToast,
       onOpenChapterText: (pageIndex: number) => {
         setViewMode('text');
