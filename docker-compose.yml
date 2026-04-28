@@ -10,6 +10,8 @@ services:
       PORT: 3000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
+      YANDEX_API_KEY: ${YANDEX_API_KEY:-}
+      YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID:-}
       STREAM_SERVER: http://host.docker.internal:3005
       OCR_BACKEND: ${OCR_BACKEND:-deepseek_ocr}
       OCR_DEEPSEEK_HOST: http://host.docker.internal:11434
