@@ -48,7 +48,7 @@ type StreamVoice = string;
 type StreamVoiceOption = {
   id: string;
   label: string;
-  provider: 'openai' | 'xai' | 'streaming';
+  provider: 'openai' | 'xai' | 'yandex' | 'streaming';
 };
 const PLAYBACK_RATE_OPTIONS = [1, 1.25, 1.5] as const;
 
@@ -223,7 +223,10 @@ export default function App() {
                 typeof voice.id === 'string' &&
                 voice.id.trim() &&
                 typeof voice.label === 'string' &&
-                (voice.provider === 'openai' || voice.provider === 'xai' || voice.provider === 'streaming')
+                (voice.provider === 'openai' ||
+                  voice.provider === 'xai' ||
+                  voice.provider === 'yandex' ||
+                  voice.provider === 'streaming')
             )
           : [];
         const defaultVoice =

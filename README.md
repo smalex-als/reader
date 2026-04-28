@@ -84,6 +84,9 @@ Server environment variables:
 
 - `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, TTS, and image enhancement)
 - `XAI_API_KEY` (required for xAI TTS generation)
+- `YANDEX_API_KEY` and `YANDEX_FOLDER_ID` (required for Yandex stream voices)
+- `YANDEX_STREAM_VOICES` (comma-separated Yandex stream voices; defaults to `alena,jane,zahar,oksana,ermil,marina`)
+- `YANDEX_TTS_LANG`, `YANDEX_TTS_SPEED`, and `YANDEX_TTS_SAMPLE_RATE` (optional Yandex stream voice settings; defaults to `ru-RU`, `1.0`, and `48000`; audio is resampled to the app stream rate)
 - `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://reader.test:11434`)
 - `OCR_DEEPSEEK_MODEL` (default `deepseek-ocr`)
 - `OCR_DEEPSEEK_PROMPT` (default `\n<|grounding|>Convert the\ndocument to markdown.`)

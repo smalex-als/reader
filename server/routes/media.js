@@ -10,6 +10,7 @@ import {
   DEFAULT_VOICE,
   LOCAL_STREAM_VOICES,
   MAX_UPLOAD_BYTES,
+  YANDEX_STREAM_VOICES,
   XAI_STREAM_VOICES,
   voiceProfiles
 } from '../config.js';
@@ -35,6 +36,7 @@ import {
   PCM_STREAM_SAMPLE_RATE
 } from '../lib/streamAudio.js';
 import { generateXaiTtsDebugFile, generateXaiTtsPcmBuffer } from '../lib/xaiTts.js';
+import { generateYandexTtsPcmBuffer } from '../lib/yandexTts.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -137,6 +139,12 @@ function createStreamVoiceOptions() {
       provider: 'xai',
       xaiVoice: voice
     })),
+    ...YANDEX_STREAM_VOICES.map((voice) => ({
+      id: `yandex_${voice}`,
+      label: `${formatProviderVoiceLabel(voice)} - Yandex`,
+      provider: 'yandex',
+      yandexVoice: voice
+    })),
     ...LOCAL_STREAM_VOICES.map((id) => ({
       id,
       label: formatLocalVoiceLabel(id),
@@ -146,6 +154,7 @@ function createStreamVoiceOptions() {
 }
 
 router.get('/api/stream-audio/voices', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.json({
     defaultVoice: DEFAULT_STREAM_VOICE,
     voices: createStreamVoiceOptions()
@@ -274,6 +283,7 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
     typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
   const voiceProfile = voiceProfiles[requestedVoice];
   const xaiVoice = requestedVoice.startsWith('xai_') ? requestedVoice.slice(4) : '';
+  const yandexVoice = requestedVoice.startsWith('yandex_') ? requestedVoice.slice(7) : '';
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const abortController = new AbortController();
   const handleRequestAborted = () => {
@@ -309,6 +319,16 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
         sampleRate: PCM_STREAM_SAMPLE_RATE
       });
       setPcmStreamHeaders(res);
+      res.end(pcmBuffer);
+      return;
+    }
+    if (YANDEX_STREAM_VOICES.includes(yandexVoice)) {
+      const pcmBuffer = await generateYandexTtsPcmBuffer({
+        text,
+        voice: yandexVoice,
+        sampleRate: PCM_STREAM_SAMPLE_RATE,
+        signal: abortController.signal
+      });
       res.end(pcmBuffer);
       return;
     }

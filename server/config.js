@@ -23,6 +23,18 @@ export const STREAM_SERVER =
   process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'http://192.168.1.174:3005';
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
+export const YANDEX_API_KEY = process.env.YANDEX_API_KEY || '';
+export const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID || '';
+export const YANDEX_TTS_LANG = process.env.YANDEX_TTS_LANG || 'ru-RU';
+export const YANDEX_TTS_SPEED = process.env.YANDEX_TTS_SPEED || '1.0';
+export const YANDEX_TTS_SAMPLE_RATE = Number.parseInt(process.env.YANDEX_TTS_SAMPLE_RATE || '48000', 10);
+const parseCsvList = (value) =>
+  typeof value === 'string' && value.trim()
+    ? value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : null;
 export const LOCAL_STREAM_VOICES = [
   'en-Breeze_woman',
   'en-Brutalon_man',
@@ -43,6 +55,14 @@ export const LOCAL_STREAM_VOICES = [
   'en-Soother_woman'
 ];
 export const XAI_STREAM_VOICES = ['ara', 'eve', 'leo', 'rex', 'sal'];
+export const YANDEX_STREAM_VOICES = parseCsvList(process.env.YANDEX_STREAM_VOICES) || [
+  'alena',
+  'jane',
+  'zahar',
+  'oksana',
+  'ermil',
+  'marina'
+];
 
 export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai'; // 'openai' | 'deepseek_ocr'
 export const OCR_TIMEOUT_MS = Number.parseInt(process.env.OCR_TIMEOUT_MS || '20000', 10);
