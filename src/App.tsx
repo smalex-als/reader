@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import { type FloatingAudioPlaybackState, type FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
 import { useAudioController } from '@/hooks/useAudioController';
@@ -458,8 +458,15 @@ export default function App() {
   } = useAudioController(currentImage, showToast);
   const { streamState, startStream, enqueueStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
   const openAiVoice = getStreamVoiceProvider(streamVoice) === 'openai' ? streamVoice : undefined;
-  const isListening = audioState.status === 'playing' || streamState.status === 'streaming';
-  useWakeLock(isFullscreen && isListening);
+  const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
+  const [floatingAudioPlaybackState, setFloatingAudioPlaybackState] = useState<FloatingAudioPlaybackState | 'idle'>(
+    'idle'
+  );
+  const isListening =
+    audioState.status === 'playing' ||
+    streamState.status === 'streaming' ||
+    floatingAudioPlaybackState === 'playing';
+  useWakeLock(isListening);
   const {
     closeTextModal,
     currentText,
@@ -477,7 +484,6 @@ export default function App() {
     updatePageTextBlocks
   } = usePageText(currentImage, showToast);
   const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('deepseek_ocr');
-  const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
   const [displayedChapterText, setDisplayedChapterText] = useState<{
     text: string;
     chapterTitle: string | null;
@@ -487,14 +493,23 @@ export default function App() {
   const [autoFollowStream, setAutoFollowStream] = useState(true);
   const [selectedStreamBlockKey, setSelectedStreamBlockKey] = useState<string | null>(null);
   const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
-    setFloatingAudio(payload);
+    setFloatingAudio(payload.kind ? payload : { ...payload, kind: 'file' });
+    setFloatingAudioPlaybackState('loading');
   }, []);
   const handleCloseFloatingAudio = useCallback(() => {
     if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
       stopAudio();
     }
     setFloatingAudio(null);
+    setFloatingAudioPlaybackState('idle');
   }, [floatingAudio?.kind, stopAudio]);
+  const handleFloatingAudioPlaybackStateChange = useCallback(
+    (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => {
+      setFloatingAudioPlaybackState(state);
+      syncFloatingAudioState(state, track);
+    },
+    [syncFloatingAudioState]
+  );
   const handlePlayPageAudio = useCallback(
     async (provider: 'openai' | 'xai' = 'openai') => {
       stopStream();
@@ -511,12 +526,14 @@ export default function App() {
           : await playAudio(provider, provider === 'openai' ? openAiVoice : undefined);
       if (track) {
         setFloatingAudio(track);
+        setFloatingAudioPlaybackState('loading');
       }
     },
     [bookId, chapterNumber, displayedChapterText, openAiVoice, playAudio, playTextAudio, stopStream, viewMode]
   );
   useEffect(() => {
     setFloatingAudio(null);
+    setFloatingAudioPlaybackState('idle');
   }, [bookId]);
   useEffect(() => {
     setDisplayedChapterText(null);
@@ -527,6 +544,7 @@ export default function App() {
     }
     if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
       setFloatingAudio(null);
+      setFloatingAudioPlaybackState('idle');
     }
   }, [audioState.status, floatingAudio]);
   useEffect(() => {
@@ -1927,7 +1945,7 @@ export default function App() {
       playbackRateOptions: PLAYBACK_RATE_OPTIONS,
       onPlaybackRateChange: handlePlaybackRateChange,
       onClose: handleCloseFloatingAudio,
-      onPlaybackStateChange: syncFloatingAudioState
+      onPlaybackStateChange: handleFloatingAudioPlaybackStateChange
     },
     onOpenSettings: () => setSettingsOpen(true)
   };

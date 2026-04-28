@@ -116,6 +116,14 @@ test('normalizes unicode dashes into smooth speech pauses', () => {
   assert.equal(output, 'Police cars in Germany, with lights and registration marks, were seen nearby. Two-phase commit, Saga.');
 });
 
+test('removes markdown asterisk dividers before speech cleanup', () => {
+  const input = ['Intro paragraph.', '***', 'Next section.', '* * *', 'Final section.'].join('\n');
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'Intro paragraph.\n\nNext section.\n\nFinal section.');
+});
+
 test('does not treat bracketed hash slot ranges as citations', () => {
   const input =
     'The first node contains hash slots \\([0, 5500]\\).\n- The second node contains hash slots \\([5501, 11000]\\).';

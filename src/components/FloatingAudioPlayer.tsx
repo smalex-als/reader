@@ -9,16 +9,15 @@ export type FloatingAudioTrack = {
   pageKey?: string | null;
 };
 
+export type FloatingAudioPlaybackState = 'loading' | 'playing' | 'paused' | 'ended' | 'error';
+
 interface FloatingAudioPlayerProps {
   track: FloatingAudioTrack | null;
   playbackRate: number;
   playbackRateOptions: readonly number[];
   onPlaybackRateChange: (rate: number) => void;
   onClose: () => void;
-  onPlaybackStateChange?: (
-    state: 'loading' | 'playing' | 'paused' | 'ended' | 'error',
-    track: FloatingAudioTrack
-  ) => void;
+  onPlaybackStateChange?: (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => void;
 }
 
 function formatTime(value: number) {

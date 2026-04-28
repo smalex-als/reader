@@ -271,6 +271,7 @@ export function stripMarkdown(text) {
   output = output.replace(HTML_TAG_PATTERN, ' ');
   output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
   output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
+  output = output.replace(/^\s{0,3}(?:\*\s*){3,}$/gm, '');
   output = output.replace(/\*\*(.*?)\*\*/g, '$1');
   output = output.replace(/\*(.*?)\*/g, '$1');
   output = output.replace(/__(.*?)__/g, '$1');

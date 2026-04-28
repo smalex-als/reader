@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { deriveAudioUrl } from '@/lib/paths';
-import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import type { AudioCacheEntry, AudioState } from '@/types/app';
 
 const INITIAL_AUDIO_STATE: AudioState = {
@@ -259,7 +259,7 @@ export function useAudioController(
   }, [audioCache, audioState, currentImage, showToast]);
 
   const syncFloatingAudioState = useCallback(
-    (state: 'loading' | 'playing' | 'paused' | 'ended' | 'error', track: FloatingAudioTrack) => {
+    (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => {
       if (track.kind !== 'page-tts' && track.kind !== 'text-tts') {
         return;
       }
