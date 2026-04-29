@@ -236,7 +236,7 @@ export default function Toolbar({
 
       {showReadingTab ? (
       <div className="toolbar-row">
-        <div className="toolbar-group">
+        <div className="toolbar-group toolbar-group-library">
           <span className="toolbar-group-title">Library</span>
           <span className="toolbar-readout">{currentBook ?? 'None selected'}</span>
           <button type="button" className="button" onClick={onOpenBookModal}>
@@ -244,7 +244,7 @@ export default function Toolbar({
           </button>
         </div>
 
-        <div className="toolbar-group">
+        <div className="toolbar-group toolbar-group-mode">
           <span className="toolbar-group-title">Mode</span>
           <div className="segmented" role="tablist" aria-label="Reading mode">
             <button
@@ -290,7 +290,7 @@ export default function Toolbar({
           </div>
         </div>
 
-        <div className="toolbar-group">
+        <div className="toolbar-group toolbar-group-navigation">
           <span className="toolbar-group-title">Navigation</span>
           <div className="toolbar-nav toolbar-nav-stack">
             <div className="toolbar-nav-actions">

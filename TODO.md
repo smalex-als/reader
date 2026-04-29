@@ -12,6 +12,8 @@
   - judge the recipe
   - create a shopping list for recipe books
 - speech to text
+- text view
+  - auto-scroll to the currently playing block during chapter streaming
 
 Done
 - create a print version for particular pages, ex. current + next, prev + current

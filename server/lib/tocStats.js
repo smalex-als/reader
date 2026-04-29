@@ -15,7 +15,7 @@ function countWords(text) {
   return trimmed.split(/\s+/).filter(Boolean).length;
 }
 
-function createStats(plainText) {
+export function createStats(plainText) {
   const normalized = typeof plainText === 'string' ? plainText.trim() : '';
   const wordCount = countWords(normalized);
   const charCount = normalized.length;

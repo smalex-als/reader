@@ -483,6 +483,11 @@ export default function App() {
     versionLabel: string | null;
     versionId: string | null;
   } | null>(null);
+  const [chapterVersionNavigationRequest, setChapterVersionNavigationRequest] = useState<{
+    id: number;
+    chapterNumber: number;
+    versionId: string;
+  } | null>(null);
   const [autoFollowStream, setAutoFollowStream] = useState(true);
   const [selectedStreamBlockKey, setSelectedStreamBlockKey] = useState<string | null>(null);
   const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
@@ -1863,6 +1868,11 @@ export default function App() {
       mp3VoiceOptions,
       onMp3VoiceChange: handleMp3VoiceChange,
       refreshToken: chapterViewRefresh,
+      versionNavigationRequest: chapterVersionNavigationRequest,
+      onOpenAudioView: () => {
+        setChapterVersionNavigationRequest(null);
+        setViewMode('audio');
+      },
       onDisplayedTextChange: setDisplayedChapterText,
       onFirstParagraphReady: setFirstChapterParagraph,
       onPlayParagraph: handlePlayChapterParagraph,
@@ -1878,7 +1888,16 @@ export default function App() {
       mp3VoiceOptions,
       onMp3VoiceChange: handleMp3VoiceChange,
       showToast,
-      onOpenChapterText: (pageIndex: number) => {
+      onOpenChapterText: (pageIndex: number, versionId?: string, targetChapterNumber?: number) => {
+        if (versionId && targetChapterNumber) {
+          setChapterVersionNavigationRequest((current) => ({
+            id: (current?.id ?? 0) + 1,
+            chapterNumber: targetChapterNumber,
+            versionId
+          }));
+        } else {
+          setChapterVersionNavigationRequest(null);
+        }
         setViewMode('text');
         renderPage(pageIndex);
       },
@@ -1916,7 +1935,11 @@ export default function App() {
           toolbarProps: {
             ...toolbarProps,
             activeTab: settingsTab,
-            onTabChange: setSettingsTab
+            onTabChange: setSettingsTab,
+            onViewModeChange: (mode) => {
+              handleViewModeChange(mode);
+              setSettingsOpen(false);
+            }
           },
           onClose: () => setSettingsOpen(false)
         }}

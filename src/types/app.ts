@@ -101,6 +101,11 @@ export interface ChapterTextVersion {
   label: string;
   file: string;
   filename: string;
+  stats?: {
+    wordCount: number;
+    charCount: number;
+    listeningSeconds: number;
+  };
   createdAt?: string | null;
   promptId?: string | null;
   promptName?: string | null;

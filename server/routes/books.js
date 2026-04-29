@@ -254,6 +254,7 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
         title: entry.title,
         page: entry.page,
         latestVersionId,
+        textVersions: versions?.versions ?? [],
         audio: {
           ready: Boolean(audioStat?.isFile?.()),
           url: `/data/${bookId}/${audioFilename}`,

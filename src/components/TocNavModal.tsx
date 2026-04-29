@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import type { TocEntry } from '@/types/app';
+import { formatListeningTime } from '@/lib/listeningTime';
 import { getDetailedTocLevel } from '@/lib/toc';
 
 interface TocNavModalProps {
@@ -65,17 +66,6 @@ export default function TocNavModal({
       return 'No text';
     }
     return new Intl.NumberFormat(undefined, { notation: value >= 1000 ? 'compact' : 'standard' }).format(value) + ' words';
-  };
-
-  const formatListeningTime = (seconds?: number) => {
-    if (!seconds) {
-      return 'no audio estimate';
-    }
-    const minutes = Math.round(seconds / 60);
-    if (minutes < 1) {
-      return '<1 min';
-    }
-    return `~${minutes} min`;
   };
 
   return (

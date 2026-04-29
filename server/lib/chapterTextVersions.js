@@ -4,6 +4,7 @@ import { assertBookDirectory, loadBookCard } from './books.js';
 import { loadToc } from './toc.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
+import { createStats } from './tocStats.js';
 import { CHAPTER_NARRATION_PROMPT, CHAPTER_REVIEW_EXTRACT_PROMPT, DATA_DIR } from '../config.js';
 import { getOpenAI } from './openai.js';
 
@@ -303,6 +304,22 @@ function buildDerivedVersion(version, bookId) {
   };
 }
 
+async function attachVersionStats(directory, version) {
+  const filePath = path.join(directory, version.filename);
+  const stat = await safeStat(filePath);
+  if (!stat?.isFile()) {
+    return {
+      ...version,
+      stats: createStats('')
+    };
+  }
+  const text = await fs.readFile(filePath, 'utf8');
+  return {
+    ...version,
+    stats: createStats(text)
+  };
+}
+
 export async function listChapterTextVersions({ bookId, chapterNumber }) {
   const { directory, chapterFilename } = await assertBaseChapter({ bookId, chapterNumber });
   const [{ latestVersionId, versions }, promptLibrary] = await Promise.all([
@@ -322,10 +339,14 @@ export async function listChapterTextVersions({ bookId, chapterNumber }) {
       ? latestVersionId
       : derivedVersions.at(-1)?.id ?? 'base';
 
+  const versionsWithStats = await Promise.all(
+    [baseVersion, ...derivedVersions].map((version) => attachVersionStats(directory, version))
+  );
+
   return {
     chapterNumber,
     latestVersionId: effectiveVersionId,
-    versions: [baseVersion, ...derivedVersions],
+    versions: versionsWithStats,
     promptLibrary: promptLibrary.prompts
   };
 }

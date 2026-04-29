@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { TocEntry, ToastMessage } from '@/types/app';
+import type { ChapterTextVersion, TocEntry, ToastMessage } from '@/types/app';
 import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import TrashIcon from '@/components/TrashIcon';
 
@@ -11,7 +11,7 @@ interface AudioViewProps {
   mp3VoiceOptions: readonly { id: string; label: string }[];
   onMp3VoiceChange: (voice: string) => void;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
-  onOpenChapterText: (pageIndex: number) => void;
+  onOpenChapterText: (pageIndex: number, versionId?: string, chapterNumber?: number) => void;
   onPlayAudio: (payload: FloatingAudioTrack) => void;
 }
 
@@ -26,6 +26,7 @@ type AudioChapter = {
   title: string;
   page: number;
   latestVersionId: string;
+  textVersions?: ChapterTextVersion[];
   audio: {
     ready: boolean;
     url: string;
@@ -387,6 +388,7 @@ export default function AudioView({
             {chapters.map((entry) => {
               const chapterStatus = statusMap[entry.chapterNumber];
               const latestVersionId = chapterStatus?.latestVersionId ?? entry.latestVersionId ?? 'base';
+              const textVersions = entry.textVersions ?? [];
               const audioReady =
                 (chapterStatus?.audioReady ?? false) &&
                 (chapterStatus?.audioVersionId ?? entry.audio?.versionId ?? null) === latestVersionId;
@@ -428,6 +430,26 @@ export default function AudioView({
                         {entry.title}
                       </button>
                     </div>
+                    {textVersions.length > 0 ? (
+                      <div className="audio-row-versions" aria-label={`Text versions for chapter ${entry.chapterNumber}`}>
+                        <span className="audio-row-versions-label">Text versions</span>
+                        {textVersions.map((version) => {
+                          const isLatest = version.id === latestVersionId;
+                          return (
+                            <button
+                              key={version.id}
+                              type="button"
+                              className={`audio-version-chip ${isLatest ? 'audio-version-chip-active' : ''}`}
+                              onClick={() => onOpenChapterText(entry.page, version.id, entry.chapterNumber)}
+                              title={version.promptName ? `${version.label} · ${version.promptName}` : version.label}
+                            >
+                              <span>{version.label}</span>
+                              {version.promptName ? <small>{version.promptName}</small> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="audio-row-actions">
                     {showAction ? (

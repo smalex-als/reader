@@ -7,6 +7,7 @@ import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import TrashIcon from '@/components/TrashIcon';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
+import { formatListeningTime } from '@/lib/listeningTime';
 
 interface ChapterViewerProps {
   bookId: string | null;
@@ -33,6 +34,8 @@ interface ChapterViewerProps {
   mp3VoiceOptions: readonly { id: string; label: string }[];
   onMp3VoiceChange: (voice: string) => void;
   refreshToken?: number;
+  versionNavigationRequest?: { id: number; chapterNumber: number; versionId: string } | null;
+  onOpenAudioView: () => void;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onDisplayedTextChange?: (payload: {
     text: string;
@@ -176,6 +179,8 @@ export default function ChapterViewer({
   mp3VoiceOptions,
   onMp3VoiceChange,
   refreshToken = 0,
+  versionNavigationRequest = null,
+  onOpenAudioView,
   onFirstParagraphReady,
   onDisplayedTextChange,
   onPlayParagraph,
@@ -189,6 +194,7 @@ export default function ChapterViewer({
   const [outlineOpen, setOutlineOpen] = useState(true);
   const onPlayParagraphRef = useRef(onPlayParagraph);
   const textViewerRef = useRef<HTMLDivElement | null>(null);
+  const appliedVersionNavigationRequestRef = useRef<number | null>(null);
 
   useEffect(() => {
     onPlayParagraphRef.current = onPlayParagraph;
@@ -339,6 +345,23 @@ export default function ChapterViewer({
     },
     [onDisplayedTextChange, onFirstParagraphReady, selectedVersionId, setSelectedVersionId]
   );
+
+  useEffect(() => {
+    if (!versionNavigationRequest) {
+      return;
+    }
+    if (appliedVersionNavigationRequestRef.current === versionNavigationRequest.id) {
+      return;
+    }
+    if (chapterNumber !== versionNavigationRequest.chapterNumber) {
+      return;
+    }
+    if (!versions.some((version) => version.id === versionNavigationRequest.versionId)) {
+      return;
+    }
+    appliedVersionNavigationRequestRef.current = versionNavigationRequest.id;
+    handleVersionChange(versionNavigationRequest.versionId);
+  }, [chapterNumber, handleVersionChange, versionNavigationRequest, versions]);
 
   useEffect(() => {
     if (!displayText || !chapterNumber) {
@@ -586,7 +609,12 @@ export default function ChapterViewer({
     <div ref={textViewerRef} className="text-viewer" style={textStyle}>
       <header className="text-viewer-header">
         <div className="text-viewer-title">
-          <span className="text-viewer-label">{chapterLabel}</span>
+          <div className="text-viewer-title-kicker">
+            <span className="text-viewer-label">{chapterLabel}</span>
+            <button type="button" className="text-viewer-audio-link" onClick={onOpenAudioView}>
+              Audio
+            </button>
+          </div>
           <h2 className="text-viewer-heading">{chapterTitle ?? 'No chapter selected'}</h2>
         </div>
         {pageMeta ? <div className="text-viewer-meta">{pageMeta}</div> : null}
@@ -603,6 +631,7 @@ export default function ChapterViewer({
                   <option key={version.id} value={version.id}>
                     {version.label}
                     {version.promptName ? ` · ${version.promptName}` : ''}
+                    {` · ${formatListeningTime(version.stats?.listeningSeconds)}`}
                   </option>
                 ))}
               </select>
