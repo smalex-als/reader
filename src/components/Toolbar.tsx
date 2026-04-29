@@ -1,4 +1,4 @@
-import type { AudioState, StreamState } from '@/types/app';
+import type { StreamState } from '@/types/app';
 
 export type ToolbarTab = 'reading' | 'image' | 'audio' | 'study' | 'tools';
 type StreamVoiceOption = {
@@ -47,17 +47,10 @@ interface ToolbarProps {
   onCopyText: () => void;
   onToggleFullscreen: () => void;
   fullscreen: boolean;
-  audioState: AudioState;
-  onPlayAudio: () => void;
-  onPlayXaiAudio: () => void;
-  onStopAudio: () => void;
   streamState: StreamState;
   streamVoice: string;
   streamVoiceOptions: readonly StreamVoiceOption[];
   onStreamVoiceChange: (voice: string) => void;
-  playbackRate: number;
-  playbackRateOptions: readonly number[];
-  onPlaybackRateChange: (rate: number) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
   onCreateChapter: () => void;
@@ -128,17 +121,10 @@ export default function Toolbar({
   onCopyText,
   onToggleFullscreen,
   fullscreen,
-  audioState,
-  onPlayAudio,
-  onPlayXaiAudio,
-  onStopAudio,
   streamState,
   streamVoice,
   streamVoiceOptions,
   onStreamVoiceChange,
-  playbackRate,
-  playbackRateOptions,
-  onPlaybackRateChange,
   onPlayStream,
   onStopStream,
   onCreateChapter,
@@ -169,37 +155,12 @@ export default function Toolbar({
 }: ToolbarProps) {
   const isModal = layout === 'modal';
   const controlsDisabled = manifestLength === 0 || !currentBook;
-  const audioBusy = audioState.status === 'loading' || audioState.status === 'generating';
-  const openAiPlaying = audioState.status === 'playing' && audioState.provider !== 'xai';
-  const xaiPlaying = audioState.status === 'playing' && audioState.provider === 'xai';
-  const openAiAudioHandler = openAiPlaying ? onStopAudio : onPlayAudio;
-  const xaiAudioHandler = xaiPlaying ? onStopAudio : onPlayXaiAudio;
-  const openAiAudioLabel = openAiPlaying ? 'Stop OpenAI TTS' : 'Play OpenAI TTS';
-  const xaiAudioLabel = xaiPlaying ? 'Stop xAI TTS' : 'Play xAI TTS';
   const streamActive =
     streamState.status === 'streaming' ||
     streamState.status === 'connecting' ||
     streamState.status === 'paused';
   const streamHandler = streamActive ? onStopStream : onPlayStream;
   const streamLabel = streamActive ? 'Stop Stream' : 'Play Stream';
-  const formattedSource = audioState.source ? (audioState.source === 'ai' ? 'AI' : 'file') : null;
-  const audioStatusMessage = (() => {
-    switch (audioState.status) {
-      case 'loading':
-        return `Loading ${audioState.provider === 'xai' ? 'xAI' : 'OpenAI'} audio…`;
-      case 'generating':
-        return audioState.provider === 'xai' ? 'Generating xAI audio…' : 'Streaming OpenAI audio…';
-      case 'playing':
-        return `Playing ${audioState.provider === 'xai' ? 'xAI' : 'OpenAI'} audio${formattedSource ? ` (${formattedSource})` : ''}`;
-      case 'paused':
-        return `${audioState.provider === 'xai' ? 'xAI' : 'OpenAI'} audio paused${formattedSource ? ` (${formattedSource})` : ''}`;
-      case 'error':
-        return audioState.error ?? 'Audio unavailable';
-      default:
-        return null;
-    }
-  })();
-  const showAudioStatus = audioStatusMessage !== null;
   const showOcrStatus = ocrQueueTotal > 0;
   const ocrStatusText = (() => {
     if (!showOcrStatus) {
@@ -516,49 +477,6 @@ export default function Toolbar({
 
       {showAudioTab || showStudyTab || showToolsTab ? (
       <div className="toolbar-row">
-        {showAudioTab ? (
-          <div className="toolbar-group">
-            <span className="toolbar-group-title">OpenAI TTS</span>
-            <button
-              type="button"
-              className="button"
-              onClick={openAiAudioHandler}
-              disabled={controlsDisabled || audioBusy}
-            >
-              {openAiAudioLabel}
-            </button>
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={xaiAudioHandler}
-              disabled={controlsDisabled || audioBusy}
-            >
-              {xaiAudioLabel}
-            </button>
-            <label className="toolbar-field">
-              Speed
-              <select
-                className="select"
-                value={playbackRate}
-                disabled={controlsDisabled}
-                onChange={(event) => onPlaybackRateChange(Number(event.target.value))}
-              >
-                {playbackRateOptions.map((rate) => (
-                  <option key={rate} value={rate}>
-                    {rate}x
-                  </option>
-                ))}
-              </select>
-            </label>
-            {showAudioStatus && (
-              <div className="toolbar-status" role="status" aria-live="polite">
-                {audioBusy && <span className="toolbar-spinner" aria-hidden />}
-                <span className="toolbar-status-text">{audioStatusMessage}</span>
-              </div>
-            )}
-          </div>
-        ) : null}
-
         {showAudioTab ? (
         <div className="toolbar-group">
           <span className="toolbar-group-title">Stream</span>

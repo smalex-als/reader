@@ -135,11 +135,6 @@ export interface BookCard {
   bookType: 'image' | 'text';
 }
 
-export interface AudioCacheEntry {
-  url: string;
-  source: 'file' | 'ai';
-}
-
 export interface ViewerPan {
   x: number;
   y: number;
@@ -185,7 +180,6 @@ export interface AppState {
   toast: ToastMessage | null;
   textModalOpen: boolean;
   textCache: Record<string, PageText>;
-  audioCache: Record<string, AudioCacheEntry>;
   audioState: AudioState;
   streamState: StreamState;
   loading: boolean;

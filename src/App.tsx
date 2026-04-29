@@ -213,10 +213,6 @@ export default function App() {
     () => defaultStreamVoice || streamVoiceOptions[0]?.id || '',
     [defaultStreamVoice, streamVoiceOptions]
   );
-  const getStreamVoiceProvider = useCallback(
-    (voice: string) => streamVoiceOptions.find((option) => option.id === voice)?.provider ?? null,
-    [streamVoiceOptions]
-  );
   const mp3VoiceOptions = useMemo(
     () => streamVoiceOptions.filter((option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'),
     [streamVoiceOptions]
@@ -449,15 +445,12 @@ export default function App() {
 
   const {
     audioState,
-    playAudio,
-    playTextAudio,
     resetAudio,
     resetAudioCache,
     syncFloatingAudioState,
     stopAudio
-  } = useAudioController(currentImage, showToast);
+  } = useAudioController(currentImage);
   const { streamState, startStream, enqueueStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
-  const openAiVoice = getStreamVoiceProvider(streamVoice) === 'openai' ? streamVoice : undefined;
   const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
   const [floatingAudioPlaybackState, setFloatingAudioPlaybackState] = useState<FloatingAudioPlaybackState | 'idle'>(
     'idle'
@@ -509,27 +502,6 @@ export default function App() {
       syncFloatingAudioState(state, track);
     },
     [syncFloatingAudioState]
-  );
-  const handlePlayPageAudio = useCallback(
-    async (provider: 'openai' | 'xai' = 'openai') => {
-      stopStream();
-      const track =
-        viewMode === 'text' && displayedChapterText?.text
-          ? await playTextAudio({
-              text: displayedChapterText.text,
-              title: provider === 'xai' ? 'xAI TTS' : 'OpenAI TTS',
-              subtitle: displayedChapterText.versionLabel ?? displayedChapterText.chapterTitle ?? 'Chapter text',
-              provider,
-              voice: provider === 'openai' ? openAiVoice : undefined,
-              cacheKey: `${bookId ?? 'book'}:${chapterNumber ?? 'chapter'}:${displayedChapterText.versionId ?? 'base'}`
-            })
-          : await playAudio(provider, provider === 'openai' ? openAiVoice : undefined);
-      if (track) {
-        setFloatingAudio(track);
-        setFloatingAudioPlaybackState('loading');
-      }
-    },
-    [bookId, chapterNumber, displayedChapterText, openAiVoice, playAudio, playTextAudio, stopStream, viewMode]
   );
   useEffect(() => {
     setFloatingAudio(null);
@@ -1388,11 +1360,6 @@ export default function App() {
     setViewMode: handleViewModeChange,
     handlePrev,
     handleNext,
-    audioStatus: audioState.status,
-    playAudio: () => handlePlayPageAudio('openai'),
-    playXaiAudio: () => handlePlayPageAudio('xai'),
-    stopAudio,
-    stopStream,
     streamStatus: streamState.status,
     handleStopStream,
     handlePlayStream: handlePlayVisibleStream,
@@ -1492,21 +1459,10 @@ export default function App() {
     onCopyText: handleCopyText,
     onToggleFullscreen: () => void toggleFullscreen(),
     fullscreen: isFullscreen,
-    audioState,
-    onPlayAudio: () => {
-      void handlePlayPageAudio('openai');
-    },
-    onPlayXaiAudio: () => {
-      void handlePlayPageAudio('xai');
-    },
-    onStopAudio: stopAudio,
     streamState,
     streamVoice,
     streamVoiceOptions,
     onStreamVoiceChange: handleActiveStreamVoiceChange,
-    playbackRate,
-    playbackRateOptions: PLAYBACK_RATE_OPTIONS,
-    onPlaybackRateChange: handlePlaybackRateChange,
     onPlayStream: () => void handlePlayVisibleStream(),
     onStopStream: handleStopStream,
     onCreateChapter: () => {

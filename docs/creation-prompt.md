@@ -4,11 +4,10 @@ Front end
 - Populate the list of books by calling `GET /api/books`. When a book is chosen, call `GET /api/books/:id/manifest` to obtain page image URLs (under `/data/{bookId}/filename.ext`).
 - Initialize shared library state from `GET /api/library/state`, then keep `lastBook`, per-book `lastPage`, recent/saved metadata, and sort mode synced via `PUT /api/library/state`.
 - Controls: Prev/Next, page counter, Zoom In/Out, Reset (100%), Fit Width/Height, Rotate 90 degrees, Invert colors, brightness/contrast sliders (50-200), Go-to page, Fullscreen. All update app state, call helpers like `renderPage`, `applyZoomMode`, `applyFilters`, `updatePan`, and persist changes.
-- Implement mouse drag panning within the viewer, wheel-based panning, clamped to content bounds. Support keyboard shortcuts: arrows/PageUp/PageDown/Space for navigation, +/-/0 zoom controls, W/H fit, R rotate, I invert, X text modal, P play audio, G focus goto input, F fullscreen, B book selector, Shift+/ help, Esc closes modal.
+- Implement mouse drag panning within the viewer, wheel-based panning, clamped to content bounds. Support keyboard shortcuts: arrows/PageUp/PageDown/Space for navigation, +/-/0 zoom controls, W/H fit, R rotate, I invert, X text modal, S streaming audio, G focus goto input, F fullscreen, B book selector, Shift+/ help, Esc closes modal.
 - Maintain a toast helper that shows temporary status messages.
 - Modal `textModal` toggles open/close; fetch page text via `/api/page-text?image=/data/...` (append `skipCache=1` to force regeneration). Cache text per page; mark generated content when the source is `ai` or regeneration is forced.
-- Audio: manage `Audio` element, cache URLs. Attempt to reuse existing `.mp3` next to the image (`/data/.../page.mp3`). Otherwise POST `/api/page-audio` with `{ image, voice? }` (the server loads text as needed) and use returned URL. Handle play/pause/end states, stop audio when navigating.
-- Streaming audio: connect to `VITE_STREAM_SERVER` (WebSocket `/stream` endpoint) and stream audio to a worklet via `/public/stream-worklet.js`. Allow voice selection, defaulting to `VITE_STREAM_VOICE`.
+- Streaming audio: send text to the server streaming endpoints and play PCM audio through `/public/stream-worklet.js`. Allow voice selection, defaulting to `VITE_STREAM_VOICE`.
 - Bookmarks: toggle and list entries, read/write via the bookmarks API.
 - OCR queue: batch enqueue pages for `/api/page-text`, pause/resume, retry failed jobs, and show progress.
 - Table of contents: view entries in a nav modal, edit entries in a manage modal, generate entries from OCR snippets.
@@ -24,7 +23,7 @@ Back end (`server.js`)
 - `GET /api/page-text?image=/data/...`: if matching `.txt` file exists and `skipCache` is not set, return `{ source: 'file', text }`. Otherwise generate OCR text, persist `.txt`, and return `{ source: 'ai', text }`.
 - OCR backend: default `llmproxy` that POSTs to `LLMPROXY_ENDPOINT` with `TEXT_PROMPT`, `LLMPROXY_MODEL`, and `LLMPROXY_AUTH`. Alternate backend `openai` runs `gpt-5.2` vision with `TEXT_PROMPT` (requires `OPENAI_API_KEY`). Use `openai_compat` for OpenAI-compatible endpoints with `OCR_OPENAI_BASE_URL` and `OCR_OPENAI_MODEL`.
 - OCR prompts can be model- or backend-specific: add `server/prompts/text.<model>.txt` or `text.<backend>.txt` (normalized to lowercase with non-alphanumerics replaced by `_`). Falls back to `text.txt`.
-- `POST /api/page-audio`: accept JSON `{ image, voice? }`, validate under `/data`, reuse existing `.mp3` or call OpenAI TTS (`gpt-4o-mini-tts`) using a default "santa" profile unless another valid voice is requested. Load or generate the corresponding page text server-side, save generated audio alongside the image, and return `{ source:'ai'|'file', url }`.
+- `POST /api/stream-audio/pcm`: accept `{ text, voice? }`, generate streaming PCM audio via the selected provider, and return raw PCM with audio metadata headers.
 - `POST /api/upload/pdf`: accept multipart PDF uploads, convert to JPEG pages with `pdftoppm`, and create a new book directory.
 - `POST /api/books/:id/print`: accept `{ pages: string[] }`, create a PDF from PNG/JPEG images (max 10 pages).
 - Bookmarks: `GET/POST/DELETE /api/books/:id/bookmarks` read/write `bookmarks.txt`.

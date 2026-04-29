@@ -18,12 +18,10 @@ import { createHttpError } from '../lib/errors.js';
 import { asyncHandler } from '../lib/async.js';
 import { loadPageText, savePageText } from '../lib/ocr.js';
 import {
-  createPageAudioStream,
-  createTextAudioStream,
-  createTextPcmSpeechStream,
-  handlePageAudio,
-  handleTextAudio,
-  resolvePageAudioOutput
+  createSpeechResponse,
+  resolvePageAudioOutput,
+  resolvePageSpeechInput,
+  resolveTextSpeechInput
 } from '../lib/audio.js';
 import { createBookFromPdf } from '../lib/pdf.js';
 import { invalidateSearchIndexForImage } from '../lib/search.js';
@@ -37,9 +35,14 @@ import {
 } from '../lib/streamAudio.js';
 import { generateXaiTtsDebugFile, generateXaiTtsPcmBuffer } from '../lib/xaiTts.js';
 import { generateYandexTtsPcmBuffer } from '../lib/yandexTts.js';
+import { createTtsLogTimer } from '../lib/ttsLog.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
+const TTS_PROVIDER_OPENAI = 'openai';
+const TTS_PROVIDER_XAI = 'xai';
+const TTS_PROVIDER_YANDEX = 'yandex';
+const TTS_PROVIDER_STREAMING = 'streaming';
 
 function toNodeReadableStream(streamBody) {
   if (!streamBody) {
@@ -56,11 +59,13 @@ function toNodeReadableStream(streamBody) {
 
 async function writeStreamResponse(stream, res, setHeaders) {
   let started = false;
+  let bytesWritten = 0;
 
   for await (const chunk of stream) {
     if (!chunk || chunk.length === 0) {
       continue;
     }
+    bytesWritten += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
     if (!started) {
       setHeaders();
       started = true;
@@ -95,6 +100,7 @@ async function writeStreamResponse(stream, res, setHeaders) {
     setHeaders();
   }
   res.end();
+  return bytesWritten;
 }
 
 function setPcmStreamHeaders(res) {
@@ -115,6 +121,58 @@ function resolveVoiceProfile(voice) {
   return voiceProfiles[DEFAULT_VOICE];
 }
 
+function resolveOpenAiTtsTarget(voice) {
+  const voiceProfile = resolveVoiceProfile(voice);
+  return {
+    provider: TTS_PROVIDER_OPENAI,
+    voice: voiceProfile.openAiVoice,
+    voiceProfile
+  };
+}
+
+function resolvePcmTtsTarget(voice) {
+  const requestedVoice =
+    typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
+  const voiceProfile = voiceProfiles[requestedVoice];
+  const xaiVoice = requestedVoice.startsWith('xai_') ? requestedVoice.slice(4) : '';
+  const yandexVoice = requestedVoice.startsWith('yandex_') ? requestedVoice.slice(7) : '';
+
+  if (voiceProfile) {
+    return {
+      provider: TTS_PROVIDER_OPENAI,
+      voice: voiceProfile.openAiVoice,
+      voiceProfile,
+      xaiVoice: '',
+      yandexVoice: ''
+    };
+  }
+  if (XAI_STREAM_VOICES.includes(xaiVoice)) {
+    return {
+      provider: TTS_PROVIDER_XAI,
+      voice: xaiVoice,
+      voiceProfile: null,
+      xaiVoice,
+      yandexVoice: ''
+    };
+  }
+  if (YANDEX_STREAM_VOICES.includes(yandexVoice)) {
+    return {
+      provider: TTS_PROVIDER_YANDEX,
+      voice: yandexVoice,
+      voiceProfile: null,
+      xaiVoice: '',
+      yandexVoice
+    };
+  }
+  return {
+    provider: TTS_PROVIDER_STREAMING,
+    voice: typeof voice === 'string' && voice.trim() ? voice.trim() : DEFAULT_STREAM_VOICE,
+    voiceProfile: null,
+    xaiVoice: '',
+    yandexVoice: ''
+  };
+}
+
 function formatProviderVoiceLabel(voice) {
   return `${voice.charAt(0).toUpperCase()}${voice.slice(1)}`;
 }
@@ -130,25 +188,25 @@ function createStreamVoiceOptions() {
     ...Object.entries(voiceProfiles).map(([id, profile]) => ({
       id,
       label: `${formatProviderVoiceLabel(id)} - OpenAI (${profile.openAiVoice})`,
-      provider: 'openai',
+      provider: TTS_PROVIDER_OPENAI,
       openAiVoice: profile.openAiVoice
     })),
     ...XAI_STREAM_VOICES.map((voice) => ({
       id: `xai_${voice}`,
       label: `${formatProviderVoiceLabel(voice)} - xAI`,
-      provider: 'xai',
+      provider: TTS_PROVIDER_XAI,
       xaiVoice: voice
     })),
     ...YANDEX_STREAM_VOICES.map((voice) => ({
       id: `yandex_${voice}`,
       label: `${formatProviderVoiceLabel(voice)} - Yandex`,
-      provider: 'yandex',
+      provider: TTS_PROVIDER_YANDEX,
       yandexVoice: voice
     })),
     ...LOCAL_STREAM_VOICES.map((id) => ({
       id,
       label: formatLocalVoiceLabel(id),
-      provider: 'streaming'
+      provider: TTS_PROVIDER_STREAMING
     }))
   ];
 }
@@ -188,32 +246,6 @@ router.post('/api/page-text', asyncHandler(async (req, res) => {
   res.json({ source: result.source, text: result.text });
 }));
 
-router.post('/api/page-audio', asyncHandler(async (req, res) => {
-  const { image, voice, provider } = req.body || {};
-  if (!image) {
-    throw createHttpError(400, 'Image is required');
-  }
-  const voiceProfile = resolveVoiceProfile(voice);
-  const result = await handlePageAudio({
-    image,
-    voiceProfile,
-    provider: provider === 'xai' ? 'xai' : 'openai'
-  });
-  res.json(result);
-}));
-
-router.post('/api/text-audio', asyncHandler(async (req, res) => {
-  const { text, voice, provider } = req.body || {};
-  const voiceProfile = resolveVoiceProfile(voice);
-  const result = await handleTextAudio({
-    text,
-    voiceProfile,
-    provider: provider === 'xai' ? 'xai' : 'openai',
-    voice: typeof voice === 'string' ? voice.trim() : ''
-  });
-  res.json(result);
-}));
-
 router.get('/api/page-audio/stream', asyncHandler(async (req, res) => {
   const image = req.query.image;
   if (!image || typeof image !== 'string') {
@@ -221,70 +253,84 @@ router.get('/api/page-audio/stream', asyncHandler(async (req, res) => {
   }
 
   const voiceParam = req.query.voice;
-  const voiceProfile = resolveVoiceProfile(voiceParam);
+  const target = resolveOpenAiTtsTarget(voiceParam);
+  const log = createTtsLogTimer({
+    scope: 'api',
+    endpoint: '/api/page-audio/stream',
+    method: 'GET',
+    provider: target.provider,
+    voice: target.voice,
+    format: 'mp3',
+    image
+  });
+  let spokenText = '';
 
-  const speech = await createPageAudioStream({ image, voiceProfile });
-  const contentType = speech.headers.get('content-type') || 'audio/mpeg';
-  res.setHeader('Content-Type', contentType);
-  res.setHeader('Cache-Control', 'no-store');
-  const { audioAbsolute } = resolvePageAudioOutput(image);
-  const tempAudioPath = `${audioAbsolute}.part-${Date.now()}-${process.pid}`;
+  try {
+    const resolved = await resolvePageSpeechInput(image);
+    spokenText = resolved.spokenText;
+    const speech = await createSpeechResponse({
+      spokenText,
+      voiceProfile: target.voiceProfile,
+      responseFormat: 'mp3'
+    });
+    const contentType = speech.headers.get('content-type') || 'audio/mpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'no-store');
+    const { audioAbsolute } = resolvePageAudioOutput(image);
+    const tempAudioPath = `${audioAbsolute}.part-${Date.now()}-${process.pid}`;
+    let responseBytes = null;
 
-  const bodyStream = toNodeReadableStream(speech.body);
-  if (bodyStream) {
-    await fs.mkdir(path.dirname(audioAbsolute), { recursive: true });
+    const bodyStream = toNodeReadableStream(speech.body);
+    if (bodyStream) {
+      await fs.mkdir(path.dirname(audioAbsolute), { recursive: true });
 
-    const streamForClient = new PassThrough();
-    const streamForFile = new PassThrough();
-    bodyStream.pipe(streamForClient);
-    bodyStream.pipe(streamForFile);
+      const streamForClient = new PassThrough();
+      const streamForFile = new PassThrough();
+      bodyStream.pipe(streamForClient);
+      bodyStream.pipe(streamForFile);
 
-    try {
-      await Promise.all([
-        pipeline(streamForClient, res),
-        pipeline(streamForFile, createWriteStream(tempAudioPath))
-      ]);
-      await fs.rename(tempAudioPath, audioAbsolute);
-    } catch (error) {
-      await fs.rm(tempAudioPath, { force: true }).catch(() => {});
-      throw error;
+      try {
+        await Promise.all([
+          pipeline(streamForClient, res),
+          pipeline(streamForFile, createWriteStream(tempAudioPath))
+        ]);
+        await fs.rename(tempAudioPath, audioAbsolute);
+        const audioStat = await fs.stat(audioAbsolute).catch(() => null);
+        responseBytes = audioStat?.size ?? null;
+      } catch (error) {
+        await fs.rm(tempAudioPath, { force: true }).catch(() => {});
+        throw error;
+      }
+      await log.finish({ status: 'ok', source: 'ai', responseBytes, text: spokenText });
+      return;
     }
-    return;
+
+    const fallback = Buffer.from(await speech.arrayBuffer());
+    await fs.mkdir(path.dirname(audioAbsolute), { recursive: true });
+    await fs.writeFile(tempAudioPath, fallback);
+    await fs.rename(tempAudioPath, audioAbsolute);
+    res.end(fallback);
+    await log.finish({ status: 'ok', source: 'ai', responseBytes: fallback.length, text: spokenText });
+  } catch (error) {
+    await log.finish({ status: res.writableEnded ? 'aborted' : 'error', error, text: spokenText });
+    throw error;
   }
-
-  const fallback = Buffer.from(await speech.arrayBuffer());
-  await fs.mkdir(path.dirname(audioAbsolute), { recursive: true });
-  await fs.writeFile(tempAudioPath, fallback);
-  await fs.rename(tempAudioPath, audioAbsolute);
-  res.end(fallback);
-}));
-
-router.post('/api/text-audio/stream', asyncHandler(async (req, res) => {
-  const { text, voice } = req.body || {};
-  const voiceProfile = resolveVoiceProfile(voice);
-  const speech = await createTextAudioStream({ text, voiceProfile });
-  const contentType = speech.headers.get('content-type') || 'audio/mpeg';
-  res.setHeader('Content-Type', contentType);
-  res.setHeader('Cache-Control', 'no-store');
-
-  const bodyStream = toNodeReadableStream(speech.body);
-  if (bodyStream) {
-    await pipeline(bodyStream, res);
-    return;
-  }
-
-  const fallback = Buffer.from(await speech.arrayBuffer());
-  res.end(fallback);
 }));
 
 router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
   const { text, voice } = req.body || {};
-  const requestedVoice =
-    typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
-  const voiceProfile = voiceProfiles[requestedVoice];
-  const xaiVoice = requestedVoice.startsWith('xai_') ? requestedVoice.slice(4) : '';
-  const yandexVoice = requestedVoice.startsWith('yandex_') ? requestedVoice.slice(7) : '';
+  const target = resolvePcmTtsTarget(voice);
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const log = createTtsLogTimer({
+    requestId,
+    scope: 'api',
+    endpoint: '/api/stream-audio/pcm',
+    method: 'POST',
+    provider: target.provider,
+    voice: target.voice,
+    format: 'pcm_s16le',
+    text: typeof text === 'string' ? text : ''
+  });
   const abortController = new AbortController();
   const handleRequestAborted = () => {
     abortController.abort();
@@ -297,39 +343,46 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
   req.once('aborted', handleRequestAborted);
   res.once('close', handleResponseClosed);
   try {
-    if (voiceProfile) {
-      const speech = await createTextPcmSpeechStream({
-        text,
-        voiceProfile
+    if (target.voiceProfile) {
+      const { spokenText } = resolveTextSpeechInput(text);
+      const speech = await createSpeechResponse({
+        spokenText,
+        voiceProfile: target.voiceProfile,
+        responseFormat: 'pcm'
       });
       const bodyStream = toNodeReadableStream(speech.body);
       if (bodyStream) {
-        await writeStreamResponse(bodyStream, res, () => setPcmStreamHeaders(res));
+        const responseBytes = await writeStreamResponse(bodyStream, res, () => setPcmStreamHeaders(res));
+        await log.finish({ status: 'ok', source: 'ai', responseBytes, text: spokenText });
         return;
       }
       const fallback = Buffer.from(await speech.arrayBuffer());
       setPcmStreamHeaders(res);
       res.end(fallback);
+      await log.finish({ status: 'ok', source: 'ai', responseBytes: fallback.length, text: spokenText });
       return;
     }
-    if (XAI_STREAM_VOICES.includes(xaiVoice)) {
+    if (target.xaiVoice) {
       const pcmBuffer = await generateXaiTtsPcmBuffer({
         text,
-        voice: xaiVoice,
+        voice: target.xaiVoice,
         sampleRate: PCM_STREAM_SAMPLE_RATE
       });
       setPcmStreamHeaders(res);
       res.end(pcmBuffer);
+      await log.finish({ status: 'ok', source: 'ai', responseBytes: pcmBuffer.length });
       return;
     }
-    if (YANDEX_STREAM_VOICES.includes(yandexVoice)) {
+    if (target.yandexVoice) {
       const pcmBuffer = await generateYandexTtsPcmBuffer({
         text,
-        voice: yandexVoice,
+        voice: target.yandexVoice,
         sampleRate: PCM_STREAM_SAMPLE_RATE,
         signal: abortController.signal
       });
+      setPcmStreamHeaders(res);
       res.end(pcmBuffer);
+      await log.finish({ status: 'ok', source: 'ai', responseBytes: pcmBuffer.length });
       return;
     }
 
@@ -339,15 +392,19 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
       abortController.signal,
       requestId
     );
-    await writeStreamResponse(pcmStream, res, () => setPcmStreamHeaders(res));
+    const responseBytes = await writeStreamResponse(pcmStream, res, () => setPcmStreamHeaders(res));
+    await log.finish({ status: 'ok', source: 'streaming', responseBytes });
   } catch (error) {
     if (abortController.signal.aborted || req.aborted || !res.writable) {
+      await log.finish({ status: 'aborted', error });
       return;
     }
     if (res.headersSent) {
+      await log.finish({ status: 'error', error });
       res.destroy(error);
       return;
     }
+    await log.finish({ status: 'error', error });
     throw error;
   } finally {
     req.off('aborted', handleRequestAborted);
@@ -358,6 +415,16 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
 router.post('/api/stream-audio/wav', asyncHandler(async (req, res) => {
   const { text, voice } = req.body || {};
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const log = createTtsLogTimer({
+    requestId,
+    scope: 'api',
+    endpoint: '/api/stream-audio/wav',
+    method: 'POST',
+    provider: TTS_PROVIDER_STREAMING,
+    voice: typeof voice === 'string' && voice.trim() ? voice.trim() : DEFAULT_STREAM_VOICE,
+    format: 'wav',
+    text: typeof text === 'string' ? text : ''
+  });
   const abortController = new AbortController();
   const handleRequestAborted = () => {
     abortController.abort();
@@ -383,10 +450,13 @@ router.post('/api/stream-audio/wav', asyncHandler(async (req, res) => {
 
   try {
     await pipeline(wavStream, res);
+    await log.finish({ status: 'ok', source: 'streaming' });
   } catch (error) {
     if (abortController.signal.aborted || req.aborted || !res.writable) {
+      await log.finish({ status: 'aborted', error });
       return;
     }
+    await log.finish({ status: 'error', error });
     throw error;
   } finally {
     req.off('aborted', handleRequestAborted);

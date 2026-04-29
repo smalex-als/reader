@@ -1,6 +1,6 @@
 import { useEffect, useMemo, type RefObject } from 'react';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
-import type { AppSettings, AudioState, StreamState, ViewerPan } from '@/types/app';
+import type { AppSettings, StreamState, ViewerPan } from '@/types/app';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
@@ -20,11 +20,6 @@ type HotkeysOptions = {
   setViewMode: (mode: ViewMode) => void;
   handlePrev: () => void;
   handleNext: () => void;
-  audioStatus: AudioState['status'];
-  playAudio: () => Promise<void> | void;
-  playXaiAudio: () => Promise<void> | void;
-  stopAudio: () => void;
-  stopStream: () => void;
   streamStatus: StreamState['status'];
   handleStopStream: () => void;
   handlePlayStream: () => Promise<void> | void;
@@ -92,11 +87,6 @@ export function useHotkeys({
   setViewMode,
   handlePrev,
   handleNext,
-  audioStatus,
-  playAudio,
-  playXaiAudio,
-  stopAudio,
-  stopStream,
   streamStatus,
   handleStopStream,
   handlePlayStream,
@@ -163,8 +153,6 @@ export function useHotkeys({
       { keys: '3', action: 'Switch to text view' },
       { keys: '7', action: 'Open quiz' },
       { keys: '8', action: 'Open vocabulary' },
-      { keys: 'P', action: 'Play/Pause audio' },
-      { keys: 'X', action: 'Play xAI TTS' },
       { keys: 'S', action: 'Play/Stop stream audio' },
       { keys: 'G', action: 'Focus Go To input' },
       { keys: 'F', action: 'Toggle fullscreen' },
@@ -319,24 +307,6 @@ export function useHotkeys({
           event.preventDefault();
           onOpenVocabulary();
           break;
-        case 'p':
-          event.preventDefault();
-          if (audioStatus === 'playing') {
-            stopAudio();
-          } else {
-            stopStream();
-            void playAudio();
-          }
-          break;
-        case 'x':
-          event.preventDefault();
-          if (audioStatus === 'playing') {
-            stopAudio();
-          } else {
-            stopStream();
-            void playXaiAudio();
-          }
-          break;
         case 's':
           event.preventDefault();
           if (streamStatus === 'streaming' || streamStatus === 'connecting' || streamStatus === 'paused') {
@@ -446,17 +416,12 @@ export function useHotkeys({
   }, [
     applyFilters,
     applyZoomModeWithAlign,
-    audioStatus,
-    playAudio,
-    playXaiAudio,
     resetTransform,
     updatePan,
     settings.invert,
     settings.pan.x,
     settings.pan.y,
     settings.zoom,
-    stopAudio,
-    stopStream,
     handleStopStream,
     handlePlayStream,
     closeTextModal,

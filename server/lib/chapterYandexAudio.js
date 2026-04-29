@@ -94,6 +94,7 @@ export async function generateChapterYandexAudio({
 
   return {
     mp3Url: preparation.mp3Url,
+    cleanText: preparation.cleanText,
     versionId: preparation.versionId
   };
 }

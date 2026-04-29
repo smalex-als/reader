@@ -10,6 +10,7 @@ import {
 } from './streamAudio.js';
 import { generateChapterXaiAudio } from './chapterXaiAudio.js';
 import { generateChapterYandexAudio } from './chapterYandexAudio.js';
+import { createTtsLogTimer } from './ttsLog.js';
 
 const JOB_STORE_PATH = path.join(DATA_DIR, 'chapter-audio-jobs.json');
 const activeSignals = new Map();
@@ -143,6 +144,25 @@ async function finalizeFailure(bookId, chapterNumber, error) {
 async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = null, provider = 'default' }) {
   const key = getJobKey(bookId, chapterNumber);
   let preparation = null;
+  const normalizedProvider = provider === 'xai' || provider === 'yandex' ? provider : 'streaming';
+  const jobLog = createTtsLogTimer({
+    scope: 'job',
+    endpoint: 'chapter-audio',
+    provider: normalizedProvider,
+    voice: voice || null,
+    format: 'mp3',
+    bookId,
+    chapterNumber,
+    versionId: versionId ?? 'base'
+  });
+  let jobLogged = false;
+  const finishJobLog = async (result) => {
+    if (jobLogged) {
+      return;
+    }
+    jobLogged = true;
+    await jobLog.finish(result);
+  };
   try {
     await updateJob(bookId, chapterNumber, {
       provider,
@@ -167,6 +187,14 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
         audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
         error: null
       });
+      await finishJobLog({
+        status: 'ok',
+        source: 'existingAudioUrl' in result ? 'file' : 'ai',
+        cacheHit: 'existingAudioUrl' in result,
+        audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
+        text: 'cleanText' in result ? result.cleanText : '',
+        versionId: result.versionId ?? versionId ?? 'base'
+      });
       return;
     }
 
@@ -178,6 +206,14 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
         versionId: result.versionId ?? versionId ?? 'base',
         audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
         error: null
+      });
+      await finishJobLog({
+        status: 'ok',
+        source: 'existingAudioUrl' in result ? 'file' : 'ai',
+        cacheHit: 'existingAudioUrl' in result,
+        audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
+        text: 'cleanText' in result ? result.cleanText : '',
+        versionId: result.versionId ?? versionId ?? 'base'
       });
       return;
     }
@@ -191,6 +227,14 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
         audioUrl: preparation.existingAudioUrl,
         error: null
       });
+      await finishJobLog({
+        status: 'ok',
+        source: 'file',
+        cacheHit: true,
+        audioUrl: preparation.existingAudioUrl,
+        text: '',
+        versionId: preparation.versionId ?? versionId ?? 'base'
+      });
       return;
     }
 
@@ -198,12 +242,38 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
     let pcmLength = 0;
     let canceled = false;
     try {
-      for (const chunk of preparation.textChunks) {
+      for (let index = 0; index < preparation.textChunks.length; index += 1) {
+        const chunk = preparation.textChunks[index];
         if (signal?.canceled) {
           canceled = true;
           break;
         }
-        const pcmBuffer = await streamChapterAudioChunk(chunk, voice);
+        const chunkLog = createTtsLogTimer({
+          scope: 'job',
+          endpoint: 'chapter-audio-chunk',
+          provider: 'streaming',
+          voice: voice || null,
+          format: 'pcm_s16le',
+          bookId,
+          chapterNumber,
+          versionId: preparation.versionId,
+          chunkIndex: index + 1,
+          chunkCount: preparation.textChunks.length,
+          text: chunk
+        });
+        let pcmBuffer;
+        try {
+          pcmBuffer = await streamChapterAudioChunk(chunk, voice);
+          await chunkLog.finish({
+            status: 'ok',
+            source: 'streaming',
+            responseBytes: pcmBuffer.length,
+            text: chunk
+          });
+        } catch (error) {
+          await chunkLog.finish({ status: 'error', error, text: chunk });
+          throw error;
+        }
         if (!pcmBuffer.length) {
           throw createHttpError(502, 'No audio returned from streaming service');
         }
@@ -224,6 +294,12 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
         }
       }
       await updateJob(bookId, chapterNumber, { status: 'canceled' });
+      await finishJobLog({
+        status: 'aborted',
+        source: 'streaming',
+        text: preparation.cleanText,
+        versionId: preparation.versionId
+      });
       return;
     }
 
@@ -248,6 +324,15 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
       audioUrl: preparation.mp3Url,
       error: null
     });
+    await finishJobLog({
+      status: 'ok',
+      source: 'streaming',
+      cacheHit: false,
+      responseBytes: mp3Stat.size,
+      audioUrl: preparation.mp3Url,
+      text: preparation.cleanText,
+      versionId: preparation.versionId ?? versionId ?? 'base'
+    });
   } catch (error) {
     if (preparation?.pcmPath) {
       try {
@@ -259,6 +344,12 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
       }
     }
     await finalizeFailure(bookId, chapterNumber, error);
+    await finishJobLog({
+      status: 'error',
+      error,
+      text: preparation?.cleanText ?? '',
+      versionId: preparation?.versionId ?? versionId ?? 'base'
+    });
   } finally {
     activeSignals.delete(key);
   }
