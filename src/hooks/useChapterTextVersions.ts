@@ -56,6 +56,7 @@ export function useChapterTextVersions({
   const [versionError, setVersionError] = useState<string | null>(null);
   const [localRefreshToken, setLocalRefreshToken] = useState(0);
   const [audioGenerating, setAudioGenerating] = useState(false);
+  const [audioDeleting, setAudioDeleting] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [versionSaving, setVersionSaving] = useState(false);
   const [versionStatus, setVersionStatus] = useState<string | null>(null);
@@ -586,6 +587,50 @@ export function useChapterTextVersions({
     }
   }, [bookId, chapterNumber, clearAudioPoll, selectedVersionId]);
 
+  const handleDeleteAudio = useCallback(async () => {
+    if (!bookId || !chapterNumber || !chapterAudioUrl || audioDeleting || isAudioJobActive) {
+      return;
+    }
+    const targetVersionId = chapterAudioVersionId || selectedVersionId || 'base';
+    const confirmed = window.confirm('Delete generated MP3 for this chapter?');
+    if (!confirmed) {
+      return;
+    }
+    setAudioDeleting(true);
+    setAudioError(null);
+    setVersionStatus(null);
+    try {
+      const params = new URLSearchParams({ versionId: targetVersionId });
+      const response = await fetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/audio?${params.toString()}`,
+        { method: 'DELETE' }
+      );
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response));
+      }
+      setChapterAudioReady(false);
+      setChapterAudioVersionId(null);
+      setChapterAudioUrl(null);
+      setAudioJob(null);
+      setVersionStatus('MP3 deleted.');
+      await loadChapterAudioStatus();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to delete chapter audio.';
+      setAudioError(message);
+    } finally {
+      setAudioDeleting(false);
+    }
+  }, [
+    audioDeleting,
+    bookId,
+    chapterAudioUrl,
+    chapterAudioVersionId,
+    chapterNumber,
+    isAudioJobActive,
+    loadChapterAudioStatus,
+    selectedVersionId
+  ]);
+
   return {
     chapterText,
     displayText,
@@ -613,6 +658,7 @@ export function useChapterTextVersions({
     canGenerate,
     missingFile,
     audioGenerating,
+    audioDeleting,
     audioError,
     versionSaving,
     versionStatus,
@@ -625,6 +671,7 @@ export function useChapterTextVersions({
     canGenerateAudio,
     handleGenerate,
     handleGenerateAudio,
+    handleDeleteAudio,
     handleCreateVersion,
     handleDeleteVersion,
     handleCancelAudioJob

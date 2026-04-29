@@ -30,6 +30,7 @@ import { attachTocStats } from '../lib/tocStats.js';
 import { generateChapterText } from '../lib/chapters.js';
 import {
   cancelChapterAudioJob,
+  clearCompletedChapterAudioJob,
   enqueueChapterAudioJob,
   getChapterAudioJob
 } from '../lib/chapterAudioJobs.js';
@@ -407,6 +408,48 @@ router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, r
     req.body?.provider === 'xai' || req.body?.provider === 'yandex' ? req.body.provider : 'default';
   const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider });
   res.json({ book: bookId, chapterNumber, job });
+}));
+
+router.delete('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
+    throw createHttpError(400, 'Valid chapter number is required');
+  }
+  const versionId =
+    typeof req.query.versionId === 'string' && req.query.versionId.trim()
+      ? req.query.versionId.trim()
+      : 'base';
+  const job = await getChapterAudioJob(bookId, chapterNumber);
+  if (job?.status === 'queued' || job?.status === 'running') {
+    throw createHttpError(409, 'Cancel the active audio job before deleting MP3');
+  }
+
+  const audioFilename = formatChapterAudioFilename(chapterNumber, versionId);
+  const audioPath = path.join(DATA_DIR, bookId, audioFilename);
+  const metaPath = `${audioPath}.meta.json`;
+  const audioStat = await safeStat(audioPath);
+  for (const targetPath of [audioPath, metaPath]) {
+    try {
+      await fs.unlink(targetPath);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+  await clearCompletedChapterAudioJob(bookId, chapterNumber, versionId);
+  res.json({
+    book: bookId,
+    chapterNumber,
+    versionId,
+    deleted: Boolean(audioStat?.isFile?.()),
+    audio: {
+      ready: false,
+      url: null,
+      versionId: null
+    }
+  });
 }));
 
 router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (req, res) => {

@@ -221,6 +221,7 @@ export default function ChapterViewer({
     missingFile,
     audioError,
     audioGenerating,
+    audioDeleting,
     versionSaving,
     versionStatus,
     chapterAudioReady,
@@ -232,6 +233,7 @@ export default function ChapterViewer({
     canGenerateAudio,
     handleGenerate,
     handleGenerateAudio,
+    handleDeleteAudio,
     handleCreateVersion,
     handleDeleteVersion,
     handleCancelAudioJob
@@ -669,7 +671,7 @@ export default function ChapterViewer({
               type="button"
               className="button button-secondary"
               onClick={() => void handleGenerateAudio()}
-              disabled={!canGenerateAudio || audioGenerating || isAudioJobActive || !mp3Voice}
+              disabled={!canGenerateAudio || audioGenerating || audioDeleting || isAudioJobActive || !mp3Voice}
             >
               {audioGenerating
                 ? 'Queuing MP3…'
@@ -695,6 +697,7 @@ export default function ChapterViewer({
                     url: chapterAudioUrl
                   })
                 }
+                disabled={audioDeleting}
               >
                 ▶ Play
               </button>
@@ -707,6 +710,16 @@ export default function ChapterViewer({
               >
                 ↓
               </a>
+              <button
+                type="button"
+                className="button button-secondary modal-icon-button"
+                onClick={() => void handleDeleteAudio()}
+                disabled={audioDeleting || isAudioJobActive}
+                aria-label="Delete MP3 file"
+                title="Delete MP3 file"
+              >
+                <TrashIcon size={16} />
+              </button>
             </>
           ) : null}
           {allowEdit && chapterNumber ? (

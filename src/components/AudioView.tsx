@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TocEntry, ToastMessage } from '@/types/app';
 import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import TrashIcon from '@/components/TrashIcon';
 
 interface AudioViewProps {
   bookId: string | null;
@@ -64,6 +65,7 @@ export default function AudioView({
   const [statusMap, setStatusMap] = useState<Record<number, ChapterStatus>>({});
   const [statusLoading, setStatusLoading] = useState(false);
   const [audioBusy, setAudioBusy] = useState<Record<number, boolean>>({});
+  const [audioDeleting, setAudioDeleting] = useState<Record<number, boolean>>({});
   const [errorMap, setErrorMap] = useState<Record<number, string | null>>({});
   const [chapters, setChapters] = useState<AudioChapter[]>([]);
   const [audioJobs, setAudioJobs] = useState<Record<number, AudioJobStatus>>({});
@@ -275,6 +277,67 @@ export default function AudioView({
     [bookId, clearPoll]
   );
 
+  const handleDeleteAudio = useCallback(
+    async (chapterNumber: number, versionId: string) => {
+      if (!bookId || audioDeleting[chapterNumber]) {
+        return;
+      }
+      const confirmed = window.confirm(`Delete generated MP3 for chapter ${chapterNumber}?`);
+      if (!confirmed) {
+        return;
+      }
+      setAudioDeleting((prev) => ({ ...prev, [chapterNumber]: true }));
+      setErrorMap((prev) => ({ ...prev, [chapterNumber]: null }));
+      try {
+        const params = new URLSearchParams({ versionId });
+        const response = await fetch(
+          `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/audio?${params.toString()}`,
+          { method: 'DELETE' }
+        );
+        if (!response.ok) {
+          throw new Error(await readErrorMessage(response));
+        }
+        setAudioJobs((prev) => {
+          const next = { ...prev };
+          delete next[chapterNumber];
+          return next;
+        });
+        setStatusMap((prev) => ({
+          ...prev,
+          [chapterNumber]: {
+            ...(prev[chapterNumber] ?? { latestVersionId: versionId }),
+            audioReady: false,
+            audioVersionId: null
+          }
+        }));
+        setChapters((prev) =>
+          prev.map((chapter) =>
+            chapter.chapterNumber === chapterNumber
+              ? {
+                  ...chapter,
+                  audio: {
+                    ...chapter.audio,
+                    ready: false,
+                    url: '',
+                    versionId: null,
+                    durationSeconds: null
+                  }
+                }
+              : chapter
+          )
+        );
+        showToast(`Deleted MP3 for chapter ${chapterNumber}`, 'success');
+        await loadAudioStatus();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to delete audio.';
+        setErrorMap((prev) => ({ ...prev, [chapterNumber]: message }));
+      } finally {
+        setAudioDeleting((prev) => ({ ...prev, [chapterNumber]: false }));
+      }
+    },
+    [audioDeleting, bookId, loadAudioStatus, showToast]
+  );
+
   useEffect(() => {
     return () => {
       pollTimers.current.forEach((timer) => window.clearTimeout(timer));
@@ -339,7 +402,7 @@ export default function AudioView({
                 ? 'Starting…'
                 : 'Generate audio';
               const actionDisabled =
-                audioBusy[entry.chapterNumber] || isAudioJobActive;
+                audioBusy[entry.chapterNumber] || audioDeleting[entry.chapterNumber] || isAudioJobActive;
               const selectedMp3Provider = mp3Voice.startsWith('xai_')
                 ? 'xai'
                 : mp3Voice.startsWith('yandex_')
@@ -406,6 +469,7 @@ export default function AudioView({
                               url: entry.audio.url
                             })
                           }
+                          disabled={audioDeleting[entry.chapterNumber]}
                         >
                           ▶ Play
                         </button>
@@ -418,6 +482,16 @@ export default function AudioView({
                         >
                           ↓
                         </a>
+                        <button
+                          type="button"
+                          className="button button-secondary audio-delete"
+                          onClick={() => void handleDeleteAudio(entry.chapterNumber, latestVersionId)}
+                          disabled={audioDeleting[entry.chapterNumber]}
+                          aria-label="Delete MP3 file"
+                          title="Delete MP3 file"
+                        >
+                          <TrashIcon size={16} />
+                        </button>
                       </>
                     ) : null}
                   </div>

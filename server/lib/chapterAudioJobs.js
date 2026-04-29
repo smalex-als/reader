@@ -110,6 +110,28 @@ export async function cancelChapterAudioJob(bookId, chapterNumber) {
   });
 }
 
+export async function clearCompletedChapterAudioJob(bookId, chapterNumber, versionId = 'base') {
+  const jobs = await loadJobs();
+  const normalizedVersionId = typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
+  const existing = jobs.find(
+    (entry) => entry.bookId === bookId && entry.chapterNumber === chapterNumber
+  );
+  if (!existing) {
+    return null;
+  }
+  const existingStatus = existing.status ?? 'queued';
+  if (existingStatus === 'queued' || existingStatus === 'running') {
+    return normalizeJob(existing);
+  }
+  if ((existing.versionId ?? 'base') !== normalizedVersionId) {
+    return normalizeJob(existing);
+  }
+  await saveJobs(
+    jobs.filter((entry) => entry.bookId !== bookId || entry.chapterNumber !== chapterNumber)
+  );
+  return null;
+}
+
 async function finalizeFailure(bookId, chapterNumber, error) {
   const message = error instanceof Error ? error.message : 'Audio generation failed';
   await updateJob(bookId, chapterNumber, {
