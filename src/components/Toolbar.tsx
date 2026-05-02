@@ -181,6 +181,7 @@ export default function Toolbar({
   const showAudioTab = !isModal || activeTab === 'audio';
   const showStudyTab = !isModal || activeTab === 'study';
   const showToolsTab = !isModal || activeTab === 'tools';
+  const showImageControls = viewMode === 'pages' || viewMode === 'scroll';
 
   return (
     <div className={`toolbar ${isModal ? 'toolbar-modal' : ''}`}>
@@ -358,119 +359,123 @@ export default function Toolbar({
       {showImageTab ? (
       <div className="toolbar-row">
         {viewMode === 'pages' ? (
-          <>
-            <div className="toolbar-group">
-          <span className="toolbar-group-title">Zoom</span>
-          <div className="toolbar-zoom-row">
+          <div className="toolbar-group">
+            <span className="toolbar-group-title">Zoom</span>
+            <div className="toolbar-zoom-row">
+              <button
+                type="button"
+                className="button"
+                onClick={onZoomOut}
+                disabled={controlsDisabled}
+                aria-label="Zoom out"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                className="button"
+                onClick={onZoomIn}
+                disabled={controlsDisabled}
+                aria-label="Zoom in"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                className="button"
+                onClick={onResetZoom}
+                disabled={controlsDisabled}
+                aria-label="Reset zoom"
+              >
+                100%
+              </button>
+            </div>
             <button
               type="button"
               className="button"
-              onClick={onZoomOut}
+              onClick={onFitWidth}
               disabled={controlsDisabled}
-              aria-label="Zoom out"
+              aria-label="Fit width"
             >
-              −
+              ↔
             </button>
             <button
               type="button"
               className="button"
-              onClick={onZoomIn}
+              onClick={onFitHeight}
               disabled={controlsDisabled}
-              aria-label="Zoom in"
+              aria-label="Fit height"
             >
-              +
+              ↕
             </button>
-            <button
-              type="button"
-              className="button"
-              onClick={onResetZoom}
-              disabled={controlsDisabled}
-              aria-label="Reset zoom"
-            >
-              100%
-            </button>
+            <span className="toolbar-readout">Zoom: {(zoom * 100).toFixed(0)}%</span>
           </div>
-          <button
-            type="button"
-            className="button"
-            onClick={onFitWidth}
-            disabled={controlsDisabled}
-            aria-label="Fit width"
-          >
-            ↔
-          </button>
-          <button
-            type="button"
-            className="button"
-            onClick={onFitHeight}
-            disabled={controlsDisabled}
-            aria-label="Fit height"
-          >
-            ↕
-          </button>
-              <span className="toolbar-readout">Zoom: {(zoom * 100).toFixed(0)}%</span>
-            </div>
+        ) : null}
 
-            <div className="toolbar-group">
-              <span className="toolbar-group-title">Image</span>
-              <button type="button" className="button" onClick={onRotate} disabled={controlsDisabled}>
-                Rotate 90°
-              </button>
-              <span className="toolbar-readout">{rotation}°</span>
-              <button
-                type="button"
-                className={`button ${invert ? 'button-active' : ''}`}
-                onClick={onInvert}
+        {showImageControls ? (
+          <div className="toolbar-group">
+            <span className="toolbar-group-title">Image</span>
+            {viewMode === 'pages' ? (
+              <>
+                <button type="button" className="button" onClick={onRotate} disabled={controlsDisabled}>
+                  Rotate 90°
+                </button>
+                <span className="toolbar-readout">{rotation}°</span>
+              </>
+            ) : null}
+            <button
+              type="button"
+              className={`button ${invert ? 'button-active' : ''}`}
+              onClick={onInvert}
+              disabled={controlsDisabled}
+            >
+              Invert
+            </button>
+            <span className="toolbar-field">
+              Brightness
+              <input
+                type="range"
+                className="slider"
+                min={50}
+                max={200}
+                value={brightness}
                 disabled={controlsDisabled}
-              >
-                Invert
-              </button>
-              <span className="toolbar-field">
-                Brightness
-                <input
-                  type="range"
-                  className="slider"
-                  min={50}
-                  max={200}
-                  value={brightness}
-                  disabled={controlsDisabled}
-                  onChange={(event) => onBrightness(Number(event.target.value))}
-                />
-              </span>
-              <span className="toolbar-field">
-                Contrast
-                <input
-                  type="range"
-                  className="slider"
-                  min={50}
-                  max={200}
-                  value={contrast}
-                  disabled={controlsDisabled}
-                  onChange={(event) => onContrast(Number(event.target.value))}
-                />
-              </span>
-              <button
-                type="button"
-                className={`button ${dimOutsideBlocks ? 'button-active' : ''}`}
-                onClick={onToggleDimOutsideBlocks}
+                onChange={(event) => onBrightness(Number(event.target.value))}
+              />
+            </span>
+            <span className="toolbar-field">
+              Contrast
+              <input
+                type="range"
+                className="slider"
+                min={50}
+                max={200}
+                value={contrast}
                 disabled={controlsDisabled}
-              >
-                Dim Outside
-              </button>
-              <span className="toolbar-field">
-                Dim level
-                <input
-                  type="range"
-                  className="slider"
-                  min={0}
-                  max={85}
-                  value={dimOutsideBlocksIntensity}
-                  disabled={controlsDisabled || !dimOutsideBlocks}
-                  onChange={(event) => onDimOutsideBlocksIntensity(Number(event.target.value))}
-                />
-              </span>
-            </div>
-          </>
+                onChange={(event) => onContrast(Number(event.target.value))}
+              />
+            </span>
+            <button
+              type="button"
+              className={`button ${dimOutsideBlocks ? 'button-active' : ''}`}
+              onClick={onToggleDimOutsideBlocks}
+              disabled={controlsDisabled}
+            >
+              Dim Outside
+            </button>
+            <span className="toolbar-field">
+              Dim level
+              <input
+                type="range"
+                className="slider"
+                min={0}
+                max={85}
+                value={dimOutsideBlocksIntensity}
+                disabled={controlsDisabled || !dimOutsideBlocks}
+                onChange={(event) => onDimOutsideBlocksIntensity(Number(event.target.value))}
+              />
+            </span>
+          </div>
         ) : null}
       </div>
       ) : null}
