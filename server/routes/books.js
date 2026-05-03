@@ -112,7 +112,9 @@ async function loadChapterAudioMeta(bookId, chapterNumber, versionId = 'base') {
     return {
       versionId: typeof parsed?.versionId === 'string' ? parsed.versionId : 'base',
       provider: parsed?.provider === 'xai' || parsed?.provider === 'yandex' ? parsed.provider : 'default',
-      generatedAt: typeof parsed?.generatedAt === 'string' ? parsed.generatedAt : null
+      voice: typeof parsed?.voice === 'string' ? parsed.voice : null,
+      generatedAt: typeof parsed?.generatedAt === 'string' ? parsed.generatedAt : null,
+      subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : []
     };
   } catch {
     return null;

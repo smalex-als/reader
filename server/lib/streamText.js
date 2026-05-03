@@ -10,6 +10,7 @@ const INLINE_MATH_PATTERN = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$([^$\n]+)\$
 const HTTP_METHOD_PATTERN = /\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(\/[^\s,;)"']*)/g;
 const NUMERIC_CITATION_PATTERN = /\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]/g;
 const DASH_LIKE_PATTERN = /[‐‑‒–—―−]+/g;
+const MARKDOWN_HEADING_PATTERN = /^\s{0,3}#{1,6}\s+\S.*$/gm;
 const OCR_BLOCK_HEADER_PATTERN =
   /<\|ref\|>([^<]+)<\|\/ref\|><\|det\|>\[\[(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\]\]<\|\/det\|>/g;
 const OCR_SPEECH_EXCLUDED_MARKER = '<|speech_removed|>';
@@ -294,6 +295,61 @@ export function stripMarkdown(text) {
   output = output.replace(/[ \t]+([.,:;!?])/g, '$1');
   output = output.replace(/\n{3,}/g, '\n\n');
   return output.trim();
+}
+
+function splitMarkdownSections(text) {
+  const input = typeof text === 'string' ? text : '';
+  const matches = Array.from(input.matchAll(MARKDOWN_HEADING_PATTERN));
+  if (matches.length === 0) {
+    return [input];
+  }
+
+  const sections = [];
+  const firstHeadingIndex = matches[0]?.index ?? 0;
+  const intro = input.slice(0, firstHeadingIndex).trim();
+  if (intro) {
+    sections.push(intro);
+  }
+
+  for (let index = 0; index < matches.length; index += 1) {
+    const start = matches[index].index ?? 0;
+    const end = matches[index + 1]?.index ?? input.length;
+    const section = input.slice(start, end).trim();
+    if (section) {
+      sections.push(section);
+    }
+  }
+
+  return sections.length > 0 ? sections : [input];
+}
+
+function withTerminalPeriod(text) {
+  const trimmed = text.trim();
+  if (!trimmed || /[.!?]["')\]]*$/.test(trimmed)) {
+    return trimmed;
+  }
+  return `${trimmed}.`;
+}
+
+function getMarkdownSectionTitle(section) {
+  const match = section.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*(?:\n|$)/);
+  if (!match) {
+    return null;
+  }
+  return stripMarkdown(match[1]).trim() || null;
+}
+
+export function prepareChapterSpeechSegments(text) {
+  return splitMarkdownSections(text)
+    .map((section) => ({
+      title: getMarkdownSectionTitle(section),
+      text: withTerminalPeriod(stripMarkdown(section))
+    }))
+    .filter((section) => section.text);
+}
+
+export function prepareChapterSpeechSections(text) {
+  return prepareChapterSpeechSegments(text).map((section) => section.text);
 }
 
 function findSentenceBreakBackward(input, start, end) {

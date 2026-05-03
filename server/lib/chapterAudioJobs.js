@@ -5,6 +5,9 @@ import { safeStat } from './fs.js';
 import { createHttpError } from './errors.js';
 import {
   finalizeChapterAudio,
+  PCM_STREAM_BIT_DEPTH,
+  PCM_STREAM_CHANNEL_COUNT,
+  PCM_STREAM_SAMPLE_RATE,
   prepareChapterAudio,
   streamChapterAudioChunk
 } from './streamAudio.js';
@@ -16,6 +19,24 @@ const JOB_STORE_PATH = path.join(DATA_DIR, 'chapter-audio-jobs.json');
 const activeSignals = new Map();
 let cachedJobs = null;
 let writeQueue = Promise.resolve();
+const PCM_BYTES_PER_SECOND = PCM_STREAM_SAMPLE_RATE * PCM_STREAM_CHANNEL_COUNT * (PCM_STREAM_BIT_DEPTH / 8);
+
+function roundSeconds(value) {
+  return Math.round(value * 1000) / 1000;
+}
+
+function closeSubchapter(entry, endSeconds) {
+  if (!entry) {
+    return null;
+  }
+  const roundedEnd = roundSeconds(endSeconds);
+  return {
+    title: entry.title,
+    startSeconds: entry.startSeconds,
+    endSeconds: roundedEnd,
+    durationSeconds: roundSeconds(Math.max(0, roundedEnd - entry.startSeconds))
+  };
+}
 
 function getJobKey(bookId, chapterNumber) {
   return `${bookId}:${chapterNumber}`;
@@ -241,12 +262,26 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
     const pcmHandle = await fs.open(preparation.pcmPath, 'w');
     let pcmLength = 0;
     let canceled = false;
+    let activeSubchapter = null;
+    const subchapters = [];
     try {
       for (let index = 0; index < preparation.textChunks.length; index += 1) {
         const chunk = preparation.textChunks[index];
+        const chunkText = typeof chunk === 'string' ? chunk : chunk.text;
         if (signal?.canceled) {
           canceled = true;
           break;
+        }
+        if (chunk.title && activeSubchapter?.sectionIndex !== chunk.sectionIndex) {
+          const closed = closeSubchapter(activeSubchapter, pcmLength / PCM_BYTES_PER_SECOND);
+          if (closed) {
+            subchapters.push(closed);
+          }
+          activeSubchapter = {
+            sectionIndex: chunk.sectionIndex,
+            title: chunk.title,
+            startSeconds: roundSeconds(pcmLength / PCM_BYTES_PER_SECOND)
+          };
         }
         const chunkLog = createTtsLogTimer({
           scope: 'job',
@@ -259,19 +294,19 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
           versionId: preparation.versionId,
           chunkIndex: index + 1,
           chunkCount: preparation.textChunks.length,
-          text: chunk
+          text: chunkText
         });
         let pcmBuffer;
         try {
-          pcmBuffer = await streamChapterAudioChunk(chunk, voice);
+          pcmBuffer = await streamChapterAudioChunk(chunkText, voice);
           await chunkLog.finish({
             status: 'ok',
             source: 'streaming',
             responseBytes: pcmBuffer.length,
-            text: chunk
+            text: chunkText
           });
         } catch (error) {
-          await chunkLog.finish({ status: 'error', error, text: chunk });
+          await chunkLog.finish({ status: 'error', error, text: chunkText });
           throw error;
         }
         if (!pcmBuffer.length) {
@@ -280,6 +315,10 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
         await pcmHandle.write(pcmBuffer);
         pcmLength += pcmBuffer.length;
         await updateJob(bookId, chapterNumber, { status: 'running' });
+      }
+      const closed = closeSubchapter(activeSubchapter, pcmLength / PCM_BYTES_PER_SECOND);
+      if (closed) {
+        subchapters.push(closed);
       }
     } finally {
       await pcmHandle.close();
@@ -310,7 +349,9 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
       pcmLength,
       metaPath: preparation.metaPath,
       versionId: preparation.versionId,
-      provider
+      provider,
+      voice,
+      subchapters
     });
 
     const mp3Stat = await safeStat(preparation.mp3Path);

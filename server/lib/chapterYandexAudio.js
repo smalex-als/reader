@@ -1,24 +1,6 @@
 import { prepareChapterAudio, finalizeDirectChapterAudio } from './streamAudio.js';
+import { generateDirectChapterMp3Buffer } from './directChapterAudio.js';
 import { generateYandexTtsAudioBuffer } from './yandexTts.js';
-import { splitStreamChunks } from './streamText.js';
-import { normalizeMp3Chunk } from './mp3Chunks.js';
-
-async function generateYandexChapterMp3Buffer({ text, voice }) {
-  const chunks = splitStreamChunks(text, 0);
-  if (chunks.length <= 1) {
-    return generateYandexTtsAudioBuffer({ text, voice });
-  }
-
-  const mp3Chunks = [];
-  for (let index = 0; index < chunks.length; index += 1) {
-    const mp3Chunk = await generateYandexTtsAudioBuffer({
-      text: chunks[index],
-      voice
-    });
-    mp3Chunks.push(normalizeMp3Chunk(mp3Chunk, index, chunks.length));
-  }
-  return Buffer.concat(mp3Chunks);
-}
 
 export async function generateChapterYandexAudio({
   bookId,
@@ -37,9 +19,11 @@ export async function generateChapterYandexAudio({
     return preparation;
   }
 
-  const mp3Buffer = await generateYandexChapterMp3Buffer({
-    text: preparation.cleanText,
-    voice
+  const { mp3Buffer, subchapters } = await generateDirectChapterMp3Buffer({
+    segments: preparation.speechSegments,
+    voice,
+    mp3Path: preparation.mp3Path,
+    generateChunk: generateYandexTtsAudioBuffer
   });
 
   await finalizeDirectChapterAudio({
@@ -47,7 +31,9 @@ export async function generateChapterYandexAudio({
     mp3Buffer,
     metaPath: preparation.metaPath,
     versionId: preparation.versionId,
-    provider: 'yandex'
+    provider: 'yandex',
+    voice,
+    subchapters
   });
 
   return {

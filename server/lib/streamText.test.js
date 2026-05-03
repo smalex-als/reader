@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { splitStreamChunks, stripMarkdown } from './streamText.js';
+import {
+  prepareChapterSpeechSections,
+  prepareChapterSpeechSegments,
+  splitStreamChunks,
+  stripMarkdown
+} from './streamText.js';
 
 test('removes html table tags before speech cleanup', () => {
   const input =
@@ -151,6 +156,58 @@ test('preserves markdown line structure long enough to strip headings and bullet
     output,
     'Two examples are Google Places API reference 7 and Yelp business endpoints reference 8.\nData model\nRead volume is high because the following features are commonly used:\nSearch for nearby businesses.\nView the detailed information of a business.'
   );
+});
+
+test('prepares chapter speech sections from markdown headings', () => {
+  const input = [
+    'Intro without punctuation',
+    '## Data model',
+    'The table stores hotel info',
+    '## API design',
+    'Requests are routed by region!'
+  ].join('\n');
+
+  const output = prepareChapterSpeechSections(input);
+
+  assert.deepEqual(output, [
+    'Intro without punctuation.',
+    'Data model\nThe table stores hotel info.',
+    'API design\nRequests are routed by region!'
+  ]);
+});
+
+test('preserves subchapter titles while preparing chapter speech', () => {
+  const input = [
+    'Preface text',
+    '## **Data model**',
+    'The table stores hotel info',
+    '### API design',
+    'Requests are routed by region'
+  ].join('\n');
+
+  const output = prepareChapterSpeechSegments(input);
+
+  assert.deepEqual(output, [
+    { title: null, text: 'Preface text.' },
+    { title: 'Data model', text: 'Data model\nThe table stores hotel info.' },
+    { title: 'API design', text: 'API design\nRequests are routed by region.' }
+  ]);
+});
+
+test('keeps markdown subchapters in separate speech chunks', () => {
+  const input = [
+    '## First section',
+    'A'.repeat(600),
+    '## Second section',
+    'B'.repeat(600)
+  ].join('\n');
+
+  const sections = prepareChapterSpeechSections(input);
+  const chunks = sections.flatMap((section) => splitStreamChunks(section, 0, 1000, 240));
+
+  assert.equal(chunks.length, 2);
+  assert.match(chunks[0], /^First section\nA+/);
+  assert.match(chunks[1], /^Second section\nB+/);
 });
 
 test('prefers line breaks over mid-line chunk splits', () => {

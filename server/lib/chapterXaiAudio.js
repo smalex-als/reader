@@ -1,27 +1,9 @@
 import { prepareChapterAudio, finalizeDirectChapterAudio } from './streamAudio.js';
-import { splitStreamChunks } from './streamText.js';
+import { generateDirectChapterMp3Buffer } from './directChapterAudio.js';
 import { generateXaiTtsAudioBuffer } from './xaiTts.js';
-import { normalizeMp3Chunk } from './mp3Chunks.js';
 
 const XAI_CHAPTER_CHUNK_SIZE = 7_500;
 const XAI_CHAPTER_CHUNK_LOOKAHEAD = 800;
-
-async function generateXaiChapterMp3Buffer({ text, voice }) {
-  const chunks = splitStreamChunks(text, 0, XAI_CHAPTER_CHUNK_SIZE, XAI_CHAPTER_CHUNK_LOOKAHEAD);
-  if (chunks.length <= 1) {
-    return generateXaiTtsAudioBuffer({ text, voice });
-  }
-
-  const mp3Chunks = [];
-  for (let index = 0; index < chunks.length; index += 1) {
-    const mp3Chunk = await generateXaiTtsAudioBuffer({
-      text: chunks[index],
-      voice
-    });
-    mp3Chunks.push(normalizeMp3Chunk(mp3Chunk, index, chunks.length));
-  }
-  return Buffer.concat(mp3Chunks);
-}
 
 export async function generateChapterXaiAudio({
   bookId,
@@ -40,9 +22,13 @@ export async function generateChapterXaiAudio({
     return preparation;
   }
 
-  const mp3Buffer = await generateXaiChapterMp3Buffer({
-    text: preparation.cleanText,
-    voice
+  const { mp3Buffer, subchapters } = await generateDirectChapterMp3Buffer({
+    segments: preparation.speechSegments,
+    voice,
+    mp3Path: preparation.mp3Path,
+    chunkSize: XAI_CHAPTER_CHUNK_SIZE,
+    lookahead: XAI_CHAPTER_CHUNK_LOOKAHEAD,
+    generateChunk: generateXaiTtsAudioBuffer
   });
 
   await finalizeDirectChapterAudio({
@@ -50,7 +36,9 @@ export async function generateChapterXaiAudio({
     mp3Buffer,
     metaPath: preparation.metaPath,
     versionId: preparation.versionId,
-    provider: 'xai'
+    provider: 'xai',
+    voice,
+    subchapters
   });
 
   return {
