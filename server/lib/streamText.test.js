@@ -129,6 +129,23 @@ test('removes markdown asterisk dividers before speech cleanup', () => {
   assert.equal(output, 'Intro paragraph.\n\nNext section.\n\nFinal section.');
 });
 
+test('preserves text fenced blocks while removing code fences', () => {
+  const input = [
+    'Before.',
+    '```text',
+    'This paragraph should be spoken.',
+    '```',
+    '```js',
+    'console.log("skip me");',
+    '```',
+    'After.'
+  ].join('\n');
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'Before.\nThis paragraph should be spoken.\n\nAfter.');
+});
+
 test('does not treat bracketed hash slot ranges as citations', () => {
   const input =
     'The first node contains hash slots \\([0, 5500]\\).\n- The second node contains hash slots \\([5501, 11000]\\).';

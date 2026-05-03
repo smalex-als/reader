@@ -234,8 +234,19 @@ function normalizeMarkdownHeadingForSpeech(heading: string) {
   return SPEECH_TERMINAL_PUNCTUATION_PATTERN.test(punctuationTarget) ? cleaned : `${cleaned}.`;
 }
 
+function normalizeFencedCodeBlocksForSpeech(text: string) {
+  return text.replace(/```[ \t]*([^\r\n`]*)\r?\n([\s\S]*?)```/g, (_, language, content) => {
+    const normalizedLanguage = String(language || '').trim().toLowerCase();
+    if (['text', 'txt', 'plain', 'plaintext'].includes(normalizedLanguage)) {
+      return String(content || '').trim();
+    }
+    return ' ';
+  });
+}
+
 export function stripMarkdown(text: string) {
   let output = text;
+  output = normalizeFencedCodeBlocksForSpeech(output);
   output = normalizeApiExamples(output);
   output = normalizeTypographyForSpeech(output);
   output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
