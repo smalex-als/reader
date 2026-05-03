@@ -188,8 +188,8 @@ test('prepares chapter speech sections from markdown headings', () => {
 
   assert.deepEqual(output, [
     'Intro without punctuation.',
-    'Data model\nThe table stores hotel info.',
-    'API design\nRequests are routed by region!'
+    'Data model.\nThe table stores hotel info.',
+    'API design.\nRequests are routed by region!'
   ]);
 });
 
@@ -206,8 +206,8 @@ test('preserves subchapter titles while preparing chapter speech', () => {
 
   assert.deepEqual(output, [
     { title: null, text: 'Preface text.' },
-    { title: 'Data model', text: 'Data model\nThe table stores hotel info.' },
-    { title: 'API design', text: 'API design\nRequests are routed by region.' }
+    { title: 'Data model', text: 'Data model.\nThe table stores hotel info.' },
+    { title: 'API design', text: 'API design.\nRequests are routed by region.' }
   ]);
 });
 
@@ -223,8 +223,8 @@ test('keeps markdown subchapters in separate speech chunks', () => {
   const chunks = sections.flatMap((section) => splitStreamChunks(section, 0, 1000, 240));
 
   assert.equal(chunks.length, 2);
-  assert.match(chunks[0], /^First section\nA+/);
-  assert.match(chunks[1], /^Second section\nB+/);
+  assert.match(chunks[0], /^First section\.\nA+/);
+  assert.match(chunks[1], /^Second section\.\nB+/);
 });
 
 test('prefers line breaks over mid-line chunk splits', () => {

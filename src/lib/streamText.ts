@@ -10,6 +10,8 @@ const INLINE_MATH_PATTERN = /\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$([^$\n]+)\$
 const HTTP_METHOD_PATTERN = /\b(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(\/[^\s,;)"']*)/g;
 const NUMERIC_CITATION_PATTERN = /\[\s*(\d+(?:\s*,\s*\d+)*)\s*\]/g;
 const DASH_LIKE_PATTERN = /[‐‑‒–—―−]+/g;
+const SPEECH_TERMINAL_PUNCTUATION_PATTERN = /[.!?:;…]$/u;
+const TRAILING_QUOTE_OR_BRACKET_PATTERN = /["')\]}»”’]+$/u;
 
 function speakIdentifier(identifier: string) {
   return identifier
@@ -223,6 +225,15 @@ function normalizeTypographyForSpeech(text: string) {
     .replace(/[ \t]+-[ \t]+/g, ', ');
 }
 
+function normalizeMarkdownHeadingForSpeech(heading: string) {
+  const cleaned = heading.replace(/[ \t]+#{1,}[ \t]*$/, '').trim();
+  if (!cleaned) {
+    return '';
+  }
+  const punctuationTarget = cleaned.replace(TRAILING_QUOTE_OR_BRACKET_PATTERN, '');
+  return SPEECH_TERMINAL_PUNCTUATION_PATTERN.test(punctuationTarget) ? cleaned : `${cleaned}.`;
+}
+
 export function stripMarkdown(text: string) {
   let output = text;
   output = normalizeApiExamples(output);
@@ -246,7 +257,9 @@ export function stripMarkdown(text: string) {
   output = output.replace(/__(.*?)__/g, '$1');
   output = output.replace(/_(.*?)_/g, '$1');
   output = output.replace(/[•●◦▪]/g, '-');
-  output = output.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+  output = output.replace(/^[ \t]{0,3}#{1,6}[ \t]+([^\r\n]*?)[ \t]*$/gm, (_, heading) =>
+    normalizeMarkdownHeadingForSpeech(heading)
+  );
   output = output.replace(/^\s{0,3}>\s?/gm, '');
   output = output.replace(/^\s{0,3}[-*+]\s+/gm, '');
   output = output.replace(/^\s{0,3}---+\s*$/gm, '');
