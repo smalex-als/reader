@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import { createReadStream, createWriteStream } from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 import { promisify } from 'node:util';
@@ -88,6 +89,14 @@ function sanitizeAudioVersionSuffix(versionId) {
   return normalizeAudioVersionId(versionId).replace(/[^a-zA-Z0-9._-]+/g, '_');
 }
 
+function normalizeAudioVoice(voice) {
+  return typeof voice === 'string' && voice.trim() ? voice.trim() : null;
+}
+
+function hashSpeechText(text) {
+  return crypto.createHash('sha1').update(typeof text === 'string' ? text : '').digest('hex');
+}
+
 export function formatChapterAudioFilename(chapterNumber, versionId = 'base', extension = '.mp3') {
   const baseName = formatChapterFilename(chapterNumber).replace(/\.txt$/i, '');
   const normalizedVersionId = normalizeAudioVersionId(versionId);
@@ -100,6 +109,27 @@ async function encodeMp3(wavPath, mp3Path) {
     await execFileAsync('lame', ['--silent', '-h', wavPath, mp3Path]);
   } catch {
     throw createHttpError(502, 'Failed to encode MP3 audio');
+  }
+}
+
+async function removeExistingChapterAudioFiles(mp3Path, metaPath) {
+  for (const targetPath of [mp3Path, metaPath]) {
+    try {
+      await fs.unlink(targetPath);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+}
+
+async function readChapterAudioMeta(metaPath) {
+  try {
+    const rawMeta = await fs.readFile(metaPath, 'utf8');
+    return JSON.parse(rawMeta);
+  } catch {
+    return null;
   }
 }
 
@@ -558,7 +588,14 @@ export function createTextWavStream(text, voice, signal, requestId = createStrea
   return output;
 }
 
-export async function prepareChapterAudio({ bookId, chapterNumber, versionId = null, provider = 'default' }) {
+export async function prepareChapterAudio({
+  bookId,
+  chapterNumber,
+  versionId = null,
+  provider = 'default',
+  voice = null,
+  force = false
+}) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
   }
@@ -574,29 +611,31 @@ export async function prepareChapterAudio({ bookId, chapterNumber, versionId = n
   const mp3Path = path.join(directory, mp3Filename);
   const metaPath = `${mp3Path}.meta.json`;
   const speechSegments = prepareChapterSpeechSegments(textVersion.text);
-  const existingMp3 = await safeStat(mp3Path);
-  if (existingMp3?.isFile()) {
-    try {
-      const rawMeta = await fs.readFile(metaPath, 'utf8');
-      const meta = JSON.parse(rawMeta);
-      if (
-        (meta?.versionId ?? 'base') === textVersion.versionId &&
-        (meta?.provider ?? 'default') === provider
-      ) {
-        return {
-          existingAudioUrl: `/data/${bookId}/${mp3Filename}`,
-          versionId: textVersion.versionId
-        };
-      }
-    } catch {
-      // force regeneration when metadata is missing or invalid
-    }
-  }
-
   const speechSections = speechSegments.map((section) => section.text);
   const cleaned = speechSections.join('\n\n').trim();
   if (!cleaned) {
     throw createHttpError(400, 'No text available for audio generation');
+  }
+  const normalizedVoice = normalizeAudioVoice(voice);
+  const textHash = hashSpeechText(cleaned);
+  const existingMp3 = await safeStat(mp3Path);
+  if (existingMp3?.isFile()) {
+    const meta = await readChapterAudioMeta(metaPath);
+    if (
+      !force &&
+      (meta?.versionId ?? 'base') === textVersion.versionId &&
+      (meta?.provider ?? 'default') === provider &&
+      (meta?.voice ?? null) === normalizedVoice &&
+      meta?.textHash === textHash
+    ) {
+      return {
+        existingAudioUrl: `/data/${bookId}/${mp3Filename}`,
+        cleanText: cleaned,
+        textHash,
+        versionId: textVersion.versionId
+      };
+    }
+    await removeExistingChapterAudioFiles(mp3Path, metaPath);
   }
 
   return {
@@ -608,6 +647,7 @@ export async function prepareChapterAudio({ bookId, chapterNumber, versionId = n
     mp3Url: `/data/${bookId}/${mp3Filename}`,
     speechSegments,
     speechSections,
+    textHash,
     textChunks: speechSegments.flatMap((section, sectionIndex) =>
       splitTextForStreaming(section.text).map((text) => ({
         text,
@@ -628,6 +668,7 @@ export async function writeChapterAudioMeta({
   versionId,
   provider = 'default',
   voice = null,
+  textHash = null,
   subchapters = []
 }) {
   await fs.writeFile(
@@ -636,7 +677,8 @@ export async function writeChapterAudioMeta({
       {
         versionId: versionId ?? 'base',
         provider,
-        voice: typeof voice === 'string' && voice.trim() ? voice.trim() : null,
+        voice: normalizeAudioVoice(voice),
+        textHash: typeof textHash === 'string' && textHash.trim() ? textHash.trim() : null,
         generatedAt: new Date().toISOString(),
         subchapters
       },
@@ -654,10 +696,11 @@ export async function finalizeDirectChapterAudio({
   versionId,
   provider = 'default',
   voice = null,
+  textHash = null,
   subchapters = []
 }) {
   await fs.writeFile(mp3Path, mp3Buffer);
-  await writeChapterAudioMeta({ metaPath, versionId, provider, voice, subchapters });
+  await writeChapterAudioMeta({ metaPath, versionId, provider, voice, textHash, subchapters });
 }
 
 export async function finalizeChapterAudio({
@@ -669,6 +712,7 @@ export async function finalizeChapterAudio({
   versionId,
   provider = 'default',
   voice = null,
+  textHash = null,
   subchapters = []
 }) {
   const header = buildWavHeader(pcmLength);
@@ -676,7 +720,7 @@ export async function finalizeChapterAudio({
   wavStream.write(header);
   await pipeline(createReadStream(pcmPath), wavStream);
   await encodeMp3(audioPath, mp3Path);
-  await writeChapterAudioMeta({ metaPath, versionId, provider, voice, subchapters });
+  await writeChapterAudioMeta({ metaPath, versionId, provider, voice, textHash, subchapters });
   await fs.unlink(audioPath);
   await fs.unlink(pcmPath);
 }

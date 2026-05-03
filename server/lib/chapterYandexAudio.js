@@ -6,13 +6,16 @@ export async function generateChapterYandexAudio({
   bookId,
   chapterNumber,
   versionId = null,
-  voice = 'alena'
+  voice = 'alena',
+  force = false
 }) {
   const preparation = await prepareChapterAudio({
     bookId,
     chapterNumber,
     versionId,
-    provider: 'yandex'
+    provider: 'yandex',
+    voice,
+    force
   });
 
   if ('existingAudioUrl' in preparation) {
@@ -33,6 +36,7 @@ export async function generateChapterYandexAudio({
     versionId: preparation.versionId,
     provider: 'yandex',
     voice,
+    textHash: preparation.textHash,
     subchapters
   });
 

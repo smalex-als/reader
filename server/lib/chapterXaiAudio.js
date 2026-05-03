@@ -9,13 +9,16 @@ export async function generateChapterXaiAudio({
   bookId,
   chapterNumber,
   versionId = null,
-  voice = 'Eve'
+  voice = 'Eve',
+  force = false
 }) {
   const preparation = await prepareChapterAudio({
     bookId,
     chapterNumber,
     versionId,
-    provider: 'xai'
+    provider: 'xai',
+    voice,
+    force
   });
 
   if ('existingAudioUrl' in preparation) {
@@ -38,6 +41,7 @@ export async function generateChapterXaiAudio({
     versionId: preparation.versionId,
     provider: 'xai',
     voice,
+    textHash: preparation.textHash,
     subchapters
   });
 

@@ -431,7 +431,8 @@ export function useChapterTextVersions({
           body: JSON.stringify({
             voice: mp3Voice,
             versionId: selectedVersionId,
-            provider
+            provider,
+            force: chapterAudioReady && chapterAudioVersionId === selectedVersionId
           })
         }
       );
@@ -460,7 +461,17 @@ export function useChapterTextVersions({
     } finally {
       setAudioGenerating(false);
     }
-  }, [audioGenerating, bookId, canGenerateAudio, chapterNumber, mp3Voice, scheduleAudioPoll, selectedVersionId]);
+  }, [
+    audioGenerating,
+    bookId,
+    canGenerateAudio,
+    chapterAudioReady,
+    chapterAudioVersionId,
+    chapterNumber,
+    mp3Voice,
+    scheduleAudioPoll,
+    selectedVersionId
+  ]);
 
   const handleGenerateAudio = useCallback(() => {
     const provider = mp3Voice.startsWith('xai_') ? 'xai' : mp3Voice.startsWith('yandex_') ? 'yandex' : 'default';

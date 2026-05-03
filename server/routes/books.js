@@ -411,7 +411,8 @@ router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, r
   const versionId = typeof req.body?.versionId === 'string' ? req.body.versionId.trim() : null;
   const provider =
     req.body?.provider === 'xai' || req.body?.provider === 'yandex' ? req.body.provider : 'default';
-  const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider });
+  const force = req.body?.force !== false;
+  const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider, force });
   res.json({ book: bookId, chapterNumber, job });
 }));
 

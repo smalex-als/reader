@@ -162,7 +162,14 @@ async function finalizeFailure(bookId, chapterNumber, error) {
   });
 }
 
-async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = null, provider = 'default' }) {
+async function runChapterAudioJob({
+  bookId,
+  chapterNumber,
+  voice,
+  versionId = null,
+  provider = 'default',
+  force = false
+}) {
   const key = getJobKey(bookId, chapterNumber);
   let preparation = null;
   const normalizedProvider = provider === 'xai' || provider === 'yandex' ? provider : 'streaming';
@@ -200,7 +207,7 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
     }
 
     if (provider === 'xai') {
-      const result = await generateChapterXaiAudio({ bookId, chapterNumber, versionId, voice });
+      const result = await generateChapterXaiAudio({ bookId, chapterNumber, versionId, voice, force });
       await updateJob(bookId, chapterNumber, {
         provider,
         status: 'completed',
@@ -220,7 +227,7 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
     }
 
     if (provider === 'yandex') {
-      const result = await generateChapterYandexAudio({ bookId, chapterNumber, versionId, voice });
+      const result = await generateChapterYandexAudio({ bookId, chapterNumber, versionId, voice, force });
       await updateJob(bookId, chapterNumber, {
         provider,
         status: 'completed',
@@ -239,7 +246,7 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
       return;
     }
 
-    preparation = await prepareChapterAudio({ bookId, chapterNumber, versionId, provider });
+    preparation = await prepareChapterAudio({ bookId, chapterNumber, versionId, provider, voice, force });
     if ('existingAudioUrl' in preparation) {
       await updateJob(bookId, chapterNumber, {
         provider,
@@ -253,7 +260,7 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
         source: 'file',
         cacheHit: true,
         audioUrl: preparation.existingAudioUrl,
-        text: '',
+        text: preparation.cleanText ?? '',
         versionId: preparation.versionId ?? versionId ?? 'base'
       });
       return;
@@ -351,6 +358,7 @@ async function runChapterAudioJob({ bookId, chapterNumber, voice, versionId = nu
       versionId: preparation.versionId,
       provider,
       voice,
+      textHash: preparation.textHash,
       subchapters
     });
 
@@ -401,7 +409,8 @@ export async function enqueueChapterAudioJob({
   chapterNumber,
   voice,
   versionId = null,
-  provider = 'default'
+  provider = 'default',
+  force = false
 }) {
   if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
     throw createHttpError(400, 'Valid chapter number is required');
@@ -425,15 +434,16 @@ export async function enqueueChapterAudioJob({
     error: null,
     audioUrl:
       existing &&
+      !force &&
       (existing.versionId ?? 'base') === (versionId ?? 'base') &&
       (existing.provider ?? 'default') === provider
         ? existing.audioUrl ?? null
         : null
   });
   const key = getJobKey(bookId, chapterNumber);
-  activeSignals.set(key, { canceled: false, voice, versionId: versionId ?? 'base', provider });
+  activeSignals.set(key, { canceled: false, voice, versionId: versionId ?? 'base', provider, force });
   setImmediate(() => {
-    void runChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider });
+    void runChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider, force });
   });
   return job;
 }
