@@ -118,7 +118,15 @@ async function getAudioDurationSeconds(filePath) {
     ]);
     const value = Number.parseFloat(String(stdout).trim());
     return Number.isFinite(value) ? value : null;
-  } catch {
+  } catch (error) {
+    console.warn('Failed to read audio duration with ffprobe', {
+      filePath,
+      message: error instanceof Error ? error.message : String(error),
+      code: error?.code ?? null,
+      signal: error?.signal ?? null,
+      stdout: typeof error?.stdout === 'string' ? error.stdout.slice(0, 500) : null,
+      stderr: typeof error?.stderr === 'string' ? error.stderr.slice(0, 1000) : null
+    });
     return null;
   }
 }
@@ -127,7 +135,14 @@ export async function getMp3BufferDurationSeconds(buffer, tempDir) {
   const tempPath = path.join(tempDir, `.duration-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2)}.mp3`);
   try {
     await fs.writeFile(tempPath, buffer);
-    return await getAudioDurationSeconds(tempPath);
+    const durationSeconds = await getAudioDurationSeconds(tempPath);
+    if (durationSeconds === null) {
+      console.warn('Unable to determine generated MP3 chunk duration', {
+        tempPath,
+        bytes: buffer.length
+      });
+    }
+    return durationSeconds;
   } finally {
     try {
       await fs.unlink(tempPath);

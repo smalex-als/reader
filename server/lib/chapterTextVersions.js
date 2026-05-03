@@ -77,6 +77,9 @@ function mergePromptLibrary(existing) {
   const defaultIds = new Set(defaults.prompts.map((prompt) => prompt.id));
   const mergedDefaults = defaults.prompts.map((defaultPrompt) => {
     const override = existingPrompts.find((prompt) => prompt?.id === defaultPrompt.id);
+    if (override?.builtIn && !override.updatedAt) {
+      return normalizePromptEntry(defaultPrompt, defaultPrompt);
+    }
     return normalizePromptEntry(override || defaultPrompt, defaultPrompt);
   });
   const customPrompts = existingPrompts

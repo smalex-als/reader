@@ -60,6 +60,11 @@ Writing rules:
 
 Structure and navigation:
 - add clear topic headers so the script is easy to navigate quickly
+- format each topic header as a markdown heading, preferably `## Heading Title`
+- preserve meaningful source subchapter headings as markdown headings when they exist
+- if you rename or simplify a heading, keep it as a markdown heading and keep the same conceptual boundary
+- do not flatten headings into ordinary paragraphs
+- do not remove all markdown; markdown headings are required because downstream audio generation uses them as subchapter navigation markers
 - use concise, descriptive section titles
 - headers should follow the major conceptual flow of the explanation
 - a good pattern is:
@@ -83,6 +88,7 @@ Fiction and narrative books:
 - keep the narration as a continuous chapter reading with only minimal cleanup for spoken flow
 - preserve scenes, pacing, and emotional continuity instead of restructuring into sections
 - for narrative books, natural paragraph flow is more important than navigational structure
+- if the narrative source already has chapter or scene headings, keep those headings as markdown headings
 
 Narration style targets:
 - sound like an engineer thinking aloud and teaching at the same time
@@ -94,5 +100,6 @@ Narration style targets:
 Output requirements:
 - output only the final narration script
 - do not add explanations about your process
-- include topic headers by default so the script is easy to navigate
+- include markdown topic headers by default so the script is easy to navigate
+- use markdown headings only for section/subchapter titles; do not use markdown tables, bullet lists, or fenced code blocks
 - do not add extra meta commentary outside the script
