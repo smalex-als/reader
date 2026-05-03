@@ -263,7 +263,9 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
           bytes: audioSize,
           durationSeconds: audioDurationSeconds,
           versionId: audioMeta?.versionId ?? null,
-          provider: audioMeta?.provider ?? 'default'
+          provider: audioMeta?.provider ?? 'default',
+          voice: audioMeta?.voice ?? null,
+          subchapters: audioMeta?.subchapters ?? []
         }
       };
     })
@@ -480,7 +482,9 @@ router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (
         startedAt: null,
         updatedAt: new Date().toISOString(),
         error: null,
-        audioUrl
+        audioUrl,
+        voice: audioMeta?.voice ?? null,
+        subchapters: audioMeta?.subchapters ?? []
       }
     });
     return;
@@ -491,7 +495,9 @@ router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (
     job: job
       ? {
           ...job,
-          audioUrl: job.audioUrl ?? audioUrl
+          audioUrl: job.audioUrl ?? audioUrl,
+          voice: audioMeta?.voice ?? null,
+          subchapters: audioMeta?.subchapters ?? []
         }
       : null
   });

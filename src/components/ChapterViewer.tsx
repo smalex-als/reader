@@ -233,6 +233,7 @@ export default function ChapterViewer({
     chapterAudioReady,
     chapterAudioVersionId,
     chapterAudioUrl,
+    chapterAudioSubchapters,
     audioJob,
     isAudioJobActive,
     canCreateVersion,
@@ -723,7 +724,8 @@ export default function ChapterViewer({
                   onPlayAudio({
                     title: chapterTitle ?? `Chapter ${chapterNumber}`,
                     subtitle: selectedVersion?.label,
-                    url: chapterAudioUrl
+                    url: chapterAudioUrl,
+                    subchapters: chapterAudioSubchapters
                   })
                 }
                 disabled={audioDeleting}

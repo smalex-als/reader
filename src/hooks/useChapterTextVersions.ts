@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FloatingAudioSubchapter } from '@/components/FloatingAudioPlayer';
 import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 
 type ChapterRange = {
@@ -12,6 +13,7 @@ type AudioJobStatus = {
   error?: string | null;
   audioUrl?: string | null;
   versionId?: string | null;
+  subchapters?: FloatingAudioSubchapter[];
 };
 
 type UseChapterTextVersionsOptions = {
@@ -63,6 +65,7 @@ export function useChapterTextVersions({
   const [chapterAudioReady, setChapterAudioReady] = useState(false);
   const [chapterAudioVersionId, setChapterAudioVersionId] = useState<string | null>(null);
   const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
+  const [chapterAudioSubchapters, setChapterAudioSubchapters] = useState<FloatingAudioSubchapter[]>([]);
   const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState('');
   const [sourceVersionId, setSourceVersionId] = useState('base');
@@ -84,6 +87,7 @@ export function useChapterTextVersions({
       setChapterAudioReady(false);
       setChapterAudioVersionId(null);
       setChapterAudioUrl(null);
+      setChapterAudioSubchapters([]);
       return;
     }
     try {
@@ -103,6 +107,7 @@ export function useChapterTextVersions({
       setChapterAudioVersionId(audioVersionId);
       setChapterAudioReady(Boolean(job?.audioUrl) && audioVersionId === currentVersionId);
       setChapterAudioUrl(job?.audioUrl ?? null);
+      setChapterAudioSubchapters(job?.subchapters ?? []);
     } catch (err) {
       console.warn('Failed to load chapter audio status', err);
     }
@@ -333,7 +338,8 @@ export function useChapterTextVersions({
           status: job.status,
           error: job.error ?? null,
           audioUrl: job.audioUrl ?? null,
-          versionId: job.versionId ?? null
+          versionId: job.versionId ?? null,
+          subchapters: job.subchapters ?? []
         });
         if (job.status === 'completed') {
           clearAudioPoll();
@@ -665,6 +671,7 @@ export function useChapterTextVersions({
     chapterAudioReady,
     chapterAudioVersionId,
     chapterAudioUrl,
+    chapterAudioSubchapters,
     audioJob,
     isAudioJobActive,
     canCreateVersion,

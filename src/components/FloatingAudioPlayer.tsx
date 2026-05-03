@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+export type FloatingAudioSubchapter = {
+  title: string;
+  startSeconds: number;
+  endSeconds?: number;
+  durationSeconds?: number;
+};
+
 export type FloatingAudioTrack = {
   title: string;
   url: string;
@@ -7,6 +14,7 @@ export type FloatingAudioTrack = {
   kind?: 'page-tts' | 'text-tts' | 'file';
   provider?: 'openai' | 'xai' | null;
   pageKey?: string | null;
+  subchapters?: FloatingAudioSubchapter[];
 };
 
 export type FloatingAudioPlaybackState = 'loading' | 'playing' | 'paused' | 'ended' | 'error';
@@ -42,6 +50,23 @@ export default function FloatingAudioPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [seeking, setSeeking] = useState(false);
+  const subchapters = useMemo(
+    () =>
+      (track?.subchapters ?? [])
+        .filter((entry) => entry.title && Number.isFinite(entry.startSeconds) && entry.startSeconds >= 0)
+        .sort((left, right) => left.startSeconds - right.startSeconds),
+    [track?.subchapters]
+  );
+  const activeSubchapter = useMemo(() => {
+    if (subchapters.length === 0) {
+      return null;
+    }
+    return (
+      [...subchapters]
+        .reverse()
+        .find((entry) => currentTime >= entry.startSeconds) ?? subchapters[0]
+    );
+  }, [currentTime, subchapters]);
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -169,6 +194,11 @@ export default function FloatingAudioPlayer({
     setCurrentTime(value);
   }, []);
 
+  const handleSeekToSubchapter = useCallback((startSeconds: number) => {
+    handleSeek(startSeconds);
+    void audioRef.current?.play();
+  }, [handleSeek]);
+
   const handleSeekStart = useCallback(() => {
     setSeeking(true);
   }, []);
@@ -192,6 +222,9 @@ export default function FloatingAudioPlayer({
     <div className="floating-audio">
       <div className="floating-audio-main">
         <div className="floating-audio-title">{titleLine}</div>
+        {activeSubchapter ? (
+          <div className="floating-audio-subtitle">{activeSubchapter.title}</div>
+        ) : null}
         <div className="floating-audio-controls">
           <button type="button" className="button floating-audio-play" onClick={togglePlayback}>
             {playing ? 'Pause' : 'Play'}
@@ -231,6 +264,29 @@ export default function FloatingAudioPlayer({
             onChange={(event) => handleSeek(Number(event.target.value))}
           />
         </div>
+        {subchapters.length > 0 ? (
+          <div className="floating-audio-subchapters" aria-label="Subchapters">
+            {subchapters.map((entry) => {
+              const active = activeSubchapter === entry;
+              const end =
+                typeof entry.endSeconds === 'number' && Number.isFinite(entry.endSeconds)
+                  ? entry.endSeconds
+                  : null;
+              return (
+                <button
+                  key={`${entry.title}-${entry.startSeconds}`}
+                  type="button"
+                  className={`floating-audio-subchapter ${active ? 'floating-audio-subchapter-active' : ''}`}
+                  onClick={() => handleSeekToSubchapter(entry.startSeconds)}
+                  title={`${formatTime(entry.startSeconds)}${end !== null ? ` - ${formatTime(end)}` : ''}`}
+                >
+                  <span>{entry.title}</span>
+                  <small>{formatTime(entry.startSeconds)}</small>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
       <button type="button" className="button floating-audio-close" onClick={onClose}>
         ✕

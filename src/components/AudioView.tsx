@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChapterTextVersion, TocEntry, ToastMessage } from '@/types/app';
-import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import TrashIcon from '@/components/TrashIcon';
 
 interface AudioViewProps {
@@ -33,6 +33,7 @@ type AudioChapter = {
     versionId?: string | null;
     durationSeconds?: number | null;
     provider?: 'default' | 'xai' | 'yandex';
+    subchapters?: FloatingAudioSubchapter[];
   };
 };
 
@@ -41,6 +42,7 @@ type AudioJobStatus = {
   status: 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
   error?: string | null;
   audioUrl?: string | null;
+  subchapters?: FloatingAudioSubchapter[];
 };
 
 async function readErrorMessage(response: Response) {
@@ -154,6 +156,7 @@ export default function AudioView({
             status?: AudioJobStatus['status'];
             error?: string | null;
             audioUrl?: string | null;
+            subchapters?: FloatingAudioSubchapter[];
           };
         };
         const job = payload?.job;
@@ -168,7 +171,8 @@ export default function AudioView({
             provider: job.provider ?? undefined,
             status,
             error: job.error ?? null,
-            audioUrl: job.audioUrl ?? null
+            audioUrl: job.audioUrl ?? null,
+            subchapters: job.subchapters ?? []
           }
         }));
         if (status === 'completed') {
@@ -223,6 +227,7 @@ export default function AudioView({
             status?: AudioJobStatus['status'];
             error?: string | null;
             audioUrl?: string | null;
+            subchapters?: FloatingAudioSubchapter[];
           };
         };
         const job = payload?.job;
@@ -234,7 +239,8 @@ export default function AudioView({
               provider: job.provider ?? provider,
               status,
               error: job.error ?? null,
-              audioUrl: job.audioUrl ?? null
+              audioUrl: job.audioUrl ?? null,
+              subchapters: job.subchapters ?? []
             }
           }));
           schedulePoll(chapterNumber);
@@ -321,7 +327,8 @@ export default function AudioView({
                     ready: false,
                     url: '',
                     versionId: null,
-                    durationSeconds: null
+                    durationSeconds: null,
+                    subchapters: []
                   }
                 }
               : chapter
@@ -488,7 +495,8 @@ export default function AudioView({
                             onPlayAudio({
                               title: entry.title,
                               subtitle: `Chapter ${entry.chapterNumber}`,
-                              url: entry.audio.url
+                              url: entry.audio.url,
+                              subchapters: entry.audio.subchapters ?? []
                             })
                           }
                           disabled={audioDeleting[entry.chapterNumber]}
