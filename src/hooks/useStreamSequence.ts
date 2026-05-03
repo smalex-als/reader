@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
-import { splitStreamChunks, stripMarkdown } from '@/lib/streamText';
+import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
 import type { PageText, StreamState, ToastMessage } from '@/types/app';
 
 type ChapterParagraph = {
@@ -65,7 +65,7 @@ function getTextModeFromBaseKey(baseKey: string) {
 }
 
 function createParagraphStreamSegments(fullText: string, startIndex: number, baseKey: string): ParagraphStreamSegment[] {
-  const input = fullText.slice(Math.max(0, startIndex));
+  const input = normalizeFencedCodeBlocksForSpeech(fullText.slice(Math.max(0, startIndex)));
   const textMode = getTextModeFromBaseKey(baseKey);
   const segments: ParagraphStreamSegment[] = [];
   const paragraphPattern = /\S[\s\S]*?(?=(?:\n\s*\n)|$)/g;

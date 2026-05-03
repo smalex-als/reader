@@ -234,7 +234,7 @@ function normalizeMarkdownHeadingForSpeech(heading: string) {
   return SPEECH_TERMINAL_PUNCTUATION_PATTERN.test(punctuationTarget) ? cleaned : `${cleaned}.`;
 }
 
-function normalizeFencedCodeBlocksForSpeech(text: string) {
+export function normalizeFencedCodeBlocksForSpeech(text: string) {
   return text.replace(/```[ \t]*([^\r\n`]*)\r?\n([\s\S]*?)```/g, (_, language, content) => {
     const normalizedLanguage = String(language || '').trim().toLowerCase();
     if (['text', 'txt', 'plain', 'plaintext'].includes(normalizedLanguage)) {
