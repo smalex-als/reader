@@ -379,12 +379,19 @@ function findChunkEnd(input, cursor, chunkSize, lookahead) {
   return idealEnd;
 }
 
-export function splitStreamChunks(text, startIndex) {
+export function splitStreamChunks(
+  text,
+  startIndex,
+  chunkSize = STREAM_CHUNK_SIZE,
+  lookahead = STREAM_CHUNK_LOOKAHEAD
+) {
+  const resolvedChunkSize = Number.isInteger(chunkSize) && chunkSize > 0 ? chunkSize : STREAM_CHUNK_SIZE;
+  const resolvedLookahead = Number.isInteger(lookahead) && lookahead >= 0 ? lookahead : STREAM_CHUNK_LOOKAHEAD;
   const input = stripMarkdown(text.slice(Math.max(0, startIndex)));
   const chunks = [];
   let cursor = 0;
   while (cursor < input.length) {
-    const chunkEnd = findChunkEnd(input, cursor, STREAM_CHUNK_SIZE, STREAM_CHUNK_LOOKAHEAD);
+    const chunkEnd = findChunkEnd(input, cursor, resolvedChunkSize, resolvedLookahead);
     const chunk = input.slice(cursor, chunkEnd).trim();
     if (chunk.length > 0) {
       chunks.push(chunk);

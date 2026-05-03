@@ -3,8 +3,11 @@ import { splitStreamChunks } from './streamText.js';
 import { generateXaiTtsAudioBuffer } from './xaiTts.js';
 import { normalizeMp3Chunk } from './mp3Chunks.js';
 
+const XAI_CHAPTER_CHUNK_SIZE = 7_500;
+const XAI_CHAPTER_CHUNK_LOOKAHEAD = 800;
+
 async function generateXaiChapterMp3Buffer({ text, voice }) {
-  const chunks = splitStreamChunks(text, 0);
+  const chunks = splitStreamChunks(text, 0, XAI_CHAPTER_CHUNK_SIZE, XAI_CHAPTER_CHUNK_LOOKAHEAD);
   if (chunks.length <= 1) {
     return generateXaiTtsAudioBuffer({ text, voice });
   }
