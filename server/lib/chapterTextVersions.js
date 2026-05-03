@@ -10,7 +10,7 @@ import { getOpenAI } from './openai.js';
 
 const CHAPTER_PAD_LENGTH = 3;
 const GLOBAL_PROMPTS_PATH = path.join(DATA_DIR, '.chapter-text-prompts.json');
-const CHAPTER_TEXT_VERSION_MODELS = new Set(['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.4-nano']);
+const CHAPTER_TEXT_VERSION_MODELS = new Set(['gpt-5.5', 'gpt-5.4-mini', 'gpt-5.4-nano']);
 
 function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
@@ -110,7 +110,7 @@ function sanitizeTemplate(value) {
 
 function sanitizeVersionModel(value) {
   const model = typeof value === 'string' ? value.trim() : '';
-  return CHAPTER_TEXT_VERSION_MODELS.has(model) ? model : 'gpt-5.4';
+  return CHAPTER_TEXT_VERSION_MODELS.has(model) ? model : 'gpt-5.5';
 }
 
 async function readJsonFile(filePath, fallback) {
@@ -430,7 +430,7 @@ export async function createChapterTextVersion({
   bookId,
   chapterNumber,
   sourceVersionId = 'base',
-  model = 'gpt-5.4',
+  model = 'gpt-5.5',
   promptId = null,
   customPrompt = '',
   addToLibrary = false,

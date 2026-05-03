@@ -69,7 +69,7 @@ export function useChapterTextVersions({
   const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState('');
   const [sourceVersionId, setSourceVersionId] = useState('base');
-  const [versionModel, setVersionModel] = useState('gpt-5.4');
+  const [versionModel, setVersionModel] = useState('gpt-5.5');
   const [customPrompt, setCustomPrompt] = useState('');
   const [promptName, setPromptName] = useState('');
   const [savePromptToLibrary, setSavePromptToLibrary] = useState(false);

@@ -36,7 +36,7 @@ export async function generateChapterNarration({ bookId, chapterNumber }) {
 
   const openai = getOpenAI();
   const response = await openai.chat.completions.create({
-    model: 'gpt-5.4',
+    model: 'gpt-5.5',
     messages: [
       {
         role: 'developer',

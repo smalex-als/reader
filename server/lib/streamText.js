@@ -15,6 +15,8 @@ const OCR_BLOCK_HEADER_PATTERN =
   /<\|ref\|>([^<]+)<\|\/ref\|><\|det\|>\[\[(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\]\]<\|\/det\|>/g;
 const OCR_SPEECH_EXCLUDED_MARKER = '<|speech_removed|>';
 const OCR_SPEECH_EXCLUDED_END_MARKER = '<|/speech_removed|>';
+const SPEECH_TERMINAL_PUNCTUATION_PATTERN = /[.!?:;…]$/u;
+const TRAILING_QUOTE_OR_BRACKET_PATTERN = /["')\]}»”’]+$/u;
 
 function removeExcludedOcrBlocks(text) {
   const input = typeof text === 'string' ? text : '';
@@ -255,6 +257,15 @@ function normalizeTypographyForSpeech(text) {
     .replace(/[ \t]+-[ \t]+/g, ', ');
 }
 
+function normalizeMarkdownHeadingForSpeech(heading) {
+  const cleaned = heading.replace(/[ \t]+#{1,}[ \t]*$/, '').trim();
+  if (!cleaned) {
+    return '';
+  }
+  const punctuationTarget = cleaned.replace(TRAILING_QUOTE_OR_BRACKET_PATTERN, '');
+  return SPEECH_TERMINAL_PUNCTUATION_PATTERN.test(punctuationTarget) ? cleaned : `${cleaned}.`;
+}
+
 export function stripMarkdown(text) {
   let output = removeExcludedOcrBlocks(text);
   output = normalizeApiExamples(output);
@@ -278,7 +289,9 @@ export function stripMarkdown(text) {
   output = output.replace(/__(.*?)__/g, '$1');
   output = output.replace(/_(.*?)_/g, '$1');
   output = output.replace(/[•●◦▪]/g, '-');
-  output = output.replace(/^\s{0,3}#{1,6}\s+/gm, '');
+  output = output.replace(/^[ \t]{0,3}#{1,6}[ \t]+([^\r\n]*?)[ \t]*$/gm, (_, heading) =>
+    normalizeMarkdownHeadingForSpeech(heading)
+  );
   output = output.replace(/^\s{0,3}>\s?/gm, '');
   output = output.replace(/^\s{0,3}[-*+]\s+/gm, '');
   output = output.replace(/^\s{0,3}---+\s*$/gm, '');

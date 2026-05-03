@@ -154,7 +154,24 @@ test('preserves markdown line structure long enough to strip headings and bullet
 
   assert.equal(
     output,
-    'Two examples are Google Places API reference 7 and Yelp business endpoints reference 8.\nData model\nRead volume is high because the following features are commonly used:\nSearch for nearby businesses.\nView the detailed information of a business.'
+    'Two examples are Google Places API reference 7 and Yelp business endpoints reference 8.\nData model.\nRead volume is high because the following features are commonly used:\nSearch for nearby businesses.\nView the detailed information of a business.'
+  );
+});
+
+test('adds sentence punctuation to markdown headings for speech', () => {
+  const input = [
+    '# Core Idea',
+    '',
+    '## GPT-5.5 prompting guide',
+    '',
+    'Prompt GPT-5.5 with outcome-first goals, concise style controls, retrieval budgets, and validation loops.'
+  ].join('\n');
+
+  const output = stripMarkdown(input);
+
+  assert.equal(
+    output,
+    'Core Idea.\n\nGPT-5.5 prompting guide.\n\nPrompt GPT-5.5 with outcome-first goals, concise style controls, retrieval budgets, and validation loops.'
   );
 });
 

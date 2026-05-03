@@ -149,7 +149,7 @@ export async function loadPageText(imageUrl, options = {}) {
     } else if (ocrBackend === 'openai') {
       const prompt = getTextPrompt({
         backend: ocrBackend,
-        model: 'gpt-5.4'
+        model: 'gpt-5.5'
       });
 
       const openai = getOpenAI();
@@ -159,7 +159,7 @@ export async function loadPageText(imageUrl, options = {}) {
       const response = await withOcrTimeout(
         () =>
           openai.responses.create({
-            model: 'gpt-5.4',
+            model: 'gpt-5.5',
             input: [
               {
                 role: 'user',

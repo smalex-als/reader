@@ -107,7 +107,7 @@ export default function CreateTextVersionModal({
                 onChange={(event) => onVersionModelChange(event.target.value)}
                 disabled={versionSaving}
               >
-                <option value="gpt-5.4">gpt-5.4</option>
+                <option value="gpt-5.5">gpt-5.5</option>
                 <option value="gpt-5.4-mini">gpt-5.4-mini</option>
                 <option value="gpt-5.4-nano">gpt-5.4-nano</option>
               </select>
