@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { emitFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 
 export type FloatingAudioSubchapter = {
   title: string;
@@ -14,6 +15,8 @@ export type FloatingAudioTrack = {
   kind?: 'page-tts' | 'text-tts' | 'file';
   provider?: 'openai' | 'xai' | null;
   pageKey?: string | null;
+  chapterNumber?: number | null;
+  versionId?: string | null;
   subchapters?: FloatingAudioSubchapter[];
 };
 
@@ -194,10 +197,16 @@ export default function FloatingAudioPlayer({
     setCurrentTime(value);
   }, []);
 
-  const handleSeekToSubchapter = useCallback((startSeconds: number) => {
-    handleSeek(startSeconds);
-    void audioRef.current?.play();
-  }, [handleSeek]);
+  const handleSeekToSubchapter = useCallback(
+    (entry: FloatingAudioSubchapter) => {
+      handleSeek(entry.startSeconds);
+      if (track) {
+        emitFloatingAudioSubchapterSelect({ subchapter: entry, track });
+      }
+      void audioRef.current?.play();
+    },
+    [handleSeek, track]
+  );
 
   const handleSeekStart = useCallback(() => {
     setSeeking(true);
@@ -277,7 +286,7 @@ export default function FloatingAudioPlayer({
                   key={`${entry.title}-${entry.startSeconds}`}
                   type="button"
                   className={`floating-audio-subchapter ${active ? 'floating-audio-subchapter-active' : ''}`}
-                  onClick={() => handleSeekToSubchapter(entry.startSeconds)}
+                  onClick={() => handleSeekToSubchapter(entry)}
                   title={`${formatTime(entry.startSeconds)}${end !== null ? ` - ${formatTime(end)}` : ''}`}
                 >
                   <span>{entry.title}</span>

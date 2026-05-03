@@ -496,6 +496,8 @@ export default function AudioView({
                               title: entry.title,
                               subtitle: `Chapter ${entry.chapterNumber}`,
                               url: entry.audio.url,
+                              chapterNumber: entry.chapterNumber,
+                              versionId: latestVersionId,
                               subchapters: entry.audio.subchapters ?? []
                             })
                           }

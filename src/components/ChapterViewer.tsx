@@ -7,6 +7,7 @@ import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import TrashIcon from '@/components/TrashIcon';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
+import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
 
 interface ChapterViewerProps {
@@ -93,6 +94,14 @@ function normalizeOutlineTitle(input: string) {
   return input
     .replace(/^#{1,6}\s+/, '')
     .replace(/[`*_~[\]()]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeNavigationTitle(input: string) {
+  return normalizeOutlineTitle(input)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -442,6 +451,31 @@ export default function ChapterViewer({
   }, []);
 
   useEffect(() => {
+    return onFloatingAudioSubchapterSelect(({ subchapter, track }) => {
+      if (typeof track.chapterNumber === 'number' && chapterNumber !== track.chapterNumber) {
+        return;
+      }
+      if (track.versionId && selectedVersionId !== track.versionId) {
+        return;
+      }
+      const requestedTitle = normalizeNavigationTitle(subchapter.title);
+      if (!requestedTitle || displayLoading || !displayText || outlineItems.length === 0) {
+        return;
+      }
+      const exactMatch = outlineItems.find((item) => normalizeNavigationTitle(item.title) === requestedTitle);
+      const looseMatch =
+        exactMatch ??
+        outlineItems.find((item) => {
+          const outlineTitle = normalizeNavigationTitle(item.title);
+          return outlineTitle.includes(requestedTitle) || requestedTitle.includes(outlineTitle);
+        });
+      if (looseMatch) {
+        handleOutlineSelect(looseMatch.id);
+      }
+    });
+  }, [chapterNumber, displayLoading, displayText, handleOutlineSelect, outlineItems, selectedVersionId]);
+
+  useEffect(() => {
     const container = textViewerRef.current;
     if (!container || outlineItems.length === 0) {
       return;
@@ -725,6 +759,8 @@ export default function ChapterViewer({
                     title: chapterTitle ?? `Chapter ${chapterNumber}`,
                     subtitle: selectedVersion?.label,
                     url: chapterAudioUrl,
+                    chapterNumber,
+                    versionId: selectedVersionId,
                     subchapters: chapterAudioSubchapters
                   })
                 }
