@@ -1429,7 +1429,10 @@ export default function App() {
     disableScrollMode: isTextBook,
     disableImageActions: isTextBook,
     onViewModeChange: handleViewModeChange,
-    onOpenBookModal: openBookModal,
+    onOpenBookModal: () => {
+      setSettingsOpen(false);
+      openBookModal();
+    },
     onPrev: handlePrev,
     onNext: handleNext,
     onGoTo: (page: number) => renderPage(page),
@@ -1550,6 +1553,7 @@ export default function App() {
       books,
       currentBook: bookId,
       onSelect: (nextBook: string | null) => {
+        setSettingsOpen(false);
         setBookId(nextBook);
         closeBookModal();
       },
