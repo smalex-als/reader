@@ -2,6 +2,7 @@ const STREAM_CHUNK_SIZE = 1000;
 const STREAM_CHUNK_LOOKAHEAD = 240;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
 const MARKDOWN_IMAGE_PATTERN = /!\[([^\]]*)\]\([^)]+\)/g;
+const RAW_URL_PATTERN = /\b(?:https?:\/\/|www\.)[^\s<>)\]]+/gi;
 const HTML_TAG_PATTERN = /<[^>]+>/g;
 const ZERO_WIDTH_PATTERN = /[\u200B-\u200D\u2060\uFEFF]/g;
 const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
@@ -279,6 +280,9 @@ function normalizeFencedCodeBlocksForSpeech(text) {
 export function stripMarkdown(text) {
   let output = removeExcludedOcrBlocks(text);
   output = normalizeFencedCodeBlocksForSpeech(output);
+  output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
+  output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
+  output = output.replace(RAW_URL_PATTERN, ' ');
   output = normalizeApiExamples(output);
   output = normalizeTypographyForSpeech(output);
   output = output.replace(INLINE_MATH_PATTERN, (_, inlineRound, inlineSquare, inlineDollar) =>
@@ -292,8 +296,6 @@ export function stripMarkdown(text) {
   output = output.replace(/<script[\s\S]*?<\/script>/gi, ' ');
   output = output.replace(/<style[\s\S]*?<\/style>/gi, ' ');
   output = output.replace(HTML_TAG_PATTERN, ' ');
-  output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
-  output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
   output = output.replace(/^\s{0,3}(?:\*\s*){3,}$/gm, '');
   output = output.replace(/\*\*(.*?)\*\*/g, '$1');
   output = output.replace(/\*(.*?)\*/g, '$1');

@@ -2093,12 +2093,16 @@ body {
   padding: 0.9rem 1rem;
   border-radius: 0.65rem;
   background: var(--text-viewer-pre-bg);
-  overflow: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .text-viewer-markdown pre code {
   padding: 0;
   background: transparent;
+  white-space: inherit;
+  overflow-wrap: anywhere;
 }
 
 .text-viewer-markdown table {

@@ -112,6 +112,15 @@ test('normalizes numeric citations into speakable references', () => {
   assert.equal(output, 'Places API reference 7 and Yelp business endpoints reference 8 are common examples.');
 });
 
+test('keeps markdown link labels while removing urls from speech', () => {
+  const input =
+    'Read [OpenAI Docs Skill](https://github.com/openai/skills/tree/main/skills/.curated/openai-docs), then visit https://example.com/path.';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'Read OpenAI Docs Skill, then visit');
+});
+
 test('normalizes unicode dashes into smooth speech pauses', () => {
   const input =
     'Police cars in Germany — with lights and registration marks — were seen nearby. Two-phase commit – Saga.';
