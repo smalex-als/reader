@@ -5,6 +5,8 @@ Rules:
 2) You may add markdown formatting and replace non-markdown formatting.
 3) When pages were joined with blank lines or extra whitespace, remove those gaps so the text reads continuously.
 4) Do not paraphrase. Do not summarize. Do not fix typos. Do not add examples.
-5) Do not reorder sentences or lines.
-6) If you are unsure, output the original text unchanged.
-7) Do not add any preamble, commentary, or explanations. Output the cleaned text only.
+5) Preserve the original language. Do not translate.
+6) Do not infer or reconstruct missing text.
+7) Do not reorder sentences or lines.
+8) If you are unsure, output the original text unchanged.
+9) Do not add any preamble, commentary, or explanations. Output the cleaned text only.

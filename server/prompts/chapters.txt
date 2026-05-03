@@ -1,46 +1,45 @@
-Take the chapter text I give you and rewrite it into a sharper, more useful system design note.
+Rewrite the source chapter into a sharper, more useful technical chapter note.
 
-Goals:
-- remove trivial, repetitive, or interview-theater content
-- keep only the parts that are specific, non-obvious, and architecturally important
-- make the result more useful for actual understanding, not just for preserving the original chapter structure
+Outcome:
+- Produce a polished standalone write-up in the original language of the source chapter.
+- Preserve the real technical meaning, architecture, constraints, tradeoffs, and correctness concerns.
+- Improve the material for actual understanding instead of preserving interview-style verbosity.
+- Keep the result concise, high-signal, and logically structured.
 
-What to remove or compress:
-- repetitive interviewer / candidate dialogue
-- obvious statements that do not add design insight
-- generic API boilerplate unless it matters to the design
-- long introductions and filler wrap-up sections
-- broad textbook explanations of common technologies unless they are directly relevant
-- generic system design advice that could apply to any problem
-- low-value implementation trivia that does not change architectural decisions
-
-What to keep and strengthen:
-- the real problem framing
-- the most important requirements and constraints
-- scale assumptions that actually affect the design
-- the core design choice and why it fits
+Keep And Strengthen:
+- real problem framing
+- important requirements and constraints
+- scale assumptions that affect the design
+- core design choices and why they fit
 - tradeoffs between plausible approaches
-- correctness concerns
-- failure modes and recovery
-- operational and product-facing consequences of bad design choices
-- the first real scaling boundary, where the solution stops being simple
+- data model, APIs, write path, read path, and operational flow when they matter
+- correctness concerns, failure modes, recovery behavior, and product-facing consequences
+- the first scaling boundary where the simple solution stops working
 
-Writing style:
-- write in clear, direct English
-- optimize for signal, not completeness
-- prefer explanation over transcription
-- do not preserve the original chapter’s verbosity
-- do not pad the text
-- if something is obvious, compress it
-- if something is subtle or important, expand it
+Remove Or Compress:
+- repetitive interviewer/candidate dialogue
+- long introductions and filler wrap-up sections
+- obvious statements that do not add design insight
+- generic API boilerplate unless it changes the architecture
+- broad textbook explanations unless they are directly relevant to this system
+- generic system design advice that could apply to any problem
+- low-value implementation trivia that does not affect a design decision
 
-Output structure:
-- produce a polished standalone write-up
-- use clear section headings
-- keep a logical flow from problem -> requirements -> scale -> classification -> design -> correctness -> recovery -> scaling limits -> final recommendation
+Writing Rules:
+- Write in the original language of the source chapter. Do not translate to English unless the source is English.
+- Prefer explanation over transcription.
+- Compress obvious material.
+- Expand subtle or important material enough to make the design easier to understand.
+- Do not invent requirements, numbers, APIs, benchmarks, incidents, or design decisions not supported by the source.
+- Do not pad the text to match the original length.
+- Preserve useful source terminology and proper nouns.
 
-Important:
-- do not just summarize the chapter
-- improve it
-- if the original text spends too much space on low-value material, replace that space with deeper explanation of the parts that actually matter
-- make the result feel like the chapter was rewritten by someone with stronger engineering judgment
+Structure:
+- Use clear markdown section headings.
+- Keep a logical flow such as problem, requirements, scale, classification, design, correctness, recovery, scaling limits, and final recommendation.
+- Do not use markdown tables unless they are essential to preserve meaning.
+- Avoid bullet-heavy output; use prose by default.
+
+Output:
+- Output only the rewritten chapter note.
+- Do not add preambles, process notes, or commentary outside the write-up.
