@@ -1,105 +1,53 @@
-Take the source chapter write-up I give you and convert it into a TTS-friendly narration script.
+Convert the source chapter into a TTS-friendly narration script.
 
-Requirements:
+Outcome:
+- Produce one complete narration script.
+- Preserve the chapter's technical meaning, architecture, sequence of ideas, and important tradeoffs.
+- Make the result sound natural when spoken by a TTS engine.
+- Keep useful markdown headings because downstream MP3 generation uses headings as subchapter navigation markers.
 
-Create a single full narration script in English.
-The tone should be conversational, reflective, and spoken, not formal or textbook-like.
-Use a hybrid of these two styles:
+Language:
+- Write in the original language of the source chapter.
+- Do not translate into English unless the source chapter itself is in English.
+- If the source mixes languages, use the primary language of the chapter.
+- Preserve short quoted terms, product names, API names, and established technical terms in their original language when that is more accurate.
+- Adapt conversational phrasing, rhetorical questions, and self-dialogue naturally to the source language. Do not force English fillers into non-English narration.
 
-Style 8:
-- conversational fillers such as "you know", "I mean", "well", "right?", "okay"
-- occasional self-dialogue, for example:
-  - "Right? But not really."
-  - "So then you ask, what is the actual challenge here?"
-  - "And the answer is, well..."
-- spoken cadence that sounds like someone explaining the idea to themselves out loud
+Narration Style:
+- Conversational, reflective, and spoken, not formal or textbook-like.
+- It should sound like a thoughtful engineer teaching the material out loud.
+- Use light repetition only for the most important concepts, so the listener hears the key idea twice without the script feeling padded.
+- Use short teacher-style asides where they help understanding: why a detail matters, what people often misunderstand, what changes in real systems, or what can go wrong.
+- Keep consequence framing calm and practical. Explain visible product consequences, correctness drift, trust issues, fairness issues, or hard-to-detect corruption only where it clarifies the design.
+- Avoid comedy, exaggerated drama, chaotic phrasing, and off-topic commentary.
 
-Style 3:
-- restate the most important concepts at the paragraph level
-- lightly rephrase key ideas so they are repeated for emphasis without sounding broken
-- do not repeat everything, only the most important ideas
-- use repetition to create pacing and emphasis
+Transformation Rules:
+- Convert dense paragraphs, tables, bullet lists, and visual explanations into smooth spoken prose.
+- Explain transitions between ideas explicitly enough that the chapter is understandable without seeing the page.
+- Keep important examples, numbers, constraints, and assumptions.
+- Remove formatting that is useful only visually.
+- Do not invent new requirements, APIs, limits, benchmarks, or system behavior.
+- If the source is fiction, memoir, or narrative prose, preserve scene flow and emotional continuity instead of forcing a technical outline.
 
-Teacher-style digressions:
-- add occasional short teaching digressions, like a strong teacher explaining why something matters in practice
-- use brief asides such as:
-  - why this detail matters
-  - a common mistake people make
-  - what people often misunderstand
-  - what changes in real systems
-- keep these digressions relevant to the topic
-- do not wander off-topic or become chatty for no reason
+Structure And Navigation:
+- For technical or explanatory chapters, include concise markdown topic headings by default.
+- Prefer headings formatted as `## Heading Title`.
+- Preserve meaningful source subchapter headings as markdown headings when they exist.
+- You may simplify a heading, but keep the same conceptual boundary.
+- Do not flatten all headings into ordinary paragraphs.
+- Do not use decorative headings.
+- Good heading patterns include core challenge, requirements, scale, data model, API design, write path, read path, correctness, recovery, observability, scaling limits, and final recommendation.
+- For fiction or narrative prose, use minimal headings only when the source already has chapter or scene headings.
 
-Gentle consequence framing:
-- occasionally explain what can go wrong if the logic is implemented incorrectly
-- describe the worst-case outcome calmly and credibly, not dramatically
-- the tone should be measured, thoughtful, and slightly cautionary
-- focus on visible product consequences, trust, fairness, correctness drift, or hard-to-detect corruption
-- examples of the desired tone:
-  - "And if this part is handled carelessly, the failure mode is not subtle."
-  - "In the best case, this creates confusion. In the worst case, it creates a visible fairness problem."
-  - "The issue is not only internal inconsistency. The issue is that users may see the wrong outcome."
+TTS Constraints:
+- Do not use stage directions such as `[Pause]`, `[Short pause]`, or `[Emphasis]`.
+- Do not use standalone pause markers on separate lines.
+- Do not rely on ellipses as the main pacing tool.
+- Use natural punctuation, shorter sentences, rhetorical questions, and paragraph breaks for cadence.
+- Do not use markdown tables, bullet lists, or fenced code blocks in the final script.
+- Use markdown headings only for section or subchapter titles.
 
-TTS constraints:
-- do not use stage directions like [Pause], [Short pause], [Emphasis]
-- do not use standalone pause markers on separate lines
-- do not rely on "..." as the main pacing tool
-- prefer natural punctuation, shorter sentences, rhetorical questions, and occasional restatement
-- the script should sound good in a TTS engine that pauses naturally on commas and periods
-
-Writing rules:
-- keep the technical meaning accurate
-- preserve the architecture and the main arguments
-- remove table formatting, bullets, and overly visual structure
-- convert dense sections into natural spoken explanation
-- explicitly explain transitions between ideas
-- make it sound intentional, not random
-- keep the narration smooth and coherent from beginning to end
-- use digressions sparingly and deliberately
-- use consequence framing only where it strengthens understanding
-
-Structure and navigation:
-- add clear topic headers so the script is easy to navigate quickly
-- format each topic header as a markdown heading, preferably `## Heading Title`
-- preserve meaningful source subchapter headings as markdown headings when they exist
-- if you rename or simplify a heading, keep it as a markdown heading and keep the same conceptual boundary
-- do not flatten headings into ordinary paragraphs
-- do not remove all markdown; markdown headings are required because downstream audio generation uses them as subchapter navigation markers
-- use concise, descriptive section titles
-- headers should follow the major conceptual flow of the explanation
-- a good pattern is:
-  - Intro And Core Challenge
-  - Scope And Requirements
-  - Scale And Classification
-  - Why The Chosen Design Fits
-  - API Design
-  - Write Path
-  - Read Path
-  - Tie Semantics or Business Semantics
-  - Lifecycle or Reset Logic
-  - Correctness And Recovery
-  - Observability
-  - Scaling Limits
-  - Final Recommendation
-- keep the headers useful for quick scanning, not decorative
-
-Fiction and narrative books:
-- if the source reads like fiction, memoir, or other narrative prose, do not force it into topic headers
-- keep the narration as a continuous chapter reading with only minimal cleanup for spoken flow
-- preserve scenes, pacing, and emotional continuity instead of restructuring into sections
-- for narrative books, natural paragraph flow is more important than navigational structure
-- if the narrative source already has chapter or scene headings, keep those headings as markdown headings
-
-Narration style targets:
-- sound like an engineer thinking aloud and teaching at the same time
-- slightly redundant in a useful way
-- natural spoken emphasis through rephrasing
-- occasionally sound like a thoughtful teacher making a relevant side comment
-- not comedic, not exaggerated, not chaotic
-
-Output requirements:
-- output only the final narration script
-- do not add explanations about your process
-- include markdown topic headers by default so the script is easy to navigate
-- use markdown headings only for section/subchapter titles; do not use markdown tables, bullet lists, or fenced code blocks
-- do not add extra meta commentary outside the script
+Output:
+- Output only the final narration script.
+- Do not explain your process.
+- Do not add metadata, summaries, or commentary outside the script.
