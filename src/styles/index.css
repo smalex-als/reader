@@ -1531,6 +1531,11 @@ body {
   color: #d8e7f3;
 }
 
+.floating-audio-minimized {
+  width: min(28rem, calc(100vw - 3rem));
+  padding: 0.75rem 0.85rem;
+}
+
 .floating-audio-main {
   display: flex;
   flex-direction: column;
@@ -1577,8 +1582,29 @@ body {
   min-width: 10rem;
 }
 
-.floating-audio-close {
+.floating-audio-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+
+.floating-audio-icon-button {
   min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+}
+
+.floating-audio-minimized .floating-audio-subtitle {
+  font-size: 0.72rem;
+}
+
+.floating-audio-minimized .floating-audio-controls {
+  gap: 0.45rem;
+}
+
+.floating-audio-minimized .floating-audio-speed,
+.floating-audio-minimized .floating-audio-range {
+  display: none;
 }
 
 .floating-audio-subchapters {

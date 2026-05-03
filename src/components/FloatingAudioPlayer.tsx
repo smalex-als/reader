@@ -40,6 +40,10 @@ function formatTime(value: number) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+function getSubchapterKey(entry: FloatingAudioSubchapter) {
+  return `${entry.title}:${entry.startSeconds}`;
+}
+
 export default function FloatingAudioPlayer({
   track,
   playbackRate,
@@ -49,10 +53,12 @@ export default function FloatingAudioPlayer({
   onPlaybackStateChange
 }: FloatingAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastEmittedSubchapterKeyRef = useRef<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [seeking, setSeeking] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const subchapters = useMemo(
     () =>
       (track?.subchapters ?? [])
@@ -149,11 +155,14 @@ export default function FloatingAudioPlayer({
       if (audioRef.current) {
         audioRef.current.pause();
       }
+      lastEmittedSubchapterKeyRef.current = null;
       setPlaying(false);
       setCurrentTime(0);
       setDuration(0);
+      setMinimized(false);
       return;
     }
+    lastEmittedSubchapterKeyRef.current = null;
     if (!audioRef.current) {
       audioRef.current = new Audio();
     }
@@ -171,6 +180,28 @@ export default function FloatingAudioPlayer({
       setPlaying(false);
     });
   }, [onPlaybackStateChange, track]);
+
+  const emitSubchapterNavigation = useCallback(
+    (entry: FloatingAudioSubchapter) => {
+      if (!track) {
+        return;
+      }
+      const key = getSubchapterKey(entry);
+      if (lastEmittedSubchapterKeyRef.current === key) {
+        return;
+      }
+      lastEmittedSubchapterKeyRef.current = key;
+      emitFloatingAudioSubchapterSelect({ subchapter: entry, track });
+    },
+    [track]
+  );
+
+  useEffect(() => {
+    if (!activeSubchapter) {
+      return;
+    }
+    emitSubchapterNavigation(activeSubchapter);
+  }, [activeSubchapter, emitSubchapterNavigation]);
 
   const togglePlayback = useCallback(async () => {
     const audio = audioRef.current;
@@ -200,12 +231,10 @@ export default function FloatingAudioPlayer({
   const handleSeekToSubchapter = useCallback(
     (entry: FloatingAudioSubchapter) => {
       handleSeek(entry.startSeconds);
-      if (track) {
-        emitFloatingAudioSubchapterSelect({ subchapter: entry, track });
-      }
+      emitSubchapterNavigation(entry);
       void audioRef.current?.play();
     },
-    [handleSeek, track]
+    [emitSubchapterNavigation, handleSeek]
   );
 
   const handleSeekStart = useCallback(() => {
@@ -228,7 +257,7 @@ export default function FloatingAudioPlayer({
   }
 
   return (
-    <div className="floating-audio">
+    <div className={`floating-audio ${minimized ? 'floating-audio-minimized' : ''}`}>
       <div className="floating-audio-main">
         <div className="floating-audio-title">{titleLine}</div>
         {activeSubchapter ? (
@@ -273,7 +302,7 @@ export default function FloatingAudioPlayer({
             onChange={(event) => handleSeek(Number(event.target.value))}
           />
         </div>
-        {subchapters.length > 0 ? (
+        {!minimized && subchapters.length > 0 ? (
           <div className="floating-audio-subchapters" aria-label="Subchapters">
             {subchapters.map((entry) => {
               const active = activeSubchapter === entry;
@@ -297,9 +326,20 @@ export default function FloatingAudioPlayer({
           </div>
         ) : null}
       </div>
-      <button type="button" className="button floating-audio-close" onClick={onClose}>
-        ✕
-      </button>
+      <div className="floating-audio-actions">
+        <button
+          type="button"
+          className="button floating-audio-icon-button"
+          onClick={() => setMinimized((prev) => !prev)}
+          aria-label={minimized ? 'Expand audio player' : 'Minimize audio player'}
+          title={minimized ? 'Expand' : 'Minimize'}
+        >
+          {minimized ? '□' : '−'}
+        </button>
+        <button type="button" className="button floating-audio-icon-button" onClick={onClose} aria-label="Close audio player" title="Close">
+          ✕
+        </button>
+      </div>
     </div>
   );
 }
