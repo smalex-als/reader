@@ -1,8 +1,24 @@
 services:
+  sync-subtitles:
+    platform: linux/amd64
+    build:
+      context: ./services/syncaudio
+      dockerfile: Dockerfile
+    command: serve
+    environment:
+      SYNC_SUBTITLES_HOST: 0.0.0.0
+      SYNC_SUBTITLES_PORT: 3100
+      SYNC_SUBTITLES_DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
   reader:
+    platform: linux/amd64
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      - sync-subtitles
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -18,6 +34,12 @@ services:
       OCR_DEEPSEEK_PATH: ${OCR_DEEPSEEK_PATH:-/api/generate}
       OCR_DEEPSEEK_MODEL: ${OCR_DEEPSEEK_MODEL:-deepseek-ocr}
       OCR_DEEPSEEK_PROMPT: ${OCR_DEEPSEEK_PROMPT:-\n<|grounding|>Convert the\ndocument to markdown.}
+      CHAPTER_SUBTITLES_URL: ${CHAPTER_SUBTITLES_URL:-http://sync-subtitles:3100/generate}
+      CHAPTER_SUBTITLES_LANGUAGE: ${CHAPTER_SUBTITLES_LANGUAGE:-auto}
+      CHAPTER_SUBTITLES_SENTENCE_MODE: ${CHAPTER_SUBTITLES_SENTENCE_MODE:-strict}
+      CHAPTER_SUBTITLES_MAX_LINE_CHARS: ${CHAPTER_SUBTITLES_MAX_LINE_CHARS:-95}
+      CHAPTER_SUBTITLES_SKIP_VALIDATE: ${CHAPTER_SUBTITLES_SKIP_VALIDATE:-true}
+      CHAPTER_SUBTITLES_TIMEOUT_MS: ${CHAPTER_SUBTITLES_TIMEOUT_MS:-1800000}
       NODE_TLS_REJECT_UNAUTHORIZED: '0'
     volumes:
       - ./data:/app/data

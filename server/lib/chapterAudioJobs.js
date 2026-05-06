@@ -5,6 +5,7 @@ import { safeStat } from './fs.js';
 import { createHttpError } from './errors.js';
 import {
   finalizeChapterAudio,
+  formatChapterAudioFilename,
   PCM_STREAM_BIT_DEPTH,
   PCM_STREAM_CHANNEL_COUNT,
   PCM_STREAM_SAMPLE_RATE,
@@ -13,6 +14,7 @@ import {
 } from './streamAudio.js';
 import { generateChapterXaiAudio } from './chapterXaiAudio.js';
 import { generateChapterYandexAudio } from './chapterYandexAudio.js';
+import { startChapterSubtitleGeneration } from './chapterSubtitles.js';
 import { createTtsLogTimer } from './ttsLog.js';
 
 const JOB_STORE_PATH = path.join(DATA_DIR, 'chapter-audio-jobs.json');
@@ -162,6 +164,27 @@ async function finalizeFailure(bookId, chapterNumber, error) {
   });
 }
 
+async function startSubtitlesAfterAudio({ bookId, chapterNumber, versionId, transcriptText }) {
+  const resolvedVersionId = typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
+  const mp3Path = path.join(DATA_DIR, bookId, formatChapterAudioFilename(chapterNumber, resolvedVersionId));
+  try {
+    await startChapterSubtitleGeneration({
+      bookId,
+      chapterNumber,
+      versionId: resolvedVersionId,
+      mp3Path,
+      transcriptText
+    });
+  } catch (error) {
+    console.warn('Failed to start chapter subtitle generation', {
+      bookId,
+      chapterNumber,
+      versionId: resolvedVersionId,
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
 async function runChapterAudioJob({
   bookId,
   chapterNumber,
@@ -208,6 +231,14 @@ async function runChapterAudioJob({
 
     if (provider === 'xai') {
       const result = await generateChapterXaiAudio({ bookId, chapterNumber, versionId, voice, force });
+      if (!('existingAudioUrl' in result)) {
+        await startSubtitlesAfterAudio({
+          bookId,
+          chapterNumber,
+          versionId: result.versionId ?? versionId ?? 'base',
+          transcriptText: result.cleanText ?? ''
+        });
+      }
       await updateJob(bookId, chapterNumber, {
         provider,
         status: 'completed',
@@ -228,6 +259,14 @@ async function runChapterAudioJob({
 
     if (provider === 'yandex') {
       const result = await generateChapterYandexAudio({ bookId, chapterNumber, versionId, voice, force });
+      if (!('existingAudioUrl' in result)) {
+        await startSubtitlesAfterAudio({
+          bookId,
+          chapterNumber,
+          versionId: result.versionId ?? versionId ?? 'base',
+          transcriptText: result.cleanText ?? ''
+        });
+      }
       await updateJob(bookId, chapterNumber, {
         provider,
         status: 'completed',
@@ -366,6 +405,12 @@ async function runChapterAudioJob({
     if (!mp3Stat?.isFile()) {
       throw createHttpError(502, 'Failed to save chapter audio');
     }
+    await startSubtitlesAfterAudio({
+      bookId,
+      chapterNumber,
+      versionId: preparation.versionId ?? versionId ?? 'base',
+      transcriptText: preparation.cleanText
+    });
     await updateJob(bookId, chapterNumber, {
       provider,
       status: 'completed',

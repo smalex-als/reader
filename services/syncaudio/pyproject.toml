@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sync-subtitles-mfa"
+version = "0.1.0"
+description = "Generate SRT subtitles from known transcripts using Montreal Forced Aligner."
+readme = "MFA_POC.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "syncAudio" }
+]
+dependencies = []
+
+[project.scripts]
+sync-subtitles-mfa = "sync_subtitles_mfa.cli:main"
+sync-subtitles-mfa-server = "sync_subtitles_mfa.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

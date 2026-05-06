@@ -1,0 +1,11 @@
+services:
+  sync-subtitles:
+    build:
+      context: .
+    image: sync-subtitles-mfa:local
+    platform: linux/amd64
+    volumes:
+      - ./:/data
+    working_dir: /data
+    environment:
+      MFA_ROOT_DIR: /models/mfa

@@ -49,6 +49,7 @@ import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabul
 import { createEnhancedImagePreview, createImagePreviewCrop } from '../lib/imagePreview.js';
 import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
 import { formatChapterAudioFilename } from '../lib/streamAudio.js';
+import { resolveChapterSubtitlePaths } from '../lib/chapterSubtitles.js';
 import {
   addTextChapter,
   createTextBook,
@@ -434,8 +435,15 @@ router.delete('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req,
   const audioFilename = formatChapterAudioFilename(chapterNumber, versionId);
   const audioPath = path.join(DATA_DIR, bookId, audioFilename);
   const metaPath = `${audioPath}.meta.json`;
+  const subtitlePaths = resolveChapterSubtitlePaths({ mp3Path: audioPath, chapterNumber, versionId });
   const audioStat = await safeStat(audioPath);
-  for (const targetPath of [audioPath, metaPath]) {
+  for (const targetPath of [
+    audioPath,
+    metaPath,
+    subtitlePaths.srtPath,
+    subtitlePaths.statusPath,
+    subtitlePaths.transcriptPath
+  ]) {
     try {
       await fs.unlink(targetPath);
     } catch (error) {

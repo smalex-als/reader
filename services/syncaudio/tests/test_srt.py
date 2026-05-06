@@ -1,0 +1,79 @@
+from pathlib import Path
+import tempfile
+import unittest
+
+from sync_subtitles_mfa.srt import cues_from_words, format_timestamp, join_words, wrap_words, write_srt
+from sync_subtitles_mfa.textgrid import Word
+
+
+class SRTTest(unittest.TestCase):
+    def test_cues_split_on_word_count_duration_and_pause(self) -> None:
+        words = [
+            Word(0.0, 0.2, "This"),
+            Word(0.25, 0.5, "is"),
+            Word(0.55, 0.8, "the"),
+            Word(0.85, 1.1, "first"),
+            Word(2.0, 2.2, "Next"),
+            Word(2.25, 2.5, "cue"),
+        ]
+
+        cues = cues_from_words(words, max_words_per_cue=4, max_cue_duration=4.0, pause_threshold=0.6)
+
+        self.assertEqual(len(cues), 2)
+        self.assertEqual(cues[0].text, "This is the first")
+        self.assertEqual(cues[1].text, "Next cue")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out = Path(temp_dir) / "out.srt"
+            write_srt(cues, out)
+            self.assertTrue(out.read_text(encoding="utf-8").startswith("1\n00:00:00,000 --> 00:00:01,100"))
+
+    def test_format_timestamp_rounds_to_srt_milliseconds(self) -> None:
+        self.assertEqual(format_timestamp(3661.2345), "01:01:01,234")
+
+    def test_join_words_recombines_hyphenated_source_tokens(self) -> None:
+        self.assertEqual(join_words(["correctness-", "sensitive", "system."]), "correctness-sensitive system.")
+
+    def test_strict_sentence_mode_keeps_sentence_together(self) -> None:
+        words = [
+            Word(0.0, 0.1, "This"),
+            Word(0.1, 0.2, "sentence"),
+            Word(0.2, 0.3, "stays"),
+            Word(0.3, 0.4, "together."),
+            Word(0.5, 0.6, "Next"),
+            Word(0.6, 0.7, "one."),
+        ]
+
+        cues = cues_from_words(
+            words,
+            max_words_per_cue=2,
+            max_cue_duration=0.2,
+            pause_threshold=0.6,
+            sentence_mode="strict",
+        )
+
+        self.assertEqual([cue.text for cue in cues], ["This sentence stays together.", "Next one."])
+
+    def test_wrap_words_uses_multiple_lines_for_long_sentences(self) -> None:
+        lines = wrap_words(["one", "two", "three", "four", "five"], max_line_chars=13)
+
+        self.assertEqual(lines, ["one two three", "four five"])
+
+    def test_cues_respect_configured_line_width(self) -> None:
+        words = [
+            Word(0.0, 0.1, "one"),
+            Word(0.1, 0.2, "two"),
+            Word(0.2, 0.3, "three"),
+            Word(0.3, 0.4, "four"),
+            Word(0.4, 0.5, "five"),
+        ]
+
+        narrow = cues_from_words(words, max_line_chars=13)[0]
+        wide = cues_from_words(words, max_line_chars=100)[0]
+
+        self.assertEqual(narrow.text, "one two three\nfour five")
+        self.assertEqual(wide.text, "one two three four five")
+
+
+if __name__ == "__main__":
+    unittest.main()
