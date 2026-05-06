@@ -19,6 +19,19 @@ import { formatChapterAudioFilename } from './streamAudio.js';
 import { safeStat } from './fs.js';
 
 const OUTPUT_LIMIT = 12_000;
+const SUBTITLE_SERVICE_CONNECT_RETRIES = 5;
+const SUBTITLE_SERVICE_CONNECT_RETRY_DELAY_MS = 2_000;
+const TRANSIENT_FETCH_ERROR_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_SOCKET'
+]);
 
 function shellQuote(value) {
   return `'${String(value ?? '').replace(/'/g, `'\\''`)}'`;
@@ -27,6 +40,52 @@ function shellQuote(value) {
 function truncateOutput(value) {
   const text = String(value || '');
   return text.length > OUTPUT_LIMIT ? text.slice(-OUTPUT_LIMIT) : text;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function serializeError(error) {
+  if (!(error instanceof Error)) {
+    return {
+      message: String(error)
+    };
+  }
+  const cause = error.cause;
+  return {
+    message: error.message,
+    name: error.name,
+    code: error.code ?? cause?.code ?? null,
+    errno: error.errno ?? cause?.errno ?? null,
+    syscall: error.syscall ?? cause?.syscall ?? null,
+    address: error.address ?? cause?.address ?? null,
+    port: error.port ?? cause?.port ?? null,
+    causeMessage: cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : null
+  };
+}
+
+function isTransientFetchError(error) {
+  const details = serializeError(error);
+  return TRANSIENT_FETCH_ERROR_CODES.has(details.code);
+}
+
+function formatErrorMessage(error) {
+  const details = serializeError(error);
+  const parts = [details.message];
+  if (details.code) {
+    parts.push(details.code);
+  }
+  if (details.syscall) {
+    parts.push(details.syscall);
+  }
+  if (details.address || details.port) {
+    parts.push(`${details.address ?? ''}${details.port ? `:${details.port}` : ''}`);
+  }
+  if (details.causeMessage && details.causeMessage !== details.message) {
+    parts.push(details.causeMessage);
+  }
+  return parts.filter(Boolean).join(' - ');
 }
 
 function renderCommand(template, variables) {
@@ -159,6 +218,28 @@ async function readSubtitleServiceResponse(response) {
   }
 }
 
+async function fetchSubtitleServiceWithRetries(serviceUrl, options) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= SUBTITLE_SERVICE_CONNECT_RETRIES; attempt += 1) {
+    try {
+      return await fetch(serviceUrl, options);
+    } catch (error) {
+      lastError = error;
+      if (!isTransientFetchError(error) || attempt >= SUBTITLE_SERVICE_CONNECT_RETRIES) {
+        throw error;
+      }
+      console.warn('Subtitle service request failed, retrying', {
+        serviceUrl,
+        attempt,
+        maxAttempts: SUBTITLE_SERVICE_CONNECT_RETRIES,
+        error: serializeError(error)
+      });
+      await sleep(SUBTITLE_SERVICE_CONNECT_RETRY_DELAY_MS);
+    }
+  }
+  throw lastError;
+}
+
 async function runSubtitleServiceRequest({
   serviceUrl,
   paths,
@@ -174,7 +255,7 @@ async function runSubtitleServiceRequest({
     : null;
 
   try {
-    const response = await fetch(serviceUrl, {
+    const response = await fetchSubtitleServiceWithRetries(serviceUrl, {
       method: 'POST',
       headers: {
         'content-type': 'application/json'
@@ -182,33 +263,27 @@ async function runSubtitleServiceRequest({
       body: JSON.stringify({
         audio: toDataRelativePath(mp3Path),
         text: toDataRelativePath(paths.transcriptPath),
-        out: toDataRelativePath(paths.srtPath),
-        status: toDataRelativePath(paths.statusPath),
+        out: paths.srtFilename,
         language: subtitleLanguage,
         skipValidate: CHAPTER_SUBTITLES_SKIP_VALIDATE,
         sentenceMode: CHAPTER_SUBTITLES_SENTENCE_MODE.trim() || 'strict',
         maxLineChars: resolveMaxLineChars(),
         beam: resolveBeam(),
-        retryBeam: resolveRetryBeam(),
-        statusMetadata: {
-          bookId,
-          chapterNumber,
-          versionId,
-          mp3Path,
-          transcriptPath: paths.transcriptPath,
-          srtPath: paths.srtPath,
-          subtitleLanguage,
-          serviceUrl
-        }
+        retryBeam: resolveRetryBeam()
       }),
       signal: controller.signal
     });
-    const responseBody = await readSubtitleServiceResponse(response);
     if (!response.ok) {
+      const responseBody = await readSubtitleServiceResponse(response);
       const message = responseBody?.error || responseBody?.message || `Subtitle service failed with HTTP ${response.status}`;
       throw new Error(message);
     }
 
+    const srtText = await response.text();
+    if (!srtText.trim()) {
+      throw new Error('Subtitle service returned an empty SRT file');
+    }
+    await fs.writeFile(paths.srtPath, srtText, 'utf8');
     const srtStat = await safeStat(paths.srtPath);
     const ok = srtStat?.isFile?.();
     await writeSubtitleStatus(paths.statusPath, {
@@ -223,7 +298,7 @@ async function runSubtitleServiceRequest({
       completedAt: new Date().toISOString(),
       error: ok ? null : 'Subtitle service completed without writing SRT file',
       serviceUrl,
-      response: responseBody
+      responseBytes: Buffer.byteLength(srtText, 'utf8')
     });
     if (!ok) {
       console.warn('Chapter subtitle service did not write SRT file', {
@@ -237,9 +312,7 @@ async function runSubtitleServiceRequest({
   } catch (error) {
     const message = error?.name === 'AbortError'
       ? 'Subtitle service request timed out'
-      : error instanceof Error
-        ? error.message
-        : String(error);
+      : formatErrorMessage(error);
     await writeSubtitleStatus(paths.statusPath, {
       status: 'failed',
       bookId,
@@ -251,6 +324,7 @@ async function runSubtitleServiceRequest({
       subtitleLanguage,
       completedAt: new Date().toISOString(),
       error: message,
+      errorDetails: serializeError(error),
       serviceUrl
     }).catch((statusError) => {
       console.warn('Failed to write subtitle status after service error', statusError);
@@ -261,7 +335,7 @@ async function runSubtitleServiceRequest({
       versionId,
       subtitleLanguage,
       serviceUrl,
-      message
+      error: serializeError(error)
     });
   } finally {
     if (timeout) {

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -53,40 +53,6 @@ def field(payload: dict[str, Any], *names: str) -> Any:
     return None
 
 
-def data_relative(path: Path) -> str:
-    return path.resolve().relative_to(DATA_DIR).as_posix()
-
-
-def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def status_metadata(payload: dict[str, Any]) -> dict[str, Any]:
-    metadata = field(payload, "statusMetadata", "status_metadata")
-    return dict(metadata) if isinstance(metadata, dict) else {}
-
-
-def write_request_status(payload: dict[str, Any], status: dict[str, Any]) -> None:
-    status_value = field(payload, "status", "statusPath", "status_path")
-    if status_value is None:
-        return
-
-    status_path = resolve_data_path(status_value)
-    status_path.parent.mkdir(parents=True, exist_ok=True)
-    status_path.write_text(
-        json.dumps(
-            {
-                **status_metadata(payload),
-                **status,
-                "updatedAt": now_iso(),
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-
-
 class SubtitleRequestHandler(BaseHTTPRequestHandler):
     server_version = "sync-subtitles-mfa/0.1"
 
@@ -101,31 +67,21 @@ class SubtitleRequestHandler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "not found"})
             return
 
-        payload: dict[str, Any] | None = None
         try:
             payload = self.read_json()
-            out_path = self.generate(payload)
+            srt_bytes, filename = self.generate(payload)
         except ValueError as exc:
-            if payload is not None:
-                self.write_status_safely(payload, {"status": "failed", "completedAt": now_iso(), "error": str(exc)})
             self.send_json(400, {"status": "failed", "error": str(exc)})
             return
         except SyncMFAError as exc:
-            if payload is not None:
-                self.write_status_safely(payload, {"status": "failed", "completedAt": now_iso(), "error": str(exc)})
             self.send_json(500, {"status": "failed", "error": str(exc)})
             return
+        except Exception as exc:
+            message = f"{type(exc).__name__}: {exc}"
+            self.send_json(500, {"status": "failed", "error": message})
+            return
 
-        self.write_status_safely(
-            payload,
-            {
-                "status": "completed",
-                "completedAt": now_iso(),
-                "error": None,
-                "out": data_relative(out_path),
-            },
-        )
-        self.send_json(200, {"status": "completed", "out": data_relative(out_path)})
+        self.send_file(200, srt_bytes, filename)
 
     def read_json(self) -> dict[str, Any]:
         length = int(self.headers.get("content-length") or "0")
@@ -143,23 +99,28 @@ class SubtitleRequestHandler(BaseHTTPRequestHandler):
             raise ValueError("request body must be a JSON object")
         return payload
 
-    def generate(self, payload: dict[str, Any]) -> Path:
+    def generate(self, payload: dict[str, Any]) -> tuple[bytes, str]:
         sentence_mode = str(field(payload, "sentenceMode", "sentence_mode") or "strict")
         if sentence_mode not in {"balanced", "strict"}:
             raise ValueError("sentenceMode must be 'balanced' or 'strict'")
 
-        options = SyncOptions(
-            audio=resolve_data_path(field(payload, "audio")),
-            text=resolve_data_path(field(payload, "text")),
-            out=resolve_data_path(field(payload, "out")),
-            language=str(field(payload, "language") or "english_us_arpa"),
-            max_line_chars=parse_int(field(payload, "maxLineChars", "max_line_chars"), 95),
-            sentence_mode=sentence_mode,
-            skip_validate=parse_bool(field(payload, "skipValidate", "skip_validate"), False),
-            beam=parse_int(field(payload, "beam"), 100),
-            retry_beam=parse_int(field(payload, "retryBeam", "retry_beam"), 400),
-        )
-        return sync_subtitles(options)
+        requested_out = field(payload, "out")
+        filename = Path(requested_out).name if isinstance(requested_out, str) and requested_out.strip() else "subtitles.srt"
+        with tempfile.TemporaryDirectory(prefix="sync-subtitles-http-") as temp_dir:
+            out_path = Path(temp_dir) / filename
+            options = SyncOptions(
+                audio=resolve_data_path(field(payload, "audio")),
+                text=resolve_data_path(field(payload, "text")),
+                out=out_path,
+                language=str(field(payload, "language") or "english_us_arpa"),
+                max_line_chars=parse_int(field(payload, "maxLineChars", "max_line_chars"), 95),
+                sentence_mode=sentence_mode,
+                skip_validate=parse_bool(field(payload, "skipValidate", "skip_validate"), False),
+                beam=parse_int(field(payload, "beam"), 100),
+                retry_beam=parse_int(field(payload, "retryBeam", "retry_beam"), 400),
+            )
+            sync_subtitles(options)
+            return out_path.read_bytes(), filename
 
     def send_json(self, status_code: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -169,11 +130,13 @@ class SubtitleRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def write_status_safely(self, payload: dict[str, Any], status: dict[str, Any]) -> None:
-        try:
-            write_request_status(payload, status)
-        except Exception as exc:
-            print(f"failed to write subtitle status: {exc}", flush=True)
+    def send_file(self, status_code: int, body: bytes, filename: str) -> None:
+        self.send_response(status_code)
+        self.send_header("content-type", "application/x-subrip; charset=utf-8")
+        self.send_header("content-length", str(len(body)))
+        self.send_header("content-disposition", f'attachment; filename="{filename}"')
+        self.end_headers()
+        self.wfile.write(body)
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"{self.address_string()} - {format % args}", flush=True)

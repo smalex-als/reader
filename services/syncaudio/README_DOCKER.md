@@ -77,26 +77,24 @@ curl http://localhost:3100/health
 Generate subtitles through the service:
 
 ```sh
-curl -X POST http://localhost:3100/generate \
+curl -o output/chapter009.srt \
+  -X POST http://localhost:3100/generate \
   -H 'content-type: application/json' \
   -d '{
     "audio": "test/chapter009.mp3",
     "text": "test/chapter009.txt",
     "out": "output/chapter009.srt",
-    "status": "output/chapter009.srt.status.json",
     "language": "english_us_arpa",
     "skipValidate": true,
     "sentenceMode": "strict",
     "maxLineChars": 95,
     "beam": 100,
-    "retryBeam": 400,
-    "statusMetadata": {
-      "bookId": "example",
-      "chapterNumber": 9,
-      "versionId": "base"
-    }
+    "retryBeam": 400
   }'
 ```
+
+The HTTP service returns the generated SRT file as the response body. It does
+not write the output file into `/data`; callers are responsible for saving it.
 
 The image includes MFA, Python 3.11, `english_us_arpa`, and `russian_mfa`.
 Input/output paths are relative to the mounted repository directory at `/data`.

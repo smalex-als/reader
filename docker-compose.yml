@@ -9,6 +9,16 @@ services:
       SYNC_SUBTITLES_HOST: 0.0.0.0
       SYNC_SUBTITLES_PORT: 3100
       SYNC_SUBTITLES_DATA_DIR: /data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3100/health', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
     volumes:
       - ./data:/data
     restart: unless-stopped
@@ -18,7 +28,8 @@ services:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      - sync-subtitles
+      sync-subtitles:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
