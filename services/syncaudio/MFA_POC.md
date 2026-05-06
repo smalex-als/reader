@@ -231,6 +231,8 @@ sync-subtitles-mfa \
 - `--max-cue-duration`: по умолчанию `6.0`;
 - `--max-line-chars`: по умолчанию `72`;
 - `--pause-threshold`: по умолчанию `0.6`.
+- `--beam`: MFA alignment beam, по умолчанию `100`;
+- `--retry-beam`: MFA retry beam, по умолчанию `400`;
 - `--sentence-mode`: `balanced` по умолчанию; `strict` держит cue до конца
   предложения, где это возможно.
 - `--skip-validate`: пропустить `mfa validate` и сразу запускать `mfa align`.
@@ -271,7 +273,9 @@ PYTHONPATH=src python3 -m sync_subtitles_mfa \
   --text test/chapter009.txt \
   --out output/chapter009.srt \
   --sentence-mode strict \
-  --max-line-chars 95
+  --max-line-chars 95 \
+  --beam 100 \
+  --retry-beam 400
 ```
 
 Для русского языка нужно скачать matching MFA acoustic model + dictionary:
@@ -290,7 +294,9 @@ PYTHONPATH=src python3 -m sync_subtitles_mfa \
   --out output/chapter001.srt \
   --language russian_mfa \
   --sentence-mode strict \
-  --max-line-chars 95
+  --max-line-chars 95 \
+  --beam 100 \
+  --retry-beam 400
 ```
 
 ## Docker
@@ -327,7 +333,9 @@ docker run --rm \
   --out output/chapter009.srt \
   --language english_us_arpa \
   --sentence-mode strict \
-  --max-line-chars 95
+  --max-line-chars 95 \
+  --beam 100 \
+  --retry-beam 400
 ```
 
 Запуск русского примера:
@@ -344,7 +352,9 @@ docker run --rm \
   --language russian_mfa \
   --skip-validate \
   --sentence-mode strict \
-  --max-line-chars 95
+  --max-line-chars 95 \
+  --beam 100 \
+  --retry-beam 400
 ```
 
 То же через Docker Compose:
@@ -356,7 +366,9 @@ docker compose run --rm sync-subtitles \
   --out output/chapter005.v1.srt \
   --language russian_mfa \
   --sentence-mode strict \
-  --max-line-chars 95
+  --max-line-chars 95 \
+  --beam 100 \
+  --retry-beam 400
 ```
 
 После установки пакета команда доступна как:

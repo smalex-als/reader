@@ -111,6 +111,8 @@ class SubtitleRequestHandler(BaseHTTPRequestHandler):
             max_line_chars=parse_int(field(payload, "maxLineChars", "max_line_chars"), 95),
             sentence_mode=sentence_mode,
             skip_validate=parse_bool(field(payload, "skipValidate", "skip_validate"), False),
+            beam=parse_int(field(payload, "beam"), 100),
+            retry_beam=parse_int(field(payload, "retryBeam", "retry_beam"), 400),
         )
         return sync_subtitles(options)
 

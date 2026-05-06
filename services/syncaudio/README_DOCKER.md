@@ -19,7 +19,9 @@ docker run --rm \
   --out output/chapter009.srt \
   --language english_us_arpa \
   --sentence-mode strict \
-  --max-line-chars 95
+  --max-line-chars 95 \
+  --beam 100 \
+  --retry-beam 400
 ```
 
 Run Russian alignment:
@@ -36,7 +38,9 @@ docker run --rm \
   --language russian_mfa \
   --skip-validate \
   --sentence-mode strict \
-  --max-line-chars 95
+  --max-line-chars 95 \
+  --beam 100 \
+  --retry-beam 400
 ```
 
 Docker Compose equivalent:
@@ -49,7 +53,9 @@ docker compose run --rm sync-subtitles \
   --language russian_mfa \
   --skip-validate \
   --sentence-mode strict \
-  --max-line-chars 95
+  --max-line-chars 95 \
+  --beam 100 \
+  --retry-beam 400
 ```
 
 Run as an HTTP service:
@@ -80,7 +86,9 @@ curl -X POST http://localhost:3100/generate \
     "language": "english_us_arpa",
     "skipValidate": true,
     "sentenceMode": "strict",
-    "maxLineChars": 95
+    "maxLineChars": 95,
+    "beam": 100,
+    "retryBeam": 400
   }'
 ```
 

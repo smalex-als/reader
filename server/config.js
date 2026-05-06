@@ -37,6 +37,11 @@ export const CHAPTER_SUBTITLES_MAX_LINE_CHARS = Number.parseInt(
   process.env.CHAPTER_SUBTITLES_MAX_LINE_CHARS || '95',
   10
 );
+export const CHAPTER_SUBTITLES_BEAM = Number.parseInt(process.env.CHAPTER_SUBTITLES_BEAM || '100', 10);
+export const CHAPTER_SUBTITLES_RETRY_BEAM = Number.parseInt(
+  process.env.CHAPTER_SUBTITLES_RETRY_BEAM || '400',
+  10
+);
 export const CHAPTER_SUBTITLES_SKIP_VALIDATE = process.env.CHAPTER_SUBTITLES_SKIP_VALIDATE !== 'false';
 export const CHAPTER_SUBTITLES_DOCKER_USER = process.env.CHAPTER_SUBTITLES_DOCKER_USER || '';
 export const CHAPTER_SUBTITLES_TIMEOUT_MS = Number.parseInt(

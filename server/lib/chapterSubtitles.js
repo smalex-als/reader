@@ -2,11 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import {
+  CHAPTER_SUBTITLES_BEAM,
   CHAPTER_SUBTITLES_COMMAND,
   CHAPTER_SUBTITLES_DOCKER_USER,
   CHAPTER_SUBTITLES_IMAGE,
   CHAPTER_SUBTITLES_LANGUAGE,
   CHAPTER_SUBTITLES_MAX_LINE_CHARS,
+  CHAPTER_SUBTITLES_RETRY_BEAM,
   CHAPTER_SUBTITLES_SENTENCE_MODE,
   CHAPTER_SUBTITLES_SKIP_VALIDATE,
   CHAPTER_SUBTITLES_TIMEOUT_MS,
@@ -51,6 +53,18 @@ function resolveMaxLineChars() {
   return Number.isFinite(CHAPTER_SUBTITLES_MAX_LINE_CHARS) && CHAPTER_SUBTITLES_MAX_LINE_CHARS > 0
     ? CHAPTER_SUBTITLES_MAX_LINE_CHARS
     : 95;
+}
+
+function resolveBeam() {
+  return Number.isFinite(CHAPTER_SUBTITLES_BEAM) && CHAPTER_SUBTITLES_BEAM > 0
+    ? CHAPTER_SUBTITLES_BEAM
+    : 100;
+}
+
+function resolveRetryBeam() {
+  return Number.isFinite(CHAPTER_SUBTITLES_RETRY_BEAM) && CHAPTER_SUBTITLES_RETRY_BEAM > 0
+    ? CHAPTER_SUBTITLES_RETRY_BEAM
+    : 400;
 }
 
 function toDataRelativePath(filePath) {
@@ -105,7 +119,16 @@ function buildCommandFromImage({ paths, mp3Path, transcriptText }) {
   if (CHAPTER_SUBTITLES_SKIP_VALIDATE) {
     args.push('--skip-validate');
   }
-  args.push('--sentence-mode', sentenceMode, '--max-line-chars', String(resolveMaxLineChars()));
+  args.push(
+    '--sentence-mode',
+    sentenceMode,
+    '--max-line-chars',
+    String(resolveMaxLineChars()),
+    '--beam',
+    String(resolveBeam()),
+    '--retry-beam',
+    String(resolveRetryBeam())
+  );
   return args.map(shellQuote).join(' ');
 }
 
@@ -163,7 +186,9 @@ async function runSubtitleServiceRequest({
         language: subtitleLanguage,
         skipValidate: CHAPTER_SUBTITLES_SKIP_VALIDATE,
         sentenceMode: CHAPTER_SUBTITLES_SENTENCE_MODE.trim() || 'strict',
-        maxLineChars: resolveMaxLineChars()
+        maxLineChars: resolveMaxLineChars(),
+        beam: resolveBeam(),
+        retryBeam: resolveRetryBeam()
       }),
       signal: controller.signal
     });
@@ -270,7 +295,9 @@ export async function startChapterSubtitleGeneration({
     bookDir: paths.bookDir,
     bookId,
     chapterNumber,
+    beam: String(resolveBeam()),
     maxLineChars: String(resolveMaxLineChars()),
+    retryBeam: String(resolveRetryBeam()),
     sentenceMode: CHAPTER_SUBTITLES_SENTENCE_MODE.trim() || 'strict',
     skipValidateFlag: CHAPTER_SUBTITLES_SKIP_VALIDATE ? '--skip-validate' : '',
     srtFile: paths.srtFilename,

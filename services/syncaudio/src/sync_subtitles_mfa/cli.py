@@ -32,6 +32,8 @@ class SyncOptions:
     pause_threshold: float = 0.6
     sentence_mode: Literal["balanced", "strict"] = "balanced"
     skip_validate: bool = False
+    beam: int = 100
+    retry_beam: int = 400
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -48,6 +50,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-cue-duration", type=float, default=6.0, help="Maximum duration in seconds for one cue.")
     parser.add_argument("--max-line-chars", type=int, default=72, help="Maximum characters per subtitle text line.")
     parser.add_argument("--pause-threshold", type=float, default=0.6, help="Start a new cue after this silence gap.")
+    parser.add_argument("--beam", type=int, default=100, help="MFA alignment beam width.")
+    parser.add_argument("--retry-beam", "--retry_beam", dest="retry_beam", type=int, default=400, help="MFA retry beam width.")
     parser.add_argument(
         "--skip-validate",
         action="store_true",
@@ -79,6 +83,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             pause_threshold=args.pause_threshold,
             sentence_mode=args.sentence_mode,
             skip_validate=args.skip_validate,
+            beam=args.beam,
+            retry_beam=args.retry_beam,
         )
         result = sync_subtitles(options)
     except SyncMFAError as exc:
@@ -118,6 +124,10 @@ def validate_options(options: SyncOptions) -> None:
         raise SyncMFAError("--max-line-chars must be greater than zero")
     if options.pause_threshold < 0:
         raise SyncMFAError("--pause-threshold cannot be negative")
+    if options.beam <= 0:
+        raise SyncMFAError("--beam must be greater than zero")
+    if options.retry_beam <= 0:
+        raise SyncMFAError("--retry-beam must be greater than zero")
 
 
 def build_command_env() -> dict[str, str]:
@@ -201,6 +211,10 @@ def _sync_subtitles_in_workdir(
             str(aligned_dir),
             "--clean",
             "--single_speaker",
+            "--beam",
+            str(options.beam),
+            "--retry_beam",
+            str(options.retry_beam),
         ],
         "mfa align failed",
         env=command_env,
