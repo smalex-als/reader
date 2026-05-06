@@ -83,12 +83,18 @@ curl -X POST http://localhost:3100/generate \
     "audio": "test/chapter009.mp3",
     "text": "test/chapter009.txt",
     "out": "output/chapter009.srt",
+    "status": "output/chapter009.srt.status.json",
     "language": "english_us_arpa",
     "skipValidate": true,
     "sentenceMode": "strict",
     "maxLineChars": 95,
     "beam": 100,
-    "retryBeam": 400
+    "retryBeam": 400,
+    "statusMetadata": {
+      "bookId": "example",
+      "chapterNumber": 9,
+      "versionId": "base"
+    }
   }'
 ```
 

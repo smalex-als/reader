@@ -183,12 +183,23 @@ async function runSubtitleServiceRequest({
         audio: toDataRelativePath(mp3Path),
         text: toDataRelativePath(paths.transcriptPath),
         out: toDataRelativePath(paths.srtPath),
+        status: toDataRelativePath(paths.statusPath),
         language: subtitleLanguage,
         skipValidate: CHAPTER_SUBTITLES_SKIP_VALIDATE,
         sentenceMode: CHAPTER_SUBTITLES_SENTENCE_MODE.trim() || 'strict',
         maxLineChars: resolveMaxLineChars(),
         beam: resolveBeam(),
-        retryBeam: resolveRetryBeam()
+        retryBeam: resolveRetryBeam(),
+        statusMetadata: {
+          bookId,
+          chapterNumber,
+          versionId,
+          mp3Path,
+          transcriptPath: paths.transcriptPath,
+          srtPath: paths.srtPath,
+          subtitleLanguage,
+          serviceUrl
+        }
       }),
       signal: controller.signal
     });

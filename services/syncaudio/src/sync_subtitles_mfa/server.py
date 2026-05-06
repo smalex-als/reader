@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -56,6 +57,36 @@ def data_relative(path: Path) -> str:
     return path.resolve().relative_to(DATA_DIR).as_posix()
 
 
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def status_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+    metadata = field(payload, "statusMetadata", "status_metadata")
+    return dict(metadata) if isinstance(metadata, dict) else {}
+
+
+def write_request_status(payload: dict[str, Any], status: dict[str, Any]) -> None:
+    status_value = field(payload, "status", "statusPath", "status_path")
+    if status_value is None:
+        return
+
+    status_path = resolve_data_path(status_value)
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    status_path.write_text(
+        json.dumps(
+            {
+                **status_metadata(payload),
+                **status,
+                "updatedAt": now_iso(),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
 class SubtitleRequestHandler(BaseHTTPRequestHandler):
     server_version = "sync-subtitles-mfa/0.1"
 
@@ -70,16 +101,30 @@ class SubtitleRequestHandler(BaseHTTPRequestHandler):
             self.send_json(404, {"error": "not found"})
             return
 
+        payload: dict[str, Any] | None = None
         try:
             payload = self.read_json()
             out_path = self.generate(payload)
         except ValueError as exc:
+            if payload is not None:
+                self.write_status_safely(payload, {"status": "failed", "completedAt": now_iso(), "error": str(exc)})
             self.send_json(400, {"status": "failed", "error": str(exc)})
             return
         except SyncMFAError as exc:
+            if payload is not None:
+                self.write_status_safely(payload, {"status": "failed", "completedAt": now_iso(), "error": str(exc)})
             self.send_json(500, {"status": "failed", "error": str(exc)})
             return
 
+        self.write_status_safely(
+            payload,
+            {
+                "status": "completed",
+                "completedAt": now_iso(),
+                "error": None,
+                "out": data_relative(out_path),
+            },
+        )
         self.send_json(200, {"status": "completed", "out": data_relative(out_path)})
 
     def read_json(self) -> dict[str, Any]:
@@ -123,6 +168,12 @@ class SubtitleRequestHandler(BaseHTTPRequestHandler):
         self.send_header("content-length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def write_status_safely(self, payload: dict[str, Any], status: dict[str, Any]) -> None:
+        try:
+            write_request_status(payload, status)
+        except Exception as exc:
+            print(f"failed to write subtitle status: {exc}", flush=True)
 
     def log_message(self, format: str, *args: Any) -> None:
         print(f"{self.address_string()} - {format % args}", flush=True)
