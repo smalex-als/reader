@@ -6,7 +6,7 @@ import {
   statFile
 } from '../lib.js';
 
-const SYNC_SUBTITLES_URL = process.env.JOBWORKER_SYNC_SUBTITLES_URL || 'http://sync-subtitles:3100/generate';
+const SYNC_SUBTITLES_URL = process.env.JOBWORKER_SYNC_SUBTITLES_URL || 'http://sync-subtitles:3100';
 const SUBTITLE_TIMEOUT_MS = Number.parseInt(process.env.JOBWORKER_SUBTITLE_TIMEOUT_MS || '1800000', 10);
 const SUBTITLE_POLL_INTERVAL_MS = Number.parseInt(process.env.JOBWORKER_SUBTITLE_POLL_INTERVAL_MS || '2000', 10);
 
@@ -34,7 +34,7 @@ function normalizeSubtitlePayload(input) {
 function resolveSyncSubtitlesBaseUrl() {
   const url = new URL(SYNC_SUBTITLES_URL);
   if (url.pathname.endsWith('/generate')) {
-    url.pathname = url.pathname.slice(0, -'/generate'.length) || '/';
+    throw new Error('JOBWORKER_SYNC_SUBTITLES_URL must point to the syncaudio base URL, not /generate');
   }
   url.search = '';
   url.hash = '';
@@ -185,7 +185,7 @@ export const subtitlesHandler = {
 
   async run(job, context = {}) {
     await context.log?.('Requesting subtitle sync service', {
-      serviceUrl: SYNC_SUBTITLES_URL,
+      serviceBaseUrl: SYNC_SUBTITLES_URL,
       audio: job.payload.audio,
       text: job.payload.text,
       destSrt: job.payload.destSrt,

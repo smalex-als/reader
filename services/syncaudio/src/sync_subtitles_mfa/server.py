@@ -266,25 +266,7 @@ class SubtitleRequestHandler(BaseHTTPRequestHandler):
             self.send_json(202, {"job": public_job(job)})
             return
 
-        if pathname != "/generate":
-            self.send_json(404, {"error": "not found"})
-            return
-
-        try:
-            payload = self.read_json()
-            srt_bytes, filename = generate_subtitles(payload)
-        except ValueError as exc:
-            self.send_json(400, {"status": "failed", "error": str(exc)})
-            return
-        except SyncMFAError as exc:
-            self.send_json(500, {"status": "failed", "error": str(exc)})
-            return
-        except Exception as exc:
-            message = f"{type(exc).__name__}: {exc}"
-            self.send_json(500, {"status": "failed", "error": message})
-            return
-
-        self.send_file(200, srt_bytes, filename)
+        self.send_json(404, {"error": "not found"})
 
     def read_json(self) -> dict[str, Any]:
         length = int(self.headers.get("content-length") or "0")

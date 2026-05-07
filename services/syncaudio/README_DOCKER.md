@@ -74,29 +74,7 @@ Health check:
 curl http://localhost:3100/health
 ```
 
-Generate subtitles through the service:
-
-```sh
-curl -o output/chapter009.srt \
-  -X POST http://localhost:3100/generate \
-  -H 'content-type: application/json' \
-  -d '{
-    "audio": "test/chapter009.mp3",
-    "text": "test/chapter009.txt",
-    "out": "output/chapter009.srt",
-    "language": "english_us_arpa",
-    "skipValidate": true,
-    "sentenceMode": "strict",
-    "maxLineChars": 95,
-    "beam": 100,
-    "retryBeam": 400
-  }'
-```
-
-The HTTP service returns the generated SRT file as the response body. It does
-not write the output file into `/data`; callers are responsible for saving it.
-
-Queue subtitles asynchronously:
+Queue subtitles through the service:
 
 ```sh
 curl -X POST http://localhost:3100/jobs \
@@ -117,6 +95,8 @@ curl -X POST http://localhost:3100/jobs \
 Then poll `GET /jobs/<jobId>` until `status` is `completed`, and download the
 file from `GET /jobs/<jobId>/result`. Jobs run one at a time inside the service,
 so callers do not need to hold a long HTTP connection while MFA is running.
+The HTTP service returns the generated SRT from the result endpoint; it does not
+write the output file into `/data`.
 
 The image includes MFA, Python 3.11, `english_us_arpa`, and `russian_mfa`.
 Input/output paths are relative to the mounted repository directory at `/data`.
