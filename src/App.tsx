@@ -84,7 +84,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   dimOutsideBlocksIntensity: 38,
   pan: { x: 0, y: 0 },
   textFontSize: TEXT_FONT_SIZE_OPTIONS[0],
-  textTheme: 'dark'
+  textTheme: 'dark',
+  studyMode: false
 };
 
 function normalizeTextFontSize(value: number): number {
@@ -454,7 +455,16 @@ export default function App() {
     syncFloatingAudioState,
     stopAudio
   } = useAudioController(currentImage);
-  const { streamState, startStream, enqueueStream, pauseStream, resumeStream, stopStream } = useStreamingAudio(showToast);
+  const {
+    streamState,
+    startStream,
+    enqueueStream,
+    pauseStream,
+    resumeStream,
+    stopStream,
+    stopAfterCurrentStream,
+    pauseStreamAtStart
+  } = useStreamingAudio(showToast);
   const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
   const [floatingAudioPlaybackState, setFloatingAudioPlaybackState] = useState<FloatingAudioPlaybackState | 'idle'>(
     'idle'
@@ -635,17 +645,20 @@ export default function App() {
     stopStream,
     pauseStream,
     resumeStream,
+    pauseStreamAtStart,
     stopAudio,
     streamVoice,
+    studyMode: settings.studyMode,
     onSequenceComplete: handleStreamSequenceComplete
   });
   const selectedStreamLocator = useMemo(() => parseStreamLocator(selectedStreamBlockKey), [selectedStreamBlockKey]);
+  const streamPositionActive = streamState.status === 'streaming' || streamState.status === 'paused';
   const playingStreamLocator = useMemo(
-    () => parseStreamLocator(streamState.status === 'streaming' ? streamState.pageKey : null),
-    [streamState.pageKey, streamState.status]
+    () => parseStreamLocator(streamPositionActive ? streamState.pageKey : null),
+    [streamPositionActive, streamState.pageKey]
   );
   const activeTextParagraph = useMemo(() => {
-    if (streamState.status !== 'streaming' || typeof streamState.pageKey !== 'string') {
+    if (!streamPositionActive || typeof streamState.pageKey !== 'string') {
       return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
     }
     const match = streamState.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
@@ -656,7 +669,7 @@ export default function App() {
       mode: match[1] as 'chapter' | 'narration',
       startIndex: Number.parseInt(match[2], 10)
     };
-  }, [streamState.pageKey, streamState.status]);
+  }, [streamPositionActive, streamState.pageKey]);
   const handlePlayVisibleStream = useCallback(async () => {
     if (viewMode === 'text') {
       if (!displayedChapterText?.text?.trim()) {
@@ -1096,6 +1109,17 @@ export default function App() {
     },
     [setSettings]
   );
+
+  const toggleStudyMode = useCallback(() => {
+    const enablingStudyMode = !settings.studyMode;
+    setSettings((prev) => ({ ...prev, studyMode: !prev.studyMode }));
+    if (
+      enablingStudyMode &&
+      (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused')
+    ) {
+      stopAfterCurrentStream();
+    }
+  }, [setSettings, settings.studyMode, stopAfterCurrentStream, streamState.status]);
 
   const queueAllPages = useCallback(() => {
     const pages = manifest.map((_, index) => index);
@@ -1855,10 +1879,10 @@ export default function App() {
       editMode: ocrEditMode,
       currentStreamBlockKey:
         activeStreamLocator ? makeStreamLocator(activeStreamLocator.imageUrl, activeStreamLocator.blockId) : null,
-      playingStreamBlockKey: streamState.status === 'streaming' ? streamState.pageKey : null,
+      playingStreamBlockKey: streamPositionActive ? streamState.pageKey : null,
       dimOutsideBlocks: settings.dimOutsideBlocks,
       dimOutsideBlocksIntensity: settings.dimOutsideBlocksIntensity,
-      streamPageKey: streamState.status === 'streaming' ? streamState.pageKey : null,
+      streamPageKey: streamPositionActive ? streamState.pageKey : null,
       autoFollowEnabled: autoFollowStream,
       fetchPageTextByImage,
       onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
@@ -1956,6 +1980,8 @@ export default function App() {
       showAutoFollow: viewMode === 'scroll',
       autoFollowEnabled: autoFollowStream,
       onToggleAutoFollow: () => setAutoFollowStream((prev) => !prev),
+      studyMode: settings.studyMode,
+      onToggleStudyMode: toggleStudyMode,
       onTogglePause: () => void handleToggleStreamPause(),
       onStopStream: handleStopStream
     },

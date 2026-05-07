@@ -26,13 +26,21 @@ type StreamSequenceOptions = {
   ) => Promise<PageText | null>;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   streamState: StreamState;
-  startStream: (payload: { text: string; pageKey: string; voice: string }) => Promise<void>;
+  startStream: (payload: {
+    text: string;
+    pageKey: string;
+    voice: string;
+    pauseAtStartOnComplete?: boolean;
+    replaceCurrent?: boolean;
+  }) => Promise<void>;
   enqueueStream: (payload: { text: string; pageKey: string; voice: string }) => void;
   stopStream: () => void;
   pauseStream: () => Promise<void>;
   resumeStream: () => Promise<void>;
+  pauseStreamAtStart: (pageKey: string) => void;
   stopAudio: () => void;
   streamVoice: string;
+  studyMode: boolean;
   onSequenceComplete?: (source: 'page' | 'chapter') => void;
 };
 
@@ -143,8 +151,10 @@ export function useStreamSequence({
   stopStream,
   pauseStream,
   resumeStream,
+  pauseStreamAtStart,
   stopAudio,
   streamVoice,
+  studyMode,
   onSequenceComplete
 }: StreamSequenceOptions) {
   const streamSequenceRef = useRef<{
@@ -178,6 +188,8 @@ export function useStreamSequence({
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
   const autoAdvanceRef = useRef(false);
   const pendingRestartTimerRef = useRef<number | null>(null);
+  const studyReplayPageKeyRef = useRef<string | null>(null);
+  const studyPausedAtStartRef = useRef(false);
 
   const clearPendingRestartTimer = useCallback(() => {
     if (pendingRestartTimerRef.current !== null) {
@@ -205,6 +217,28 @@ export function useStreamSequence({
     stopStream();
     stopStreamSequence();
   }, [stopAudio, stopStream, stopStreamSequence]);
+
+  useEffect(() => {
+    if (!studyMode) {
+      return;
+    }
+    const scrollBuffer = scrollBufferRef.current;
+    if (scrollBuffer) {
+      scrollBuffer.pendingSegments = [];
+      scrollBuffer.nextPageIndex = manifest.length;
+    }
+    const paragraphBuffer = paragraphBufferRef.current;
+    if (paragraphBuffer) {
+      paragraphBuffer.pendingSegments = [];
+    }
+  }, [manifest.length, studyMode]);
+
+  useEffect(() => {
+    if (!studyMode || typeof streamState.pageKey !== 'string' || !streamState.pageKey) {
+      return;
+    }
+    studyReplayPageKeyRef.current = streamState.pageKey;
+  }, [streamState.pageKey, studyMode]);
 
   const getPageTextForImage = useCallback(
     async (imageUrl: string, preferCurrentState = false) => {
@@ -344,21 +378,29 @@ export function useStreamSequence({
         baseKey: imageUrl
       };
       autoAdvanceRef.current = false;
+      const replacingPausedStudyStream = studyPausedAtStartRef.current && streamState.status === 'paused';
+      studyPausedAtStartRef.current = false;
 
-      if (isStreamBusy(streamState.status)) {
+      if (isStreamBusy(streamState.status) && !replacingPausedStudyStream) {
         stopStream();
         stopStreamSequence();
       }
 
-      resetCurrentSequence();
+      if (replacingPausedStudyStream) {
+        stopAudio();
+        stopStreamSequence();
+      } else {
+        resetCurrentSequence();
+      }
       const runId = sequenceRunIdRef.current + 1;
       sequenceRunIdRef.current = runId;
       const imagePageIndex = manifest.findIndex((entry) => entry === imageUrl);
-      scrollBufferRef.current = continueAcrossPages
+      const pendingSegments = studyMode ? [] : segments.slice(1);
+      scrollBufferRef.current = continueAcrossPages && !studyMode
         ? {
             runId,
             nextPageIndex: imagePageIndex >= 0 ? imagePageIndex + 1 : currentPage + 1,
-            pendingSegments: segments.slice(1),
+            pendingSegments,
             queuedAhead: 0,
             lastActivePageKey: segments[0].pageKey,
             filling: false
@@ -366,7 +408,7 @@ export function useStreamSequence({
         : {
             runId,
             nextPageIndex: manifest.length,
-            pendingSegments: segments.slice(1),
+            pendingSegments,
             queuedAhead: 0,
             lastActivePageKey: segments[0].pageKey,
             filling: false
@@ -376,7 +418,9 @@ export function useStreamSequence({
       await startStream({
         text: segments[0].text,
         pageKey: segments[0].pageKey,
-        voice
+        voice,
+        pauseAtStartOnComplete: studyMode,
+        replaceCurrent: replacingPausedStudyStream
       });
       void fillScrollBuffer(runId, voice);
     },
@@ -391,6 +435,7 @@ export function useStreamSequence({
       stopStreamSequence,
       isStreamBusy,
       resetCurrentSequence,
+      studyMode,
       streamState.status,
       streamVoice
     ]
@@ -407,7 +452,9 @@ export function useStreamSequence({
       const voice = voiceOverride ?? streamVoice;
       lastStreamSourceRef.current = { type: source, fullText, startIndex, baseKey };
       autoAdvanceRef.current = (source === 'page' || source === 'chapter') && viewMode !== 'scroll';
-      if (isStreamBusy(streamState.status)) {
+      const replacingPausedStudyStream = studyPausedAtStartRef.current && streamState.status === 'paused';
+      studyPausedAtStartRef.current = false;
+      if (isStreamBusy(streamState.status) && !replacingPausedStudyStream) {
         pendingStreamSequenceRef.current = { fullText, startIndex, baseKey, source, voiceOverride };
         stopStream();
         stopStreamSequence();
@@ -415,7 +462,12 @@ export function useStreamSequence({
       }
       const paragraphMode = source === 'chapter' || source === 'paragraph';
       const paragraphSegments = paragraphMode ? createParagraphStreamSegments(fullText, startIndex, baseKey) : null;
-      resetCurrentSequence();
+      if (replacingPausedStudyStream) {
+        stopAudio();
+        stopStreamSequence();
+      } else {
+        resetCurrentSequence();
+      }
       const runId = sequenceRunIdRef.current + 1;
       sequenceRunIdRef.current = runId;
       streamSequenceRef.current = { source, baseKey };
@@ -427,14 +479,16 @@ export function useStreamSequence({
         }
         paragraphBufferRef.current = {
           runId,
-          pendingSegments: paragraphSegments.slice(1),
+          pendingSegments: studyMode ? [] : paragraphSegments.slice(1),
           queuedAhead: 0,
           lastActivePageKey: paragraphSegments[0].pageKey
         };
         await startStream({
           text: paragraphSegments[0].text,
           pageKey: paragraphSegments[0].pageKey,
-          voice
+          voice,
+          pauseAtStartOnComplete: studyMode,
+          replaceCurrent: replacingPausedStudyStream
         });
         fillParagraphBuffer(runId, voice);
         return;
@@ -447,9 +501,13 @@ export function useStreamSequence({
       await startStream({
         text: chunks[0],
         pageKey: `${baseKey}#chunk-0`,
-        voice
+        voice,
+        pauseAtStartOnComplete: studyMode,
+        replaceCurrent: replacingPausedStudyStream
       });
-      enqueueChunks(fullText, startIndex, baseKey, voice);
+      if (!studyMode) {
+        enqueueChunks(fullText, startIndex, baseKey, voice);
+      }
     },
     [
       enqueueChunks,
@@ -461,6 +519,7 @@ export function useStreamSequence({
       stopStreamSequence,
       isStreamBusy,
       resetCurrentSequence,
+      studyMode,
       streamState.status,
       streamVoice,
       viewMode
@@ -536,7 +595,9 @@ export function useStreamSequence({
       }
       lastStreamSourceRef.current = { type: 'single', text: trimmed, pageKey: payload.pageKey };
       autoAdvanceRef.current = false;
-      if (isStreamBusy(streamState.status)) {
+      const replacingPausedStudyStream = studyPausedAtStartRef.current && streamState.status === 'paused';
+      studyPausedAtStartRef.current = false;
+      if (isStreamBusy(streamState.status) && !replacingPausedStudyStream) {
         pendingSingleStreamRef.current = { text: trimmed, pageKey: payload.pageKey, voiceOverride };
         stopStream();
         stopStreamSequence();
@@ -545,9 +606,25 @@ export function useStreamSequence({
       pendingSingleStreamRef.current = null;
       stopAudio();
       stopStreamSequence();
-      await startStream({ text: trimmed, pageKey: payload.pageKey, voice });
+      await startStream({
+        text: trimmed,
+        pageKey: payload.pageKey,
+        voice,
+        pauseAtStartOnComplete: studyMode,
+        replaceCurrent: replacingPausedStudyStream
+      });
     },
-    [isStreamBusy, showToast, startStream, stopAudio, stopStream, stopStreamSequence, streamState.status, streamVoice]
+    [
+      isStreamBusy,
+      showToast,
+      startStream,
+      stopAudio,
+      stopStream,
+      stopStreamSequence,
+      streamState.status,
+      streamVoice,
+      studyMode
+    ]
   );
 
   const handlePlayPageBlock = useCallback(
@@ -585,19 +662,11 @@ export function useStreamSequence({
 
   const handleStopStream = useCallback(() => {
     autoAdvanceRef.current = false;
+    studyReplayPageKeyRef.current = null;
+    studyPausedAtStartRef.current = false;
     stopStream();
     stopStreamSequence();
   }, [stopStream, stopStreamSequence]);
-
-  const handleToggleStreamPause = useCallback(async () => {
-    if (streamState.status === 'paused') {
-      await resumeStream();
-      return;
-    }
-    if (streamState.status === 'streaming') {
-      await pauseStream();
-    }
-  }, [pauseStream, resumeStream, streamState.status]);
 
   const restartStreamFromPageKey = useCallback(
     async (pageKey: string, voiceOverride: string) => {
@@ -647,6 +716,21 @@ export function useStreamSequence({
     [firstChapterParagraph, handlePlayPageBlock, handlePlaySingleStream, startStreamSequenceFromText]
   );
 
+  const handleToggleStreamPause = useCallback(async () => {
+    if (streamState.status === 'paused') {
+      const replayPageKey = studyReplayPageKeyRef.current;
+      if (studyPausedAtStartRef.current && replayPageKey && streamState.pageKey === replayPageKey) {
+        await restartStreamFromPageKey(replayPageKey, streamVoice);
+        return;
+      }
+      await resumeStream();
+      return;
+    }
+    if (streamState.status === 'streaming') {
+      await pauseStream();
+    }
+  }, [pauseStream, restartStreamFromPageKey, resumeStream, streamState.pageKey, streamState.status, streamVoice]);
+
   useEffect(() => {
     const buffer = scrollBufferRef.current;
     if (!buffer || streamState.status !== 'streaming' || !streamState.pageKey) {
@@ -674,12 +758,38 @@ export function useStreamSequence({
   }, [fillParagraphBuffer, streamState.pageKey, streamState.status]);
 
   useEffect(() => {
+    if (
+      !studyMode ||
+      streamState.status !== 'paused' ||
+      streamState.playbackSeconds !== 0 ||
+      typeof streamState.pageKey !== 'string' ||
+      !streamState.pageKey
+    ) {
+      return;
+    }
+    if (studyReplayPageKeyRef.current !== streamState.pageKey) {
+      return;
+    }
+    studyPausedAtStartRef.current = true;
+    stopStreamSequence();
+  }, [stopStreamSequence, streamState.pageKey, streamState.playbackSeconds, streamState.status, studyMode]);
+
+  useEffect(() => {
     if (!streamSequenceActive || streamState.status !== 'idle') {
       return;
     }
     const sequence = streamSequenceRef.current;
     if (!sequence) {
       setStreamSequenceActive(false);
+      return;
+    }
+    if (studyMode) {
+      const pageKey = studyReplayPageKeyRef.current;
+      if (pageKey) {
+        studyPausedAtStartRef.current = true;
+        pauseStreamAtStart(pageKey);
+      }
+      stopStreamSequence();
       return;
     }
     if (autoAdvanceRef.current) {
@@ -691,7 +801,7 @@ export function useStreamSequence({
       lastStreamSourceRef.current = null;
     }
     stopStreamSequence();
-  }, [onSequenceComplete, stopStreamSequence, streamSequenceActive, streamState.status]);
+  }, [onSequenceComplete, pauseStreamAtStart, stopStreamSequence, streamSequenceActive, streamState.status, studyMode]);
 
   useEffect(() => {
     if (streamState.status !== 'idle') {
@@ -742,10 +852,11 @@ export function useStreamSequence({
       void startStream({
         text: nextPending.text,
         pageKey: nextPending.pageKey,
-        voice: nextPending.voiceOverride ?? streamVoice
+        voice: nextPending.voiceOverride ?? streamVoice,
+        pauseAtStartOnComplete: studyMode
       });
     }, STREAM_RESTART_DELAY_MS);
-  }, [clearPendingRestartTimer, startStream, stopAudio, stopStreamSequence, streamState.status, streamVoice]);
+  }, [clearPendingRestartTimer, startStream, stopAudio, stopStreamSequence, streamState.status, streamVoice, studyMode]);
 
   useEffect(() => () => clearPendingRestartTimer(), [clearPendingRestartTimer]);
 

@@ -14,6 +14,8 @@ interface StreamBubbleProps {
   showAutoFollow?: boolean;
   autoFollowEnabled?: boolean;
   onToggleAutoFollow?: () => void;
+  studyMode?: boolean;
+  onToggleStudyMode?: () => void;
   onTogglePause: () => void;
   onStopStream: () => void;
 }
@@ -26,6 +28,8 @@ export default function StreamBubble({
   showAutoFollow = false,
   autoFollowEnabled = false,
   onToggleAutoFollow,
+  studyMode = false,
+  onToggleStudyMode,
   onTogglePause,
   onStopStream
 }: StreamBubbleProps) {
@@ -104,6 +108,16 @@ export default function StreamBubble({
           </button>
         </>
       ) : null}
+      <span className="stream-bubble-divider" aria-hidden="true" />
+      <label className="stream-bubble-checkbox">
+        <input
+          type="checkbox"
+          checked={studyMode}
+          onChange={onToggleStudyMode}
+          aria-label="Study mode"
+        />
+        <span>Study</span>
+      </label>
       <span className="stream-bubble-divider" aria-hidden="true" />
       <button
         type="button"

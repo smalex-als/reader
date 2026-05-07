@@ -1,5 +1,5 @@
 import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AddIcon from '@/components/AddIcon';
@@ -513,6 +513,17 @@ export default function ChapterViewer({
   }, [pageRange]);
 
   const markdownComponents = useMemo(() => {
+    const shouldIgnoreBlockClick = (event: ReactMouseEvent<HTMLElement>) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return false;
+      }
+      if (target.closest('a, button, input, select, textarea, [role="button"], [contenteditable="true"]')) {
+        return true;
+      }
+      return Boolean(window.getSelection()?.toString().trim());
+    };
+
     const resolveTextRange = (textValue: string, node?: any) => {
       const currentDisplayText = displayTextRef.current;
       if (!currentDisplayText) {
@@ -547,6 +558,14 @@ export default function ChapterViewer({
       );
     };
 
+    const playTextBlock = (startIndex: number, paragraphKey: string) => {
+      onPlayParagraphRef.current({
+        fullText: displayTextRef.current,
+        startIndex,
+        key: paragraphKey
+      });
+    };
+
     const renderBlock = (Tag: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
       return ({ children, node }: { children?: ReactNode; node?: any }) => {
         const textValue = extractTextFromNode(children ?? '').trim();
@@ -563,28 +582,16 @@ export default function ChapterViewer({
             id={outlineItem?.id}
             className="text-viewer-block"
             data-playing={isPlaying ? 'true' : 'false'}
+            data-streamable={textValue ? 'true' : undefined}
             data-outline-id={outlineItem?.id ?? undefined}
+            onClick={(event) => {
+              if (!textValue || shouldIgnoreBlockClick(event)) {
+                return;
+              }
+              playTextBlock(startIndex, paragraphKey);
+            }}
           >
             {children}
-            {textValue ? (
-              <button
-                type="button"
-                className="text-paragraph-stream"
-                onClick={() =>
-                  onPlayParagraphRef.current({
-                    fullText: displayTextRef.current,
-                    startIndex,
-                    key: paragraphKey
-                  })
-                }
-                aria-label="Play from here"
-                title="Play from here"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M8 5v14l11-7-11-7z" />
-                </svg>
-              </button>
-            ) : null}
           </Tag>
         );
       };
@@ -601,27 +608,18 @@ export default function ChapterViewer({
           : '';
         const isPlaying = isPlayingRange(startIndex, endIndex);
         return (
-          <div className="text-viewer-block text-viewer-list-block" data-playing={isPlaying ? 'true' : 'false'}>
+          <div
+            className="text-viewer-block text-viewer-list-block"
+            data-playing={isPlaying ? 'true' : 'false'}
+            data-streamable={textValue ? 'true' : undefined}
+            onClick={(event) => {
+              if (!textValue || shouldIgnoreBlockClick(event)) {
+                return;
+              }
+              playTextBlock(startIndex, paragraphKey);
+            }}
+          >
             <Tag {...props}>{children}</Tag>
-            {textValue ? (
-              <button
-                type="button"
-                className="text-paragraph-stream"
-                onClick={() =>
-                  onPlayParagraphRef.current({
-                    fullText: displayTextRef.current,
-                    startIndex,
-                    key: paragraphKey
-                  })
-                }
-                aria-label="Play list from here"
-                title="Play list from here"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M8 5v14l11-7-11-7z" />
-                </svg>
-              </button>
-            ) : null}
           </div>
         );
       };

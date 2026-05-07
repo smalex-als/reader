@@ -2139,7 +2139,14 @@ body {
 .text-viewer-block {
   position: relative;
   isolation: isolate;
-  padding-right: 3.4rem;
+}
+
+.text-viewer-block[data-streamable='true'] {
+  cursor: pointer;
+}
+
+.text-viewer-block[data-streamable='true']:hover {
+  color: var(--text-viewer-strong);
 }
 
 .text-viewer-block[data-playing='true'] {
@@ -2166,51 +2173,6 @@ body {
 .text-viewer-list-block > ol {
   margin: 0 0 0.75rem;
   padding-left: 1.45rem;
-}
-
-.text-paragraph-stream {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 0.5rem;
-  border: 1px solid var(--text-viewer-border);
-  background: var(--text-viewer-panel-bg);
-  color: var(--text-viewer-fg);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  transform: translateY(-4px);
-}
-
-.text-paragraph-stream svg {
-  width: 14px;
-  height: 14px;
-  fill: currentColor;
-}
-
-.text-viewer-block:hover .text-paragraph-stream,
-.text-viewer-block:focus-within .text-paragraph-stream {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-}
-
-.text-viewer-block[data-playing='true'] .text-paragraph-stream {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-  background: rgba(92, 210, 164, 0.26);
-  border-color: rgba(92, 210, 164, 0.62);
-}
-
-.text-paragraph-stream:hover:not(:disabled) {
-  background: var(--text-viewer-bg-soft);
 }
 
 .text-viewer-markdown ul,
@@ -2523,6 +2485,36 @@ body {
   background: rgba(120, 180, 255, 0.18);
   border-color: rgba(120, 180, 255, 0.42);
   color: #eef6ff;
+}
+
+.stream-bubble-checkbox {
+  height: 34px;
+  padding: 0 0.72rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  color: rgba(213, 229, 242, 0.9);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.stream-bubble-checkbox:hover {
+  background: rgba(213, 229, 242, 0.08);
+}
+
+.stream-bubble-checkbox input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #78b4ff;
+}
+
+.stream-bubble-checkbox:focus-within {
+  outline: 2px solid rgba(96, 160, 255, 0.85);
+  outline-offset: 2px;
 }
 
 .stream-bubble-divider {
@@ -4161,6 +4153,12 @@ body {
   .stream-bubble-voice-select {
     min-width: 7.2rem;
     max-width: 8.4rem;
+    font-size: 0.75rem;
+  }
+
+  .stream-bubble-checkbox {
+    height: 30px;
+    padding: 0 0.55rem;
     font-size: 0.75rem;
   }
 

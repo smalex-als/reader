@@ -3,20 +3,40 @@ class StreamPlayerProcessor extends AudioWorkletProcessor {
     super();
     this.chunks = [];
     this.activePageKey = null;
+    this.trimAfterPageKey = null;
     this.port.onmessage = (event) => {
       const data = event.data;
       if (!data || typeof data.type !== 'string') {
         return;
       }
       if (data.type === 'append' && data.payload instanceof ArrayBuffer) {
+        const pageKey = typeof data.pageKey === 'string' ? data.pageKey : null;
+        if (this.trimAfterPageKey && pageKey !== this.trimAfterPageKey) {
+          this.port.postMessage({ type: 'trimmed', samples: new Float32Array(data.payload).length });
+          return;
+        }
         this.chunks.push({
           samples: new Float32Array(data.payload),
-          pageKey: typeof data.pageKey === 'string' ? data.pageKey : null,
+          pageKey,
           offset: 0
         });
       } else if (data.type === 'reset') {
         this.chunks = [];
         this.activePageKey = null;
+        this.trimAfterPageKey = null;
+      } else if (data.type === 'trim-after-page-key' && typeof data.pageKey === 'string') {
+        this.trimAfterPageKey = data.pageKey;
+        let trimmedSamples = 0;
+        this.chunks = this.chunks.filter((chunk) => {
+          if (chunk.pageKey === data.pageKey) {
+            return true;
+          }
+          trimmedSamples += Math.max(0, chunk.samples.length - chunk.offset);
+          return false;
+        });
+        if (trimmedSamples > 0) {
+          this.port.postMessage({ type: 'trimmed', samples: trimmedSamples });
+        }
       }
     };
   }

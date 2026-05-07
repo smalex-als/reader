@@ -173,6 +173,7 @@ export interface AppSettings {
     | 'solarized'
     | 'light'
     | 'warm';
+  studyMode: boolean;
 }
 
 export interface AppState {
