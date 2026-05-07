@@ -31,6 +31,7 @@ export const YANDEX_TTS_SAMPLE_RATE = Number.parseInt(process.env.YANDEX_TTS_SAM
 export const CHAPTER_SUBTITLES_COMMAND = process.env.CHAPTER_SUBTITLES_COMMAND || '';
 export const CHAPTER_SUBTITLES_IMAGE = process.env.CHAPTER_SUBTITLES_IMAGE || '';
 export const CHAPTER_SUBTITLES_URL = process.env.CHAPTER_SUBTITLES_URL || '';
+export const CHAPTER_JOBWORKER_URL = process.env.CHAPTER_JOBWORKER_URL || '';
 export const CHAPTER_SUBTITLES_LANGUAGE = process.env.CHAPTER_SUBTITLES_LANGUAGE || 'auto';
 export const CHAPTER_SUBTITLES_SENTENCE_MODE = process.env.CHAPTER_SUBTITLES_SENTENCE_MODE || 'strict';
 export const CHAPTER_SUBTITLES_MAX_LINE_CHARS = Number.parseInt(

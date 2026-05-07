@@ -4,6 +4,7 @@ export function useModalState() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [listeningDashboardOpen, setListeningDashboardOpen] = useState(false);
   const [ocrQueueOpen, setOcrQueueOpen] = useState(false);
+  const [jobWorkerOpen, setJobWorkerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [bookCardOpen, setBookCardOpen] = useState(false);
   const [bookCardBookId, setBookCardBookId] = useState<string | null>(null);
@@ -17,6 +18,8 @@ export function useModalState() {
   const closeListeningDashboard = useCallback(() => setListeningDashboardOpen(false), []);
   const openOcrQueue = useCallback(() => setOcrQueueOpen(true), []);
   const closeOcrQueue = useCallback(() => setOcrQueueOpen(false), []);
+  const openJobWorker = useCallback(() => setJobWorkerOpen(true), []);
+  const closeJobWorker = useCallback(() => setJobWorkerOpen(false), []);
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
   const openBookCard = useCallback((bookId: string) => {
@@ -43,6 +46,10 @@ export function useModalState() {
     setOcrQueueOpen,
     openOcrQueue,
     closeOcrQueue,
+    jobWorkerOpen,
+    setJobWorkerOpen,
+    openJobWorker,
+    closeJobWorker,
     searchOpen,
     setSearchOpen,
     openSearch,

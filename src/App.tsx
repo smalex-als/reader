@@ -134,6 +134,9 @@ export default function App() {
     setOcrQueueOpen,
     openOcrQueue,
     closeOcrQueue,
+    jobWorkerOpen,
+    openJobWorker,
+    closeJobWorker,
     searchOpen,
     setSearchOpen,
     openSearch,
@@ -1521,6 +1524,10 @@ export default function App() {
       openPromptEditor();
     },
     onOpenOcrQueue: openOcrQueue,
+    onOpenJobWorker: () => {
+      setSettingsOpen(false);
+      openJobWorker();
+    },
     onOpenToc: () => {
       setSettingsOpen(false);
       setTocOpen(true);
@@ -1774,6 +1781,10 @@ export default function App() {
       onChanged: () => {
         setChapterViewRefresh((prev) => prev + 1);
       }
+    },
+    jobWorkerModalProps: {
+      open: jobWorkerOpen,
+      onClose: closeJobWorker
     }
   };
 

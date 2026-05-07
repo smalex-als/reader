@@ -1,4 +1,30 @@
 services:
+  jobworker:
+    build:
+      context: ./services/jobworker
+      dockerfile: Dockerfile
+    depends_on:
+      sync-subtitles:
+        condition: service_healthy
+    environment:
+      JOBWORKER_HOST: 0.0.0.0
+      JOBWORKER_PORT: 3200
+      JOBWORKER_DATA_DIR: /data
+      JOBWORKER_SYNC_SUBTITLES_URL: http://sync-subtitles:3100/generate
+      JOBWORKER_SUBTITLE_TIMEOUT_MS: ${CHAPTER_SUBTITLES_TIMEOUT_MS:-1800000}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3200/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
   sync-subtitles:
     platform: linux/amd64
     build:
@@ -28,7 +54,7 @@ services:
       context: .
       dockerfile: Dockerfile
     depends_on:
-      sync-subtitles:
+      jobworker:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -45,6 +71,7 @@ services:
       OCR_DEEPSEEK_PATH: ${OCR_DEEPSEEK_PATH:-/api/generate}
       OCR_DEEPSEEK_MODEL: ${OCR_DEEPSEEK_MODEL:-deepseek-ocr}
       OCR_DEEPSEEK_PROMPT: ${OCR_DEEPSEEK_PROMPT:-\n<|grounding|>Convert the\ndocument to markdown.}
+      CHAPTER_JOBWORKER_URL: ${CHAPTER_JOBWORKER_URL:-http://jobworker:3200/jobs/subtitles}
       CHAPTER_SUBTITLES_URL: ${CHAPTER_SUBTITLES_URL:-http://sync-subtitles:3100/generate}
       CHAPTER_SUBTITLES_LANGUAGE: ${CHAPTER_SUBTITLES_LANGUAGE:-auto}
       CHAPTER_SUBTITLES_SENTENCE_MODE: ${CHAPTER_SUBTITLES_SENTENCE_MODE:-strict}

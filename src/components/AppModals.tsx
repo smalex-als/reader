@@ -18,6 +18,7 @@ import VocabularyModal from '@/components/VocabularyModal';
 import ListeningDashboardModal from '@/components/ListeningDashboardModal';
 import MemoryCardModal from '@/components/MemoryCardModal';
 import PromptEditorModal from '@/components/PromptEditorModal';
+import JobWorkerModal from '@/components/JobWorkerModal';
 
 type ToastProps = ComponentProps<typeof Toast>;
 type PrintModalProps = ComponentProps<typeof PrintModal>;
@@ -37,6 +38,7 @@ type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
 type ListeningDashboardModalProps = ComponentProps<typeof ListeningDashboardModal>;
 type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
 type PromptEditorModalProps = ComponentProps<typeof PromptEditorModal>;
+type JobWorkerModalProps = ComponentProps<typeof JobWorkerModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
@@ -58,6 +60,7 @@ interface AppModalsProps {
   listeningDashboardModalProps: ListeningDashboardModalProps;
   memoryCardModalProps: MemoryCardModalProps;
   promptEditorModalProps: PromptEditorModalProps;
+  jobWorkerModalProps: JobWorkerModalProps;
 }
 
 function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
@@ -86,7 +89,8 @@ export default function AppModals({
   vocabularyModalProps,
   listeningDashboardModalProps,
   memoryCardModalProps,
-  promptEditorModalProps
+  promptEditorModalProps,
+  jobWorkerModalProps
 }: AppModalsProps) {
   return (
     <>
@@ -107,6 +111,7 @@ export default function AppModals({
       {renderInPortal(<PromptEditorModal {...promptEditorModalProps} />, portalTarget)}
       {renderInPortal(<ListeningDashboardModal {...listeningDashboardModalProps} />, portalTarget)}
       {renderInPortal(<ImagePreviewModal {...imagePreviewModalProps} />, portalTarget)}
+      {renderInPortal(<JobWorkerModal {...jobWorkerModalProps} />, portalTarget)}
       <OcrQueueModal {...ocrQueueModalProps} />
     </>
   );

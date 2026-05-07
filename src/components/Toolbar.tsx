@@ -71,6 +71,7 @@ interface ToolbarProps {
   onOpenListeningDashboard: () => void;
   onOpenPromptEditor: () => void;
   onOpenOcrQueue: () => void;
+  onOpenJobWorker: () => void;
   onOpenToc: () => void;
   onOpenTocManage: () => void;
   ocrQueueTotal: number;
@@ -145,6 +146,7 @@ export default function Toolbar({
   onOpenListeningDashboard,
   onOpenPromptEditor,
   onOpenOcrQueue,
+  onOpenJobWorker,
   onOpenToc,
   onOpenTocManage,
   ocrQueueTotal,
@@ -588,6 +590,13 @@ export default function Toolbar({
             onClick={onOpenPromptEditor}
           >
             Prompts
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onOpenJobWorker}
+          >
+            Jobs
           </button>
           {showOcrStatus && (
             <div className="toolbar-status" role="status" aria-live="polite">

@@ -13,6 +13,7 @@ import {
   CHAPTER_SUBTITLES_SKIP_VALIDATE,
   CHAPTER_SUBTITLES_TIMEOUT_MS,
   CHAPTER_SUBTITLES_URL,
+  CHAPTER_JOBWORKER_URL,
   DATA_DIR
 } from '../config.js';
 import { formatChapterAudioFilename } from './streamAudio.js';
@@ -142,6 +143,18 @@ function resolveSubtitleServiceUrl() {
   const url = new URL(configured);
   if (url.pathname === '/' || url.pathname === '') {
     url.pathname = '/generate';
+  }
+  return url.toString();
+}
+
+function resolveJobWorkerUrl() {
+  const configured = CHAPTER_JOBWORKER_URL.trim();
+  if (!configured) {
+    return '';
+  }
+  const url = new URL(configured);
+  if (url.pathname === '/' || url.pathname === '') {
+    url.pathname = '/jobs/subtitles';
   }
   return url.toString();
 }
@@ -344,6 +357,73 @@ async function runSubtitleServiceRequest({
   }
 }
 
+async function enqueueSubtitleJobWorker({
+  jobWorkerUrl,
+  paths,
+  bookId,
+  chapterNumber,
+  versionId,
+  mp3Path,
+  subtitleLanguage
+}) {
+  try {
+    const response = await fetchSubtitleServiceWithRetries(jobWorkerUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        bookId,
+        chapterNumber,
+        versionId,
+        audio: toDataRelativePath(mp3Path),
+        text: toDataRelativePath(paths.transcriptPath),
+        out: toDataRelativePath(paths.srtPath),
+        status: toDataRelativePath(paths.statusPath),
+        language: subtitleLanguage,
+        skipValidate: CHAPTER_SUBTITLES_SKIP_VALIDATE,
+        sentenceMode: CHAPTER_SUBTITLES_SENTENCE_MODE.trim() || 'strict',
+        maxLineChars: resolveMaxLineChars(),
+        beam: resolveBeam(),
+        retryBeam: resolveRetryBeam()
+      })
+    });
+    const responseBody = await readSubtitleServiceResponse(response);
+    if (!response.ok) {
+      const message = responseBody?.error || responseBody?.message || `Job worker failed with HTTP ${response.status}`;
+      throw new Error(message);
+    }
+    return responseBody;
+  } catch (error) {
+    const message = formatErrorMessage(error);
+    await writeSubtitleStatus(paths.statusPath, {
+      status: 'failed',
+      bookId,
+      chapterNumber,
+      versionId,
+      mp3Path,
+      transcriptPath: paths.transcriptPath,
+      srtPath: paths.srtPath,
+      subtitleLanguage,
+      completedAt: new Date().toISOString(),
+      error: message,
+      errorDetails: serializeError(error),
+      jobWorkerUrl
+    }).catch((statusError) => {
+      console.warn('Failed to write subtitle status after job worker error', statusError);
+    });
+    console.warn('Failed to enqueue subtitle job worker task', {
+      bookId,
+      chapterNumber,
+      versionId,
+      subtitleLanguage,
+      jobWorkerUrl,
+      error: serializeError(error)
+    });
+    throw error;
+  }
+}
+
 export function resolveChapterSubtitlePaths({ mp3Path, chapterNumber, versionId = 'base' }) {
   const bookDir = path.dirname(mp3Path);
   const srtFilename = formatChapterAudioFilename(chapterNumber, versionId, '.srt');
@@ -373,6 +453,7 @@ export async function startChapterSubtitleGeneration({
 
   const paths = resolveChapterSubtitlePaths({ mp3Path, chapterNumber, versionId });
   const subtitleLanguage = resolveSubtitleLanguage(cleanTranscript);
+  const jobWorkerUrl = resolveJobWorkerUrl();
   const serviceUrl = resolveSubtitleServiceUrl();
   const templateVariables = {
     audioFile: path.basename(mp3Path),
@@ -392,18 +473,18 @@ export async function startChapterSubtitleGeneration({
     transcriptPath: paths.transcriptPath,
     versionId
   };
-  const command = serviceUrl
+  const command = jobWorkerUrl || serviceUrl
     ? ''
     : CHAPTER_SUBTITLES_COMMAND.trim()
       ? renderCommand(CHAPTER_SUBTITLES_COMMAND.trim(), templateVariables)
       : buildCommandFromImage({ paths, mp3Path, transcriptText: cleanTranscript });
-  if (!serviceUrl && !command) {
+  if (!jobWorkerUrl && !serviceUrl && !command) {
     return null;
   }
 
   await fs.writeFile(paths.transcriptPath, `${cleanTranscript}\n`, 'utf8');
   await writeSubtitleStatus(paths.statusPath, {
-    status: 'running',
+    status: jobWorkerUrl ? 'queued' : 'running',
     bookId,
     chapterNumber,
     versionId,
@@ -414,6 +495,24 @@ export async function startChapterSubtitleGeneration({
     startedAt: new Date().toISOString(),
     error: null
   });
+
+  if (jobWorkerUrl) {
+    const result = await enqueueSubtitleJobWorker({
+      jobWorkerUrl,
+      paths,
+      bookId,
+      chapterNumber,
+      versionId,
+      mp3Path,
+      subtitleLanguage
+    });
+    return {
+      srtPath: paths.srtPath,
+      statusPath: paths.statusPath,
+      transcriptPath: paths.transcriptPath,
+      job: result?.job ?? null
+    };
+  }
 
   if (serviceUrl) {
     void runSubtitleServiceRequest({
