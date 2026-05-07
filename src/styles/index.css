@@ -2424,11 +2424,6 @@ body {
   line-height: 1.1;
 }
 
-.stream-bubble-paused {
-  background: linear-gradient(145deg, rgba(40, 55, 75, 0.92), rgba(18, 24, 34, 0.92));
-  border-color: rgba(130, 180, 255, 0.4);
-}
-
 .stream-bubble-connecting {
   cursor: default;
   opacity: 0.7;

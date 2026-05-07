@@ -625,6 +625,7 @@ export default function App() {
     handlePlaySingleStream,
     handleStopStream,
     handleToggleStreamPause,
+    handlePlayNextStudyBlock,
     restartStreamFromPageKey
   } = useStreamSequence({
     viewMode,
@@ -652,7 +653,8 @@ export default function App() {
     onSequenceComplete: handleStreamSequenceComplete
   });
   const selectedStreamLocator = useMemo(() => parseStreamLocator(selectedStreamBlockKey), [selectedStreamBlockKey]);
-  const streamPositionActive = streamState.status === 'streaming' || streamState.status === 'paused';
+  const streamPositionActive =
+    streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
   const playingStreamLocator = useMemo(
     () => parseStreamLocator(streamPositionActive ? streamState.pageKey : null),
     [streamPositionActive, streamState.pageKey]
@@ -1412,6 +1414,8 @@ export default function App() {
     streamStatus: streamState.status,
     handleStopStream,
     handlePlayStream: handlePlayVisibleStream,
+    handleToggleStreamPause,
+    handlePlayNextStudyBlock,
     gotoInputRef,
     toggleFullscreen,
     textModalOpen,

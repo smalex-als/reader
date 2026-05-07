@@ -23,6 +23,8 @@ type HotkeysOptions = {
   streamStatus: StreamState['status'];
   handleStopStream: () => void;
   handlePlayStream: () => Promise<void> | void;
+  handleToggleStreamPause: () => Promise<void> | void;
+  handlePlayNextStudyBlock: () => Promise<void> | void;
   gotoInputRef: RefObject<HTMLInputElement>;
   toggleFullscreen: () => Promise<void> | void;
   textModalOpen: boolean;
@@ -90,6 +92,8 @@ export function useHotkeys({
   streamStatus,
   handleStopStream,
   handlePlayStream,
+  handleToggleStreamPause,
+  handlePlayNextStudyBlock,
   gotoInputRef,
   toggleFullscreen,
   textModalOpen,
@@ -154,6 +158,8 @@ export function useHotkeys({
       { keys: '7', action: 'Open quiz' },
       { keys: '8', action: 'Open vocabulary' },
       { keys: 'S', action: 'Play/Stop stream audio' },
+      { keys: 'P', action: 'Pause/Resume stream audio' },
+      { keys: 'N', action: 'Next study block' },
       { keys: 'G', action: 'Focus Go To input' },
       { keys: 'F', action: 'Toggle fullscreen' },
       { keys: 'C', action: 'Open TOC' },
@@ -168,6 +174,15 @@ export function useHotkeys({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const studyModalOpen = quizOpen || vocabularyOpen || memoryCardOpen;
+      const allowStudyStreamHotkey =
+        studyModalOpen &&
+        ((key === 'p' && (streamStatus === 'streaming' || streamStatus === 'paused')) ||
+          (key === 'n' && settings.studyMode));
+      if (isTextInput(event.target) && event.key !== 'Escape') {
+        return;
+      }
       if (
         (
           textModalOpen ||
@@ -188,17 +203,14 @@ export function useHotkeys({
           listeningDashboardOpen ||
           promptEditorOpen
         ) &&
-        event.key !== 'Escape'
+        event.key !== 'Escape' &&
+        !allowStudyStreamHotkey
       ) {
-        return;
-      }
-      if (isTextInput(event.target) && event.key !== 'Escape') {
         return;
       }
       if (event.metaKey || event.ctrlKey) {
         return;
       }
-      const key = event.key.toLowerCase();
       switch (key) {
         case '?':
           event.preventDefault();
@@ -315,6 +327,20 @@ export function useHotkeys({
             void handlePlayStream();
           }
           break;
+        case 'p':
+          if (streamStatus !== 'streaming' && streamStatus !== 'paused') {
+            return;
+          }
+          event.preventDefault();
+          void handleToggleStreamPause();
+          break;
+        case 'n':
+          if (!settings.studyMode) {
+            return;
+          }
+          event.preventDefault();
+          void handlePlayNextStudyBlock();
+          break;
         case 'g':
           event.preventDefault();
           gotoInputRef.current?.focus();
@@ -424,6 +450,8 @@ export function useHotkeys({
     settings.zoom,
     handleStopStream,
     handlePlayStream,
+    handleToggleStreamPause,
+    handlePlayNextStudyBlock,
     closeTextModal,
     textModalOpen,
     updateRotation,

@@ -221,6 +221,29 @@ export function useStreamingAudio(
     [clearQueue, closeStreamRequest, showToast, silencePlayback]
   );
 
+  const pauseCompletedStreamAtStart = useCallback(
+    (pageKey: string) => {
+      sessionRef.current += 1;
+      stopRequestedRef.current = false;
+      sourceEndedRef.current = true;
+      stopAfterCurrentPageKeyRef.current = null;
+      pauseAtStartPageKeyRef.current = null;
+      clearQueue();
+      closeStreamRequest();
+      silencePlayback();
+      const nextState: StreamState = {
+        ...INITIAL_STREAM_STATE,
+        status: 'paused',
+        pageKey,
+        playbackSeconds: 0,
+        error: undefined
+      };
+      streamStateRef.current = nextState;
+      setStreamState(nextState);
+    },
+    [clearQueue, closeStreamRequest, silencePlayback]
+  );
+
   useEffect(() => {
     finalizeStreamRef.current = finalizeStream;
   }, [finalizeStream]);
@@ -273,6 +296,11 @@ export function useStreamingAudio(
         if (finalizeTimerRef.current === null) {
           finalizeTimerRef.current = window.setTimeout(() => {
             finalizeTimerRef.current = null;
+            const pauseAtStartPageKey = pauseAtStartPageKeyRef.current;
+            if (pauseAtStartPageKey) {
+              pauseCompletedStreamAtStart(pauseAtStartPageKey);
+              return;
+            }
             finalizeStream();
           }, STREAM_DRAIN_GRACE_MS);
         }
@@ -280,7 +308,7 @@ export function useStreamingAudio(
         clearFinalizeTimer();
       }
     },
-    [clearFinalizeTimer, finalizeStream, startPlaybackTimer]
+    [clearFinalizeTimer, finalizeStream, pauseCompletedStreamAtStart, startPlaybackTimer]
   );
 
   const createAudioChain = useCallback(async () => {

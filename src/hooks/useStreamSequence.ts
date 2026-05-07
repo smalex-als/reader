@@ -716,6 +716,82 @@ export function useStreamSequence({
     [firstChapterParagraph, handlePlayPageBlock, handlePlaySingleStream, startStreamSequenceFromText]
   );
 
+  const handlePlayNextStudyBlock = useCallback(async () => {
+    if (!studyMode) {
+      return;
+    }
+    const pageKey = streamState.pageKey ?? studyReplayPageKeyRef.current;
+    if (!pageKey) {
+      return;
+    }
+    const paragraphMatch = pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+    if (paragraphMatch) {
+      const currentStart = Number.parseInt(paragraphMatch[2], 10);
+      const source = lastStreamSourceRef.current;
+      const textSource =
+        source && (source.type === 'chapter' || source.type === 'paragraph')
+          ? source
+          : firstChapterParagraph
+          ? {
+              type: 'paragraph' as const,
+              fullText: firstChapterParagraph.fullText,
+              startIndex: firstChapterParagraph.startIndex,
+              baseKey: firstChapterParagraph.key
+            }
+          : null;
+      if (!textSource) {
+        return;
+      }
+      const segments = createParagraphStreamSegments(textSource.fullText, textSource.startIndex, textSource.baseKey);
+      const nextSegment = segments.find((segment) => {
+        const match = segment.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+        return match ? Number.parseInt(match[2], 10) > currentStart : false;
+      });
+      if (!nextSegment) {
+        showToast('No next study block', 'info');
+        return;
+      }
+      const nextMatch = nextSegment.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+      const nextStartIndex = nextMatch ? Number.parseInt(nextMatch[2], 10) : textSource.startIndex;
+      await startStreamSequenceFromText(
+        textSource.fullText,
+        nextStartIndex,
+        textSource.baseKey,
+        'paragraph',
+        streamVoice
+      );
+      return;
+    }
+
+    const locator = parseStreamLocator(pageKey);
+    if (!locator?.imageUrl || !locator.blockId) {
+      return;
+    }
+    const pageText = await getPageTextForImage(locator.imageUrl, locator.imageUrl === currentImage);
+    if (!pageText) {
+      return;
+    }
+    const segments = getPageStreamSegments(pageText, locator.imageUrl);
+    const currentIndex = segments.findIndex((segment) => segment.pageKey === pageKey);
+    const nextSegment = currentIndex >= 0 ? segments[currentIndex + 1] : null;
+    const nextLocator = parseStreamLocator(nextSegment?.pageKey ?? null);
+    if (!nextSegment || !nextLocator?.blockId) {
+      showToast('No next study block', 'info');
+      return;
+    }
+    await startScrollPageSequence(locator.imageUrl, pageText, nextLocator.blockId, false, streamVoice);
+  }, [
+    currentImage,
+    firstChapterParagraph,
+    getPageTextForImage,
+    showToast,
+    startScrollPageSequence,
+    startStreamSequenceFromText,
+    streamState.pageKey,
+    streamVoice,
+    studyMode
+  ]);
+
   const handleToggleStreamPause = useCallback(async () => {
     if (streamState.status === 'paused') {
       const replayPageKey = studyReplayPageKeyRef.current;
@@ -804,6 +880,21 @@ export function useStreamSequence({
   }, [onSequenceComplete, pauseStreamAtStart, stopStreamSequence, streamSequenceActive, streamState.status, studyMode]);
 
   useEffect(() => {
+    if (!studyMode || streamSequenceActive || streamState.status !== 'idle') {
+      return;
+    }
+    if (pendingStreamSequenceRef.current || pendingSingleStreamRef.current) {
+      return;
+    }
+    const pageKey = studyReplayPageKeyRef.current;
+    if (!pageKey) {
+      return;
+    }
+    studyPausedAtStartRef.current = true;
+    pauseStreamAtStart(pageKey);
+  }, [pauseStreamAtStart, streamSequenceActive, streamState.status, studyMode]);
+
+  useEffect(() => {
     if (streamState.status !== 'idle') {
       clearPendingRestartTimer();
       return;
@@ -867,6 +958,7 @@ export function useStreamSequence({
     handlePlaySingleStream,
     handleStopStream,
     handleToggleStreamPause,
+    handlePlayNextStudyBlock,
     restartStreamFromPageKey
   };
 }
