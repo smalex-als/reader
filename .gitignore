@@ -9,10 +9,10 @@ dist/
 logs/
 tmp/
 temp/
-services/syncaudio/output/
-services/syncaudio/test/
-services/syncaudio/**/__pycache__/
-services/syncaudio/**/*.pyc
+services/sync-subtitles/output/
+services/sync-subtitles/test/
+services/sync-subtitles/**/__pycache__/
+services/sync-subtitles/**/*.pyc
 
 # Environment overrides
 .env

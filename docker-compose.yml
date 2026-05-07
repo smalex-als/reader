@@ -30,7 +30,7 @@ services:
   sync-subtitles:
     platform: linux/amd64
     build:
-      context: ./services/syncaudio
+      context: ./services/sync-subtitles
       dockerfile: Dockerfile
     command: serve
     environment:

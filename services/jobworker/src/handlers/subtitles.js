@@ -34,7 +34,7 @@ function normalizeSubtitlePayload(input) {
 function resolveSyncSubtitlesBaseUrl() {
   const url = new URL(SYNC_SUBTITLES_URL);
   if (url.pathname.endsWith('/generate')) {
-    throw new Error('JOBWORKER_SYNC_SUBTITLES_URL must point to the syncaudio base URL, not /generate');
+    throw new Error('JOBWORKER_SYNC_SUBTITLES_URL must point to the sync-subtitles base URL, not /generate');
   }
   url.search = '';
   url.hash = '';
