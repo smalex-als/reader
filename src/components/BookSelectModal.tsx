@@ -24,13 +24,14 @@ interface BookSelectModalProps {
   open: boolean;
   books: string[];
   currentBook: string | null;
-  onSelect: (bookId: string) => void;
+  onSelect: (bookId: string | null) => void;
   onDelete: (bookId: string) => void;
   onUploadChapter: (file: File, details: { bookName: string; chapterTitle: string }) => void;
   uploadingChapter: boolean;
   onUploadPdf: (file: File) => void;
   uploadingPdf: boolean;
   onOpenEditCard: (bookId: string) => void;
+  onOpenAudioLibrary: () => void;
   cardRefreshToken?: number;
   onClose: () => void;
 }
@@ -46,6 +47,7 @@ export default function BookSelectModal({
   onUploadPdf,
   uploadingPdf,
   onOpenEditCard,
+  onOpenAudioLibrary,
   cardRefreshToken = 0,
   onClose
 }: BookSelectModalProps) {
@@ -194,15 +196,20 @@ export default function BookSelectModal({
       <div className="modal modal-wide book-select-modal">
         <header className="modal-header">
           <h2 className="modal-title">Select a book</h2>
-          <button
-            type="button"
-            className="button button-ghost modal-icon-button"
-            onClick={onClose}
-            aria-label="Close book selector"
-            title="Close book selector"
-          >
-            <CloseIcon />
-          </button>
+          <div className="modal-actions">
+            <button type="button" className="button button-secondary" onClick={onOpenAudioLibrary}>
+              MP3 Library
+            </button>
+            <button
+              type="button"
+              className="button button-ghost modal-icon-button"
+              onClick={onClose}
+              aria-label="Close book selector"
+              title="Close book selector"
+            >
+              <CloseIcon />
+            </button>
+          </div>
         </header>
         <section className="modal-body">
           <div className="book-select-toolbar">

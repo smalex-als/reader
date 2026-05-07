@@ -32,7 +32,7 @@ export function useAudioController(currentImage: string | null) {
       if (track.kind !== 'page-tts' && track.kind !== 'text-tts') {
         return;
       }
-      const provider = track.provider ?? 'openai';
+      const provider = track.provider === 'xai' ? 'xai' : 'openai';
       const pageKey = track.pageKey ?? currentImage;
       if (state === 'ended') {
         setAudioState((prev) => ({

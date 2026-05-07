@@ -18,6 +18,8 @@ interface ToolbarProps {
   disableScrollMode: boolean;
   disableImageActions: boolean;
   onViewModeChange: (mode: 'pages' | 'scroll' | 'text' | 'audio') => void;
+  audioLibraryOpen: boolean;
+  onOpenAudioLibrary: () => void;
   onOpenBookModal: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -93,6 +95,8 @@ export default function Toolbar({
   disableScrollMode,
   disableImageActions,
   onViewModeChange,
+  audioLibraryOpen,
+  onOpenAudioLibrary,
   onOpenBookModal,
   onPrev,
   onNext,
@@ -244,6 +248,13 @@ export default function Toolbar({
           <span className="toolbar-readout">{currentBook ?? 'None selected'}</span>
           <button type="button" className="button" onClick={onOpenBookModal}>
             {currentBook ? 'Change Book' : 'Select Book'}
+          </button>
+          <button
+            type="button"
+            className={`button ${audioLibraryOpen ? 'button-active' : ''}`}
+            onClick={onOpenAudioLibrary}
+          >
+            MP3 Library
           </button>
         </div>
 

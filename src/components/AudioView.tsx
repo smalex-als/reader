@@ -30,6 +30,7 @@ type AudioChapter = {
   audio: {
     ready: boolean;
     url: string;
+    srtUrl?: string | null;
     versionId?: string | null;
     durationSeconds?: number | null;
     provider?: 'default' | 'xai' | 'yandex';
@@ -496,6 +497,7 @@ export default function AudioView({
                               title: entry.title,
                               subtitle: `Chapter ${entry.chapterNumber}`,
                               url: entry.audio.url,
+                              srtUrl: entry.audio.srtUrl ?? null,
                               chapterNumber: entry.chapterNumber,
                               versionId: latestVersionId,
                               subchapters: entry.audio.subchapters ?? []

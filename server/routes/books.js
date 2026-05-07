@@ -63,6 +63,7 @@ import {
   searchBook
 } from '../lib/search.js';
 import { loadLibraryState, updateLibraryState } from '../lib/libraryState.js';
+import { listGeneratedAudio } from '../lib/audioLibrary.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -130,6 +131,12 @@ router.get('/api/books', asyncHandler(async (_req, res) => {
 router.get('/api/books/cards', asyncHandler(async (_req, res) => {
   const books = await listBookCards();
   res.json({ books });
+}));
+
+router.get('/api/audio', asyncHandler(async (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const items = await listGeneratedAudio();
+  res.json({ items });
 }));
 
 router.get('/api/library/state', asyncHandler(async (_req, res) => {
@@ -244,10 +251,12 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
       const latestVersionId = versions?.latestVersionId ?? 'base';
       const audioFilename = formatChapterAudioFilename(chapterNumber, latestVersionId);
       const audioPath = path.join(DATA_DIR, bookId, audioFilename);
+      const subtitlePaths = resolveChapterSubtitlePaths({ mp3Path: audioPath, chapterNumber, versionId: latestVersionId });
       const [audioStat, audioMeta] = await Promise.all([
         safeStat(audioPath),
         loadChapterAudioMeta(bookId, chapterNumber, latestVersionId)
       ]);
+      const srtStat = await safeStat(subtitlePaths.srtPath);
       const audioSize = audioStat?.isFile?.() ? audioStat.size : null;
       const audioDurationSeconds = audioStat?.isFile?.()
         ? await getAudioDurationSeconds(audioPath)
@@ -261,6 +270,7 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
         audio: {
           ready: Boolean(audioStat?.isFile?.()),
           url: `/data/${bookId}/${audioFilename}`,
+          srtUrl: srtStat?.isFile?.() ? `/data/${bookId}/${subtitlePaths.srtFilename}` : null,
           bytes: audioSize,
           durationSeconds: audioDurationSeconds,
           versionId: audioMeta?.versionId ?? null,

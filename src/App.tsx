@@ -121,6 +121,7 @@ function createDefaultSettings(): AppSettings {
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<ToolbarTab>('reading');
+  const [mainView, setMainView] = useState<'reader' | 'audio-library'>('reader');
   const [imagePreview, setImagePreview] = useState<ImagePreviewTarget | null>(null);
   const [enhancedImagePreviewUrls, setEnhancedImagePreviewUrls] = useState<Record<string, string>>({});
   const {
@@ -930,6 +931,7 @@ export default function App() {
       if (isTextBook && (mode === 'pages' || mode === 'scroll')) {
         return;
       }
+      setMainView('reader');
       setViewMode(mode);
     },
     [isTextBook, setViewMode]
@@ -1303,6 +1305,21 @@ export default function App() {
 
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
   const closeBookModal = useCallback(() => setBookModalOpen(false), [setBookModalOpen]);
+  const handleOpenAudioLibrary = useCallback(() => {
+    setSettingsOpen(false);
+    setMainView('audio-library');
+  }, []);
+  const handleOpenLibraryBook = useCallback(
+    (targetBookId: string, targetChapterNumber: number) => {
+      setMainView('reader');
+      setViewMode('audio');
+      setBookId(targetBookId);
+      if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
+        saveLastPage(targetBookId, targetChapterNumber - 1);
+      }
+    },
+    [setBookId, setViewMode]
+  );
   const handleOpenImagePreview = useCallback(
     (payload: { imageUrl: string; bounds: [number, number, number, number]; caption?: string | null }) => {
       if (!bookId) {
@@ -1427,11 +1444,13 @@ export default function App() {
     currentBook: bookId,
     manifestLength: navigationCount,
     currentPage,
+    audioLibraryOpen: mainView === 'audio-library',
     viewMode,
     disablePagesMode: isTextBook,
     disableScrollMode: isTextBook,
     disableImageActions: isTextBook,
     onViewModeChange: handleViewModeChange,
+    onOpenAudioLibrary: handleOpenAudioLibrary,
     onOpenBookModal: () => {
       setSettingsOpen(false);
       openBookModal();
@@ -1561,6 +1580,7 @@ export default function App() {
       currentBook: bookId,
       onSelect: (nextBook: string | null) => {
         setSettingsOpen(false);
+        setMainView('reader');
         setBookId(nextBook);
         closeBookModal();
       },
@@ -1570,6 +1590,10 @@ export default function App() {
       onUploadPdf: handleUploadPdf,
       uploadingPdf,
       onOpenEditCard: openBookCard,
+      onOpenAudioLibrary: () => {
+        closeBookModal();
+        handleOpenAudioLibrary();
+      },
       cardRefreshToken: bookCardRefreshToken,
       onClose: closeBookModal
     },
@@ -1793,10 +1817,11 @@ export default function App() {
     modalHostRef,
     isFullscreen,
     loading,
+    mainView,
     viewMode,
     textTheme: settings.textTheme,
     editorOpen,
-    footerMessage,
+    footerMessage: mainView === 'audio-library' ? 'MP3 Library' : footerMessage,
     viewerProps: {
       imageUrl: currentImage,
       pageText: currentText,
@@ -1894,6 +1919,11 @@ export default function App() {
       onPlayAudio: handlePlayFloatingAudio,
       playingParagraphStart: activeTextParagraph.startIndex,
       playingParagraphMode: activeTextParagraph.mode
+    },
+    audioLibraryViewProps: {
+      onPlayAudio: handlePlayFloatingAudio,
+      onOpenBook: handleOpenLibraryBook,
+      showToast
     },
     audioViewProps: {
       bookId,

@@ -11,9 +11,10 @@ export type FloatingAudioSubchapter = {
 export type FloatingAudioTrack = {
   title: string;
   url: string;
+  srtUrl?: string | null;
   subtitle?: string;
   kind?: 'page-tts' | 'text-tts' | 'file';
-  provider?: 'openai' | 'xai' | null;
+  provider?: 'openai' | 'xai' | 'yandex' | 'default' | null;
   pageKey?: string | null;
   chapterNumber?: number | null;
   versionId?: string | null;
@@ -44,6 +45,51 @@ function getSubchapterKey(entry: FloatingAudioSubchapter) {
   return `${entry.title}:${entry.startSeconds}`;
 }
 
+type SubtitleCue = {
+  startSeconds: number;
+  endSeconds: number;
+  text: string;
+};
+
+function parseTimestamp(value: string) {
+  const match = value.trim().match(/^(\d+):(\d{2}):(\d{2})[,.](\d{1,3})$/);
+  if (!match) {
+    return null;
+  }
+  const hours = Number.parseInt(match[1], 10);
+  const minutes = Number.parseInt(match[2], 10);
+  const seconds = Number.parseInt(match[3], 10);
+  const millis = Number.parseInt(match[4].padEnd(3, '0').slice(0, 3), 10);
+  if (![hours, minutes, seconds, millis].every(Number.isFinite)) {
+    return null;
+  }
+  return hours * 3600 + minutes * 60 + seconds + millis / 1000;
+}
+
+function parseSrt(text: string): SubtitleCue[] {
+  return text
+    .replace(/\r/g, '')
+    .split(/\n{2,}/)
+    .flatMap((block) => {
+      const lines = block
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const timeIndex = lines.findIndex((line) => line.includes('-->'));
+      if (timeIndex < 0) {
+        return [];
+      }
+      const [startRaw, endRaw] = lines[timeIndex].split('-->').map((part) => part.trim());
+      const startSeconds = parseTimestamp(startRaw);
+      const endSeconds = parseTimestamp(endRaw);
+      const cueText = lines.slice(timeIndex + 1).join(' ').trim();
+      if (startSeconds === null || endSeconds === null || !cueText) {
+        return [];
+      }
+      return [{ startSeconds, endSeconds, text: cueText }];
+    });
+}
+
 export default function FloatingAudioPlayer({
   track,
   playbackRate,
@@ -59,6 +105,7 @@ export default function FloatingAudioPlayer({
   const [duration, setDuration] = useState(0);
   const [seeking, setSeeking] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
   const subchapters = useMemo(
     () =>
       (track?.subchapters ?? [])
@@ -76,6 +123,10 @@ export default function FloatingAudioPlayer({
         .find((entry) => currentTime >= entry.startSeconds) ?? subchapters[0]
     );
   }, [currentTime, subchapters]);
+  const activeSubtitleCue = useMemo(
+    () => subtitleCues.find((cue) => currentTime >= cue.startSeconds && currentTime <= cue.endSeconds) ?? null,
+    [currentTime, subtitleCues]
+  );
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -160,6 +211,7 @@ export default function FloatingAudioPlayer({
       setCurrentTime(0);
       setDuration(0);
       setMinimized(false);
+      setSubtitleCues([]);
       return;
     }
     lastEmittedSubchapterKeyRef.current = null;
@@ -180,6 +232,31 @@ export default function FloatingAudioPlayer({
       setPlaying(false);
     });
   }, [onPlaybackStateChange, track]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSubtitleCues([]);
+    if (!track?.srtUrl) {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void fetch(track.srtUrl)
+      .then((response) => (response.ok ? response.text() : ''))
+      .then((text) => {
+        if (!cancelled) {
+          setSubtitleCues(parseSrt(text));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSubtitleCues([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [track?.srtUrl]);
 
   const emitSubchapterNavigation = useCallback(
     (entry: FloatingAudioSubchapter) => {
@@ -262,6 +339,11 @@ export default function FloatingAudioPlayer({
         <div className="floating-audio-title">{titleLine}</div>
         {activeSubchapter ? (
           <div className="floating-audio-subtitle">{activeSubchapter.title}</div>
+        ) : null}
+        {activeSubtitleCue ? (
+          <div className="floating-audio-caption" aria-live="polite">
+            {activeSubtitleCue.text}
+          </div>
         ) : null}
         <div className="floating-audio-controls">
           <button type="button" className="button floating-audio-play" onClick={togglePlayback}>

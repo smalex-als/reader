@@ -1,5 +1,6 @@
 import type { ComponentProps, RefObject } from 'react';
 import ChapterEditor from '@/components/ChapterEditor';
+import AudioLibraryView from '@/components/AudioLibraryView';
 import AudioView from '@/components/AudioView';
 import FloatingAudioPlayer from '@/components/FloatingAudioPlayer';
 import ChapterViewer from '@/components/ChapterViewer';
@@ -11,6 +12,7 @@ type ViewerProps = ComponentProps<typeof Viewer>;
 type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
 type ChapterEditorProps = ComponentProps<typeof ChapterEditor>;
 type ChapterViewerProps = ComponentProps<typeof ChapterViewer>;
+type AudioLibraryViewProps = ComponentProps<typeof AudioLibraryView>;
 type AudioViewProps = ComponentProps<typeof AudioView>;
 type StreamBubbleProps = ComponentProps<typeof StreamBubble>;
 type FloatingAudioPlayerProps = ComponentProps<typeof FloatingAudioPlayer>;
@@ -20,6 +22,7 @@ interface ReaderMainContentProps {
   modalHostRef: RefObject<HTMLDivElement>;
   isFullscreen: boolean;
   loading: boolean;
+  mainView: 'reader' | 'audio-library';
   viewMode: 'pages' | 'scroll' | 'text' | 'audio';
   textTheme: string;
   editorOpen: boolean;
@@ -28,6 +31,7 @@ interface ReaderMainContentProps {
   scrollViewerProps: ScrollViewerProps;
   chapterEditorProps: ChapterEditorProps;
   chapterViewerProps: ChapterViewerProps;
+  audioLibraryViewProps: AudioLibraryViewProps;
   audioViewProps: AudioViewProps;
   streamBubbleProps: StreamBubbleProps;
   floatingAudioPlayerProps: FloatingAudioPlayerProps;
@@ -39,6 +43,7 @@ export default function ReaderMainContent({
   modalHostRef,
   isFullscreen,
   loading,
+  mainView,
   viewMode,
   textTheme,
   editorOpen,
@@ -47,6 +52,7 @@ export default function ReaderMainContent({
   scrollViewerProps,
   chapterEditorProps,
   chapterViewerProps,
+  audioLibraryViewProps,
   audioViewProps,
   streamBubbleProps,
   floatingAudioPlayerProps,
@@ -57,7 +63,9 @@ export default function ReaderMainContent({
       <div
         ref={viewerShellRef}
         className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''} ${
-          viewMode === 'text' || viewMode === 'audio' ? `viewer-shell-text theme-${textTheme}` : ''
+          mainView === 'audio-library' || viewMode === 'text' || viewMode === 'audio'
+            ? `viewer-shell-text theme-${textTheme}`
+            : ''
         }`}
       >
         <button
@@ -80,7 +88,9 @@ export default function ReaderMainContent({
             />
           </svg>
         </button>
-        {viewMode === 'pages' ? (
+        {mainView === 'audio-library' ? (
+          <AudioLibraryView {...audioLibraryViewProps} />
+        ) : viewMode === 'pages' ? (
           <Viewer {...viewerProps} />
         ) : viewMode === 'scroll' ? (
           <ScrollViewer {...scrollViewerProps} />
