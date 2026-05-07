@@ -14,7 +14,12 @@ import {
 } from './streamAudio.js';
 import { generateChapterXaiAudio } from './chapterXaiAudio.js';
 import { generateChapterYandexAudio } from './chapterYandexAudio.js';
-import { removeChapterSubtitleFiles, startChapterSubtitleGeneration } from './chapterSubtitles.js';
+import {
+  removeChapterSubtitleFiles,
+  resolveChapterSubtitleLanguage,
+  resolveChapterSubtitlePaths,
+  startChapterSubtitleGeneration
+} from './chapterSubtitles.js';
 import { createTtsLogTimer } from './ttsLog.js';
 
 const JOB_STORE_PATH = path.join(DATA_DIR, 'chapter-audio-jobs.json');
@@ -166,15 +171,23 @@ async function finalizeFailure(bookId, chapterNumber, error) {
 
 async function startSubtitlesAfterAudio({ bookId, chapterNumber, versionId, transcriptText, force = false }) {
   const resolvedVersionId = typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
-  const mp3Path = path.join(DATA_DIR, bookId, formatChapterAudioFilename(chapterNumber, resolvedVersionId));
+  const audioPath = path.join(DATA_DIR, bookId, formatChapterAudioFilename(chapterNumber, resolvedVersionId));
+  const subtitlePaths = resolveChapterSubtitlePaths({ mp3Path: audioPath, chapterNumber, versionId: resolvedVersionId });
+  const cleanTranscript = typeof transcriptText === 'string' ? transcriptText.trim() : '';
+  if (!cleanTranscript) {
+    return;
+  }
+  if (force) {
+    await removeChapterSubtitleFiles({ destSrt: subtitlePaths.srtPath });
+  }
+  await fs.writeFile(subtitlePaths.transcriptPath, `${cleanTranscript}\n`, 'utf8');
+  const textLanguage = resolveChapterSubtitleLanguage(cleanTranscript);
   try {
     await startChapterSubtitleGeneration({
-      bookId,
-      chapterNumber,
-      versionId: resolvedVersionId,
-      mp3Path,
-      transcriptText,
-      force
+      audio: audioPath,
+      text: subtitlePaths.transcriptPath,
+      textLanguage,
+      destSrt: subtitlePaths.srtPath
     });
   } catch (error) {
     console.warn('Failed to start chapter subtitle generation', {
@@ -188,8 +201,10 @@ async function startSubtitlesAfterAudio({ bookId, chapterNumber, versionId, tran
 
 async function removeSubtitlesBeforeAudio({ bookId, chapterNumber, versionId }) {
   const resolvedVersionId = typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
+  const audioPath = path.join(DATA_DIR, bookId, formatChapterAudioFilename(chapterNumber, resolvedVersionId));
+  const subtitlePaths = resolveChapterSubtitlePaths({ mp3Path: audioPath, chapterNumber, versionId: resolvedVersionId });
   try {
-    await removeChapterSubtitleFiles({ bookId, chapterNumber, versionId: resolvedVersionId });
+    await removeChapterSubtitleFiles({ destSrt: subtitlePaths.srtPath });
   } catch (error) {
     console.warn('Failed to remove chapter subtitles before audio generation', {
       bookId,

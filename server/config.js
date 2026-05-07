@@ -28,9 +28,6 @@ export const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID || '';
 export const YANDEX_TTS_LANG = process.env.YANDEX_TTS_LANG || 'ru-RU';
 export const YANDEX_TTS_SPEED = process.env.YANDEX_TTS_SPEED || '1.0';
 export const YANDEX_TTS_SAMPLE_RATE = Number.parseInt(process.env.YANDEX_TTS_SAMPLE_RATE || '48000', 10);
-export const CHAPTER_SUBTITLES_COMMAND = process.env.CHAPTER_SUBTITLES_COMMAND || '';
-export const CHAPTER_SUBTITLES_IMAGE = process.env.CHAPTER_SUBTITLES_IMAGE || '';
-export const CHAPTER_SUBTITLES_URL = process.env.CHAPTER_SUBTITLES_URL || '';
 export const CHAPTER_JOBWORKER_URL = process.env.CHAPTER_JOBWORKER_URL || '';
 export const CHAPTER_SUBTITLES_LANGUAGE = process.env.CHAPTER_SUBTITLES_LANGUAGE || 'auto';
 export const CHAPTER_SUBTITLES_SENTENCE_MODE = process.env.CHAPTER_SUBTITLES_SENTENCE_MODE || 'strict';
@@ -44,7 +41,6 @@ export const CHAPTER_SUBTITLES_RETRY_BEAM = Number.parseInt(
   10
 );
 export const CHAPTER_SUBTITLES_SKIP_VALIDATE = process.env.CHAPTER_SUBTITLES_SKIP_VALIDATE !== 'false';
-export const CHAPTER_SUBTITLES_DOCKER_USER = process.env.CHAPTER_SUBTITLES_DOCKER_USER || '';
 export const CHAPTER_SUBTITLES_TIMEOUT_MS = Number.parseInt(
   process.env.CHAPTER_SUBTITLES_TIMEOUT_MS || '1800000',
   10

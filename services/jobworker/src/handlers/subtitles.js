@@ -17,23 +17,20 @@ function normalizeSubtitlePayload(input) {
   const payload = input && typeof input === 'object' ? input : {};
   const audio = normalizeRelativePath(payload.audio, 'audio');
   const text = normalizeRelativePath(payload.text, 'text');
-  const out = normalizeRelativePath(payload.out, 'out');
-  const status = normalizeRelativePath(payload.status || `${out}.status.json`, 'status');
+  const destSrt = normalizeRelativePath(payload.destSrt, 'destSrt');
   return {
     audio,
     text,
-    out,
-    status,
-    bookId: typeof payload.bookId === 'string' ? payload.bookId : null,
-    chapterNumber: Number.isInteger(payload.chapterNumber) ? payload.chapterNumber : null,
-    versionId: typeof payload.versionId === 'string' && payload.versionId.trim() ? payload.versionId.trim() : 'base',
-    language: typeof payload.language === 'string' && payload.language.trim() ? payload.language.trim() : 'english_us_arpa',
-    force: payload.force === true,
-    skipValidate: payload.skipValidate !== false,
-    sentenceMode: payload.sentenceMode === 'balanced' ? 'balanced' : 'strict',
-    maxLineChars: Number.isFinite(payload.maxLineChars) && payload.maxLineChars > 0 ? payload.maxLineChars : 95,
-    beam: Number.isFinite(payload.beam) && payload.beam > 0 ? payload.beam : 100,
-    retryBeam: Number.isFinite(payload.retryBeam) && payload.retryBeam > 0 ? payload.retryBeam : 400
+    textLanguage:
+      typeof payload.textLanguage === 'string' && payload.textLanguage.trim()
+        ? payload.textLanguage.trim()
+        : 'english_us_arpa',
+    destSrt,
+    skipValidate: true,
+    sentenceMode: 'strict',
+    maxLineChars: 95,
+    beam: 100,
+    retryBeam: 400
   };
 }
 
@@ -107,8 +104,8 @@ async function requestSubtitlesAsync(payload, context = {}) {
       body: JSON.stringify({
         audio: payload.audio,
         text: payload.text,
-        out: path.basename(payload.out),
-        language: payload.language,
+        out: path.basename(payload.destSrt),
+        language: payload.textLanguage,
         skipValidate: payload.skipValidate,
         sentenceMode: payload.sentenceMode,
         maxLineChars: payload.maxLineChars,
@@ -177,22 +174,19 @@ export const subtitlesHandler = {
     return jobs.find(
       (job) =>
         job.type === this.type &&
-        job.payload?.out === payload.out &&
+        job.payload?.destSrt === payload.destSrt &&
         (job.status === 'queued' || job.status === 'running')
     );
   },
 
   async createCompletedJob(payload) {
-    if (payload.force) {
-      return null;
-    }
-    const existingSrt = await statFile(resolveDataPath(payload.out));
+    const existingSrt = await statFile(resolveDataPath(payload.destSrt));
     if (!existingSrt?.isFile()) {
       return null;
     }
     return {
       result: {
-        srtPath: resolveDataPath(payload.out),
+        srtPath: resolveDataPath(payload.destSrt),
         responseBytes: existingSrt.size
       }
     };
@@ -226,8 +220,8 @@ export const subtitlesHandler = {
       serviceUrl: SYNC_SUBTITLES_URL,
       audio: job.payload.audio,
       text: job.payload.text,
-      out: job.payload.out,
-      language: job.payload.language,
+      destSrt: job.payload.destSrt,
+      textLanguage: job.payload.textLanguage,
       beam: job.payload.beam,
       retryBeam: job.payload.retryBeam
     });
@@ -237,7 +231,7 @@ export const subtitlesHandler = {
     }
     await context.log?.('Submitting subtitle file to reader', {
       submitUrl: READER_SUBTITLE_SUBMIT_URL,
-      out: job.payload.out,
+      destSrt: job.payload.destSrt,
       bytes: Buffer.byteLength(srtText, 'utf8')
     });
     await submitToReader({
@@ -245,7 +239,7 @@ export const subtitlesHandler = {
       srtText
     });
     return {
-      srtPath: job.payload.out,
+      srtPath: job.payload.destSrt,
       responseBytes: Buffer.byteLength(srtText, 'utf8')
     };
   },
