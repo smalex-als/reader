@@ -1,11 +1,8 @@
 import path from 'node:path';
 import { READER_SUBTITLE_SUBMIT_URL } from '../config.js';
 import {
-  errorMessage,
   normalizeRelativePath,
-  nowIso,
   resolveDataPath,
-  serializeError,
   statFile
 } from '../lib.js';
 
@@ -69,18 +66,12 @@ async function fetchJson(url, options = {}) {
   return payload;
 }
 
-async function submitToReader({ payload, status = null, srtText = null }) {
+async function submitToReader({ payload, srtText }) {
   const response = await fetch(READER_SUBTITLE_SUBMIT_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       payload,
-      status: status
-        ? {
-            ...status,
-            workerUpdatedAt: nowIso()
-          }
-        : null,
       srtText
     })
   });
@@ -192,29 +183,6 @@ export const subtitlesHandler = {
     };
   },
 
-  async onQueued(job) {
-    await submitToReader({
-      payload: job.payload,
-      status: {
-        status: 'queued',
-        jobId: job.id,
-        queuedAt: job.createdAt
-      }
-    });
-  },
-
-  async onStarted(job) {
-    await submitToReader({
-      payload: job.payload,
-      status: {
-        status: 'running',
-        jobId: job.id,
-        queuedAt: job.createdAt,
-        startedAt: job.startedAt
-      }
-    });
-  },
-
   async run(job, context = {}) {
     await context.log?.('Requesting subtitle sync service', {
       serviceUrl: SYNC_SUBTITLES_URL,
@@ -242,34 +210,5 @@ export const subtitlesHandler = {
       srtPath: job.payload.destSrt,
       responseBytes: Buffer.byteLength(srtText, 'utf8')
     };
-  },
-
-  async onCompleted(job, result) {
-    await submitToReader({
-      payload: job.payload,
-      status: {
-        status: 'completed',
-        jobId: job.id,
-        queuedAt: job.createdAt,
-        startedAt: job.startedAt,
-        completedAt: job.completedAt,
-        responseBytes: result?.responseBytes ?? null
-      }
-    });
-  },
-
-  async onFailed(job, error) {
-    await submitToReader({
-      payload: job.payload,
-      status: {
-        status: 'failed',
-        jobId: job.id,
-        queuedAt: job.createdAt,
-        startedAt: job.startedAt,
-        completedAt: job.completedAt,
-        error: errorMessage(error),
-        errorDetails: serializeError(error)
-      }
-    });
   }
 };

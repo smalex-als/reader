@@ -60,24 +60,6 @@ function isTransientFetchError(error) {
   return TRANSIENT_FETCH_ERROR_CODES.has(details.code);
 }
 
-function formatErrorMessage(error) {
-  const details = serializeError(error);
-  const parts = [details.message];
-  if (details.code) {
-    parts.push(details.code);
-  }
-  if (details.syscall) {
-    parts.push(details.syscall);
-  }
-  if (details.address || details.port) {
-    parts.push(`${details.address ?? ''}${details.port ? `:${details.port}` : ''}`);
-  }
-  if (details.causeMessage && details.causeMessage !== details.message) {
-    parts.push(details.causeMessage);
-  }
-  return parts.filter(Boolean).join(' - ');
-}
-
 export function resolveChapterSubtitleLanguage(transcriptText) {
   const configured = CHAPTER_SUBTITLES_LANGUAGE.trim();
   if (configured && configured !== 'auto') {
@@ -149,22 +131,6 @@ function resolveJobWorkerUrl() {
   return url.toString();
 }
 
-async function writeSubtitleStatus(statusPath, status) {
-  await fs.mkdir(path.dirname(statusPath), { recursive: true });
-  await fs.writeFile(
-    statusPath,
-    JSON.stringify(
-      {
-        ...status,
-        updatedAt: new Date().toISOString()
-      },
-      null,
-      2
-    ),
-    'utf8'
-  );
-}
-
 async function readSubtitleServiceResponse(response) {
   const text = await response.text();
   if (!text.trim()) {
@@ -226,43 +192,6 @@ async function enqueueSubtitleJobWorker({
   return responseBody;
 }
 
-async function writeSubtitleEnqueueFailure({
-  paths,
-  bookId,
-  chapterNumber,
-  versionId,
-  mp3Path,
-  subtitleLanguage,
-  jobWorkerUrl,
-  error
-}) {
-  const message = formatErrorMessage(error);
-  await writeSubtitleStatus(paths.statusPath, {
-    status: 'failed',
-    bookId,
-    chapterNumber,
-    versionId,
-    mp3Path,
-    transcriptPath: paths.transcriptPath,
-    srtPath: paths.srtPath,
-    subtitleLanguage,
-    completedAt: new Date().toISOString(),
-    error: message,
-    errorDetails: serializeError(error),
-    jobWorkerUrl
-  }).catch((statusError) => {
-    console.warn('Failed to write subtitle status after job worker error', statusError);
-  });
-  console.warn('Failed to enqueue subtitle job worker task', {
-    bookId,
-    chapterNumber,
-    versionId,
-    subtitleLanguage,
-    jobWorkerUrl,
-    error: serializeError(error)
-  });
-}
-
 export function resolveChapterSubtitlePaths({ mp3Path, chapterNumber, versionId = 'base' }) {
   const bookDir = path.dirname(mp3Path);
   const srtFilename = formatChapterAudioFilename(chapterNumber, versionId, '.srt');
@@ -272,7 +201,6 @@ export function resolveChapterSubtitlePaths({ mp3Path, chapterNumber, versionId 
     bookDir,
     srtFilename,
     srtPath,
-    statusPath: `${srtPath}.status.json`,
     transcriptFilename,
     transcriptPath: path.join(bookDir, transcriptFilename)
   };
@@ -280,13 +208,12 @@ export function resolveChapterSubtitlePaths({ mp3Path, chapterNumber, versionId 
 
 export async function removeChapterSubtitleFiles({ destSrt }) {
   const srtPath = path.isAbsolute(destSrt) ? destSrt : resolveDataRelativePath(destSrt, 'destSrt');
-  const statusPath = `${srtPath}.status.json`;
   const parsed = parseChapterSubtitleTarget(path.relative(DATA_DIR, srtPath).split(path.sep).join('/'));
   const transcriptPath = path.join(
     path.dirname(srtPath),
     formatChapterAudioFilename(parsed.chapterNumber, parsed.versionId, '.subtitles.txt')
   );
-  for (const targetPath of [srtPath, statusPath, transcriptPath]) {
+  for (const targetPath of [srtPath, transcriptPath]) {
     try {
       await fs.unlink(targetPath);
     } catch (error) {
@@ -297,52 +224,20 @@ export async function removeChapterSubtitleFiles({ destSrt }) {
   }
 }
 
-export async function submitChapterSubtitleJobUpdate({ payload, status = null, srtText = null }) {
+export async function submitChapterSubtitleJobUpdate({ payload, srtText = null }) {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Subtitle job payload is required');
   }
   const srtPath = resolveDataRelativePath(payload.destSrt, 'destSrt');
-  const statusPath = `${srtPath}.status.json`;
   const transcriptPath = resolveDataRelativePath(payload.text, 'text');
-  const mp3Path = resolveDataRelativePath(payload.audio, 'audio');
-  const relativeSrtPath = path.relative(DATA_DIR, srtPath).split(path.sep).join('/');
-  const parsed = parseChapterSubtitleTarget(relativeSrtPath);
 
   if (typeof srtText === 'string') {
     await fs.mkdir(path.dirname(srtPath), { recursive: true });
     await fs.writeFile(srtPath, srtText, 'utf8');
   }
 
-  if (status && typeof status === 'object') {
-    await writeSubtitleStatus(statusPath, {
-      status: typeof status.status === 'string' ? status.status : 'running',
-      bookId: parsed.bookId,
-      chapterNumber: parsed.chapterNumber,
-      versionId: parsed.versionId,
-      mp3Path,
-      transcriptPath,
-      srtPath,
-      subtitleLanguage:
-        typeof payload.textLanguage === 'string' && payload.textLanguage.trim() ? payload.textLanguage.trim() : null,
-      jobId: status.jobId ?? null,
-      queuedAt: status.queuedAt ?? null,
-      startedAt: status.startedAt ?? null,
-      completedAt: status.completedAt ?? null,
-      error: status.error ?? null,
-      errorDetails: status.errorDetails ?? null,
-      responseBytes:
-        Number.isFinite(status.responseBytes)
-          ? status.responseBytes
-          : typeof srtText === 'string'
-            ? Buffer.byteLength(srtText, 'utf8')
-            : null,
-      workerUpdatedAt: status.workerUpdatedAt ?? null
-    });
-  }
-
   return {
     srtPath,
-    statusPath,
     transcriptPath,
     responseBytes: typeof srtText === 'string' ? Buffer.byteLength(srtText, 'utf8') : null
   };
@@ -362,51 +257,29 @@ export async function startChapterSubtitleGeneration({
   const audioPath = path.isAbsolute(audio) ? audio : resolveDataRelativePath(audio, 'audio');
   const textPath = path.isAbsolute(text) ? text : resolveDataRelativePath(text, 'text');
   const srtPath = path.isAbsolute(destSrt) ? destSrt : resolveDataRelativePath(destSrt, 'destSrt');
-  const statusPath = `${srtPath}.status.json`;
-  const parsed = parseChapterSubtitleTarget(path.relative(DATA_DIR, srtPath).split(path.sep).join('/'));
-  await writeSubtitleStatus(statusPath, {
-    status: 'queued',
-    bookId: parsed.bookId,
-    chapterNumber: parsed.chapterNumber,
-    versionId: parsed.versionId,
-    mp3Path: audioPath,
-    transcriptPath: textPath,
-    srtPath,
-    subtitleLanguage: textLanguage,
-    startedAt: new Date().toISOString(),
-    error: null
-  });
 
-  let result;
   try {
-    result = await enqueueSubtitleJobWorker({
+    const result = await enqueueSubtitleJobWorker({
       jobWorkerUrl,
       audio: toDataRelativePath(audioPath),
       text: toDataRelativePath(textPath),
       textLanguage,
       destSrt: toDataRelativePath(srtPath)
     });
+    return {
+      srtPath,
+      transcriptPath: textPath,
+      job: result?.job ?? null
+    };
   } catch (error) {
-    await writeSubtitleEnqueueFailure({
-      paths: {
-        statusPath,
-        transcriptPath: textPath,
-        srtPath
-      },
-      bookId: parsed.bookId,
-      chapterNumber: parsed.chapterNumber,
-      versionId: parsed.versionId,
-      mp3Path: audioPath,
-      subtitleLanguage: textLanguage,
+    console.warn('Failed to enqueue subtitle job worker task', {
+      audio: audioPath,
+      text: textPath,
+      textLanguage,
+      destSrt: srtPath,
       jobWorkerUrl,
-      error
+      error: serializeError(error)
     });
     throw error;
   }
-  return {
-    srtPath,
-    statusPath,
-    transcriptPath: textPath,
-    job: result?.job ?? null
-  };
 }

@@ -52,7 +52,6 @@ router.post('/api/jobs/subtitles/submit', async (req, res, next) => {
   try {
     const result = await submitChapterSubtitleJobUpdate({
       payload: req.body?.payload,
-      status: req.body?.status ?? null,
       srtText: typeof req.body?.srtText === 'string' ? req.body.srtText : null
     });
     res.json({ status: 'ok', result });

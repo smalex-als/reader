@@ -441,7 +441,6 @@ router.delete('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req,
     audioPath,
     metaPath,
     subtitlePaths.srtPath,
-    subtitlePaths.statusPath,
     subtitlePaths.transcriptPath
   ]) {
     try {
