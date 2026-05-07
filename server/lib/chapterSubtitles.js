@@ -135,6 +135,18 @@ function toDataRelativePath(filePath) {
   return relativePath.split(path.sep).join('/');
 }
 
+function resolveDataRelativePath(relativePath, fieldName) {
+  if (typeof relativePath !== 'string' || !relativePath.trim()) {
+    throw new Error(`${fieldName} is required`);
+  }
+  const normalized = relativePath.trim().replace(/\\/g, '/').replace(/^\/+/, '');
+  const resolved = path.resolve(DATA_DIR, normalized);
+  if (!resolved.startsWith(`${DATA_DIR}${path.sep}`) && resolved !== DATA_DIR) {
+    throw new Error(`${fieldName} must stay under data directory`);
+  }
+  return resolved;
+}
+
 function resolveSubtitleServiceUrl() {
   const configured = CHAPTER_SUBTITLES_URL.trim();
   if (!configured) {
@@ -205,6 +217,7 @@ function buildCommandFromImage({ paths, mp3Path, transcriptText }) {
 }
 
 async function writeSubtitleStatus(statusPath, status) {
+  await fs.mkdir(path.dirname(statusPath), { recursive: true });
   await fs.writeFile(
     statusPath,
     JSON.stringify(
@@ -364,7 +377,8 @@ async function enqueueSubtitleJobWorker({
   chapterNumber,
   versionId,
   mp3Path,
-  subtitleLanguage
+  subtitleLanguage,
+  force = false
 }) {
   try {
     const response = await fetchSubtitleServiceWithRetries(jobWorkerUrl, {
@@ -381,6 +395,7 @@ async function enqueueSubtitleJobWorker({
         out: toDataRelativePath(paths.srtPath),
         status: toDataRelativePath(paths.statusPath),
         language: subtitleLanguage,
+        force,
         skipValidate: CHAPTER_SUBTITLES_SKIP_VALIDATE,
         sentenceMode: CHAPTER_SUBTITLES_SENTENCE_MODE.trim() || 'strict',
         maxLineChars: resolveMaxLineChars(),
@@ -439,12 +454,77 @@ export function resolveChapterSubtitlePaths({ mp3Path, chapterNumber, versionId 
   };
 }
 
+export async function removeChapterSubtitleFiles({ bookId, chapterNumber, versionId = 'base', mp3Path = null }) {
+  const resolvedVersionId = typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
+  const resolvedMp3Path =
+    mp3Path ?? path.join(DATA_DIR, bookId, formatChapterAudioFilename(chapterNumber, resolvedVersionId));
+  const paths = resolveChapterSubtitlePaths({ mp3Path: resolvedMp3Path, chapterNumber, versionId: resolvedVersionId });
+  for (const targetPath of [paths.srtPath, paths.statusPath, paths.transcriptPath]) {
+    try {
+      await fs.unlink(targetPath);
+    } catch (error) {
+      if (error?.code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+}
+
+export async function submitChapterSubtitleJobUpdate({ payload, status = null, srtText = null }) {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Subtitle job payload is required');
+  }
+  const srtPath = resolveDataRelativePath(payload.out, 'out');
+  const statusPath = resolveDataRelativePath(payload.status || `${payload.out}.status.json`, 'status');
+  const transcriptPath = resolveDataRelativePath(payload.text, 'text');
+  const mp3Path = resolveDataRelativePath(payload.audio, 'audio');
+
+  if (typeof srtText === 'string') {
+    await fs.mkdir(path.dirname(srtPath), { recursive: true });
+    await fs.writeFile(srtPath, srtText, 'utf8');
+  }
+
+  if (status && typeof status === 'object') {
+    await writeSubtitleStatus(statusPath, {
+      status: typeof status.status === 'string' ? status.status : 'running',
+      bookId: typeof payload.bookId === 'string' ? payload.bookId : null,
+      chapterNumber: Number.isInteger(payload.chapterNumber) ? payload.chapterNumber : null,
+      versionId: typeof payload.versionId === 'string' && payload.versionId.trim() ? payload.versionId.trim() : 'base',
+      mp3Path,
+      transcriptPath,
+      srtPath,
+      subtitleLanguage: typeof payload.language === 'string' && payload.language.trim() ? payload.language.trim() : null,
+      jobId: status.jobId ?? null,
+      queuedAt: status.queuedAt ?? null,
+      startedAt: status.startedAt ?? null,
+      completedAt: status.completedAt ?? null,
+      error: status.error ?? null,
+      errorDetails: status.errorDetails ?? null,
+      responseBytes:
+        Number.isFinite(status.responseBytes)
+          ? status.responseBytes
+          : typeof srtText === 'string'
+            ? Buffer.byteLength(srtText, 'utf8')
+            : null,
+      workerUpdatedAt: status.workerUpdatedAt ?? null
+    });
+  }
+
+  return {
+    srtPath,
+    statusPath,
+    transcriptPath,
+    responseBytes: typeof srtText === 'string' ? Buffer.byteLength(srtText, 'utf8') : null
+  };
+}
+
 export async function startChapterSubtitleGeneration({
   bookId,
   chapterNumber,
   versionId = 'base',
   mp3Path,
-  transcriptText
+  transcriptText,
+  force = false
 }) {
   const cleanTranscript = typeof transcriptText === 'string' ? transcriptText.trim() : '';
   if (!cleanTranscript) {
@@ -482,6 +562,9 @@ export async function startChapterSubtitleGeneration({
     return null;
   }
 
+  if (force) {
+    await removeChapterSubtitleFiles({ bookId, chapterNumber, versionId, mp3Path });
+  }
   await fs.writeFile(paths.transcriptPath, `${cleanTranscript}\n`, 'utf8');
   await writeSubtitleStatus(paths.statusPath, {
     status: jobWorkerUrl ? 'queued' : 'running',
@@ -504,7 +587,8 @@ export async function startChapterSubtitleGeneration({
       chapterNumber,
       versionId,
       mp3Path,
-      subtitleLanguage
+      subtitleLanguage,
+      force
     });
     return {
       srtPath: paths.srtPath,

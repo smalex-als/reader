@@ -1,6 +1,7 @@
 import express from 'express';
 import { CHAPTER_JOBWORKER_URL } from '../config.js';
 import { createHttpError } from '../lib/errors.js';
+import { submitChapterSubtitleJobUpdate } from '../lib/chapterSubtitles.js';
 
 const router = express.Router();
 
@@ -42,6 +43,19 @@ router.get('/api/jobs', async (_req, res, next) => {
 router.get('/api/jobs/:id', async (req, res, next) => {
   try {
     res.json(await fetchJobWorkerJson(`/jobs/${encodeURIComponent(req.params.id)}`));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/api/jobs/subtitles/submit', async (req, res, next) => {
+  try {
+    const result = await submitChapterSubtitleJobUpdate({
+      payload: req.body?.payload,
+      status: req.body?.status ?? null,
+      srtText: typeof req.body?.srtText === 'string' ? req.body.srtText : null
+    });
+    res.json({ status: 'ok', result });
   } catch (error) {
     next(error);
   }

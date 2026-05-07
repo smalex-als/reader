@@ -11,7 +11,9 @@ services:
       JOBWORKER_PORT: 3200
       JOBWORKER_DATA_DIR: /data
       JOBWORKER_SYNC_SUBTITLES_URL: http://sync-subtitles:3100/generate
+      JOBWORKER_READER_SUBTITLE_SUBMIT_URL: http://reader:3000/api/jobs/subtitles/submit
       JOBWORKER_SUBTITLE_TIMEOUT_MS: ${CHAPTER_SUBTITLES_TIMEOUT_MS:-1800000}
+      JOBWORKER_SUBTITLE_POLL_INTERVAL_MS: ${CHAPTER_SUBTITLES_POLL_INTERVAL_MS:-2000}
     healthcheck:
       test:
         - CMD

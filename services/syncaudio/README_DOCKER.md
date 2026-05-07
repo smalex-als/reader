@@ -96,6 +96,28 @@ curl -o output/chapter009.srt \
 The HTTP service returns the generated SRT file as the response body. It does
 not write the output file into `/data`; callers are responsible for saving it.
 
+Queue subtitles asynchronously:
+
+```sh
+curl -X POST http://localhost:3100/jobs \
+  -H 'content-type: application/json' \
+  -d '{
+    "audio": "test/chapter009.mp3",
+    "text": "test/chapter009.txt",
+    "out": "chapter009.srt",
+    "language": "english_us_arpa",
+    "skipValidate": true,
+    "sentenceMode": "strict",
+    "maxLineChars": 95,
+    "beam": 100,
+    "retryBeam": 400
+  }'
+```
+
+Then poll `GET /jobs/<jobId>` until `status` is `completed`, and download the
+file from `GET /jobs/<jobId>/result`. Jobs run one at a time inside the service,
+so callers do not need to hold a long HTTP connection while MFA is running.
+
 The image includes MFA, Python 3.11, `english_us_arpa`, and `russian_mfa`.
 Input/output paths are relative to the mounted repository directory at `/data`.
 On Linux bind mounts, create a writable `output/` directory before running the

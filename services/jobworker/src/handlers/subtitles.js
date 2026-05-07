@@ -1,17 +1,17 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
+import { READER_SUBTITLE_SUBMIT_URL } from '../config.js';
 import {
   errorMessage,
   normalizeRelativePath,
   nowIso,
   resolveDataPath,
   serializeError,
-  statFile,
-  writeJsonFile
+  statFile
 } from '../lib.js';
 
 const SYNC_SUBTITLES_URL = process.env.JOBWORKER_SYNC_SUBTITLES_URL || 'http://sync-subtitles:3100/generate';
 const SUBTITLE_TIMEOUT_MS = Number.parseInt(process.env.JOBWORKER_SUBTITLE_TIMEOUT_MS || '1800000', 10);
+const SUBTITLE_POLL_INTERVAL_MS = Number.parseInt(process.env.JOBWORKER_SUBTITLE_POLL_INTERVAL_MS || '2000', 10);
 
 function normalizeSubtitlePayload(input) {
   const payload = input && typeof input === 'object' ? input : {};
@@ -28,6 +28,7 @@ function normalizeSubtitlePayload(input) {
     chapterNumber: Number.isInteger(payload.chapterNumber) ? payload.chapterNumber : null,
     versionId: typeof payload.versionId === 'string' && payload.versionId.trim() ? payload.versionId.trim() : 'base',
     language: typeof payload.language === 'string' && payload.language.trim() ? payload.language.trim() : 'english_us_arpa',
+    force: payload.force === true,
     skipValidate: payload.skipValidate !== false,
     sentenceMode: payload.sentenceMode === 'balanced' ? 'balanced' : 'strict',
     maxLineChars: Number.isFinite(payload.maxLineChars) && payload.maxLineChars > 0 ? payload.maxLineChars : 95,
@@ -36,35 +37,71 @@ function normalizeSubtitlePayload(input) {
   };
 }
 
-async function writeSubtitleStatus(payload, status) {
-  await writeJsonFile(resolveDataPath(payload.status), {
-    status: status.status,
-    bookId: payload.bookId,
-    chapterNumber: payload.chapterNumber,
-    versionId: payload.versionId,
-    mp3Path: resolveDataPath(payload.audio),
-    transcriptPath: resolveDataPath(payload.text),
-    srtPath: resolveDataPath(payload.out),
-    subtitleLanguage: payload.language,
-    jobId: status.jobId ?? null,
-    queuedAt: status.queuedAt ?? null,
-    startedAt: status.startedAt ?? null,
-    completedAt: status.completedAt ?? null,
-    error: status.error ?? null,
-    errorDetails: status.errorDetails ?? null,
-    responseBytes: status.responseBytes ?? null,
-    workerUpdatedAt: nowIso(),
-    updatedAt: nowIso()
-  });
+function resolveSyncSubtitlesBaseUrl() {
+  const url = new URL(SYNC_SUBTITLES_URL);
+  if (url.pathname.endsWith('/generate')) {
+    url.pathname = url.pathname.slice(0, -'/generate'.length) || '/';
+  }
+  url.search = '';
+  url.hash = '';
+  return url.toString().replace(/\/$/, '');
 }
 
-async function requestSubtitles(payload) {
-  const controller = new AbortController();
-  const timeout = Number.isFinite(SUBTITLE_TIMEOUT_MS) && SUBTITLE_TIMEOUT_MS > 0
-    ? setTimeout(() => controller.abort(), SUBTITLE_TIMEOUT_MS)
-    : null;
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text.trim()) {
+    return {};
+  }
   try {
-    const response = await fetch(SYNC_SUBTITLES_URL, {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text };
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, options);
+  const payload = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(payload.error || payload.message || `sync-subtitles failed with HTTP ${response.status}`);
+  }
+  return payload;
+}
+
+async function submitToReader({ payload, status = null, srtText = null }) {
+  const response = await fetch(READER_SUBTITLE_SUBMIT_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      payload,
+      status: status
+        ? {
+            ...status,
+            workerUpdatedAt: nowIso()
+          }
+        : null,
+      srtText
+    })
+  });
+  const result = await readJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(result.error || `reader subtitle submit failed with HTTP ${response.status}`);
+  }
+  return result;
+}
+
+async function requestSubtitlesAsync(payload, context = {}) {
+  const baseUrl = resolveSyncSubtitlesBaseUrl();
+  const controller = new AbortController();
+  const timeoutMs = Number.isFinite(SUBTITLE_TIMEOUT_MS) && SUBTITLE_TIMEOUT_MS > 0 ? SUBTITLE_TIMEOUT_MS : 0;
+  const deadline = timeoutMs > 0 ? Date.now() + timeoutMs : 0;
+  const timeout = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const queued = await fetchJson(`${baseUrl}/jobs`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -80,19 +117,47 @@ async function requestSubtitles(payload) {
       }),
       signal: controller.signal
     });
-    if (!response.ok) {
-      const text = await response.text();
-      try {
-        const parsed = JSON.parse(text);
-        throw new Error(parsed?.error || parsed?.message || `sync-subtitles failed with HTTP ${response.status}`);
-      } catch (error) {
-        if (error instanceof SyntaxError) {
-          throw new Error(text.trim() || `sync-subtitles failed with HTTP ${response.status}`);
-        }
-        throw error;
-      }
+    const syncJobId = queued?.job?.id;
+    if (!syncJobId) {
+      throw new Error('sync-subtitles did not return a job id');
     }
-    return await response.text();
+    await context.log?.('Subtitle sync job queued', { syncJobId });
+
+    let lastStatus = queued.job.status;
+    while (true) {
+      if (deadline > 0 && Date.now() > deadline) {
+        throw new Error(`Subtitle sync job timed out after ${timeoutMs}ms`);
+      }
+      const statusPayload = await fetchJson(`${baseUrl}/jobs/${encodeURIComponent(syncJobId)}`, {
+        signal: controller.signal
+      });
+      const job = statusPayload.job;
+      if (!job) {
+        throw new Error(`sync-subtitles job disappeared: ${syncJobId}`);
+      }
+      if (job.status !== lastStatus) {
+        lastStatus = job.status;
+        await context.log?.('Subtitle sync job status changed', {
+          syncJobId,
+          status: job.status,
+          error: job.error ?? null
+        });
+      }
+      if (job.status === 'completed') {
+        const resultResponse = await fetch(`${baseUrl}/jobs/${encodeURIComponent(syncJobId)}/result`, {
+          signal: controller.signal
+        });
+        if (!resultResponse.ok) {
+          const payload = await readJsonResponse(resultResponse);
+          throw new Error(payload.error || `sync-subtitles result failed with HTTP ${resultResponse.status}`);
+        }
+        return await resultResponse.text();
+      }
+      if (job.status === 'failed') {
+        throw new Error(job.error || `sync-subtitles job failed: ${syncJobId}`);
+      }
+      await sleep(SUBTITLE_POLL_INTERVAL_MS > 0 ? SUBTITLE_POLL_INTERVAL_MS : 2000);
+    }
   } finally {
     if (timeout) {
       clearTimeout(timeout);
@@ -118,6 +183,9 @@ export const subtitlesHandler = {
   },
 
   async createCompletedJob(payload) {
+    if (payload.force) {
+      return null;
+    }
     const existingSrt = await statFile(resolveDataPath(payload.out));
     if (!existingSrt?.isFile()) {
       return null;
@@ -131,19 +199,25 @@ export const subtitlesHandler = {
   },
 
   async onQueued(job) {
-    await writeSubtitleStatus(job.payload, {
-      status: 'queued',
-      jobId: job.id,
-      queuedAt: job.createdAt
+    await submitToReader({
+      payload: job.payload,
+      status: {
+        status: 'queued',
+        jobId: job.id,
+        queuedAt: job.createdAt
+      }
     });
   },
 
   async onStarted(job) {
-    await writeSubtitleStatus(job.payload, {
-      status: 'running',
-      jobId: job.id,
-      queuedAt: job.createdAt,
-      startedAt: job.startedAt
+    await submitToReader({
+      payload: job.payload,
+      status: {
+        status: 'running',
+        jobId: job.id,
+        queuedAt: job.createdAt,
+        startedAt: job.startedAt
+      }
     });
   },
 
@@ -157,43 +231,51 @@ export const subtitlesHandler = {
       beam: job.payload.beam,
       retryBeam: job.payload.retryBeam
     });
-    const srtText = await requestSubtitles(job.payload);
+    const srtText = await requestSubtitlesAsync(job.payload, context);
     if (!srtText.trim()) {
       throw new Error('Subtitle service returned an empty SRT file');
     }
-    const outPath = resolveDataPath(job.payload.out);
-    await context.log?.('Writing subtitle file', {
-      outPath,
+    await context.log?.('Submitting subtitle file to reader', {
+      submitUrl: READER_SUBTITLE_SUBMIT_URL,
+      out: job.payload.out,
       bytes: Buffer.byteLength(srtText, 'utf8')
     });
-    await fs.mkdir(path.dirname(outPath), { recursive: true });
-    await fs.writeFile(outPath, srtText, 'utf8');
+    await submitToReader({
+      payload: job.payload,
+      srtText
+    });
     return {
-      srtPath: outPath,
+      srtPath: job.payload.out,
       responseBytes: Buffer.byteLength(srtText, 'utf8')
     };
   },
 
   async onCompleted(job, result) {
-    await writeSubtitleStatus(job.payload, {
-      status: 'completed',
-      jobId: job.id,
-      queuedAt: job.createdAt,
-      startedAt: job.startedAt,
-      completedAt: job.completedAt,
-      responseBytes: result?.responseBytes ?? null
+    await submitToReader({
+      payload: job.payload,
+      status: {
+        status: 'completed',
+        jobId: job.id,
+        queuedAt: job.createdAt,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+        responseBytes: result?.responseBytes ?? null
+      }
     });
   },
 
   async onFailed(job, error) {
-    await writeSubtitleStatus(job.payload, {
-      status: 'failed',
-      jobId: job.id,
-      queuedAt: job.createdAt,
-      startedAt: job.startedAt,
-      completedAt: job.completedAt,
-      error: errorMessage(error),
-      errorDetails: serializeError(error)
+    await submitToReader({
+      payload: job.payload,
+      status: {
+        status: 'failed',
+        jobId: job.id,
+        queuedAt: job.createdAt,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+        error: errorMessage(error),
+        errorDetails: serializeError(error)
+      }
     });
   }
 };

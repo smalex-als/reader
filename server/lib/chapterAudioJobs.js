@@ -14,7 +14,7 @@ import {
 } from './streamAudio.js';
 import { generateChapterXaiAudio } from './chapterXaiAudio.js';
 import { generateChapterYandexAudio } from './chapterYandexAudio.js';
-import { startChapterSubtitleGeneration } from './chapterSubtitles.js';
+import { removeChapterSubtitleFiles, startChapterSubtitleGeneration } from './chapterSubtitles.js';
 import { createTtsLogTimer } from './ttsLog.js';
 
 const JOB_STORE_PATH = path.join(DATA_DIR, 'chapter-audio-jobs.json');
@@ -164,7 +164,7 @@ async function finalizeFailure(bookId, chapterNumber, error) {
   });
 }
 
-async function startSubtitlesAfterAudio({ bookId, chapterNumber, versionId, transcriptText }) {
+async function startSubtitlesAfterAudio({ bookId, chapterNumber, versionId, transcriptText, force = false }) {
   const resolvedVersionId = typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
   const mp3Path = path.join(DATA_DIR, bookId, formatChapterAudioFilename(chapterNumber, resolvedVersionId));
   try {
@@ -173,10 +173,25 @@ async function startSubtitlesAfterAudio({ bookId, chapterNumber, versionId, tran
       chapterNumber,
       versionId: resolvedVersionId,
       mp3Path,
-      transcriptText
+      transcriptText,
+      force
     });
   } catch (error) {
     console.warn('Failed to start chapter subtitle generation', {
+      bookId,
+      chapterNumber,
+      versionId: resolvedVersionId,
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
+async function removeSubtitlesBeforeAudio({ bookId, chapterNumber, versionId }) {
+  const resolvedVersionId = typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
+  try {
+    await removeChapterSubtitleFiles({ bookId, chapterNumber, versionId: resolvedVersionId });
+  } catch (error) {
+    console.warn('Failed to remove chapter subtitles before audio generation', {
       bookId,
       chapterNumber,
       versionId: resolvedVersionId,
@@ -228,6 +243,9 @@ async function runChapterAudioJob({
       await updateJob(bookId, chapterNumber, { status: 'canceled' });
       return;
     }
+    if (force) {
+      await removeSubtitlesBeforeAudio({ bookId, chapterNumber, versionId: versionId ?? 'base' });
+    }
 
     if (provider === 'xai') {
       const result = await generateChapterXaiAudio({ bookId, chapterNumber, versionId, voice, force });
@@ -236,7 +254,8 @@ async function runChapterAudioJob({
           bookId,
           chapterNumber,
           versionId: result.versionId ?? versionId ?? 'base',
-          transcriptText: result.cleanText ?? ''
+          transcriptText: result.cleanText ?? '',
+          force: true
         });
       }
       await updateJob(bookId, chapterNumber, {
@@ -264,7 +283,8 @@ async function runChapterAudioJob({
           bookId,
           chapterNumber,
           versionId: result.versionId ?? versionId ?? 'base',
-          transcriptText: result.cleanText ?? ''
+          transcriptText: result.cleanText ?? '',
+          force: true
         });
       }
       await updateJob(bookId, chapterNumber, {
@@ -409,7 +429,8 @@ async function runChapterAudioJob({
       bookId,
       chapterNumber,
       versionId: preparation.versionId ?? versionId ?? 'base',
-      transcriptText: preparation.cleanText
+      transcriptText: preparation.cleanText,
+      force: true
     });
     await updateJob(bookId, chapterNumber, {
       provider,
