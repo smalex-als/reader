@@ -1690,7 +1690,7 @@ body {
 .audio-library-cue {
   width: 100%;
   padding: 0.7rem 0.85rem;
-  border: 1px solid var(--text-viewer-border-soft);
+  border: 0;
   border-radius: 0.45rem;
   background: transparent;
   color: var(--text-viewer-muted);
@@ -1707,7 +1707,6 @@ body {
 }
 
 .audio-library-cue-active {
-  border-color: var(--text-viewer-accent);
   background: color-mix(in srgb, var(--text-viewer-accent) 18%, transparent);
   color: var(--text-viewer-strong);
 }
