@@ -3127,7 +3127,7 @@ body {
   width: 100%;
   text-align: left;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
   padding: 0.85rem 0.95rem;
   border-radius: 0.8rem;
@@ -3135,6 +3135,10 @@ body {
   background: rgba(255, 255, 255, 0.02);
   color: inherit;
   cursor: pointer;
+}
+
+.quiz-option > span:last-child {
+  line-height: 1.35;
 }
 
 .quiz-option:hover:not(:disabled) {

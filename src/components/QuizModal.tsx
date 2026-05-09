@@ -207,7 +207,7 @@ export default function QuizModal({
                     checked={autoPlayEnabled}
                     onChange={(event) => onAutoPlayEnabledChange(event.target.checked)}
                   />
-                  <span>Autoplay question audio on open</span>
+                  <span>Quiz audio</span>
                 </label>
                 <div className="quiz-question-options">
                   {currentQuestion.options.map((option, optionIndex) => {
@@ -237,7 +237,9 @@ export default function QuizModal({
                             .filter(Boolean)
                             .join('\n\n');
                           setAnswers((prev) => ({ ...prev, [currentQuestion.id]: optionIndex }));
-                          onStreamAnswer(answerFeedback, currentIndex);
+                          if (autoPlayEnabled) {
+                            onStreamAnswer(answerFeedback, currentIndex);
+                          }
                         }}
                         disabled={submitted || currentQuestionAnswered}
                       >
