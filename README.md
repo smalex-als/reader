@@ -16,6 +16,7 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - Backend streaming audio test endpoints for raw PCM and experimental streaming WAV output.
 - Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
 - Study tools per chapter: `Quiz`, `Vocabulary`, and `Memory Card`.
+- Unit study sets: turn a chapter into standalone topic-based units, open topics by URL, stream topic paragraphs, mark topics read/unread, and create quizzes for individual topics.
 - Listening dashboard backed by `.stream-history.log`, including grouped sessions, top books/chapters, and navigation back into the book.
 - Image preview modal with AI enhancement using OpenAI image editing for illustration-style rerenders.
 - Bookmarks, table of contents (manual or generated), detailed TOC support, search, and print-to-PDF.
@@ -56,6 +57,12 @@ The server serves `dist/` if it exists, otherwise it serves the project root.
 data/
   .library-state.json
   .stream-history.log
+  .units/
+    unit-001/
+      manifest.json
+      progress.json
+      01-topic-title.json
+      01-topic-title.quiz.json
   _generated/
   <bookId>/
     page-001.jpg
@@ -77,6 +84,7 @@ data/
 - `toc.json` is a JSON array of `{ title, page }` where `page` is 0-based.
 - `toc.detailed.json` stores subchapter-level entries for finer navigation and logging.
 - `.stream-history.log` stores listening history used by the dashboard.
+- `.units/` stores standalone unit sets. Each unit set is a `unit-###` directory with a `manifest.json`, one JSON file per topic, optional topic quizzes beside the topic files using the same filename prefix, and read/unread state in `progress.json`.
 
 ## Configuration
 
@@ -117,6 +125,8 @@ Notes:
   entries are created automatically.
 - Chapter text supports prompt-based derived versions. The base chapter text is preserved; derived versions can
   be created and deleted from the text presentation UI.
+- Unit sets are generated from the text view with `Create Unit`. The chapter content is adapted using
+  `server/prompts/chapter-units.txt`; each topic is saved as its own JSON file.
 - Prompt text lives in `server/prompts/` for easy editing and review.
 - PDF upload uses `pdftoppm` from Poppler. Install it before using `/api/upload/pdf`.
 - Image enhancement in the preview window uses OpenAI image editing and currently targets illustration-style output.
@@ -186,6 +196,12 @@ Chapters and narration:
 - `GET/POST /api/books/:id/chapters/:chapter/quiz`
 - `GET/POST /api/books/:id/chapters/:chapter/vocabulary`
 - `GET/POST /api/books/:id/chapters/:chapter/memory-card`
+
+Units:
+- `GET /api/units`
+- `POST /api/units`
+- `PATCH /api/units/:unitId/topics/:topicId`
+- `GET/POST /api/units/:unitId/topics/:topicId/quiz`
 
 Page media:
 - `GET /api/page-text?image=/data/...`

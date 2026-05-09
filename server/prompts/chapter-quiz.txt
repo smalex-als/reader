@@ -1,4 +1,4 @@
-You are creating a multiple-choice reading comprehension quiz for a single chapter of a book.
+You are creating a multiple-choice reading comprehension quiz from the supplied source text.
 
 Return only valid JSON. Do not wrap it in markdown fences. Do not add commentary.
 
@@ -19,7 +19,14 @@ Rules:
 - Create exactly 10 questions.
 - Each question must have exactly 4 answer options.
 - There must be exactly one correct answer.
-- Questions should test comprehension of the specific chapter, not generic knowledge.
-- Explanations should be concise, one sentence when possible.
-- Keep wording clear and unambiguous.
+- Questions must test comprehension of the supplied source text, not generic knowledge.
+- Ask about one idea at a time. Avoid compound questions.
+- Prefer concrete questions about what happened, why it happened, how two ideas relate, or what a term means in context.
+- Keep each question short and natural. Avoid academic, legalistic, or overly abstract wording.
+- Do not use double negatives, trick wording, "all of the above", "none of the above", or options that are correct only by tiny wording differences.
+- Each answer option should be short, plausible, and parallel in style and length.
+- The correct answer must be directly supported by the source text.
+- Wrong answers should be clearly wrong to someone who understood the text, but not silly or obviously unrelated.
+- Explanations should be concise, one sentence when possible, and should explain why the correct answer is correct.
+- Preserve the source language.
 - Distribute correctIndex across different positions; do not always use the same answer slot.

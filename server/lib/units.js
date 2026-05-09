@@ -35,6 +35,10 @@ function formatTopicFilename(unit, index) {
   return `${String(index + 1).padStart(2, '0')}-${sanitizeFilenamePart(unit.title || unit.id)}.json`;
 }
 
+function formatTopicQuizFilename(topicFilename) {
+  return topicFilename.replace(/\.json$/, '.quiz.json');
+}
+
 function formatUnitSetDirectoryName(index) {
   return `unit-${String(index).padStart(3, '0')}`;
 }
@@ -91,7 +95,8 @@ function normalizeUnit(value, index) {
     contentFile: typeof value.contentFile === 'string' ? value.contentFile : null,
     keyPoints: normalizeKeyPoints(value.keyPoints),
     selfCheckQuestions: normalizeStringList(value.selfCheckQuestions, 300, 12),
-    read: value.read === true
+    read: value.read === true,
+    hasQuiz: value.hasQuiz === true
   };
 }
 
@@ -335,6 +340,7 @@ async function readUnitSetFromDirectory(entryName) {
     return null;
   }
   const entries = await fs.readdir(setDirectory, { withFileTypes: true });
+  const filenames = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
   const progress = await readUnitSetProgress(setDirectory);
   const topicOrder = normalizeStringList(manifest.topicOrder, 120, MAX_UNIT_COUNT);
   const orderRank = new Map(topicOrder.map((id, index) => [sanitizeId(id), index]));
@@ -353,7 +359,8 @@ async function readUnitSetFromDirectory(entryName) {
             {
               ...parsed,
               contentFile: entry.name,
-              read: progress.topics[unitId]?.read === true
+              read: progress.topics[unitId]?.read === true,
+              hasQuiz: filenames.has(formatTopicQuizFilename(entry.name))
             },
             index
           );

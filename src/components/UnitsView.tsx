@@ -455,13 +455,16 @@ export default function UnitsView({
               key={unit.id}
               className={`unit-library-topic-card ${unit.read ? 'unit-library-topic-card-read' : ''}`}
             >
-              <button
-                type="button"
-                className="unit-library-topic-title"
-                onClick={() => onSelectTopic(unit.id)}
-              >
-                {index + 1} - {unit.title}
-              </button>
+              <div className="unit-library-topic-title-row">
+                <button
+                  type="button"
+                  className="unit-library-topic-title"
+                  onClick={() => onSelectTopic(unit.id)}
+                >
+                  {index + 1} - {unit.title}
+                </button>
+                {unit.hasQuiz ? <span className="unit-library-topic-badge">Quiz</span> : null}
+              </div>
               <button
                 type="button"
                 className={`unit-library-read-button ${unit.read ? 'unit-library-read-button-active' : ''}`}

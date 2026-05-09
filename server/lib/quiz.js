@@ -18,8 +18,12 @@ function formatQuizFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.quiz.json`;
 }
 
-function formatUnitTopicQuizFilename(topicId) {
-  return `${topicId}.quiz.json`;
+function formatUnitTopicQuizFilename(topic) {
+  const contentFile = typeof topic.contentFile === 'string' ? path.basename(topic.contentFile) : '';
+  if (contentFile.endsWith('.json') && !contentFile.endsWith('.quiz.json')) {
+    return contentFile.replace(/\.json$/, '.quiz.json');
+  }
+  return `${topic.topicId}.quiz.json`;
 }
 
 function extractJsonObject(text) {
@@ -192,9 +196,8 @@ export async function generateChapterQuiz({ bookId, chapterNumber, force = false
 
 export async function loadUnitTopicQuiz({ unitSetId, topicId }) {
   const topic = await loadUnitTopic({ unitSetId, topicId });
-  const quizDirectory = path.join(topic.directory, 'quizzes');
-  const filename = formatUnitTopicQuizFilename(topic.topicId);
-  const quizPath = path.join(quizDirectory, filename);
+  const filename = formatUnitTopicQuizFilename(topic);
+  const quizPath = path.join(topic.directory, filename);
   const stat = await safeStat(quizPath);
   if (!stat?.isFile()) {
     throw createHttpError(404, 'Quiz file not found');
@@ -209,16 +212,15 @@ export async function loadUnitTopicQuiz({ unitSetId, topicId }) {
     unitSetId: topic.unitSetId,
     topicId: topic.topicId,
     source: 'file',
-    file: `/data/.units/${topic.unitSetId}/quizzes/${filename}`,
+    file: `/data/.units/${topic.unitSetId}/${filename}`,
     ...quiz
   };
 }
 
 export async function generateUnitTopicQuiz({ unitSetId, topicId, force = false }) {
   const topic = await loadUnitTopic({ unitSetId, topicId });
-  const quizDirectory = path.join(topic.directory, 'quizzes');
-  const filename = formatUnitTopicQuizFilename(topic.topicId);
-  const quizPath = path.join(quizDirectory, filename);
+  const filename = formatUnitTopicQuizFilename(topic);
+  const quizPath = path.join(topic.directory, filename);
   if (!force) {
     const quizStat = await safeStat(quizPath);
     if (quizStat?.isFile()) {
@@ -250,14 +252,13 @@ export async function generateUnitTopicQuiz({ unitSetId, topicId, force = false 
     generatedAt: new Date().toISOString(),
     source: 'openai'
   };
-  await fs.mkdir(quizDirectory, { recursive: true });
   await fs.writeFile(quizPath, JSON.stringify(payload, null, 2), 'utf8');
 
   return {
     unitSetId: topic.unitSetId,
     topicId: topic.topicId,
     source: 'openai',
-    file: `/data/.units/${topic.unitSetId}/quizzes/${filename}`,
+    file: `/data/.units/${topic.unitSetId}/${filename}`,
     ...quiz
   };
 }

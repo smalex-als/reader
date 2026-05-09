@@ -1912,7 +1912,7 @@ export default function App() {
       onAutoPlayEnabledChange: setQuizAutoPlayEnabled,
       onRegenerate: () => {
         if (unitQuizOpen) {
-          void handleRegenerateUnitTopicQuiz();
+          void handleRegenerateUnitTopicQuiz().then(() => setUnitsRefreshToken((prev) => prev + 1));
           return;
         }
         void handleRegenerateQuiz();
@@ -2143,7 +2143,7 @@ export default function App() {
       onOpenSource: handleOpenUnitSource,
       onOpenTopicQuiz: ({ label }: { unitSetId: string; topicId: string; label: string }) => {
         setUnitQuizLabel(label);
-        void handleOpenUnitTopicQuiz();
+        void handleOpenUnitTopicQuiz().then(() => setUnitsRefreshToken((prev) => prev + 1));
       }
     },
     audioViewProps: {

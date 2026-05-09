@@ -101,6 +101,7 @@ export interface UnitItem {
   keyPoints: string[];
   selfCheckQuestions: string[];
   read: boolean;
+  hasQuiz: boolean;
 }
 
 export interface UnitSet {

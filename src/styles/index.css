@@ -1826,6 +1826,13 @@ body {
   background: var(--text-viewer-bg-faint);
 }
 
+.unit-library-topic-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .unit-library-topic-title {
   margin: 0;
   padding: 0;
@@ -1845,6 +1852,19 @@ body {
   color: var(--text-viewer-accent);
   outline: none;
   text-decoration: underline;
+}
+
+.unit-library-topic-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--text-viewer-input-border);
+  border-radius: 999px;
+  color: var(--text-viewer-accent);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .unit-library-topic-card .unit-library-goal,
