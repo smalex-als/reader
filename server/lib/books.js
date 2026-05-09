@@ -31,6 +31,7 @@ export async function listBooks() {
   return entries
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
+    .filter((name) => !name.startsWith('.'))
     .sort((a, b) => collator.compare(a, b));
 }
 

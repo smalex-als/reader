@@ -20,6 +20,8 @@ interface ToolbarProps {
   onViewModeChange: (mode: 'pages' | 'scroll' | 'text' | 'audio') => void;
   audioLibraryOpen: boolean;
   onOpenAudioLibrary: () => void;
+  unitsLibraryOpen: boolean;
+  onOpenUnits: () => void;
   onOpenBookModal: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -97,6 +99,8 @@ export default function Toolbar({
   onViewModeChange,
   audioLibraryOpen,
   onOpenAudioLibrary,
+  unitsLibraryOpen,
+  onOpenUnits,
   onOpenBookModal,
   onPrev,
   onNext,
@@ -255,6 +259,13 @@ export default function Toolbar({
             onClick={onOpenAudioLibrary}
           >
             MP3 Library
+          </button>
+          <button
+            type="button"
+            className={`button ${unitsLibraryOpen ? 'button-active' : ''}`}
+            onClick={onOpenUnits}
+          >
+            Units
           </button>
         </div>
 

@@ -56,12 +56,17 @@ export interface ChapterQuizQuestion {
 }
 
 export interface ChapterQuiz {
-  chapterNumber: number;
+  contextKey: string;
+  chapterNumber?: number;
+  unitSetId?: string;
+  topicId?: string;
   title: string;
   questions: ChapterQuizQuestion[];
   source: 'file' | 'openai';
   file?: string;
 }
+
+export type Quiz = ChapterQuiz;
 
 export interface ChapterVocabularyItem {
   id: string;
@@ -83,6 +88,34 @@ export interface ChapterMemoryCard {
   text: string;
   source: 'file' | 'openai';
   file?: string;
+}
+
+export interface UnitItem {
+  id: string;
+  order: number;
+  title: string;
+  summary: string;
+  learningGoal: string;
+  content: string;
+  contentFile?: string | null;
+  keyPoints: string[];
+  selfCheckQuestions: string[];
+  read: boolean;
+}
+
+export interface UnitSet {
+  id: string;
+  title: string;
+  summary: string;
+  learningGoal: string;
+  sourceBookId: string | null;
+  sourceChapterNumber: number | null;
+  sourceChapterTitle: string | null;
+  sourceVersionId: string | null;
+  source: 'openai' | 'fallback';
+  createdAt: string;
+  updatedAt: string;
+  units: UnitItem[];
 }
 
 export interface ChapterTextPrompt {

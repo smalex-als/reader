@@ -8,6 +8,7 @@ import { useBookmarks } from '@/hooks/useBookmarks';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
+import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { useModalState } from '@/hooks/useModalState';
 import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
@@ -38,7 +39,8 @@ import type {
   ImagePreviewTarget,
   PageTextOcrEngine,
   SearchResult,
-  TocEntry
+  TocEntry,
+  UnitSet
 } from '@/types/app';
 import type { ToolbarTab } from '@/components/Toolbar';
 
@@ -72,6 +74,7 @@ const TEXT_THEME_OPTIONS = [
 type TextTheme = (typeof TEXT_THEME_OPTIONS)[number];
 const TEXT_FONT_SIZE_MIN = TEXT_FONT_SIZE_OPTIONS[0];
 const TEXT_FONT_SIZE_MAX = TEXT_FONT_SIZE_OPTIONS[TEXT_FONT_SIZE_OPTIONS.length - 1];
+type MainView = 'reader' | 'audio-library' | 'units';
 
 const DEFAULT_SETTINGS: AppSettings = {
   zoom: 1,
@@ -119,10 +122,24 @@ function createDefaultSettings(): AppSettings {
   return { ...DEFAULT_SETTINGS, pan: { ...DEFAULT_SETTINGS.pan } };
 }
 
+function getMainViewFromLocation(): MainView {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('view') === 'units' ? 'units' : 'reader';
+}
+
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<ToolbarTab>('reading');
-  const [mainView, setMainView] = useState<'reader' | 'audio-library'>('reader');
+  const [mainView, setMainView] = useState<MainView>(() => getMainViewFromLocation());
+  const [selectedUnitSetId, setSelectedUnitSetId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('view') === 'units' ? params.get('unit') : null;
+  });
+  const [selectedUnitTopicId, setSelectedUnitTopicId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('view') === 'units' ? params.get('topic') : null;
+  });
+  const [unitQuizLabel, setUnitQuizLabel] = useState('Topic');
   const [imagePreview, setImagePreview] = useState<ImagePreviewTarget | null>(null);
   const [enhancedImagePreviewUrls, setEnhancedImagePreviewUrls] = useState<Record<string, string>>({});
   const {
@@ -156,6 +173,8 @@ export default function App() {
     setEditorChapterNumber
   } = useModalState();
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
+  const [unitsRefreshToken, setUnitsRefreshToken] = useState(0);
+  const [unitCreating, setUnitCreating] = useState(false);
   const [ocrEditMode, setOcrEditMode] = useState(false);
   const [ocrEditSaving, setOcrEditSaving] = useState(false);
   const ocrEditBaselineRef = useRef<string | null>(null);
@@ -285,6 +304,7 @@ export default function App() {
     settings,
     setSettings,
     setMetrics,
+    urlSyncPaused: mainView === 'units',
     showToast,
     setEditorOpen,
     setEditorChapterNumber,
@@ -295,6 +315,56 @@ export default function App() {
     getDefaultStreamVoice,
     createDefaultSettings
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (mainView === 'units') {
+      params.set('view', 'units');
+      params.delete('book');
+      params.delete('page');
+      if (selectedUnitSetId) {
+        params.set('unit', selectedUnitSetId);
+      } else {
+        params.delete('unit');
+      }
+      if (selectedUnitSetId && selectedUnitTopicId) {
+        params.set('topic', selectedUnitTopicId);
+      } else {
+        params.delete('topic');
+      }
+    } else {
+      params.delete('unit');
+      params.delete('topic');
+      if (params.get('view') === 'units') {
+        params.set('view', viewMode);
+      }
+    }
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+    if (nextUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
+      window.history.replaceState(null, '', nextUrl);
+    }
+  }, [mainView, selectedUnitSetId, selectedUnitTopicId, viewMode]);
+
+  useEffect(() => {
+    const handleUnitsLocationChange = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('view') !== 'units') {
+        setMainView((current) => (current === 'units' ? 'reader' : current));
+        return;
+      }
+      setMainView('units');
+      setSelectedUnitSetId(params.get('unit'));
+      setSelectedUnitTopicId(params.get('topic'));
+    };
+    window.addEventListener('popstate', handleUnitsLocationChange);
+    window.addEventListener('hashchange', handleUnitsLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleUnitsLocationChange);
+      window.removeEventListener('hashchange', handleUnitsLocationChange);
+    };
+  }, []);
+
   const isTextBook = bookType === 'text';
   const navigationCount = isTextBook ? chapterCount : manifest.length;
   const currentImage = manifest[currentPage] ?? null;
@@ -419,6 +489,18 @@ export default function App() {
     bookId,
     chapterNumber,
     chapterRange
+  });
+  const {
+    quizOpen: unitQuizOpen,
+    quizLoading: unitQuizLoading,
+    quizError: unitQuizError,
+    quiz: unitQuiz,
+    openQuiz: handleOpenUnitTopicQuiz,
+    regenerateQuiz: handleRegenerateUnitTopicQuiz,
+    closeQuiz: handleCloseUnitTopicQuiz
+  } = useUnitTopicQuiz({
+    unitSetId: selectedUnitSetId,
+    topicId: selectedUnitTopicId
   });
   const {
     vocabularyOpen,
@@ -1335,6 +1417,12 @@ export default function App() {
     setSettingsOpen(false);
     setMainView('audio-library');
   }, []);
+  const handleOpenUnits = useCallback(() => {
+    setSettingsOpen(false);
+    setSelectedUnitSetId(null);
+    setSelectedUnitTopicId(null);
+    setMainView('units');
+  }, []);
   const handleOpenLibraryBook = useCallback(
     (targetBookId: string, targetChapterNumber: number) => {
       setMainView('reader');
@@ -1345,6 +1433,68 @@ export default function App() {
       }
     },
     [setBookId, setViewMode]
+  );
+  const handleOpenUnitSource = useCallback(
+    (targetBookId: string, targetChapterNumber: number) => {
+      setSelectedUnitSetId(null);
+      setSelectedUnitTopicId(null);
+      setMainView('reader');
+      setViewMode('text');
+      setBookId(targetBookId);
+      if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
+        saveLastPage(targetBookId, targetChapterNumber - 1);
+        if (bookId === targetBookId) {
+          renderPage(targetChapterNumber - 1);
+        }
+      }
+    },
+    [bookId, renderPage, setBookId, setViewMode]
+  );
+  const handleCreateUnit = useCallback(
+    async (payload: {
+      text: string;
+      chapterTitle: string | null;
+      versionLabel: string | null;
+      versionId: string | null;
+    }) => {
+      if (!bookId || !chapterNumber) {
+        showToast('Select a chapter before creating units', 'error');
+        return;
+      }
+      const content = payload.text.trim();
+      if (!content) {
+        showToast('No visible chapter text available for units', 'error');
+        return;
+      }
+      setUnitCreating(true);
+      try {
+        const result = await fetchJson<{ item: UnitSet }>('/api/units', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sourceBookId: bookId,
+            sourceChapterNumber: chapterNumber,
+            sourceChapterTitle: payload.chapterTitle ?? currentChapterEntry?.title ?? null,
+            sourceVersionId: payload.versionId ?? payload.versionLabel ?? null,
+            content
+          })
+        });
+        setUnitsRefreshToken((prev) => prev + 1);
+        setSelectedUnitSetId(result.item.id);
+        setSelectedUnitTopicId(null);
+        setSettingsOpen(false);
+        setMainView('units');
+        showToast('Unit created', 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Unable to create unit', 'error');
+      } finally {
+        setUnitCreating(false);
+      }
+    },
+    [bookId, chapterNumber, currentChapterEntry?.title, showToast]
   );
   const handleOpenImagePreview = useCallback(
     (payload: { imageUrl: string; bounds: [number, number, number, number]; caption?: string | null }) => {
@@ -1452,6 +1602,10 @@ export default function App() {
     openBookModal,
     onOpenQuiz: () => {
       setSettingsOpen(false);
+      if (mainView === 'units' && selectedUnitSetId && selectedUnitTopicId) {
+        void handleOpenUnitTopicQuiz();
+        return;
+      }
       void handleOpenQuiz();
     },
     onOpenVocabulary: () => {
@@ -1473,12 +1627,14 @@ export default function App() {
     manifestLength: navigationCount,
     currentPage,
     audioLibraryOpen: mainView === 'audio-library',
+    unitsLibraryOpen: mainView === 'units',
     viewMode,
     disablePagesMode: isTextBook,
     disableScrollMode: isTextBook,
     disableImageActions: isTextBook,
     onViewModeChange: handleViewModeChange,
     onOpenAudioLibrary: handleOpenAudioLibrary,
+    onOpenUnits: handleOpenUnits,
     onOpenBookModal: () => {
       setSettingsOpen(false);
       openBookModal();
@@ -1532,6 +1688,10 @@ export default function App() {
     },
     onOpenQuiz: () => {
       setSettingsOpen(false);
+      if (mainView === 'units' && selectedUnitSetId && selectedUnitTopicId) {
+        void handleOpenUnitTopicQuiz();
+        return;
+      }
       void handleOpenQuiz();
     },
     onOpenVocabulary: () => {
@@ -1725,32 +1885,44 @@ export default function App() {
       }
     },
     quizModalProps: {
-      open: quizOpen,
-      loading: quizLoading,
-      error: quizError,
-      chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
-      quiz,
+      open: quizOpen || unitQuizOpen,
+      loading: unitQuizOpen ? unitQuizLoading : quizLoading,
+      error: unitQuizOpen ? unitQuizError : quizError,
+      contextLabel: unitQuizOpen
+        ? unitQuizLabel
+        : currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
+      quiz: unitQuizOpen ? unitQuiz : quiz,
       streamState,
       autoPlayEnabled: quizAutoPlayEnabled,
       onStreamQuestion: (text: string, questionIndex: number) => {
-        const chapterKey = quiz?.chapterNumber ?? chapterNumber ?? 'unknown';
+        const contextKey = (unitQuizOpen ? unitQuiz : quiz)?.contextKey ?? `quiz::chapter-${chapterNumber ?? 'unknown'}`;
         void handlePlaySingleStream({
           text,
-          pageKey: `quiz::chapter-${chapterKey}::question-${questionIndex + 1}`
+          pageKey: `${contextKey}::question-${questionIndex + 1}`
         });
       },
       onStreamAnswer: (text: string, questionIndex: number) => {
-        const chapterKey = quiz?.chapterNumber ?? chapterNumber ?? 'unknown';
+        const contextKey = (unitQuizOpen ? unitQuiz : quiz)?.contextKey ?? `quiz::chapter-${chapterNumber ?? 'unknown'}`;
         void handlePlaySingleStream({
           text,
-          pageKey: `quiz::chapter-${chapterKey}::question-${questionIndex + 1}::answer`
+          pageKey: `${contextKey}::question-${questionIndex + 1}::answer`
         });
       },
       onStopAudio: handleStopStream,
       onAutoPlayEnabledChange: setQuizAutoPlayEnabled,
-      onRegenerate: () => void handleRegenerateQuiz(),
+      onRegenerate: () => {
+        if (unitQuizOpen) {
+          void handleRegenerateUnitTopicQuiz();
+          return;
+        }
+        void handleRegenerateQuiz();
+      },
       onClose: () => {
         handleStopStream();
+        if (unitQuizOpen) {
+          handleCloseUnitTopicQuiz();
+          return;
+        }
         handleCloseQuiz();
       }
     },
@@ -1849,7 +2021,7 @@ export default function App() {
     viewMode,
     textTheme: settings.textTheme,
     editorOpen,
-    footerMessage: mainView === 'audio-library' ? 'MP3 Library' : footerMessage,
+    footerMessage: mainView === 'audio-library' ? 'MP3 Library' : mainView === 'units' ? 'Units' : footerMessage,
     viewerProps: {
       imageUrl: currentImage,
       pageText: currentText,
@@ -1941,6 +2113,8 @@ export default function App() {
         setChapterVersionNavigationRequest(null);
         setViewMode('audio');
       },
+      onCreateUnit: handleCreateUnit,
+      unitCreating,
       onDisplayedTextChange: setDisplayedChapterText,
       onFirstParagraphReady: setFirstChapterParagraph,
       onPlayParagraph: handlePlayChapterParagraph,
@@ -1952,6 +2126,25 @@ export default function App() {
       onPlayAudio: handlePlayFloatingAudio,
       onOpenBook: handleOpenLibraryBook,
       showToast
+    },
+    unitsViewProps: {
+      refreshToken: unitsRefreshToken,
+      selectedSetId: selectedUnitSetId,
+      selectedTopicId: selectedUnitTopicId,
+      onSelectSet: (unitSetId: string | null) => {
+        setSelectedUnitSetId(unitSetId);
+        setSelectedUnitTopicId(null);
+      },
+      onSelectTopic: setSelectedUnitTopicId,
+      streamState,
+      onPlayTopicParagraph: handlePlayChapterParagraph,
+      onStopAudio: handleStopStream,
+      showToast,
+      onOpenSource: handleOpenUnitSource,
+      onOpenTopicQuiz: ({ label }: { unitSetId: string; topicId: string; label: string }) => {
+        setUnitQuizLabel(label);
+        void handleOpenUnitTopicQuiz();
+      }
     },
     audioViewProps: {
       bookId,

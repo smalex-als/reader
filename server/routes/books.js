@@ -44,7 +44,7 @@ import {
   updatePromptInLibrary
 } from '../lib/chapterTextVersions.js';
 import { generateChapterMemoryCard, loadChapterMemoryCard } from '../lib/memoryCard.js';
-import { generateChapterQuiz, loadChapterQuiz } from '../lib/quiz.js';
+import { generateChapterQuiz, generateUnitTopicQuiz, loadChapterQuiz, loadUnitTopicQuiz } from '../lib/quiz.js';
 import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabulary.js';
 import { createEnhancedImagePreview, createImagePreviewCrop } from '../lib/imagePreview.js';
 import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
@@ -64,6 +64,7 @@ import {
 } from '../lib/search.js';
 import { loadLibraryState, updateLibraryState } from '../lib/libraryState.js';
 import { listGeneratedAudio } from '../lib/audioLibrary.js';
+import { createUnitsFromChapter, listUnits, updateUnitTopicRead } from '../lib/units.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
@@ -137,6 +138,53 @@ router.get('/api/audio', asyncHandler(async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const items = await listGeneratedAudio();
   res.json({ items });
+}));
+
+router.get('/api/units', asyncHandler(async (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const result = await listUnits();
+  res.json(result);
+}));
+
+router.post('/api/units', asyncHandler(async (req, res) => {
+  const chapterNumber =
+    typeof req.body?.sourceChapterNumber === 'number'
+      ? req.body.sourceChapterNumber
+      : Number.parseInt(req.body?.sourceChapterNumber, 10);
+  const item = await createUnitsFromChapter({
+    sourceBookId: typeof req.body?.sourceBookId === 'string' ? req.body.sourceBookId : '',
+    sourceChapterNumber: Number.isInteger(chapterNumber) ? chapterNumber : null,
+    sourceChapterTitle: typeof req.body?.sourceChapterTitle === 'string' ? req.body.sourceChapterTitle : '',
+    sourceVersionId: typeof req.body?.sourceVersionId === 'string' ? req.body.sourceVersionId : '',
+    content: typeof req.body?.content === 'string' ? req.body.content : ''
+  });
+  res.json({ item });
+}));
+
+router.patch('/api/units/:unitId/topics/:topicId', asyncHandler(async (req, res) => {
+  const item = await updateUnitTopicRead({
+    unitSetId: req.params.unitId,
+    topicId: req.params.topicId,
+    read: req.body?.read === true
+  });
+  res.json({ item });
+}));
+
+router.get('/api/units/:unitId/topics/:topicId/quiz', asyncHandler(async (req, res) => {
+  const result = await loadUnitTopicQuiz({
+    unitSetId: req.params.unitId,
+    topicId: req.params.topicId
+  });
+  res.json(result);
+}));
+
+router.post('/api/units/:unitId/topics/:topicId/quiz', asyncHandler(async (req, res) => {
+  const result = await generateUnitTopicQuiz({
+    unitSetId: req.params.unitId,
+    topicId: req.params.topicId,
+    force: req.body?.force === true
+  });
+  res.json(result);
 }));
 
 router.get('/api/library/state', asyncHandler(async (_req, res) => {

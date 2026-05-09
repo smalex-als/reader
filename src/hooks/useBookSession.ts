@@ -22,6 +22,7 @@ type BookSessionOptions<StreamVoice extends string> = {
   settings: AppSettings;
   setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
   setMetrics: React.Dispatch<React.SetStateAction<ViewerMetrics | null>>;
+  urlSyncPaused?: boolean;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   setEditorOpen: (open: boolean) => void;
   setEditorChapterNumber: React.Dispatch<React.SetStateAction<number | null>>;
@@ -81,6 +82,7 @@ export function useBookSession<StreamVoice extends string>({
   settings,
   setSettings,
   setMetrics,
+  urlSyncPaused = false,
   showToast,
   setEditorOpen,
   setEditorChapterNumber,
@@ -170,6 +172,9 @@ export function useBookSession<StreamVoice extends string>({
   }, [bookId]);
 
   useEffect(() => {
+    if (urlSyncPaused) {
+      return;
+    }
     const params = new URLSearchParams(window.location.search);
     const currentParam = params.get('book');
     const currentPageParam = params.get('page');
@@ -205,7 +210,7 @@ export function useBookSession<StreamVoice extends string>({
       window.location.hash
     }`;
     window.history.replaceState(null, '', nextUrl);
-  }, [bookId, bookType, chapterCount, currentPage, manifest.length, viewMode]);
+  }, [bookId, bookType, chapterCount, currentPage, manifest.length, urlSyncPaused, viewMode]);
 
   useEffect(() => {
     const handleLocationChange = () => {

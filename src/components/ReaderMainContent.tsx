@@ -6,6 +6,7 @@ import FloatingAudioPlayer from '@/components/FloatingAudioPlayer';
 import ChapterViewer from '@/components/ChapterViewer';
 import StreamBubble from '@/components/StreamBubble';
 import ScrollViewer from '@/components/ScrollViewer';
+import UnitsView from '@/components/UnitsView';
 import Viewer from '@/components/Viewer';
 
 type ViewerProps = ComponentProps<typeof Viewer>;
@@ -13,6 +14,7 @@ type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
 type ChapterEditorProps = ComponentProps<typeof ChapterEditor>;
 type ChapterViewerProps = ComponentProps<typeof ChapterViewer>;
 type AudioLibraryViewProps = ComponentProps<typeof AudioLibraryView>;
+type UnitsViewProps = ComponentProps<typeof UnitsView>;
 type AudioViewProps = ComponentProps<typeof AudioView>;
 type StreamBubbleProps = ComponentProps<typeof StreamBubble>;
 type FloatingAudioPlayerProps = ComponentProps<typeof FloatingAudioPlayer>;
@@ -22,7 +24,7 @@ interface ReaderMainContentProps {
   modalHostRef: RefObject<HTMLDivElement>;
   isFullscreen: boolean;
   loading: boolean;
-  mainView: 'reader' | 'audio-library';
+  mainView: 'reader' | 'audio-library' | 'units';
   viewMode: 'pages' | 'scroll' | 'text' | 'audio';
   textTheme: string;
   editorOpen: boolean;
@@ -32,6 +34,7 @@ interface ReaderMainContentProps {
   chapterEditorProps: ChapterEditorProps;
   chapterViewerProps: ChapterViewerProps;
   audioLibraryViewProps: AudioLibraryViewProps;
+  unitsViewProps: UnitsViewProps;
   audioViewProps: AudioViewProps;
   streamBubbleProps: StreamBubbleProps;
   floatingAudioPlayerProps: FloatingAudioPlayerProps;
@@ -53,6 +56,7 @@ export default function ReaderMainContent({
   chapterEditorProps,
   chapterViewerProps,
   audioLibraryViewProps,
+  unitsViewProps,
   audioViewProps,
   streamBubbleProps,
   floatingAudioPlayerProps,
@@ -63,7 +67,7 @@ export default function ReaderMainContent({
       <div
         ref={viewerShellRef}
         className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''} ${
-          mainView === 'audio-library' || viewMode === 'text' || viewMode === 'audio'
+          mainView === 'audio-library' || mainView === 'units' || viewMode === 'text' || viewMode === 'audio'
             ? `viewer-shell-text theme-${textTheme}`
             : ''
         }`}
@@ -90,6 +94,8 @@ export default function ReaderMainContent({
         </button>
         {mainView === 'audio-library' ? (
           <AudioLibraryView {...audioLibraryViewProps} />
+        ) : mainView === 'units' ? (
+          <UnitsView {...unitsViewProps} />
         ) : viewMode === 'pages' ? (
           <Viewer {...viewerProps} />
         ) : viewMode === 'scroll' ? (

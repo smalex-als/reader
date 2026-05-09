@@ -4,6 +4,7 @@ import { assertBookDirectory } from './books.js';
 import { generateChapterText } from './chapters.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
+import { loadUnitTopic } from './units.js';
 import { CHAPTER_QUIZ_PROMPT } from '../config.js';
 import { getOpenAI } from './openai.js';
 
@@ -15,6 +16,10 @@ function formatChapterFilename(chapterNumber) {
 
 function formatQuizFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.quiz.json`;
+}
+
+function formatUnitTopicQuizFilename(topicId) {
+  return `${topicId}.quiz.json`;
 }
 
 function extractJsonObject(text) {
@@ -58,11 +63,11 @@ function normalizeQuizQuestion(raw, index) {
   };
 }
 
-function normalizeQuiz(raw, chapterNumber) {
+function normalizeQuiz(raw, fallbackTitle) {
   if (!raw || typeof raw !== 'object') {
     return null;
   }
-  const title = typeof raw.title === 'string' && raw.title.trim() ? raw.title.trim() : `Chapter ${chapterNumber} Quiz`;
+  const title = typeof raw.title === 'string' && raw.title.trim() ? raw.title.trim() : fallbackTitle;
   const questions = Array.isArray(raw.questions)
     ? raw.questions.map((question, index) => normalizeQuizQuestion(question, index)).filter(Boolean)
     : [];
@@ -70,6 +75,42 @@ function normalizeQuiz(raw, chapterNumber) {
     return null;
   }
   return { title, questions };
+}
+
+async function generateQuizFromText({ text, fallbackTitle, sourceScope }) {
+  const cleaned = text.trim();
+  if (!cleaned) {
+    throw createHttpError(400, 'No text available for quiz generation');
+  }
+
+  const prompt = [
+    CHAPTER_QUIZ_PROMPT,
+    '',
+    `Source scope: ${sourceScope}. Create questions only from the supplied source text.`
+  ].join('\n');
+
+  const openai = getOpenAI();
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5.5',
+    messages: [
+      {
+        role: 'developer',
+        content: [{ type: 'text', text: prompt }]
+      },
+      {
+        role: 'user',
+        content: [{ type: 'text', text: cleaned }]
+      }
+    ]
+  });
+
+  const output = response?.choices?.[0]?.message?.content?.trim() || '';
+  const parsed = extractJsonObject(output);
+  const quiz = normalizeQuiz(parsed, fallbackTitle);
+  if (!quiz) {
+    throw createHttpError(502, 'Quiz generation returned invalid content');
+  }
+  return quiz;
 }
 
 export async function loadChapterQuiz({ bookId, chapterNumber }) {
@@ -85,7 +126,7 @@ export async function loadChapterQuiz({ bookId, chapterNumber }) {
   }
   const raw = await fs.readFile(quizPath, 'utf8');
   const parsed = JSON.parse(raw);
-  const quiz = normalizeQuiz(parsed, chapterNumber);
+  const quiz = normalizeQuiz(parsed, `Chapter ${chapterNumber} Quiz`);
   if (!quiz) {
     throw createHttpError(500, 'Quiz file is invalid');
   }
@@ -127,32 +168,11 @@ export async function generateChapterQuiz({ bookId, chapterNumber, force = false
   }
 
   const rawText = await fs.readFile(chapterPath, 'utf8');
-  const cleaned = rawText.trim();
-  if (!cleaned) {
-    throw createHttpError(400, 'No text available for quiz generation');
-  }
-
-  const openai = getOpenAI();
-  const response = await openai.chat.completions.create({
-    model: 'gpt-5.5',
-    messages: [
-      {
-        role: 'developer',
-        content: [{ type: 'text', text: CHAPTER_QUIZ_PROMPT }]
-      },
-      {
-        role: 'user',
-        content: [{ type: 'text', text: cleaned }]
-      }
-    ]
+  const quiz = await generateQuizFromText({
+    text: rawText,
+    fallbackTitle: `Chapter ${chapterNumber} Quiz`,
+    sourceScope: `single book chapter ${chapterNumber}`
   });
-
-  const output = response?.choices?.[0]?.message?.content?.trim() || '';
-  const parsed = extractJsonObject(output);
-  const quiz = normalizeQuiz(parsed, chapterNumber);
-  if (!quiz) {
-    throw createHttpError(502, 'Quiz generation returned invalid content');
-  }
 
   const payload = {
     ...quiz,
@@ -166,6 +186,78 @@ export async function generateChapterQuiz({ bookId, chapterNumber, force = false
     chapterNumber,
     source: 'openai',
     file: `/data/${bookId}/${quizFilename}`,
+    ...quiz
+  };
+}
+
+export async function loadUnitTopicQuiz({ unitSetId, topicId }) {
+  const topic = await loadUnitTopic({ unitSetId, topicId });
+  const quizDirectory = path.join(topic.directory, 'quizzes');
+  const filename = formatUnitTopicQuizFilename(topic.topicId);
+  const quizPath = path.join(quizDirectory, filename);
+  const stat = await safeStat(quizPath);
+  if (!stat?.isFile()) {
+    throw createHttpError(404, 'Quiz file not found');
+  }
+  const raw = await fs.readFile(quizPath, 'utf8');
+  const parsed = JSON.parse(raw);
+  const quiz = normalizeQuiz(parsed, `${topic.title} Quiz`);
+  if (!quiz) {
+    throw createHttpError(500, 'Quiz file is invalid');
+  }
+  return {
+    unitSetId: topic.unitSetId,
+    topicId: topic.topicId,
+    source: 'file',
+    file: `/data/.units/${topic.unitSetId}/quizzes/${filename}`,
+    ...quiz
+  };
+}
+
+export async function generateUnitTopicQuiz({ unitSetId, topicId, force = false }) {
+  const topic = await loadUnitTopic({ unitSetId, topicId });
+  const quizDirectory = path.join(topic.directory, 'quizzes');
+  const filename = formatUnitTopicQuizFilename(topic.topicId);
+  const quizPath = path.join(quizDirectory, filename);
+  if (!force) {
+    const quizStat = await safeStat(quizPath);
+    if (quizStat?.isFile()) {
+      return loadUnitTopicQuiz({ unitSetId: topic.unitSetId, topicId: topic.topicId });
+    }
+  }
+
+  const quizText = [
+    topic.title,
+    topic.summary ? `Summary: ${topic.summary}` : '',
+    topic.learningGoal ? `Learning goal: ${topic.learningGoal}` : '',
+    topic.content,
+    topic.selfCheckQuestions.length > 0
+      ? `Self-check questions:\n${topic.selfCheckQuestions.map((question) => `- ${question}`).join('\n')}`
+      : ''
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+  const quiz = await generateQuizFromText({
+    text: quizText,
+    fallbackTitle: `${topic.title} Quiz`,
+    sourceScope: `single study topic "${topic.title}"`
+  });
+
+  const payload = {
+    ...quiz,
+    unitSetId: topic.unitSetId,
+    topicId: topic.topicId,
+    generatedAt: new Date().toISOString(),
+    source: 'openai'
+  };
+  await fs.mkdir(quizDirectory, { recursive: true });
+  await fs.writeFile(quizPath, JSON.stringify(payload, null, 2), 'utf8');
+
+  return {
+    unitSetId: topic.unitSetId,
+    topicId: topic.topicId,
+    source: 'openai',
+    file: `/data/.units/${topic.unitSetId}/quizzes/${filename}`,
     ...quiz
   };
 }

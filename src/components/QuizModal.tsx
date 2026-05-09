@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import type { ChapterQuiz, StreamState } from '@/types/app';
+import type { Quiz, StreamState } from '@/types/app';
 
 interface QuizModalProps {
   open: boolean;
   loading: boolean;
   error: string | null;
-  chapterLabel: string;
-  quiz: ChapterQuiz | null;
+  contextLabel: string;
+  quiz: Quiz | null;
   streamState: StreamState;
   autoPlayEnabled: boolean;
   onStreamQuestion: (text: string, questionIndex: number) => void;
@@ -22,7 +22,7 @@ export default function QuizModal({
   open,
   loading,
   error,
-  chapterLabel,
+  contextLabel,
   quiz,
   streamState,
   autoPlayEnabled,
@@ -47,7 +47,7 @@ export default function QuizModal({
     setCurrentIndex(0);
     setAnswers({});
     setSubmitted(false);
-  }, [open, quiz?.chapterNumber, quiz?.title]);
+  }, [open, quiz?.contextKey, quiz?.title]);
 
   const questions = quiz?.questions ?? [];
   const currentQuestion = questions[currentIndex] ?? null;
@@ -55,7 +55,7 @@ export default function QuizModal({
     currentQuestion && Number.isInteger(answers[currentQuestion.id]) ? answers[currentQuestion.id] : null;
   const currentQuestionAnswered = currentAnswer !== null;
   const currentQuestionStreamPrefix =
-    quiz && currentQuestion ? `quiz::chapter-${quiz.chapterNumber}::question-${currentIndex + 1}` : null;
+    quiz && currentQuestion ? `${quiz.contextKey}::question-${currentIndex + 1}` : null;
   const isCurrentQuestionStreaming =
     !!currentQuestionStreamPrefix &&
     (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused') &&
@@ -84,7 +84,7 @@ export default function QuizModal({
     if (!quiz || !currentQuestion) {
       return;
     }
-    const questionKey = `${quiz.chapterNumber}:${currentQuestion.id}:${currentIndex}`;
+    const questionKey = `${quiz.contextKey}:${currentQuestion.id}:${currentIndex}`;
     if (justOpened) {
       autoPlayQuestionKeyRef.current = null;
     }
@@ -113,7 +113,7 @@ export default function QuizModal({
         <header className="modal-header">
           <h2 className="modal-title">
             Quiz
-            <span className="modal-marker">• {chapterLabel}</span>
+            <span className="modal-marker">• {contextLabel}</span>
           </h2>
           <div className="modal-actions">
             <button

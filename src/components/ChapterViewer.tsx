@@ -37,6 +37,13 @@ interface ChapterViewerProps {
   refreshToken?: number;
   versionNavigationRequest?: { id: number; chapterNumber: number; versionId: string } | null;
   onOpenAudioView: () => void;
+  onCreateUnit: (payload: {
+    text: string;
+    chapterTitle: string | null;
+    versionLabel: string | null;
+    versionId: string | null;
+  }) => void;
+  unitCreating: boolean;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onDisplayedTextChange?: (payload: {
     text: string;
@@ -196,6 +203,8 @@ export default function ChapterViewer({
   refreshToken = 0,
   versionNavigationRequest = null,
   onOpenAudioView,
+  onCreateUnit,
+  unitCreating,
   onFirstParagraphReady,
   onDisplayedTextChange,
   onPlayParagraph,
@@ -709,6 +718,21 @@ export default function ChapterViewer({
               </select>
             </label>
           ) : null}
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={() =>
+              onCreateUnit({
+                text: displayText ?? '',
+                chapterTitle,
+                versionLabel: selectedVersion?.label ?? null,
+                versionId: selectedVersionId
+              })
+            }
+            disabled={!chapterNumber || !displayText?.trim() || displayLoading || unitCreating}
+          >
+            {unitCreating ? 'Creating...' : 'Create a unit'}
+          </button>
           <button
             type="button"
             className="button button-ghost modal-icon-button"

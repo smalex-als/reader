@@ -1,0 +1,84 @@
+Turn the chapter into a structured study unit with well-explained topics.
+
+I want to save each topic as a separate JSON file on disk.
+
+Return only valid JSON with this shape:
+
+{
+  "files": [
+    {
+      "path": string,
+      "type": "manifest" | "topic",
+      "content": object
+    }
+  ]
+}
+
+Create one manifest file and 4-10 topic files.
+
+The manifest file should have this content shape:
+
+{
+  "id": string,
+  "title": string,
+  "summary": string,
+  "learningGoal": string,
+  "topicOrder": string[]
+}
+
+Each topic file should have this content shape:
+
+{
+  "id": string,
+  "order": number,
+  "title": string,
+  "summary": string,
+  "learningGoal": string,
+  "content": string,
+  "keyPoints": string[],
+  "selfCheckQuestions": string[]
+}
+
+Create 4-10 topics that cover the chapter in a useful learning order.
+
+Each topic should explain what is happening, why it matters, and how the important ideas connect.
+
+Do not make the topic content artificially compact; prefer clear, complete explanations over short notes.
+
+Write the content in a style that is convenient for TTS and voice narration: clear sentences, natural flow, and normal paragraph formatting.
+
+For each topic:
+- id: a short kebab-case id, for example "inventory-consistency".
+- order: the topic order number, starting from 1.
+- title: a concise topic name.
+- summary: a short orientation to what this topic covers.
+- learningGoal: what the reader should understand after studying this topic.
+- content: a detailed, self-contained explanation based on the chapter.
+- keyPoints: the most important takeaways from the topic.
+- selfCheckQuestions: questions the reader can use to check understanding.
+
+For file paths:
+- Use relative paths.
+- Put all files inside a folder named after the study unit id.
+- The manifest path must be "<unit-id>/manifest.json".
+- Topic file names must start with a two-digit order number.
+- Topic file names must use kebab-case.
+- Topic file extension must be .json.
+
+Example paths:
+- hotel-reservation-system/manifest.json
+- hotel-reservation-system/01-problem-and-requirements.json
+- hotel-reservation-system/02-high-level-architecture.json
+- hotel-reservation-system/03-inventory-consistency.json
+
+Preserve the chapter language.
+Use the chapter as the source of truth.
+Do not add facts, examples, technologies, trade-offs, or claims that are not supported by the chapter.
+Do not use Markdown.
+Do not wrap JSON in code fences.
+Do not add text before or after the JSON.
+
+Chapter content:
+<<<
+PASTE CHAPTER CONTENT HERE
+>>>
