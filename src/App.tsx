@@ -1139,7 +1139,7 @@ export default function App() {
     }
   });
 
-  const toolbarProps = {
+  const sidebarProps = {
     currentBook: bookId,
     manifestLength: navigationCount,
     currentPage,
@@ -1159,6 +1159,35 @@ export default function App() {
     onPrev: handlePrev,
     onNext: handleNext,
     onGoTo: (page: number) => renderPage(page),
+    streamState,
+    streamVoice,
+    streamVoiceOptions,
+    onStreamVoiceChange: handleActiveStreamVoiceChange,
+    onPlayStream: () => void handlePlayVisibleStream(),
+    onStopStream: handleStopStream,
+    onToggleBookmark: toggleBookmark,
+    onShowBookmarks: () => {
+      setSettingsOpen(false);
+      showBookmarks();
+    },
+    onOpenSearch: openSearch,
+    isBookmarked,
+    bookmarksCount: bookmarks.length,
+    onOpenToc: () => {
+      setSettingsOpen(false);
+      setTocOpen(true);
+    },
+    onOpenListeningDashboard: () => {
+      setSettingsOpen(false);
+      openListeningDashboard();
+    }
+  };
+
+  const settingsToolbarProps = {
+    currentBook: bookId,
+    manifestLength: navigationCount,
+    viewMode,
+    disableImageActions: isTextBook,
     onZoomIn: () => updateZoom(settings.zoom + ZOOM_STEP),
     onZoomOut: () => updateZoom(settings.zoom - ZOOM_STEP),
     onResetZoom: resetTransform,
@@ -1190,12 +1219,6 @@ export default function App() {
     onCopyText: handleCopyText,
     onToggleFullscreen: () => void toggleFullscreen(),
     fullscreen: isFullscreen,
-    streamState,
-    streamVoice,
-    streamVoiceOptions,
-    onStreamVoiceChange: handleActiveStreamVoiceChange,
-    onPlayStream: () => void handlePlayVisibleStream(),
-    onStopStream: handleStopStream,
     onCreateChapter: () => {
       if (!isTextBook) {
         showToast('Select a text book to add chapters', 'error');
@@ -1221,15 +1244,6 @@ export default function App() {
     },
     quizDisabled: !bookId || !chapterNumber,
     currentChapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : null),
-    gotoInputRef,
-    onToggleBookmark: toggleBookmark,
-    onShowBookmarks: () => {
-      setSettingsOpen(false);
-      showBookmarks();
-    },
-    onOpenSearch: openSearch,
-    isBookmarked,
-    bookmarksCount: bookmarks.length,
     onOpenPrint: () => {
       setSettingsOpen(false);
       openPrintModal();
@@ -1239,10 +1253,6 @@ export default function App() {
       setSettingsOpen(false);
       openHelp();
     },
-    onOpenListeningDashboard: () => {
-      setSettingsOpen(false);
-      openListeningDashboard();
-    },
     onOpenPromptEditor: () => {
       setSettingsOpen(false);
       openPromptEditor();
@@ -1251,10 +1261,6 @@ export default function App() {
     onOpenJobWorker: () => {
       setSettingsOpen(false);
       openJobWorker();
-    },
-    onOpenToc: () => {
-      setSettingsOpen(false);
-      setTocOpen(true);
     },
     onOpenTocManage: () => {
       setSettingsOpen(false);
@@ -1712,35 +1718,8 @@ export default function App() {
   return (
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
       <ReaderSidebar
-        currentBook={toolbarProps.currentBook}
-        manifestLength={toolbarProps.manifestLength}
-        currentPage={toolbarProps.currentPage}
+        {...sidebarProps}
         mainView={mainView}
-        viewMode={toolbarProps.viewMode}
-        disablePagesMode={toolbarProps.disablePagesMode}
-        disableScrollMode={toolbarProps.disableScrollMode}
-        audioLibraryOpen={toolbarProps.audioLibraryOpen}
-        unitsLibraryOpen={toolbarProps.unitsLibraryOpen}
-        streamState={toolbarProps.streamState}
-        streamVoice={toolbarProps.streamVoice}
-        streamVoiceOptions={toolbarProps.streamVoiceOptions}
-        isBookmarked={toolbarProps.isBookmarked}
-        bookmarksCount={toolbarProps.bookmarksCount}
-        onOpenBookModal={toolbarProps.onOpenBookModal}
-        onOpenAudioLibrary={toolbarProps.onOpenAudioLibrary}
-        onOpenUnits={toolbarProps.onOpenUnits}
-        onViewModeChange={toolbarProps.onViewModeChange}
-        onPrev={toolbarProps.onPrev}
-        onNext={toolbarProps.onNext}
-        onGoTo={toolbarProps.onGoTo}
-        onOpenToc={toolbarProps.onOpenToc}
-        onToggleBookmark={toolbarProps.onToggleBookmark}
-        onShowBookmarks={toolbarProps.onShowBookmarks}
-        onOpenSearch={toolbarProps.onOpenSearch}
-        onStreamVoiceChange={toolbarProps.onStreamVoiceChange}
-        onPlayStream={toolbarProps.onPlayStream}
-        onStopStream={toolbarProps.onStopStream}
-        onOpenListeningDashboard={toolbarProps.onOpenListeningDashboard}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <ReaderMainContent {...mainContentProps} />
@@ -1749,13 +1728,9 @@ export default function App() {
         settingsModalProps={{
           open: settingsOpen,
           toolbarProps: {
-            ...toolbarProps,
+            ...settingsToolbarProps,
             activeTab: settingsTab,
-            onTabChange: setSettingsTab,
-            onViewModeChange: (mode) => {
-              handleViewModeChange(mode);
-              setSettingsOpen(false);
-            }
+            onTabChange: setSettingsTab
           },
           onClose: () => setSettingsOpen(false)
         }}

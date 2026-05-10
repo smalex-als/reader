@@ -6,20 +6,8 @@ interface ToolbarProps {
   onTabChange?: (tab: ToolbarTab) => void;
   currentBook: string | null;
   manifestLength: number;
-  currentPage: number;
   viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-  disablePagesMode: boolean;
-  disableScrollMode: boolean;
   disableImageActions: boolean;
-  onViewModeChange: (mode: 'pages' | 'scroll' | 'text' | 'audio') => void;
-  audioLibraryOpen: boolean;
-  onOpenAudioLibrary: () => void;
-  unitsLibraryOpen: boolean;
-  onOpenUnits: () => void;
-  onOpenBookModal: () => void;
-  onPrev: () => void;
-  onNext: () => void;
-  onGoTo: (page: number) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
@@ -51,20 +39,12 @@ interface ToolbarProps {
   onOpenMemoryCard: () => void;
   quizDisabled: boolean;
   currentChapterLabel?: string | null;
-  gotoInputRef: React.RefObject<HTMLInputElement>;
-  onToggleBookmark: () => void;
-  onShowBookmarks: () => void;
-  onOpenSearch: () => void;
-  isBookmarked: boolean;
-  bookmarksCount: number;
   onOpenPrint: () => void;
   onShareLink: () => void;
   onOpenHelp: () => void;
-  onOpenListeningDashboard: () => void;
   onOpenPromptEditor: () => void;
   onOpenOcrQueue: () => void;
   onOpenJobWorker: () => void;
-  onOpenToc: () => void;
   onOpenTocManage: () => void;
   ocrQueueTotal: number;
   ocrQueueProcessed: number;
@@ -79,20 +59,8 @@ export default function Toolbar({
   onTabChange,
   currentBook,
   manifestLength,
-  currentPage,
   viewMode,
-  disablePagesMode,
-  disableScrollMode,
   disableImageActions,
-  onViewModeChange,
-  audioLibraryOpen,
-  onOpenAudioLibrary,
-  unitsLibraryOpen,
-  onOpenUnits,
-  onOpenBookModal,
-  onPrev,
-  onNext,
-  onGoTo,
   onZoomIn,
   onZoomOut,
   onResetZoom,
@@ -124,20 +92,12 @@ export default function Toolbar({
   onOpenMemoryCard,
   quizDisabled,
   currentChapterLabel,
-  gotoInputRef,
-  onToggleBookmark,
-  onShowBookmarks,
-  onOpenSearch,
-  isBookmarked,
-  bookmarksCount,
   onOpenPrint,
   onShareLink,
   onOpenHelp,
-  onOpenListeningDashboard,
   onOpenPromptEditor,
   onOpenOcrQueue,
   onOpenJobWorker,
-  onOpenToc,
   onOpenTocManage,
   ocrQueueTotal,
   ocrQueueProcessed,
