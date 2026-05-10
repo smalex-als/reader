@@ -1,10 +1,4 @@
-import type { StreamState } from '@/types/app';
-
-export type ToolbarTab = 'image' | 'audio' | 'study' | 'tools';
-type StreamVoiceOption = {
-  id: string;
-  label: string;
-};
+export type ToolbarTab = 'image' | 'study' | 'tools';
 
 interface ToolbarProps {
   layout?: 'panel' | 'modal';
@@ -51,12 +45,6 @@ interface ToolbarProps {
   onCopyText: () => void;
   onToggleFullscreen: () => void;
   fullscreen: boolean;
-  streamState: StreamState;
-  streamVoice: string;
-  streamVoiceOptions: readonly StreamVoiceOption[];
-  onStreamVoiceChange: (voice: string) => void;
-  onPlayStream: () => void;
-  onStopStream: () => void;
   onCreateChapter: () => void;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
@@ -130,12 +118,6 @@ export default function Toolbar({
   onCopyText,
   onToggleFullscreen,
   fullscreen,
-  streamState,
-  streamVoice,
-  streamVoiceOptions,
-  onStreamVoiceChange,
-  onPlayStream,
-  onStopStream,
   onCreateChapter,
   onOpenQuiz,
   onOpenVocabulary,
@@ -181,7 +163,6 @@ export default function Toolbar({
     return `${statusLabel} · ${ocrQueueProcessed}/${ocrQueueTotal}${failedLabel}`;
   })();
   const showImageTab = !isModal || activeTab === 'image';
-  const showAudioTab = !isModal || activeTab === 'audio';
   const showStudyTab = !isModal || activeTab === 'study';
   const showToolsTab = !isModal || activeTab === 'tools';
   const showImageControls = viewMode === 'pages' || viewMode === 'scroll';
@@ -198,15 +179,6 @@ export default function Toolbar({
             aria-selected={activeTab === 'image'}
           >
             Image
-          </button>
-          <button
-            type="button"
-            className={`segmented-item ${activeTab === 'audio' ? 'segmented-item-active' : ''}`}
-            onClick={() => onTabChange?.('audio')}
-            role="tab"
-            aria-selected={activeTab === 'audio'}
-          >
-            Audio
           </button>
           <button
             type="button"
@@ -353,29 +325,8 @@ export default function Toolbar({
       </div>
       ) : null}
 
-      {showAudioTab || showStudyTab || showToolsTab ? (
+      {showStudyTab || showToolsTab ? (
       <div className="toolbar-row">
-        {showAudioTab ? (
-        <div className="toolbar-group">
-          <span className="toolbar-group-title">Voice</span>
-          <label className="toolbar-field">
-            Stream voice
-            <select
-              className="select"
-              value={streamVoice}
-              disabled={controlsDisabled}
-              onChange={(event) => onStreamVoiceChange(event.target.value)}
-            >
-              {streamVoiceOptions.map((voice) => (
-                <option key={voice.id} value={voice.id}>
-                  {voice.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        ) : null}
-
         {showStudyTab ? (
         <div className="toolbar-group">
           <span className="toolbar-group-title">Study</span>
