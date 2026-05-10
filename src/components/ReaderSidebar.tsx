@@ -43,12 +43,21 @@ interface ReaderSidebarProps {
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'scanned-reader:sidebarCollapsed';
+const SIDEBAR_USER_COLLAPSED_KEY = 'scanned-reader:sidebarCollapsedUserSet';
+const SIDEBAR_AUTO_COLLAPSE_QUERY = '(max-width: 900px)';
 
 function readInitialCollapsed() {
   if (typeof window === 'undefined') {
     return false;
   }
-  return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+  if (window.localStorage.getItem(SIDEBAR_USER_COLLAPSED_KEY) !== 'true') {
+    return window.matchMedia(SIDEBAR_AUTO_COLLAPSE_QUERY).matches;
+  }
+  const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+  if (stored === 'true' || stored === 'false') {
+    return stored === 'true';
+  }
+  return window.matchMedia(SIDEBAR_AUTO_COLLAPSE_QUERY).matches;
 }
 
 function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'audio' | 'toc' | 'search' | 'bookmark' | 'play' | 'dashboard' | 'settings' | 'units' | 'collapse' }) {
@@ -135,6 +144,10 @@ export default function ReaderSidebar({
     onGoTo(desired - 1);
     setPageDraft('');
   };
+  const toggleCollapsed = () => {
+    window.localStorage.setItem(SIDEBAR_USER_COLLAPSED_KEY, 'true');
+    setCollapsed((value) => !value);
+  };
 
   return (
     <aside className={`reader-sidebar ${collapsed ? 'reader-sidebar-collapsed' : ''}`} aria-label="Reader navigation">
@@ -142,7 +155,7 @@ export default function ReaderSidebar({
         <button
           type="button"
           className="reader-sidebar-toggle"
-          onClick={() => setCollapsed((value) => !value)}
+          onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           data-tooltip={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
