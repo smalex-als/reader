@@ -1,6 +1,6 @@
 import type { StreamState } from '@/types/app';
 
-export type ToolbarTab = 'reading' | 'image' | 'audio' | 'study' | 'tools';
+export type ToolbarTab = 'image' | 'audio' | 'study' | 'tools';
 type StreamVoiceOption = {
   id: string;
   label: string;
@@ -87,7 +87,7 @@ interface ToolbarProps {
 
 export default function Toolbar({
   layout = 'panel',
-  activeTab = 'reading',
+  activeTab = 'image',
   onTabChange,
   currentBook,
   manifestLength,
@@ -165,12 +165,6 @@ export default function Toolbar({
 }: ToolbarProps) {
   const isModal = layout === 'modal';
   const controlsDisabled = manifestLength === 0 || !currentBook;
-  const streamActive =
-    streamState.status === 'streaming' ||
-    streamState.status === 'connecting' ||
-    streamState.status === 'paused';
-  const streamHandler = streamActive ? onStopStream : onPlayStream;
-  const streamLabel = streamActive ? 'Stop Stream' : 'Play Stream';
   const showOcrStatus = ocrQueueTotal > 0;
   const ocrStatusText = (() => {
     if (!showOcrStatus) {
@@ -186,7 +180,6 @@ export default function Toolbar({
     const failedLabel = ocrQueueFailed > 0 ? ` · ${ocrQueueFailed} failed` : '';
     return `${statusLabel} · ${ocrQueueProcessed}/${ocrQueueTotal}${failedLabel}`;
   })();
-  const showReadingTab = !isModal || activeTab === 'reading';
   const showImageTab = !isModal || activeTab === 'image';
   const showAudioTab = !isModal || activeTab === 'audio';
   const showStudyTab = !isModal || activeTab === 'study';
@@ -197,15 +190,6 @@ export default function Toolbar({
     <div className={`toolbar ${isModal ? 'toolbar-modal' : ''}`}>
       {isModal ? (
         <div className="toolbar-modal-tabs segmented" role="tablist" aria-label="Settings sections">
-          <button
-            type="button"
-            className={`segmented-item ${activeTab === 'reading' ? 'segmented-item-active' : ''}`}
-            onClick={() => onTabChange?.('reading')}
-            role="tab"
-            aria-selected={activeTab === 'reading'}
-          >
-            Reading
-          </button>
           <button
             type="button"
             className={`segmented-item ${activeTab === 'image' ? 'segmented-item-active' : ''}`}
@@ -243,141 +227,6 @@ export default function Toolbar({
             Tools
           </button>
         </div>
-      ) : null}
-
-      {showReadingTab ? (
-      <div className="toolbar-row">
-        <div className="toolbar-group toolbar-group-library">
-          <span className="toolbar-group-title">Library</span>
-          <span className="toolbar-readout">{currentBook ?? 'None selected'}</span>
-          <button type="button" className="button" onClick={onOpenBookModal}>
-            {currentBook ? 'Change Book' : 'Select Book'}
-          </button>
-          <button
-            type="button"
-            className={`button ${audioLibraryOpen ? 'button-active' : ''}`}
-            onClick={onOpenAudioLibrary}
-          >
-            MP3 Library
-          </button>
-          <button
-            type="button"
-            className={`button ${unitsLibraryOpen ? 'button-active' : ''}`}
-            onClick={onOpenUnits}
-          >
-            Units
-          </button>
-        </div>
-
-        <div className="toolbar-group toolbar-group-mode">
-          <span className="toolbar-group-title">Mode</span>
-          <div className="segmented" role="tablist" aria-label="Reading mode">
-            <button
-              type="button"
-              className={`segmented-item ${viewMode === 'pages' ? 'segmented-item-active' : ''}`}
-              onClick={() => onViewModeChange('pages')}
-              disabled={manifestLength === 0 || disablePagesMode}
-              role="tab"
-              aria-selected={viewMode === 'pages'}
-            >
-              Pages
-            </button>
-            <button
-              type="button"
-              className={`segmented-item ${viewMode === 'scroll' ? 'segmented-item-active' : ''}`}
-              onClick={() => onViewModeChange('scroll')}
-              disabled={manifestLength === 0 || disableScrollMode}
-              role="tab"
-              aria-selected={viewMode === 'scroll'}
-            >
-              Scroll
-            </button>
-            <button
-              type="button"
-              className={`segmented-item ${viewMode === 'text' ? 'segmented-item-active' : ''}`}
-              onClick={() => onViewModeChange('text')}
-              disabled={manifestLength === 0}
-              role="tab"
-              aria-selected={viewMode === 'text'}
-            >
-              Text
-            </button>
-            <button
-              type="button"
-              className={`segmented-item ${viewMode === 'audio' ? 'segmented-item-active' : ''}`}
-              onClick={() => onViewModeChange('audio')}
-              disabled={manifestLength === 0}
-              role="tab"
-              aria-selected={viewMode === 'audio'}
-            >
-              Audio
-            </button>
-          </div>
-        </div>
-
-        <div className="toolbar-group toolbar-group-navigation">
-          <span className="toolbar-group-title">Navigation</span>
-          <div className="toolbar-nav toolbar-nav-stack">
-            <div className="toolbar-nav-actions">
-              <button type="button" className="button" onClick={onPrev} disabled={manifestLength === 0}>
-                &lt;
-              </button>
-              <span className="toolbar-counter toolbar-nav-counter">
-                {manifestLength === 0 ? '0 / 0' : `${currentPage + 1} / ${manifestLength}`}
-              </span>
-              <button type="button" className="button" onClick={onNext} disabled={manifestLength === 0}>
-                &gt;
-              </button>
-            </div>
-            <div className="toolbar-nav-row toolbar-nav-row-full">
-              <label className="toolbar-field toolbar-goto">
-                Go to
-                <input
-                  ref={gotoInputRef}
-                  min={1}
-                  max={Math.max(1, manifestLength)}
-                  type="number"
-                  className="input"
-                  placeholder={manifestLength === 0 ? '—' : String(currentPage + 1)}
-                  disabled={manifestLength === 0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      const desired = Number.parseInt(event.currentTarget.value, 10);
-                      if (Number.isInteger(desired)) {
-                        onGoTo(desired - 1);
-                      }
-                    }
-                }}
-              />
-              </label>
-            </div>
-            <div className="toolbar-nav-row">
-              <button
-                type="button"
-                className="button"
-                onClick={onOpenToc}
-                disabled={controlsDisabled}
-              >
-                ☰
-              </button>
-              <button
-                type="button"
-                className={`button ${isBookmarked ? 'button-active' : ''}`}
-                onClick={onToggleBookmark}
-                disabled={controlsDisabled}
-              >
-                {isBookmarked ? '★' : '☆'}
-              </button>
-              <button type="button" className="button" onClick={onShowBookmarks} disabled={!currentBook}>
-                ★ ({bookmarksCount})
-              </button>
-              <button type="button" className="button" onClick={onOpenSearch} disabled={!currentBook}>
-                Search
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
       ) : null}
 
       {showImageTab ? (
@@ -508,9 +357,9 @@ export default function Toolbar({
       <div className="toolbar-row">
         {showAudioTab ? (
         <div className="toolbar-group">
-          <span className="toolbar-group-title">Stream</span>
+          <span className="toolbar-group-title">Voice</span>
           <label className="toolbar-field">
-            Voice
+            Stream voice
             <select
               className="select"
               value={streamVoice}
@@ -524,9 +373,6 @@ export default function Toolbar({
               ))}
             </select>
           </label>
-          <button type="button" className="button" onClick={streamHandler} disabled={controlsDisabled}>
-            {streamLabel}
-          </button>
         </div>
         ) : null}
 
@@ -598,13 +444,6 @@ export default function Toolbar({
             disabled={controlsDisabled || disableImageActions}
           >
             Batch OCR
-          </button>
-          <button
-            type="button"
-            className="button"
-            onClick={onOpenListeningDashboard}
-          >
-            Listening Dashboard
           </button>
           <button
             type="button"

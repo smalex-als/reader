@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
+import ReaderSidebar from '@/components/ReaderSidebar';
 import { useAudioController } from '@/hooks/useAudioController';
 import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
@@ -62,7 +63,7 @@ import type { ToolbarTab } from '@/components/Toolbar';
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<ToolbarTab>('reading');
+  const [settingsTab, setSettingsTab] = useState<ToolbarTab>('image');
   const {
     mainView,
     setMainView,
@@ -1705,12 +1706,43 @@ export default function App() {
       onPlaybackRateChange: handlePlaybackRateChange,
       onClose: handleCloseFloatingAudio,
       onPlaybackStateChange: handleFloatingAudioPlaybackStateChange
-    },
-    onOpenSettings: () => setSettingsOpen(true)
+    }
   };
 
   return (
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
+      <ReaderSidebar
+        currentBook={toolbarProps.currentBook}
+        manifestLength={toolbarProps.manifestLength}
+        currentPage={toolbarProps.currentPage}
+        mainView={mainView}
+        viewMode={toolbarProps.viewMode}
+        disablePagesMode={toolbarProps.disablePagesMode}
+        disableScrollMode={toolbarProps.disableScrollMode}
+        audioLibraryOpen={toolbarProps.audioLibraryOpen}
+        unitsLibraryOpen={toolbarProps.unitsLibraryOpen}
+        streamState={toolbarProps.streamState}
+        streamVoice={toolbarProps.streamVoice}
+        streamVoiceOptions={toolbarProps.streamVoiceOptions}
+        isBookmarked={toolbarProps.isBookmarked}
+        bookmarksCount={toolbarProps.bookmarksCount}
+        onOpenBookModal={toolbarProps.onOpenBookModal}
+        onOpenAudioLibrary={toolbarProps.onOpenAudioLibrary}
+        onOpenUnits={toolbarProps.onOpenUnits}
+        onViewModeChange={toolbarProps.onViewModeChange}
+        onPrev={toolbarProps.onPrev}
+        onNext={toolbarProps.onNext}
+        onGoTo={toolbarProps.onGoTo}
+        onOpenToc={toolbarProps.onOpenToc}
+        onToggleBookmark={toolbarProps.onToggleBookmark}
+        onShowBookmarks={toolbarProps.onShowBookmarks}
+        onOpenSearch={toolbarProps.onOpenSearch}
+        onStreamVoiceChange={toolbarProps.onStreamVoiceChange}
+        onPlayStream={toolbarProps.onPlayStream}
+        onStopStream={toolbarProps.onStopStream}
+        onOpenListeningDashboard={toolbarProps.onOpenListeningDashboard}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
       <ReaderMainContent {...mainContentProps} />
       <ReaderModalLayer
         {...modalProps}

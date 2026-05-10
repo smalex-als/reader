@@ -1,0 +1,310 @@
+import { useEffect, useState } from 'react';
+import type { StreamState } from '@/types/app';
+
+type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
+type MainView = 'reader' | 'audio-library' | 'units';
+
+type StreamVoiceOption = {
+  id: string;
+  label: string;
+};
+
+interface ReaderSidebarProps {
+  currentBook: string | null;
+  manifestLength: number;
+  currentPage: number;
+  mainView: MainView;
+  viewMode: ViewMode;
+  disablePagesMode: boolean;
+  disableScrollMode: boolean;
+  audioLibraryOpen: boolean;
+  unitsLibraryOpen: boolean;
+  streamState: StreamState;
+  streamVoice: string;
+  streamVoiceOptions: readonly StreamVoiceOption[];
+  isBookmarked: boolean;
+  bookmarksCount: number;
+  onOpenBookModal: () => void;
+  onOpenAudioLibrary: () => void;
+  onOpenUnits: () => void;
+  onViewModeChange: (mode: ViewMode) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onGoTo: (page: number) => void;
+  onOpenToc: () => void;
+  onToggleBookmark: () => void;
+  onShowBookmarks: () => void;
+  onOpenSearch: () => void;
+  onStreamVoiceChange: (voice: string) => void;
+  onPlayStream: () => void;
+  onStopStream: () => void;
+  onOpenListeningDashboard: () => void;
+  onOpenSettings: () => void;
+}
+
+const SIDEBAR_COLLAPSED_KEY = 'scanned-reader:sidebarCollapsed';
+
+function readInitialCollapsed() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+}
+
+function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'audio' | 'toc' | 'search' | 'bookmark' | 'play' | 'dashboard' | 'settings' | 'units' | 'collapse' }) {
+  const paths: Record<typeof name, string[]> = {
+    book: ['M5 4h10a4 4 0 0 1 4 4v12H8a3 3 0 0 0-3 3V4Z', 'M5 4v19'],
+    pages: ['M7 4h10v16H7z', 'M10 8h4M10 12h4M10 16h3'],
+    scroll: ['M7 4h10v6a3 3 0 0 1-3 3H7V4Z', 'M7 13h10v7H7z'],
+    text: ['M5 6h14M8 6v12M16 6v12M5 18h14'],
+    audio: ['M5 15h4l5 4V5L9 9H5v6Z', 'M17 9a4 4 0 0 1 0 6'],
+    toc: ['M8 6h11M8 12h11M8 18h11', 'M4 6h.01M4 12h.01M4 18h.01'],
+    search: ['M10.5 17a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z', 'M15.5 15.5 20 20'],
+    bookmark: ['M7 4h10v16l-5-3-5 3V4Z'],
+    play: ['M8 5v14l11-7-11-7Z'],
+    dashboard: ['M5 19V9M12 19V5M19 19v-7'],
+    settings: ['M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z', 'M19 12h2M3 12h2M12 3v2M12 19v2M17 7l1.4-1.4M5.6 18.4 7 17M17 17l1.4 1.4M5.6 5.6 7 7'],
+    units: ['M5 5h6v6H5z', 'M13 5h6v6h-6z', 'M5 13h6v6H5z', 'M13 13h6v6h-6z'],
+    collapse: ['M15 6 9 12l6 6']
+  };
+
+  return (
+    <svg className="reader-sidebar-icon" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name].map((path) => (
+        <path key={path} d={path} />
+      ))}
+    </svg>
+  );
+}
+
+export default function ReaderSidebar({
+  currentBook,
+  manifestLength,
+  currentPage,
+  mainView,
+  viewMode,
+  disablePagesMode,
+  disableScrollMode,
+  audioLibraryOpen,
+  unitsLibraryOpen,
+  streamState,
+  streamVoice,
+  streamVoiceOptions,
+  isBookmarked,
+  bookmarksCount,
+  onOpenBookModal,
+  onOpenAudioLibrary,
+  onOpenUnits,
+  onViewModeChange,
+  onPrev,
+  onNext,
+  onGoTo,
+  onOpenToc,
+  onToggleBookmark,
+  onShowBookmarks,
+  onOpenSearch,
+  onStreamVoiceChange,
+  onPlayStream,
+  onStopStream,
+  onOpenListeningDashboard,
+  onOpenSettings
+}: ReaderSidebarProps) {
+  const [collapsed, setCollapsed] = useState(readInitialCollapsed);
+  const [pageDraft, setPageDraft] = useState('');
+  const controlsDisabled = manifestLength === 0 || !currentBook;
+  const streamActive =
+    streamState.status === 'streaming' ||
+    streamState.status === 'connecting' ||
+    streamState.status === 'paused';
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
+
+  useEffect(() => {
+    setPageDraft('');
+  }, [currentPage, manifestLength]);
+
+  const pageLabel = manifestLength === 0 ? '0 / 0' : `${currentPage + 1} / ${manifestLength}`;
+
+  const submitPage = () => {
+    const desired = Number.parseInt(pageDraft, 10);
+    if (!Number.isInteger(desired)) {
+      return;
+    }
+    onGoTo(desired - 1);
+    setPageDraft('');
+  };
+
+  return (
+    <aside className={`reader-sidebar ${collapsed ? 'reader-sidebar-collapsed' : ''}`} aria-label="Reader navigation">
+      <div className="reader-sidebar-header">
+        <button
+          type="button"
+          className="reader-sidebar-toggle"
+          onClick={() => setCollapsed((value) => !value)}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <SidebarIcon name="collapse" />
+        </button>
+        {!collapsed ? (
+          <div className="reader-sidebar-title">
+            <span className="reader-sidebar-kicker">Reader</span>
+            <span className="reader-sidebar-book" title={currentBook ?? 'No book selected'}>
+              {currentBook ?? 'No book selected'}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="reader-sidebar-section">
+        <button type="button" className="reader-sidebar-action" onClick={onOpenBookModal} title="Select book">
+          <SidebarIcon name="book" />
+          <span className="reader-sidebar-label">{currentBook ? 'Change Book' : 'Select Book'}</span>
+        </button>
+        <button
+          type="button"
+          className={`reader-sidebar-action ${audioLibraryOpen ? 'reader-sidebar-action-active' : ''}`}
+          onClick={onOpenAudioLibrary}
+          title="MP3 Library"
+        >
+          <SidebarIcon name="audio" />
+          <span className="reader-sidebar-label">MP3 Library</span>
+        </button>
+        <button
+          type="button"
+          className={`reader-sidebar-action ${unitsLibraryOpen ? 'reader-sidebar-action-active' : ''}`}
+          onClick={onOpenUnits}
+          title="Units"
+        >
+          <SidebarIcon name="units" />
+          <span className="reader-sidebar-label">Units</span>
+        </button>
+      </div>
+
+      <div className="reader-sidebar-section">
+        {!collapsed ? <span className="reader-sidebar-section-title">Mode</span> : null}
+        {[
+          { mode: 'pages' as const, label: 'Pages', icon: 'pages' as const, disabled: disablePagesMode },
+          { mode: 'scroll' as const, label: 'Scroll', icon: 'scroll' as const, disabled: disableScrollMode },
+          { mode: 'text' as const, label: 'Text', icon: 'text' as const, disabled: false },
+          { mode: 'audio' as const, label: 'Audio', icon: 'audio' as const, disabled: false }
+        ].map((item) => (
+          <button
+            key={item.mode}
+            type="button"
+            className={`reader-sidebar-action ${
+              mainView === 'reader' && viewMode === item.mode ? 'reader-sidebar-action-active' : ''
+            }`}
+            onClick={() => onViewModeChange(item.mode)}
+            disabled={controlsDisabled || item.disabled}
+            title={item.label}
+          >
+            <SidebarIcon name={item.icon} />
+            <span className="reader-sidebar-label">{item.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="reader-sidebar-section reader-sidebar-navigation">
+        {!collapsed ? <span className="reader-sidebar-section-title">Page</span> : null}
+        <div className="reader-sidebar-pager">
+          <button type="button" className="reader-sidebar-small-button" onClick={onPrev} disabled={controlsDisabled} aria-label="Previous page">
+            &lt;
+          </button>
+          <span className="reader-sidebar-page-count">{pageLabel}</span>
+          <button type="button" className="reader-sidebar-small-button" onClick={onNext} disabled={controlsDisabled} aria-label="Next page">
+            &gt;
+          </button>
+        </div>
+        {!collapsed ? (
+          <label className="reader-sidebar-goto">
+            <span>Go to</span>
+            <input
+              type="number"
+              min={1}
+              max={Math.max(1, manifestLength)}
+              value={pageDraft}
+              placeholder={manifestLength === 0 ? '-' : String(currentPage + 1)}
+              disabled={controlsDisabled}
+              onChange={(event) => setPageDraft(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  submitPage();
+                }
+              }}
+            />
+          </label>
+        ) : null}
+      </div>
+
+      <div className="reader-sidebar-section">
+        <button type="button" className="reader-sidebar-action" onClick={onOpenToc} disabled={controlsDisabled} title="Table of contents">
+          <SidebarIcon name="toc" />
+          <span className="reader-sidebar-label">TOC</span>
+        </button>
+        <button type="button" className="reader-sidebar-action" onClick={onOpenSearch} disabled={!currentBook} title="Search">
+          <SidebarIcon name="search" />
+          <span className="reader-sidebar-label">Search</span>
+        </button>
+        <button
+          type="button"
+          className={`reader-sidebar-action ${isBookmarked ? 'reader-sidebar-action-active' : ''}`}
+          onClick={onToggleBookmark}
+          disabled={controlsDisabled}
+          title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+        >
+          <SidebarIcon name="bookmark" />
+          <span className="reader-sidebar-label">{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
+        </button>
+        <button type="button" className="reader-sidebar-action" onClick={onShowBookmarks} disabled={!currentBook} title="Bookmarks">
+          <SidebarIcon name="bookmark" />
+          <span className="reader-sidebar-label">Bookmarks</span>
+          {!collapsed ? <span className="reader-sidebar-count">{bookmarksCount}</span> : null}
+        </button>
+      </div>
+
+      <div className="reader-sidebar-section">
+        {!collapsed ? <span className="reader-sidebar-section-title">Audio</span> : null}
+        {!collapsed ? (
+          <label className="reader-sidebar-select">
+            <span>Voice</span>
+            <select
+              value={streamVoice}
+              disabled={controlsDisabled}
+              onChange={(event) => onStreamVoiceChange(event.currentTarget.value)}
+            >
+              {streamVoiceOptions.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <button
+          type="button"
+          className={`reader-sidebar-action ${streamActive ? 'reader-sidebar-action-active' : ''}`}
+          onClick={streamActive ? onStopStream : onPlayStream}
+          disabled={controlsDisabled}
+          title={streamActive ? 'Stop stream' : 'Play stream'}
+        >
+          <SidebarIcon name="play" />
+          <span className="reader-sidebar-label">{streamActive ? 'Stop Stream' : 'Play Stream'}</span>
+        </button>
+        <button type="button" className="reader-sidebar-action" onClick={onOpenListeningDashboard} title="Listening dashboard">
+          <SidebarIcon name="dashboard" />
+          <span className="reader-sidebar-label">Dashboard</span>
+        </button>
+      </div>
+
+      <div className="reader-sidebar-footer">
+        <button type="button" className="reader-sidebar-action" onClick={onOpenSettings} title="Settings">
+          <SidebarIcon name="settings" />
+          <span className="reader-sidebar-label">Settings</span>
+        </button>
+      </div>
+    </aside>
+  );
+}
