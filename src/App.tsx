@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type FloatingAudioPlaybackState, type FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
 import { useAudioController } from '@/hooks/useAudioController';
@@ -16,6 +15,13 @@ import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
+import { useMp3Voice, useStreamVoices } from '@/hooks/useStreamVoices';
+import { useUnitsRouteState, useUnitsRouteSync } from '@/hooks/useUnitsRoute';
+import { useStreamHistoryLogger } from '@/hooks/useStreamHistoryLogger';
+import { useOcrEditMode } from '@/hooks/useOcrEditMode';
+import { useShareLink } from '@/hooks/useShareLink';
+import { useBookSearch } from '@/hooks/useBookSearch';
+import { useFloatingAudio } from '@/hooks/useFloatingAudio';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToast } from '@/hooks/useToast';
@@ -24,18 +30,28 @@ import { useWakeLock } from '@/hooks/useWakeLock';
 import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
-import { logStreamHistory, trackEvent } from '@/lib/analytics';
+import { trackEvent } from '@/lib/analytics';
 import {
-  loadMp3VoiceForBook,
   loadQuizAutoplayForBook,
   saveLastPage,
-  saveMp3VoiceForBook,
   saveQuizAutoplayForBook
 } from '@/lib/storage';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
+import { fetchJson } from '@/lib/fetchJson';
+import { copyToClipboard } from '@/lib/clipboard';
+import {
+  PLAYBACK_RATE_OPTIONS,
+  TEXT_FONT_SIZE_MIN,
+  TEXT_FONT_SIZE_MAX,
+  createDefaultSettings,
+  getMainViewFromLocation,
+  normalizePlaybackRate,
+  normalizeTextFontSize,
+  normalizeTextTheme,
+  type MainView
+} from '@/lib/appConstants';
 import type {
   AppSettings,
-  BookSearchResponse,
   ImagePreviewTarget,
   PageTextOcrEngine,
   SearchResult,
@@ -44,101 +60,17 @@ import type {
 } from '@/types/app';
 import type { ToolbarTab } from '@/components/Toolbar';
 
-async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-  return (await response.json()) as T;
-}
-
-type StreamVoice = string;
-type StreamVoiceOption = {
-  id: string;
-  label: string;
-  provider: 'openai' | 'xai' | 'yandex' | 'streaming';
-};
-const PLAYBACK_RATE_OPTIONS = [1, 1.25, 1.5] as const;
-
-const TEXT_FONT_SIZE_OPTIONS = [18, 20, 24, 26, 28, 30, 34];
-const TEXT_THEME_OPTIONS = [
-  'dark',
-  'dracula',
-  'obsidian',
-  'nord',
-  'gruvbox',
-  'solarized',
-  'light',
-  'warm'
-] as const;
-type TextTheme = (typeof TEXT_THEME_OPTIONS)[number];
-const TEXT_FONT_SIZE_MIN = TEXT_FONT_SIZE_OPTIONS[0];
-const TEXT_FONT_SIZE_MAX = TEXT_FONT_SIZE_OPTIONS[TEXT_FONT_SIZE_OPTIONS.length - 1];
-type MainView = 'reader' | 'audio-library' | 'units';
-
-const DEFAULT_SETTINGS: AppSettings = {
-  zoom: 1,
-  zoomMode: 'fit-width',
-  rotation: 0,
-  invert: false,
-  brightness: 100,
-  contrast: 100,
-  dimOutsideBlocks: true,
-  dimOutsideBlocksIntensity: 38,
-  pan: { x: 0, y: 0 },
-  textFontSize: TEXT_FONT_SIZE_OPTIONS[0],
-  textTheme: 'dark',
-  studyMode: false
-};
-
-function normalizeTextFontSize(value: number): number {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_SETTINGS.textFontSize;
-  }
-  let closest = TEXT_FONT_SIZE_OPTIONS[0];
-  let smallestDelta = Math.abs(value - closest);
-  for (const option of TEXT_FONT_SIZE_OPTIONS) {
-    const delta = Math.abs(value - option);
-    if (delta < smallestDelta) {
-      smallestDelta = delta;
-      closest = option;
-    }
-  }
-  return closest;
-}
-
-function normalizeTextTheme(value: string): TextTheme {
-  if (value === 'slate') {
-    return 'dracula';
-  }
-  return TEXT_THEME_OPTIONS.includes(value as TextTheme) ? (value as TextTheme) : 'dark';
-}
-
-function normalizePlaybackRate(value: number): number {
-  return PLAYBACK_RATE_OPTIONS.includes(value as (typeof PLAYBACK_RATE_OPTIONS)[number]) ? value : 1;
-}
-
-function createDefaultSettings(): AppSettings {
-  return { ...DEFAULT_SETTINGS, pan: { ...DEFAULT_SETTINGS.pan } };
-}
-
-function getMainViewFromLocation(): MainView {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('view') === 'units' ? 'units' : 'reader';
-}
-
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<ToolbarTab>('reading');
-  const [mainView, setMainView] = useState<MainView>(() => getMainViewFromLocation());
-  const [selectedUnitSetId, setSelectedUnitSetId] = useState<string | null>(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('view') === 'units' ? params.get('unit') : null;
-  });
-  const [selectedUnitTopicId, setSelectedUnitTopicId] = useState<string | null>(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('view') === 'units' ? params.get('topic') : null;
-  });
+  const {
+    mainView,
+    setMainView,
+    selectedUnitSetId,
+    setSelectedUnitSetId,
+    selectedUnitTopicId,
+    setSelectedUnitTopicId
+  } = useUnitsRouteState();
   const [unitQuizLabel, setUnitQuizLabel] = useState('Topic');
   const [imagePreview, setImagePreview] = useState<ImagePreviewTarget | null>(null);
   const [enhancedImagePreviewUrls, setEnhancedImagePreviewUrls] = useState<Record<string, string>>({});
@@ -175,39 +107,17 @@ export default function App() {
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
   const [unitsRefreshToken, setUnitsRefreshToken] = useState(0);
   const [unitCreating, setUnitCreating] = useState(false);
-  const [ocrEditMode, setOcrEditMode] = useState(false);
-  const [ocrEditSaving, setOcrEditSaving] = useState(false);
-  const ocrEditBaselineRef = useRef<string | null>(null);
-  const ocrEditImageRef = useRef<string | null>(null);
   const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
     fullText: string;
     startIndex: number;
     key: string;
   } | null>(null);
-  const [streamVoiceOptions, setStreamVoiceOptions] = useState<StreamVoiceOption[]>([]);
-  const [defaultStreamVoice, setDefaultStreamVoice] = useState<StreamVoice>('');
-  const [streamVoice, setStreamVoice] = useState<StreamVoice>('');
-  const [mp3Voice, setMp3Voice] = useState<StreamVoice>('');
   const [playbackRate, setPlaybackRate] = useState(1);
   const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [bookCardRefreshToken, setBookCardRefreshToken] = useState(0);
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
-  const shareOpenedTrackedRef = useRef(false);
-  const streamHistorySessionRef = useRef<{
-    bookId: string;
-    chapterNumber: number | null;
-    chapterTitle: string | null;
-    subchapterTitle: string | null;
-    pageNumber: number | null;
-    pageKeyStart: string | null;
-    startedAt: string;
-    lastPageKey: string | null;
-  } | null>(null);
   const {
     settings,
     setSettings,
@@ -229,57 +139,15 @@ export default function App() {
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
   const tocEntriesRef = useRef<React.Dispatch<React.SetStateAction<TocEntry[]>> | null>(null);
-  const isStreamVoice = useCallback(
-    (value: string): value is StreamVoice => streamVoiceOptions.length === 0 || streamVoiceOptions.some((voice) => voice.id === value),
-    [streamVoiceOptions]
-  );
-  const getDefaultStreamVoice = useCallback(
-    () => defaultStreamVoice || streamVoiceOptions[0]?.id || '',
-    [defaultStreamVoice, streamVoiceOptions]
-  );
-  const mp3VoiceOptions = useMemo(
-    () => streamVoiceOptions.filter((option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'),
-    [streamVoiceOptions]
-  );
-  const getDefaultMp3Voice = useCallback(
-    () => mp3VoiceOptions.find((option) => option.provider === 'streaming')?.id || mp3VoiceOptions[0]?.id || '',
-    [mp3VoiceOptions]
-  );
-  useEffect(() => {
-    let cancelled = false;
-    void fetchJson<{ defaultVoice?: string; voices?: StreamVoiceOption[] }>('/api/stream-audio/voices')
-      .then((payload) => {
-        if (cancelled) {
-          return;
-        }
-        const voices = Array.isArray(payload.voices)
-          ? payload.voices.filter(
-              (voice) =>
-                typeof voice.id === 'string' &&
-                voice.id.trim() &&
-                typeof voice.label === 'string' &&
-                (voice.provider === 'openai' ||
-                  voice.provider === 'xai' ||
-                  voice.provider === 'yandex' ||
-                  voice.provider === 'streaming')
-            )
-          : [];
-        const defaultVoice =
-          typeof payload.defaultVoice === 'string' && voices.some((voice) => voice.id === payload.defaultVoice)
-            ? payload.defaultVoice
-            : voices[0]?.id ?? '';
-        setStreamVoiceOptions(voices);
-        setDefaultStreamVoice(defaultVoice);
-        setStreamVoice((previous) => (previous && voices.some((voice) => voice.id === previous) ? previous : defaultVoice));
-      })
-      .catch((error) => {
-        console.error('Unable to load streaming voices', error);
-        showToast('Unable to load streaming voices', 'error');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [showToast]);
+  const {
+    streamVoiceOptions,
+    streamVoice,
+    setStreamVoice,
+    isStreamVoice,
+    getDefaultStreamVoice,
+    mp3VoiceOptions,
+    getDefaultMp3Voice
+  } = useStreamVoices({ showToast });
   const {
     books,
     bookId,
@@ -316,54 +184,15 @@ export default function App() {
     createDefaultSettings
   });
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (mainView === 'units') {
-      params.set('view', 'units');
-      params.delete('book');
-      params.delete('page');
-      if (selectedUnitSetId) {
-        params.set('unit', selectedUnitSetId);
-      } else {
-        params.delete('unit');
-      }
-      if (selectedUnitSetId && selectedUnitTopicId) {
-        params.set('topic', selectedUnitTopicId);
-      } else {
-        params.delete('topic');
-      }
-    } else {
-      params.delete('unit');
-      params.delete('topic');
-      if (params.get('view') === 'units') {
-        params.set('view', viewMode);
-      }
-    }
-    const nextSearch = params.toString();
-    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
-    if (nextUrl !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
-      window.history.replaceState(null, '', nextUrl);
-    }
-  }, [mainView, selectedUnitSetId, selectedUnitTopicId, viewMode]);
-
-  useEffect(() => {
-    const handleUnitsLocationChange = () => {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('view') !== 'units') {
-        setMainView((current) => (current === 'units' ? 'reader' : current));
-        return;
-      }
-      setMainView('units');
-      setSelectedUnitSetId(params.get('unit'));
-      setSelectedUnitTopicId(params.get('topic'));
-    };
-    window.addEventListener('popstate', handleUnitsLocationChange);
-    window.addEventListener('hashchange', handleUnitsLocationChange);
-    return () => {
-      window.removeEventListener('popstate', handleUnitsLocationChange);
-      window.removeEventListener('hashchange', handleUnitsLocationChange);
-    };
-  }, []);
+  useUnitsRouteSync({
+    mainView,
+    setMainView,
+    selectedUnitSetId,
+    setSelectedUnitSetId,
+    selectedUnitTopicId,
+    setSelectedUnitTopicId,
+    viewMode
+  });
 
   const isTextBook = bookType === 'text';
   const navigationCount = isTextBook ? chapterCount : manifest.length;
@@ -399,29 +228,7 @@ export default function App() {
   useEffect(() => {
     tocEntriesRef.current = setTocEntries;
   }, [setTocEntries]);
-  useEffect(() => {
-    if (mp3VoiceOptions.length === 0) {
-      setMp3Voice('');
-      return;
-    }
-    const storedVoice = bookId ? loadMp3VoiceForBook(bookId) : null;
-    const nextVoice =
-      storedVoice && mp3VoiceOptions.some((option) => option.id === storedVoice)
-        ? storedVoice
-        : getDefaultMp3Voice();
-    setMp3Voice((previous) =>
-      previous && mp3VoiceOptions.some((option) => option.id === previous) && !storedVoice ? previous : nextVoice
-    );
-  }, [bookId, getDefaultMp3Voice, mp3VoiceOptions]);
-  useEffect(() => {
-    if (!bookId || !mp3Voice || !mp3VoiceOptions.some((option) => option.id === mp3Voice)) {
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      saveMp3VoiceForBook(bookId, mp3Voice);
-    }, 150);
-    return () => window.clearTimeout(timeout);
-  }, [bookId, mp3Voice, mp3VoiceOptions]);
+  const { mp3Voice, setMp3Voice } = useMp3Voice({ bookId, mp3VoiceOptions, getDefaultMp3Voice });
   const visibleTocEntries = tocVariant === 'detailed' ? detailedTocEntries : tocEntries;
   const visibleSortedTocEntries =
     tocVariant === 'detailed' ? sortedDetailedTocEntries : sortedTocEntries;
@@ -547,10 +354,13 @@ export default function App() {
     stopAfterCurrentStream,
     pauseStreamAtStart
   } = useStreamingAudio(showToast);
-  const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
-  const [floatingAudioPlaybackState, setFloatingAudioPlaybackState] = useState<FloatingAudioPlaybackState | 'idle'>(
-    'idle'
-  );
+  const {
+    floatingAudio,
+    floatingAudioPlaybackState,
+    playFloatingAudio: handlePlayFloatingAudio,
+    closeFloatingAudio: handleCloseFloatingAudio,
+    handlePlaybackStateChange: handleFloatingAudioPlaybackStateChange
+  } = useFloatingAudio({ bookId, audioState, stopAudio, syncFloatingAudioState });
   const isListening =
     audioState.status === 'playing' ||
     streamState.status === 'streaming' ||
@@ -586,40 +396,9 @@ export default function App() {
   } | null>(null);
   const [autoFollowStream, setAutoFollowStream] = useState(true);
   const [selectedStreamBlockKey, setSelectedStreamBlockKey] = useState<string | null>(null);
-  const handlePlayFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
-    setFloatingAudio(payload.kind ? payload : { ...payload, kind: 'file' });
-    setFloatingAudioPlaybackState('loading');
-  }, []);
-  const handleCloseFloatingAudio = useCallback(() => {
-    if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
-      stopAudio();
-    }
-    setFloatingAudio(null);
-    setFloatingAudioPlaybackState('idle');
-  }, [floatingAudio?.kind, stopAudio]);
-  const handleFloatingAudioPlaybackStateChange = useCallback(
-    (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => {
-      setFloatingAudioPlaybackState(state);
-      syncFloatingAudioState(state, track);
-    },
-    [syncFloatingAudioState]
-  );
-  useEffect(() => {
-    setFloatingAudio(null);
-    setFloatingAudioPlaybackState('idle');
-  }, [bookId]);
   useEffect(() => {
     setDisplayedChapterText(null);
   }, [bookId, chapterNumber]);
-  useEffect(() => {
-    if (audioState.status !== 'idle' && audioState.status !== 'error') {
-      return;
-    }
-    if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
-      setFloatingAudio(null);
-      setFloatingAudioPlaybackState('idle');
-    }
-  }, [audioState.status, floatingAudio]);
   useEffect(() => {
     if (!bookId) {
       setQuizAutoPlayEnabled(true);
@@ -645,15 +424,6 @@ export default function App() {
       setSelectedStreamBlockKey(makeStreamLocator(locator.imageUrl, locator.blockId));
     }
   }, [selectedStreamBlockKey, streamState.pageKey, streamState.status]);
-  useEffect(() => {
-    if (ocrEditImageRef.current === currentImage) {
-      return;
-    }
-    ocrEditImageRef.current = currentImage;
-    ocrEditBaselineRef.current = null;
-    setOcrEditMode(false);
-    setOcrEditSaving(false);
-  }, [currentImage]);
   const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
     navigationCount,
     currentPage,
@@ -777,166 +547,30 @@ export default function App() {
     viewMode
   ]);
   const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
-  const previousStreamStatusRef = useRef(streamState.status);
 
-  useEffect(() => {
-    const session = streamHistorySessionRef.current;
-    const previousStatus = previousStreamStatusRef.current;
-    const currentStatus = streamState.status;
-    const wasActive =
-      previousStatus === 'connecting' || previousStatus === 'streaming' || previousStatus === 'paused';
-    const isActive = currentStatus === 'connecting' || currentStatus === 'streaming' || currentStatus === 'paused';
-
-    if (!session && isActive && bookId) {
-      streamHistorySessionRef.current = {
-        bookId,
-        chapterNumber,
-        chapterTitle: currentChapterEntry?.title ?? null,
-        subchapterTitle: currentSubchapterEntry?.title ?? null,
-        pageNumber: currentPage,
-        pageKeyStart: streamState.pageKey,
-        startedAt: new Date().toISOString(),
-        lastPageKey: streamState.pageKey
-      };
-      previousStreamStatusRef.current = currentStatus;
-      return;
-    }
-
-    if (session && typeof streamState.pageKey === 'string' && streamState.pageKey) {
-      session.lastPageKey = streamState.pageKey;
-    }
-    if (session) {
-      session.pageNumber = currentPage;
-    }
-
-    if (session && wasActive && !isActive) {
-      const listenedSeconds = Math.round(streamState.playbackSeconds * 1000) / 1000;
-      if (listenedSeconds >= 1) {
-        const endReason =
-          currentStatus === 'error'
-            ? 'error'
-            : currentStatus === 'idle'
-              ? 'stopped'
-              : 'interrupted';
-        logStreamHistory({
-          bookId: session.bookId,
-          chapterNumber: session.chapterNumber,
-          chapterTitle: session.chapterTitle,
-          subchapterTitle: session.subchapterTitle,
-          pageNumber: session.pageNumber,
-          pageKeyStart: session.pageKeyStart,
-          pageKeyEnd: session.lastPageKey ?? streamState.pageKey,
-          startedAt: session.startedAt,
-          endedAt: new Date().toISOString(),
-          listenedSeconds,
-          endReason
-        });
-      }
-      streamHistorySessionRef.current = null;
-    }
-
-    previousStreamStatusRef.current = currentStatus;
-  }, [
+  useStreamHistoryLogger({
     bookId,
     chapterNumber,
-    currentPage,
     currentChapterEntry,
     currentSubchapterEntry,
-    streamState.pageKey,
-    streamState.playbackSeconds,
-    streamState.status
-  ]);
+    currentPage,
+    streamState
+  });
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      const session = streamHistorySessionRef.current;
-      if (!session) {
-        return;
-      }
-      const listenedSeconds = Math.round(streamState.playbackSeconds * 1000) / 1000;
-      if (listenedSeconds < 1) {
-        return;
-      }
-      logStreamHistory({
-        bookId: session.bookId,
-        chapterNumber: session.chapterNumber,
-        chapterTitle: session.chapterTitle,
-        subchapterTitle: session.subchapterTitle,
-        pageNumber: session.pageNumber,
-        pageKeyStart: session.pageKeyStart,
-        pageKeyEnd: session.lastPageKey ?? streamState.pageKey,
-        startedAt: session.startedAt,
-        endedAt: new Date().toISOString(),
-        listenedSeconds,
-        endReason: 'unload'
-      });
-      streamHistorySessionRef.current = null;
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [streamState.pageKey, streamState.playbackSeconds]);
-
-  const handleToggleOcrEditMode = useCallback(async () => {
-    if (!currentImage || isTextBook) {
-      return;
-    }
-
-    if (!ocrEditMode) {
-      const pageText = currentText ?? (await fetchPageText({ silent: true }));
-      if (!pageText || pageText.blocks.length === 0) {
-        showToast('No OCR blocks available for editing', 'error');
-        return;
-      }
-      ocrEditBaselineRef.current = pageText.text;
-      setOcrEditMode(true);
-      showToast('Block edit mode enabled', 'info');
-      return;
-    }
-
-    const nextText = currentText?.text ?? '';
-    const baselineText = ocrEditBaselineRef.current;
-    setOcrEditMode(false);
-
-    if (!nextText || nextText === baselineText) {
-      ocrEditBaselineRef.current = nextText || baselineText;
-      showToast('Block edit mode disabled', 'info');
-      return;
-    }
-
-    setOcrEditSaving(true);
-    const saved = await savePageText(nextText);
-    setOcrEditSaving(false);
-    if (saved) {
-      ocrEditBaselineRef.current = saved.text;
-      showToast('Block edits saved', 'success');
-      return;
-    }
-    setOcrEditMode(true);
-  }, [currentImage, currentText, fetchPageText, isTextBook, ocrEditMode, savePageText, showToast]);
-
-  const handleToggleSpeechBlock = useCallback(
-    async (blockId: string) => {
-      if (!currentImage) {
-        return;
-      }
-      const pageText = currentText ?? (await fetchPageText({ silent: true }));
-      if (!pageText || pageText.blocks.length === 0) {
-        showToast('No OCR blocks available', 'error');
-        return;
-      }
-      const updated = updatePageTextBlocks((blocks) =>
-        blocks.map((block) =>
-          block.id === blockId ? { ...block, excludedFromSpeech: !block.excludedFromSpeech } : block
-        )
-      );
-      const toggled = updated?.blocks.find((block) => block.id === blockId);
-      if (toggled) {
-        showToast(toggled.excludedFromSpeech ? 'Block excluded from speech' : 'Block restored to speech', 'info');
-      }
-    },
-    [currentImage, currentText, fetchPageText, showToast, updatePageTextBlocks]
-  );
+  const {
+    ocrEditMode,
+    ocrEditSaving,
+    toggleOcrEditMode: handleToggleOcrEditMode,
+    toggleSpeechBlock: handleToggleSpeechBlock
+  } = useOcrEditMode({
+    currentImage,
+    currentText,
+    isTextBook,
+    fetchPageText,
+    savePageText,
+    updatePageTextBlocks,
+    showToast
+  });
 
   useEffect(() => {
     if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage || currentText) {
@@ -1060,35 +694,15 @@ export default function App() {
     resetAudioCache();
     stopAudio();
     stopStream();
-    setSearchQuery('');
-    setSearchResults([]);
   }, [bookId, closeBookmarks, closeBookCard, closeSearch, resetAudioCache, resetTextState, stopAudio, stopStream]);
 
-  const handleSearch = useCallback(async (query: string) => {
-    if (!bookId) {
-      showToast('Select a book before searching', 'error');
-      return;
-    }
-    const trimmed = query.trim();
-    setSearchQuery(query);
-    if (!trimmed) {
-      setSearchResults([]);
-      return;
-    }
-    setSearchLoading(true);
-    try {
-      const result = await fetchJson<BookSearchResponse>(
-        `/api/books/${encodeURIComponent(bookId)}/search?q=${encodeURIComponent(trimmed)}&limit=25`
-      );
-      setSearchResults(Array.isArray(result.results) ? result.results : []);
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to search this book', 'error');
-      setSearchResults([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, [bookId, showToast]);
+  const {
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    searchLoading,
+    runSearch: handleSearch
+  } = useBookSearch({ bookId, showToast });
 
   const handleOpenDashboardBook = useCallback(
     (targetBookId: string) => {
@@ -1247,28 +861,8 @@ export default function App() {
       showToast('No text available to copy', 'error');
       return;
     }
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(textValue);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = textValue;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        const copied = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        if (!copied) {
-          throw new Error('copy failed');
-        }
-      }
-      showToast('Copied page text to clipboard', 'success');
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to copy text', 'error');
-    }
+    const copied = await copyToClipboard(textValue);
+    showToast(copied ? 'Copied page text to clipboard' : 'Unable to copy text', copied ? 'success' : 'error');
   }, [currentImage, currentText, fetchPageText, showToast]);
   const handleCopyVocabulary = useCallback(async (textValue: string) => {
     const trimmed = textValue.trim();
@@ -1276,104 +870,26 @@ export default function App() {
       showToast('No vocabulary available to copy', 'error');
       return;
     }
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(trimmed);
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = trimmed;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        const copied = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        if (!copied) {
-          throw new Error('copy failed');
-        }
-      }
-      showToast('Copied vocabulary to clipboard', 'success');
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to copy vocabulary', 'error');
-    }
+    const copied = await copyToClipboard(trimmed);
+    showToast(copied ? 'Copied vocabulary to clipboard' : 'Unable to copy vocabulary', copied ? 'success' : 'error');
   }, [showToast]);
   const handleCopyMemoryCard = useCallback(async (textValue: string) => {
-    if (!textValue.trim()) {
+    const trimmed = textValue.trim();
+    if (!trimmed) {
       showToast('No memory card available to copy', 'error');
       return;
     }
-    try {
-      await navigator.clipboard.writeText(textValue);
-      showToast('Copied memory card to clipboard', 'success');
-    } catch {
-      showToast('Unable to copy memory card', 'error');
-    }
+    const copied = await copyToClipboard(trimmed);
+    showToast(copied ? 'Copied memory card to clipboard' : 'Unable to copy memory card', copied ? 'success' : 'error');
   }, [showToast]);
 
-  const handleShareLink = useCallback(async () => {
-    if (!bookId || navigationCount === 0) {
-      showToast('Select a book before sharing', 'error');
-      return;
-    }
-    const shareUrl = new URL(window.location.href);
-    shareUrl.searchParams.set('book', bookId);
-    shareUrl.searchParams.set('page', String(currentPage + 1));
-    shareUrl.searchParams.set('view', viewMode);
-    shareUrl.searchParams.set('src', 'share');
-    const shareMessage = `Read ${bookId} at page ${currentPage + 1}`;
-    try {
-      if (navigator?.share) {
-        await navigator.share({ title: 'Scanned Book Reader', text: shareMessage, url: shareUrl.toString() });
-      } else if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl.toString());
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = shareUrl.toString();
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        const copied = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        if (!copied) {
-          throw new Error('copy failed');
-        }
-      }
-      trackEvent('share_clicked', {
-        book: bookId,
-        page: currentPage + 1,
-        view: viewMode
-      });
-      showToast('Share link ready', 'success');
-    } catch (error) {
-      const aborted = error instanceof Error && error.name === 'AbortError';
-      if (aborted) {
-        return;
-      }
-      console.error(error);
-      showToast('Unable to share link', 'error');
-    }
-  }, [bookId, currentPage, navigationCount, showToast, viewMode]);
-
-  useEffect(() => {
-    if (shareOpenedTrackedRef.current || !bookId || navigationCount === 0) {
-      return;
-    }
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('src') !== 'share') {
-      return;
-    }
-    shareOpenedTrackedRef.current = true;
-    trackEvent('share_opened', {
-      book: bookId,
-      page: currentPage + 1,
-      view: viewMode,
-      source: 'share'
-    });
-  }, [bookId, currentPage, navigationCount, viewMode]);
+  const { shareLink: handleShareLink } = useShareLink({
+    bookId,
+    currentPage,
+    navigationCount,
+    viewMode,
+    showToast
+  });
 
   const restartActiveStream = useCallback(
     (voice: string) => {

@@ -1,13 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Bookmark } from '@/types/app';
-
-async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-  return (await response.json()) as T;
-}
+import { fetchJson } from '@/lib/fetchJson';
 
 interface UseBookmarksOptions {
   bookId: string | null;
