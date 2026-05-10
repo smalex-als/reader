@@ -71,6 +71,52 @@ function hashText(input: string) {
   return Math.abs(hash).toString(36);
 }
 
+function isMostlyRussianText(value: string) {
+  const cyrillicMatches = value.match(/[А-Яа-яЁё]/g)?.length ?? 0;
+  if (cyrillicMatches === 0) {
+    return false;
+  }
+  const latinMatches = value.match(/[A-Za-z]/g)?.length ?? 0;
+  return cyrillicMatches >= latinMatches;
+}
+
+function getTopicLabels(unit: UnitItem) {
+  const text = [
+    unit.title,
+    unit.summary,
+    unit.learningGoal,
+    unit.content,
+    ...unit.keyPoints,
+    ...unit.selfCheckQuestions
+  ].join('\n');
+  if (!isMostlyRussianText(text)) {
+    return {
+      learningGoal: 'Learning goal',
+      summary: 'Summary',
+      keyPoints: 'Key points',
+      selfCheckQuestions: 'Self-check questions',
+      back: 'Back',
+      markAsRead: 'Mark as read',
+      markAsUnread: 'Mark as unread',
+      quiz: 'Quiz',
+      playTts: 'Play TTS',
+      stopTts: 'Stop TTS'
+    };
+  }
+  return {
+    learningGoal: 'Цель',
+    summary: 'Краткое содержание',
+    keyPoints: 'Главное',
+    selfCheckQuestions: 'Вопросы для самопроверки',
+    back: 'Назад',
+    markAsRead: 'Отметить прочитанным',
+    markAsUnread: 'Отметить непрочитанным',
+    quiz: 'Квиз',
+    playTts: 'Озвучить',
+    stopTts: 'Стоп'
+  };
+}
+
 function ReadStatusIcon({ read }: { read: boolean }) {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -217,15 +263,18 @@ export default function UnitsView({
       (streamState.status === 'connecting' ||
         streamState.status === 'streaming' ||
         streamState.status === 'paused');
+    const labels = getTopicLabels(selectedUnit);
     const topicText = [
-      selectedUnit.learningGoal ? `**Learning goal:** ${selectedUnit.learningGoal}` : '',
-      selectedUnit.summary ? `**Summary:** ${selectedUnit.summary}` : '',
+      selectedUnit.learningGoal ? `**${labels.learningGoal}:** ${selectedUnit.learningGoal}` : '',
+      selectedUnit.summary ? `**${labels.summary}:** ${selectedUnit.summary}` : '',
       selectedUnit.keyPoints.length > 0
-        ? `**Key points:**\n${selectedUnit.keyPoints.map((point) => `- ${point}`).join('\n')}`
+        ? `**${labels.keyPoints}:**\n${selectedUnit.keyPoints.map((point) => `- ${point}`).join('\n')}`
         : '',
       selectedUnit.content,
       selectedUnit.selfCheckQuestions.length > 0
-        ? `**Self-check questions:**\n${selectedUnit.selfCheckQuestions.map((question) => `- ${question}`).join('\n')}`
+        ? `**${labels.selfCheckQuestions}:**\n${selectedUnit.selfCheckQuestions
+            .map((question) => `- ${question}`)
+            .join('\n')}`
         : ''
     ]
       .filter(Boolean)
@@ -352,7 +401,7 @@ export default function UnitsView({
             className="button button-secondary"
             onClick={() => onSelectTopic(null)}
           >
-            Back
+            {labels.back}
           </button>
           <div className="audio-viewer-title">
             <span className="audio-viewer-label">{selectedSet.title}</span>
@@ -366,7 +415,7 @@ export default function UnitsView({
               onClick={() => void handleToggleTopicRead(selectedSet.id, selectedUnit.id, !selectedUnit.read)}
             >
               <ReadStatusIcon read={selectedUnit.read} />
-              <span>{selectedUnit.read ? 'Mark as unread' : 'Mark as read'}</span>
+              <span>{selectedUnit.read ? labels.markAsUnread : labels.markAsRead}</span>
             </button>
             <button
               type="button"
@@ -379,7 +428,7 @@ export default function UnitsView({
                 })
               }
             >
-              Quiz
+              {labels.quiz}
             </button>
             <button
               type="button"
@@ -397,7 +446,7 @@ export default function UnitsView({
               }}
               disabled={!topicStreamActive && !topicSpeechText.trim()}
             >
-              {topicStreamActive ? 'Stop TTS' : 'Play TTS'}
+              {topicStreamActive ? labels.stopTts : labels.playTts}
             </button>
           </div>
         </header>
