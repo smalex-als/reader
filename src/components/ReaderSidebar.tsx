@@ -145,6 +145,7 @@ export default function ReaderSidebar({
           onClick={() => setCollapsed((value) => !value)}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          data-tooltip={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <SidebarIcon name="collapse" />
         </button>
@@ -159,7 +160,7 @@ export default function ReaderSidebar({
       </div>
 
       <div className="reader-sidebar-section">
-        <button type="button" className="reader-sidebar-action" onClick={onOpenBookModal} title="Select book">
+        <button type="button" className="reader-sidebar-action" onClick={onOpenBookModal} title="Select book" data-tooltip={currentBook ? 'Change Book' : 'Select Book'}>
           <SidebarIcon name="book" />
           <span className="reader-sidebar-label">{currentBook ? 'Change Book' : 'Select Book'}</span>
         </button>
@@ -168,6 +169,7 @@ export default function ReaderSidebar({
           className={`reader-sidebar-action ${audioLibraryOpen ? 'reader-sidebar-action-active' : ''}`}
           onClick={onOpenAudioLibrary}
           title="MP3 Library"
+          data-tooltip="MP3 Library"
         >
           <SidebarIcon name="audio" />
           <span className="reader-sidebar-label">MP3 Library</span>
@@ -177,6 +179,7 @@ export default function ReaderSidebar({
           className={`reader-sidebar-action ${unitsLibraryOpen ? 'reader-sidebar-action-active' : ''}`}
           onClick={onOpenUnits}
           title="Units"
+          data-tooltip="Units"
         >
           <SidebarIcon name="units" />
           <span className="reader-sidebar-label">Units</span>
@@ -200,6 +203,7 @@ export default function ReaderSidebar({
             onClick={() => onViewModeChange(item.mode)}
             disabled={controlsDisabled || item.disabled}
             title={item.label}
+            data-tooltip={item.label}
           >
             <SidebarIcon name={item.icon} />
             <span className="reader-sidebar-label">{item.label}</span>
@@ -210,11 +214,11 @@ export default function ReaderSidebar({
       <div className="reader-sidebar-section reader-sidebar-navigation">
         {!collapsed ? <span className="reader-sidebar-section-title">Page</span> : null}
         <div className="reader-sidebar-pager">
-          <button type="button" className="reader-sidebar-small-button" onClick={onPrev} disabled={controlsDisabled} aria-label="Previous page">
+          <button type="button" className="reader-sidebar-small-button" onClick={onPrev} disabled={controlsDisabled} aria-label="Previous page" data-tooltip="Previous page">
             &lt;
           </button>
           <span className="reader-sidebar-page-count">{pageLabel}</span>
-          <button type="button" className="reader-sidebar-small-button" onClick={onNext} disabled={controlsDisabled} aria-label="Next page">
+          <button type="button" className="reader-sidebar-small-button" onClick={onNext} disabled={controlsDisabled} aria-label="Next page" data-tooltip="Next page">
             &gt;
           </button>
         </div>
@@ -240,11 +244,11 @@ export default function ReaderSidebar({
       </div>
 
       <div className="reader-sidebar-section">
-        <button type="button" className="reader-sidebar-action" onClick={onOpenToc} disabled={controlsDisabled} title="Table of contents">
+        <button type="button" className="reader-sidebar-action" onClick={onOpenToc} disabled={controlsDisabled} title="Table of contents" data-tooltip="Table of contents">
           <SidebarIcon name="toc" />
           <span className="reader-sidebar-label">TOC</span>
         </button>
-        <button type="button" className="reader-sidebar-action" onClick={onOpenSearch} disabled={!currentBook} title="Search">
+        <button type="button" className="reader-sidebar-action" onClick={onOpenSearch} disabled={!currentBook} title="Search" data-tooltip="Search">
           <SidebarIcon name="search" />
           <span className="reader-sidebar-label">Search</span>
         </button>
@@ -254,11 +258,12 @@ export default function ReaderSidebar({
           onClick={onToggleBookmark}
           disabled={controlsDisabled}
           title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          data-tooltip={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
         >
           <SidebarIcon name="bookmark" />
           <span className="reader-sidebar-label">{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
         </button>
-        <button type="button" className="reader-sidebar-action" onClick={onShowBookmarks} disabled={!currentBook} title="Bookmarks">
+        <button type="button" className="reader-sidebar-action" onClick={onShowBookmarks} disabled={!currentBook} title="Bookmarks" data-tooltip="Bookmarks">
           <SidebarIcon name="bookmark" />
           <span className="reader-sidebar-label">Bookmarks</span>
           {!collapsed ? <span className="reader-sidebar-count">{bookmarksCount}</span> : null}
@@ -289,18 +294,19 @@ export default function ReaderSidebar({
           onClick={streamActive ? onStopStream : onPlayStream}
           disabled={controlsDisabled}
           title={streamActive ? 'Stop stream' : 'Play stream'}
+          data-tooltip={streamActive ? 'Stop stream' : 'Play stream'}
         >
           <SidebarIcon name="play" />
           <span className="reader-sidebar-label">{streamActive ? 'Stop Stream' : 'Play Stream'}</span>
         </button>
-        <button type="button" className="reader-sidebar-action" onClick={onOpenListeningDashboard} title="Listening dashboard">
+        <button type="button" className="reader-sidebar-action" onClick={onOpenListeningDashboard} title="Listening dashboard" data-tooltip="Listening dashboard">
           <SidebarIcon name="dashboard" />
           <span className="reader-sidebar-label">Dashboard</span>
         </button>
       </div>
 
       <div className="reader-sidebar-footer">
-        <button type="button" className="reader-sidebar-action" onClick={onOpenSettings} title="Settings">
+        <button type="button" className="reader-sidebar-action" onClick={onOpenSettings} title="Settings" data-tooltip="Settings">
           <SidebarIcon name="settings" />
           <span className="reader-sidebar-label">Settings</span>
         </button>

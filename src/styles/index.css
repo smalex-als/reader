@@ -67,6 +67,7 @@ body {
   min-width: 64px;
   padding-left: 0.55rem;
   padding-right: 0.55rem;
+  overflow: visible;
 }
 
 .reader-sidebar-header,
@@ -96,6 +97,7 @@ body {
 .reader-sidebar-toggle,
 .reader-sidebar-action,
 .reader-sidebar-small-button {
+  position: relative;
   border: 1px solid rgba(213, 229, 242, 0.12);
   background: rgba(213, 229, 242, 0.055);
   color: inherit;
@@ -217,6 +219,37 @@ body {
 .reader-sidebar-collapsed .reader-sidebar-label,
 .reader-sidebar-collapsed .reader-sidebar-count {
   display: none;
+}
+
+.reader-sidebar-collapsed [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: calc(100% + 0.55rem);
+  top: 50%;
+  z-index: 80;
+  transform: translateY(-50%) translateX(-4px);
+  padding: 0.38rem 0.55rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(213, 229, 242, 0.12);
+  background: rgba(7, 13, 21, 0.96);
+  color: rgba(238, 246, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s ease;
+}
+
+.reader-sidebar-collapsed [data-tooltip]:hover::after,
+.reader-sidebar-collapsed [data-tooltip]:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
 }
 
 .reader-sidebar-navigation {
