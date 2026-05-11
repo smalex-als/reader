@@ -550,7 +550,7 @@ export default function UnitsView({
         </article>
         {selfCheckOpen ? (
           <div className="modal-backdrop" role="dialog" aria-modal="true">
-            <div className="modal modal-quiz">
+            <div className="modal modal-quiz modal-self-check">
               <header className="modal-header">
                 <h2 className="modal-title">
                   {labels.selfCheck}

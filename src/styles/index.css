@@ -3042,6 +3042,15 @@ body {
   max-height: min(88vh, 820px);
 }
 
+.modal-self-check {
+  height: auto;
+  max-height: min(88vh, 720px);
+}
+
+.modal-self-check .modal-body {
+  flex: 0 1 auto;
+}
+
 .modal-vocabulary {
   width: min(920px, calc(100vw - 2rem));
   height: min(88vh, 820px);
@@ -3447,7 +3456,9 @@ body {
 }
 
 .self-check-answer-field textarea {
-  min-height: 160px;
+  height: clamp(150px, 24vh, 240px);
+  min-height: 150px;
+  max-height: 280px;
   resize: vertical;
   padding: 0.8rem;
   border-radius: 0.75rem;
