@@ -2,7 +2,8 @@ import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { StreamState, ToastMessage, UnitItem, UnitSet } from '@/types/app';
+import CloseIcon from '@/components/CloseIcon';
+import type { SelfCheckResult, StreamState, ToastMessage, UnitItem, UnitSet } from '@/types/app';
 
 interface UnitsViewProps {
   refreshToken: number;
@@ -95,6 +96,16 @@ function getTopicLabels(unit: UnitItem) {
       summary: 'Summary',
       keyPoints: 'Key points',
       selfCheckQuestions: 'Self-check questions',
+      selfCheck: 'Self-check',
+      question: 'Question',
+      of: 'of',
+      submitAnswer: 'Submit answer',
+      answerPlaceholder: 'Write your answer here',
+      checkingAnswer: 'Checking...',
+      yourAnswer: 'Your answer',
+      referenceAnswer: 'Reference answer',
+      strengths: 'Strengths',
+      improvements: 'Improve',
       back: 'Back',
       markAsRead: 'Mark as read',
       markAsUnread: 'Mark as unread',
@@ -107,8 +118,18 @@ function getTopicLabels(unit: UnitItem) {
     learningGoal: 'Цель',
     summary: 'Краткое содержание',
     keyPoints: 'Главное',
-    selfCheckQuestions: 'Вопросы для самопроверки',
-    back: 'Назад',
+      selfCheckQuestions: 'Вопросы для самопроверки',
+      selfCheck: 'Самопроверка',
+      question: 'Вопрос',
+      of: 'из',
+      submitAnswer: 'Проверить ответ',
+      answerPlaceholder: 'Напиши свой ответ здесь',
+      checkingAnswer: 'Проверяю...',
+      yourAnswer: 'Твой ответ',
+      referenceAnswer: 'Пример ответа',
+      strengths: 'Что хорошо',
+      improvements: 'Что улучшить',
+      back: 'Назад',
     markAsRead: 'Отметить прочитанным',
     markAsUnread: 'Отметить непрочитанным',
     quiz: 'Квиз',
@@ -158,6 +179,12 @@ export default function UnitsView({
   const [items, setItems] = useState<UnitSet[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
+  const [selfCheckOpen, setSelfCheckOpen] = useState(false);
+  const [selfCheckIndex, setSelfCheckIndex] = useState(0);
+  const [selfCheckAnswer, setSelfCheckAnswer] = useState('');
+  const [selfCheckLoading, setSelfCheckLoading] = useState(false);
+  const [selfCheckError, setSelfCheckError] = useState<string | null>(null);
+  const [selfCheckResult, setSelfCheckResult] = useState<SelfCheckResult | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
 
   const loadItems = useCallback(async () => {
@@ -253,6 +280,11 @@ export default function UnitsView({
       return;
     }
     detailRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    setSelfCheckOpen(false);
+    setSelfCheckIndex(0);
+    setSelfCheckAnswer('');
+    setSelfCheckError(null);
+    setSelfCheckResult(null);
   }, [selectedTopicId]);
 
   if (selectedSet && selectedUnit) {
@@ -280,6 +312,50 @@ export default function UnitsView({
       .filter(Boolean)
       .join('\n\n');
     const topicSpeechText = [selectedUnit.title, topicText].filter(Boolean).join('\n\n');
+    const selfCheckQuestions = selectedUnit.selfCheckQuestions;
+    const currentSelfCheckQuestion = selfCheckQuestions[selfCheckIndex] ?? null;
+    const closeSelfCheck = () => {
+      if (selfCheckLoading) {
+        return;
+      }
+      setSelfCheckOpen(false);
+    };
+    const selectSelfCheckQuestion = (index: number) => {
+      setSelfCheckIndex(index);
+      setSelfCheckAnswer('');
+      setSelfCheckError(null);
+      setSelfCheckResult(null);
+    };
+    const submitSelfCheckAnswer = async () => {
+      if (!selectedSet || !selectedUnit || !currentSelfCheckQuestion || !selfCheckAnswer.trim()) {
+        return;
+      }
+      setSelfCheckLoading(true);
+      setSelfCheckError(null);
+      try {
+        const response = await fetch(
+          `/api/units/${encodeURIComponent(selectedSet.id)}/topics/${encodeURIComponent(selectedUnit.id)}/self-check`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              question: currentSelfCheckQuestion,
+              answer: selfCheckAnswer
+            })
+          }
+        );
+        if (!response.ok) {
+          throw new Error(await readErrorMessage(response));
+        }
+        setSelfCheckResult((await response.json()) as SelfCheckResult);
+      } catch (error) {
+        setSelfCheckError(error instanceof Error ? error.message : 'Unable to check answer.');
+      } finally {
+        setSelfCheckLoading(false);
+      }
+    };
     const activeParagraphStart = (() => {
       if (!topicStreamActive || typeof streamState.pageKey !== 'string') {
         return null;
@@ -420,6 +496,20 @@ export default function UnitsView({
             <button
               type="button"
               className="button button-secondary"
+              onClick={() => {
+                setSelfCheckOpen(true);
+                setSelfCheckIndex(0);
+                setSelfCheckAnswer('');
+                setSelfCheckError(null);
+                setSelfCheckResult(null);
+              }}
+              disabled={selfCheckQuestions.length === 0}
+            >
+              {labels.selfCheck}
+            </button>
+            <button
+              type="button"
+              className="button button-secondary"
               onClick={() =>
                 onOpenTopicQuiz({
                   unitSetId: selectedSet.id,
@@ -458,6 +548,121 @@ export default function UnitsView({
             </ReactMarkdown>
           </div>
         </article>
+        {selfCheckOpen ? (
+          <div className="modal-backdrop" role="dialog" aria-modal="true">
+            <div className="modal modal-quiz">
+              <header className="modal-header">
+                <h2 className="modal-title">
+                  {labels.selfCheck}
+                  <span className="modal-marker">• {selectedUnit.title}</span>
+                </h2>
+                <button
+                  type="button"
+                  className="button button-ghost modal-icon-button"
+                  onClick={closeSelfCheck}
+                  disabled={selfCheckLoading}
+                  aria-label="Close self-check"
+                  title="Close self-check"
+                >
+                  <CloseIcon />
+                </button>
+              </header>
+              <section className="modal-body">
+                {currentSelfCheckQuestion ? (
+                  <div className="quiz-modal-content self-check-modal-content">
+                    <div className="quiz-modal-header">
+                      <div>
+                        <h3 className="quiz-modal-title">{currentSelfCheckQuestion}</h3>
+                        <p className="quiz-modal-progress">
+                          {labels.question} {selfCheckIndex + 1} {labels.of} {selfCheckQuestions.length}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="self-check-question-picker" aria-label={labels.selfCheckQuestions}>
+                      {selfCheckQuestions.map((question, index) => (
+                        <button
+                          key={`${question}-${index}`}
+                          type="button"
+                          className={`self-check-question-chip ${
+                            index === selfCheckIndex ? 'self-check-question-chip-active' : ''
+                          }`}
+                          onClick={() => selectSelfCheckQuestion(index)}
+                          disabled={selfCheckLoading}
+                        >
+                          {index + 1}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="self-check-answer-field">
+                      <span>{labels.yourAnswer}</span>
+                      <textarea
+                        value={selfCheckAnswer}
+                        placeholder={labels.answerPlaceholder}
+                        disabled={selfCheckLoading}
+                        onChange={(event) => {
+                          setSelfCheckAnswer(event.currentTarget.value);
+                          setSelfCheckResult(null);
+                          setSelfCheckError(null);
+                        }}
+                      />
+                    </label>
+                    {selfCheckError ? <p className="modal-status">{selfCheckError}</p> : null}
+                    {selfCheckResult ? (
+                      <div className="self-check-result">
+                        <div className="self-check-score">
+                          <strong>{selfCheckResult.evaluation.verdict}</strong>
+                          <span>{selfCheckResult.evaluation.score}/5</span>
+                        </div>
+                        <p>{selfCheckResult.evaluation.feedback}</p>
+                        {selfCheckResult.evaluation.strengths.length > 0 ? (
+                          <div>
+                            <h4>{labels.strengths}</h4>
+                            <ul>
+                              {selfCheckResult.evaluation.strengths.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {selfCheckResult.evaluation.improvements.length > 0 ? (
+                          <div>
+                            <h4>{labels.improvements}</h4>
+                            <ul>
+                              {selfCheckResult.evaluation.improvements.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {selfCheckResult.evaluation.referenceAnswer ? (
+                          <div>
+                            <h4>{labels.referenceAnswer}</h4>
+                            <p>{selfCheckResult.evaluation.referenceAnswer}</p>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <footer className="quiz-modal-footer">
+                      <button type="button" className="button button-secondary" onClick={closeSelfCheck}>
+                        {labels.back}
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-primary"
+                        onClick={() => void submitSelfCheckAnswer()}
+                        disabled={selfCheckLoading || !selfCheckAnswer.trim()}
+                      >
+                        {selfCheckLoading ? labels.checkingAnswer : labels.submitAnswer}
+                      </button>
+                    </footer>
+                  </div>
+                ) : (
+                  <p className="modal-status">No self-check questions available.</p>
+                )}
+              </section>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }

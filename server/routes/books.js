@@ -45,6 +45,7 @@ import {
 } from '../lib/chapterTextVersions.js';
 import { generateChapterMemoryCard, loadChapterMemoryCard } from '../lib/memoryCard.js';
 import { generateChapterQuiz, generateUnitTopicQuiz, loadChapterQuiz, loadUnitTopicQuiz } from '../lib/quiz.js';
+import { evaluateUnitTopicSelfCheck } from '../lib/selfCheck.js';
 import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabulary.js';
 import { createEnhancedImagePreview, createImagePreviewCrop } from '../lib/imagePreview.js';
 import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
@@ -183,6 +184,16 @@ router.post('/api/units/:unitId/topics/:topicId/quiz', asyncHandler(async (req, 
     unitSetId: req.params.unitId,
     topicId: req.params.topicId,
     force: req.body?.force === true
+  });
+  res.json(result);
+}));
+
+router.post('/api/units/:unitId/topics/:topicId/self-check', asyncHandler(async (req, res) => {
+  const result = await evaluateUnitTopicSelfCheck({
+    unitSetId: req.params.unitId,
+    topicId: req.params.topicId,
+    question: typeof req.body?.question === 'string' ? req.body.question : '',
+    answer: typeof req.body?.answer === 'string' ? req.body.answer : ''
   });
   res.json(result);
 }));

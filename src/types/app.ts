@@ -119,6 +119,22 @@ export interface UnitSet {
   units: UnitItem[];
 }
 
+export interface SelfCheckEvaluation {
+  verdict: string;
+  score: number;
+  feedback: string;
+  strengths: string[];
+  improvements: string[];
+  referenceAnswer: string;
+}
+
+export interface SelfCheckResult {
+  question: string;
+  answer: string;
+  evaluatedAt: string;
+  evaluation: SelfCheckEvaluation;
+}
+
 export interface ChapterTextPrompt {
   id: string;
   name: string;
