@@ -11,6 +11,24 @@ interface UseStreamHistoryLoggerOptions {
   streamState: StreamState;
 }
 
+function parseUnitStreamPageKey(pageKey: string | null) {
+  if (typeof pageKey !== 'string') {
+    return null;
+  }
+  const match = pageKey.match(/^unit::([^:]+)::([^:]+)::paragraph-start-\d+$/);
+  if (!match) {
+    return null;
+  }
+  try {
+    return {
+      unitSetId: decodeURIComponent(match[1]),
+      topicId: decodeURIComponent(match[2])
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function useStreamHistoryLogger(options: UseStreamHistoryLoggerOptions) {
   const { bookId, chapterNumber, currentChapterEntry, currentSubchapterEntry, currentPage, streamState } = options;
 
@@ -34,13 +52,16 @@ export function useStreamHistoryLogger(options: UseStreamHistoryLoggerOptions) {
       previousStatus === 'connecting' || previousStatus === 'streaming' || previousStatus === 'paused';
     const isActive = currentStatus === 'connecting' || currentStatus === 'streaming' || currentStatus === 'paused';
 
-    if (!session && isActive && bookId) {
+    const unitLocator = parseUnitStreamPageKey(streamState.pageKey);
+    const sessionBookId = unitLocator ? unitLocator.unitSetId : bookId;
+
+    if (!session && isActive && sessionBookId) {
       sessionRef.current = {
-        bookId,
-        chapterNumber,
-        chapterTitle: currentChapterEntry?.title ?? null,
-        subchapterTitle: currentSubchapterEntry?.title ?? null,
-        pageNumber: currentPage,
+        bookId: sessionBookId,
+        chapterNumber: unitLocator ? null : chapterNumber,
+        chapterTitle: unitLocator ? null : currentChapterEntry?.title ?? null,
+        subchapterTitle: unitLocator ? null : currentSubchapterEntry?.title ?? null,
+        pageNumber: unitLocator ? null : currentPage,
         pageKeyStart: streamState.pageKey,
         startedAt: new Date().toISOString(),
         lastPageKey: streamState.pageKey
@@ -53,7 +74,7 @@ export function useStreamHistoryLogger(options: UseStreamHistoryLoggerOptions) {
       session.lastPageKey = streamState.pageKey;
     }
     if (session) {
-      session.pageNumber = currentPage;
+      session.pageNumber = parseUnitStreamPageKey(streamState.pageKey) ? null : currentPage;
     }
 
     if (session && wasActive && !isActive) {

@@ -306,6 +306,19 @@ export interface ListeningDashboardChapter {
   lastListenedAt: string | null;
 }
 
+export interface ListeningDashboardUnit {
+  unitSetId: string;
+  unitSetTitle: string | null;
+  topicId: string;
+  topicTitle: string | null;
+  sourceBookId?: string | null;
+  sourceChapterNumber?: number | null;
+  sourceChapterTitle?: string | null;
+  sessions: number;
+  totalSeconds: number;
+  lastListenedAt: string | null;
+}
+
 export interface ListeningDashboardSession {
   timestamp: string;
   bookId: string;
@@ -317,6 +330,13 @@ export interface ListeningDashboardSession {
   pageKeyEnd?: string | null;
   sourceType: string;
   sourceLabel: string;
+  unitSetId?: string | null;
+  topicId?: string | null;
+  unitSetTitle?: string | null;
+  topicTitle?: string | null;
+  unitSourceBookId?: string | null;
+  unitSourceChapterNumber?: number | null;
+  unitSourceChapterTitle?: string | null;
   listenedSeconds: number;
   sessionCount: number;
   endReason: 'completed' | 'stopped' | 'interrupted' | 'error' | 'unload';
@@ -329,5 +349,6 @@ export interface ListeningDashboardData {
   bySource: ListeningDashboardSource[];
   topBooks: ListeningDashboardBook[];
   topChapters: ListeningDashboardChapter[];
+  topUnits: ListeningDashboardUnit[];
   recentSessions: ListeningDashboardSession[];
 }

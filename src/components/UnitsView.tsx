@@ -63,15 +63,6 @@ function extractTextFromNode(node: ReactNode): string {
   return '';
 }
 
-function hashText(input: string) {
-  let hash = 0;
-  for (let index = 0; index < input.length; index += 1) {
-    hash = (hash << 5) - hash + input.charCodeAt(index);
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36);
-}
-
 function isMostlyRussianText(value: string) {
   const cyrillicMatches = value.match(/[А-Яа-яЁё]/g)?.length ?? 0;
   if (cyrillicMatches === 0) {
@@ -294,8 +285,11 @@ export default function UnitsView({
   if (selectedSet && selectedUnit) {
     const selectedUnitIndex = selectedSet.units.findIndex((unit) => unit.id === selectedUnit.id);
     const selectedUnitNumber = selectedUnitIndex >= 0 ? selectedUnitIndex + 1 : selectedUnit.order;
+    const unitStreamBaseKey = `unit::${encodeURIComponent(selectedSet.id)}::${encodeURIComponent(selectedUnit.id)}`;
+    const unitParagraphPrefix = `${unitStreamBaseKey}::paragraph-start-`;
     const topicStreamActive =
-      Boolean(streamState.pageKey?.match(/^chapter::paragraph-start-\d+/)) &&
+      typeof streamState.pageKey === 'string' &&
+      streamState.pageKey.startsWith(unitParagraphPrefix) &&
       (streamState.status === 'connecting' ||
         streamState.status === 'streaming' ||
         streamState.status === 'paused');
@@ -371,11 +365,10 @@ export default function UnitsView({
       if (!topicStreamActive || typeof streamState.pageKey !== 'string') {
         return null;
       }
-      const match = streamState.pageKey.match(/^chapter::paragraph-start-(\d+)$/);
-      if (!match) {
+      if (!streamState.pageKey.startsWith(unitParagraphPrefix)) {
         return null;
       }
-      return Number.parseInt(match[1], 10);
+      return Number.parseInt(streamState.pageKey.slice(unitParagraphPrefix.length), 10);
     })();
     const shouldIgnoreBlockClick = (event: ReactMouseEvent<HTMLElement>) => {
       const target = event.target;
@@ -415,7 +408,7 @@ export default function UnitsView({
       onPlayTopicParagraph({
         fullText: topicText,
         startIndex,
-        key: `unit-${selectedSet.id}-${selectedUnit.id}-${hashText(textValue)}`
+        key: unitStreamBaseKey
       });
     };
     const markdownComponents = {
@@ -542,7 +535,7 @@ export default function UnitsView({
                 onPlayTopicParagraph({
                   fullText: topicSpeechText,
                   startIndex: 0,
-                  key: `unit-${selectedSet.id}-${selectedUnit.id}`
+                  key: unitStreamBaseKey
                 });
               }}
               disabled={!topicStreamActive && !topicSpeechText.trim()}

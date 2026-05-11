@@ -72,9 +72,28 @@ function getTextModeFromBaseKey(baseKey: string) {
   return 'chapter';
 }
 
+function formatParagraphPageKey(baseKey: string, absoluteStart: number) {
+  if (baseKey.startsWith('unit::')) {
+    return `${baseKey}::paragraph-start-${absoluteStart}`;
+  }
+  const textMode = getTextModeFromBaseKey(baseKey);
+  return `${textMode}::paragraph-start-${absoluteStart}`;
+}
+
+function parseParagraphPageKey(pageKey: string) {
+  const standardMatch = pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+  if (standardMatch) {
+    return { startIndex: Number.parseInt(standardMatch[2], 10) };
+  }
+  const unitMatch = pageKey.match(/^unit::.+::paragraph-start-(\d+)$/);
+  if (unitMatch) {
+    return { startIndex: Number.parseInt(unitMatch[1], 10) };
+  }
+  return null;
+}
+
 function createParagraphStreamSegments(fullText: string, startIndex: number, baseKey: string): ParagraphStreamSegment[] {
   const input = normalizeFencedCodeBlocksForSpeech(fullText.slice(Math.max(0, startIndex)));
-  const textMode = getTextModeFromBaseKey(baseKey);
   const segments: ParagraphStreamSegment[] = [];
   const paragraphPattern = /\S[\s\S]*?(?=(?:\n\s*\n)|$)/g;
   let match;
@@ -89,7 +108,7 @@ function createParagraphStreamSegments(fullText: string, startIndex: number, bas
       continue;
     }
     const absoluteStart = startIndex + match.index;
-    const pageKey = `${textMode}::paragraph-start-${absoluteStart}`;
+    const pageKey = formatParagraphPageKey(baseKey, absoluteStart);
     if (spokenParagraph.length <= 1240) {
       segments.push({ text: spokenParagraph, pageKey });
       continue;
@@ -676,9 +695,9 @@ export function useStreamSequence({
         return;
       }
 
-      const paragraphMatch = pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+      const paragraphMatch = parseParagraphPageKey(pageKey);
       if (paragraphMatch) {
-        const startIndex = Number.parseInt(paragraphMatch[2], 10);
+        const startIndex = paragraphMatch.startIndex;
         if (source && (source.type === 'chapter' || source.type === 'paragraph')) {
           await startStreamSequenceFromText(source.fullText, startIndex, source.baseKey, 'paragraph', voiceOverride);
           return;
@@ -724,9 +743,9 @@ export function useStreamSequence({
     if (!pageKey) {
       return;
     }
-    const paragraphMatch = pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+    const paragraphMatch = parseParagraphPageKey(pageKey);
     if (paragraphMatch) {
-      const currentStart = Number.parseInt(paragraphMatch[2], 10);
+      const currentStart = paragraphMatch.startIndex;
       const source = lastStreamSourceRef.current;
       const textSource =
         source && (source.type === 'chapter' || source.type === 'paragraph')
@@ -744,15 +763,15 @@ export function useStreamSequence({
       }
       const segments = createParagraphStreamSegments(textSource.fullText, textSource.startIndex, textSource.baseKey);
       const nextSegment = segments.find((segment) => {
-        const match = segment.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
-        return match ? Number.parseInt(match[2], 10) > currentStart : false;
+        const match = parseParagraphPageKey(segment.pageKey);
+        return match ? match.startIndex > currentStart : false;
       });
       if (!nextSegment) {
         showToast('No next study block', 'info');
         return;
       }
-      const nextMatch = nextSegment.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
-      const nextStartIndex = nextMatch ? Number.parseInt(nextMatch[2], 10) : textSource.startIndex;
+      const nextMatch = parseParagraphPageKey(nextSegment.pageKey);
+      const nextStartIndex = nextMatch ? nextMatch.startIndex : textSource.startIndex;
       await startStreamSequenceFromText(
         textSource.fullText,
         nextStartIndex,

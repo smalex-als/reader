@@ -288,25 +288,25 @@ export default function ReaderSidebar({
         </div>
       ) : null}
 
-      {showReaderControls ? (
-        <div className="reader-sidebar-section">
-          {!collapsed ? <span className="reader-sidebar-section-title">Audio</span> : null}
-          {!collapsed ? (
-            <label className="reader-sidebar-select">
-              <span>Voice</span>
-              <select
-                value={streamVoice}
-                disabled={controlsDisabled}
-                onChange={(event) => onStreamVoiceChange(event.currentTarget.value)}
-              >
-                {streamVoiceOptions.map((voice) => (
-                  <option key={voice.id} value={voice.id}>
-                    {voice.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
+      <div className="reader-sidebar-section">
+        {!collapsed ? <span className="reader-sidebar-section-title">Audio</span> : null}
+        {!collapsed ? (
+          <label className="reader-sidebar-select">
+            <span>Voice</span>
+            <select
+              value={streamVoice}
+              disabled={controlsDisabled}
+              onChange={(event) => onStreamVoiceChange(event.currentTarget.value)}
+            >
+              {streamVoiceOptions.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {showReaderControls ? (
           <button
             type="button"
             className={`reader-sidebar-action ${streamActive ? 'reader-sidebar-action-active' : ''}`}
@@ -318,12 +318,12 @@ export default function ReaderSidebar({
             <SidebarIcon name="play" />
             <span className="reader-sidebar-label">{streamActive ? 'Stop Stream' : 'Play Stream'}</span>
           </button>
-          <button type="button" className="reader-sidebar-action" onClick={onOpenListeningDashboard} title="Listening dashboard" data-tooltip="Listening dashboard">
-            <SidebarIcon name="dashboard" />
-            <span className="reader-sidebar-label">Dashboard</span>
-          </button>
-        </div>
-      ) : null}
+        ) : null}
+        <button type="button" className="reader-sidebar-action" onClick={onOpenListeningDashboard} title="Listening dashboard" data-tooltip="Listening dashboard">
+          <SidebarIcon name="dashboard" />
+          <span className="reader-sidebar-label">Dashboard</span>
+        </button>
+      </div>
 
       <div className="reader-sidebar-footer">
         <button type="button" className="reader-sidebar-action" onClick={onOpenSettings} title="Settings" data-tooltip="Settings">

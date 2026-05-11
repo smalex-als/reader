@@ -762,6 +762,16 @@ export default function App() {
     [bookId, closeListeningDashboard, renderPage, setBookId]
   );
 
+  const handleOpenDashboardUnit = useCallback(
+    (unitSetId: string, topicId: string) => {
+      closeListeningDashboard();
+      setMainView('units');
+      setSelectedUnitSetId(unitSetId);
+      setSelectedUnitTopicId(topicId);
+    },
+    [closeListeningDashboard]
+  );
+
   const handleSelectSearchResult = useCallback((result: SearchResult) => {
     closeSearch();
     renderPage(result.page);
@@ -1520,6 +1530,7 @@ export default function App() {
       open: listeningDashboardOpen,
       onOpenBook: handleOpenDashboardBook,
       onOpenChapter: handleOpenDashboardChapter,
+      onOpenUnit: handleOpenDashboardUnit,
       onClose: closeListeningDashboard
     },
     promptEditorModalProps: {

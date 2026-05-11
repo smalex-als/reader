@@ -2,15 +2,42 @@ import express from 'express';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DATA_DIR } from '../config.js';
+import { listUnits } from '../lib/units.js';
 
 const router = express.Router();
 const STREAM_HISTORY_LOG = path.join(DATA_DIR, '.stream-history.log');
 const SESSION_GROUP_GAP_MS = 60 * 1000;
 const RECENT_SESSION_GROUP_GAP_MS = 15 * 60 * 1000;
 
+function parseUnitStreamPageKey(pageKey) {
+  if (typeof pageKey !== 'string') {
+    return null;
+  }
+  const match = pageKey.match(/^unit::([^:]+)::([^:]+)::paragraph-start-\d+$/);
+  if (!match) {
+    return null;
+  }
+  try {
+    return {
+      unitSetId: decodeURIComponent(match[1]),
+      topicId: decodeURIComponent(match[2])
+    };
+  } catch {
+    return null;
+  }
+}
+
 function normalizeStreamSource(pageKey) {
   if (typeof pageKey !== 'string' || !pageKey) {
     return { sourceType: 'unknown', sourceLabel: 'Unknown' };
+  }
+  const unitLocator = parseUnitStreamPageKey(pageKey);
+  if (unitLocator) {
+    return {
+      sourceType: 'unit',
+      sourceLabel: 'Units',
+      ...unitLocator
+    };
   }
   if (pageKey.startsWith('quiz::') && pageKey.endsWith('::answer')) {
     return {
@@ -59,6 +86,7 @@ function buildEmptyDashboard() {
     bySource: [],
     topBooks: [],
     topChapters: [],
+    topUnits: [],
     recentSessions: []
   };
 }
@@ -69,8 +97,33 @@ function buildSemanticSessionKey(entry) {
     entry.chapterNumber ?? 'none',
     entry.chapterTitle ?? '',
     entry.subchapterTitle ?? '',
-    entry.sourceType
+    entry.sourceType,
+    entry.unitSetId ?? '',
+    entry.topicId ?? ''
   ].join('::');
+}
+
+async function buildUnitTopicLookup() {
+  const lookup = new Map();
+  try {
+    const result = await listUnits();
+    for (const unitSet of result.items ?? []) {
+      for (const topic of unitSet.units ?? []) {
+        lookup.set(`${unitSet.id}::${topic.id}`, {
+          unitSetId: unitSet.id,
+          unitSetTitle: unitSet.title,
+          topicId: topic.id,
+          topicTitle: topic.title,
+          sourceBookId: unitSet.sourceBookId,
+          sourceChapterNumber: unitSet.sourceChapterNumber,
+          sourceChapterTitle: unitSet.sourceChapterTitle
+        });
+      }
+    }
+  } catch (error) {
+    console.warn('Unable to load units for listening dashboard', error);
+  }
+  return lookup;
 }
 
 function areEntriesCloseInTime(left, right, gapMs) {
@@ -179,12 +232,19 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
       return;
     }
 
+    const unitTopicLookup = await buildUnitTopicLookup();
     const normalizedEntries = entries
       .map((entry) => {
         const listenedSeconds = Number.isFinite(entry.listenedSeconds) ? entry.listenedSeconds : 0;
         const timestamp = typeof entry.timestamp === 'string' ? entry.timestamp : new Date().toISOString();
-        const { sourceType, sourceLabel } = normalizeStreamSource(entry.pageKeyStart);
-        const bookId = typeof entry.bookId === 'string' ? entry.bookId : 'unknown';
+        const { sourceType, sourceLabel, unitSetId = null, topicId = null } = normalizeStreamSource(entry.pageKeyStart);
+        const unitTopic = unitSetId && topicId ? unitTopicLookup.get(`${unitSetId}::${topicId}`) ?? null : null;
+        const bookId =
+          sourceType === 'unit' && unitSetId
+            ? unitSetId
+            : typeof entry.bookId === 'string'
+              ? entry.bookId
+              : 'unknown';
 
         return {
           timestamp,
@@ -197,6 +257,13 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
           pageKeyEnd: typeof entry.pageKeyEnd === 'string' ? entry.pageKeyEnd : null,
           sourceType,
           sourceLabel,
+          unitSetId,
+          topicId,
+          unitSetTitle: unitTopic?.unitSetTitle ?? null,
+          topicTitle: unitTopic?.topicTitle ?? null,
+          unitSourceBookId: unitTopic?.sourceBookId ?? null,
+          unitSourceChapterNumber: unitTopic?.sourceChapterNumber ?? null,
+          unitSourceChapterTitle: unitTopic?.sourceChapterTitle ?? null,
           listenedSeconds,
           startedAt: typeof entry.startedAt === 'string' ? entry.startedAt : timestamp,
           endedAt: typeof entry.endedAt === 'string' ? entry.endedAt : timestamp,
@@ -228,6 +295,8 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
           previous.chapterTitle === entry.chapterTitle &&
           previous.subchapterTitle === entry.subchapterTitle &&
           previous.sourceType === entry.sourceType &&
+          previous.unitSetId === entry.unitSetId &&
+          previous.topicId === entry.topicId &&
           withinGap
         ) {
           previous.listenedSeconds += entry.listenedSeconds;
@@ -251,6 +320,7 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
     const bySource = new Map();
     const byBook = new Map();
     const byChapter = new Map();
+    const byUnit = new Map();
     const activeDays = new Set();
     let totalSeconds = 0;
     let lastListenedAt = null;
@@ -278,6 +348,30 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
       sourceAggregate.sessions += 1;
       sourceAggregate.totalSeconds += session.listenedSeconds;
       bySource.set(session.sourceType, sourceAggregate);
+
+      if (session.sourceType === 'unit' && session.unitSetId && session.topicId) {
+        const unitKey = `${session.unitSetId}::${session.topicId}`;
+        const unitAggregate = byUnit.get(unitKey) ?? {
+          unitSetId: session.unitSetId,
+          unitSetTitle: session.unitSetTitle,
+          topicId: session.topicId,
+          topicTitle: session.topicTitle,
+          sourceBookId: session.unitSourceBookId,
+          sourceChapterNumber: session.unitSourceChapterNumber,
+          sourceChapterTitle: session.unitSourceChapterTitle,
+          sessions: 0,
+          totalSeconds: 0,
+          lastListenedAt: null
+        };
+        unitAggregate.sessions += 1;
+        unitAggregate.totalSeconds += session.listenedSeconds;
+        unitAggregate.lastListenedAt =
+          !unitAggregate.lastListenedAt || session.timestamp > unitAggregate.lastListenedAt
+            ? session.timestamp
+            : unitAggregate.lastListenedAt;
+        byUnit.set(unitKey, unitAggregate);
+        continue;
+      }
 
       const bookAggregate =
         byBook.get(session.bookId) ?? { bookId: session.bookId, sessions: 0, totalSeconds: 0, lastListenedAt: null };
@@ -351,6 +445,7 @@ router.get('/api/stream-history/dashboard', async (_req, res, next) => {
       bySource: [...bySource.values()].sort((left, right) => right.totalSeconds - left.totalSeconds),
       topBooks: [...byBook.values()].sort((left, right) => right.totalSeconds - left.totalSeconds).slice(0, 8),
       topChapters: [...byChapter.values()].sort((left, right) => right.totalSeconds - left.totalSeconds).slice(0, 8),
+      topUnits: [...byUnit.values()].sort((left, right) => right.totalSeconds - left.totalSeconds).slice(0, 8),
       recentSessions: normalizedRecentSessions
     });
   } catch (error) {

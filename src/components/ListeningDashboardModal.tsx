@@ -12,6 +12,7 @@ interface ListeningDashboardModalProps {
     pageNumber?: number | null,
     pageKeyEnd?: string | null
   ) => void;
+  onOpenUnit: (unitSetId: string, topicId: string) => void;
   onClose: () => void;
 }
 
@@ -59,6 +60,7 @@ export default function ListeningDashboardModal({
   open,
   onOpenBook,
   onOpenChapter,
+  onOpenUnit,
   onClose
 }: ListeningDashboardModalProps) {
   const [loading, setLoading] = useState(false);
@@ -267,6 +269,31 @@ export default function ListeningDashboardModal({
                 </article>
               </section>
 
+              {data.topUnits.length > 0 ? (
+                <section className="listening-panel">
+                  <h3 className="listening-panel-title">Top Units</h3>
+                  <div className="listening-table">
+                    {data.topUnits.map((entry) => (
+                      <button
+                        key={`${entry.unitSetId}-${entry.topicId}`}
+                        type="button"
+                        className="listening-table-row listening-table-button"
+                        onClick={() => onOpenUnit(entry.unitSetId, entry.topicId)}
+                      >
+                        <div className="listening-table-main">
+                          <strong>{entry.topicTitle ?? entry.topicId}</strong>
+                          <span>{entry.unitSetTitle ?? entry.unitSetId}</span>
+                        </div>
+                        <div className="listening-table-meta">
+                          <strong>{formatDuration(entry.totalSeconds)}</strong>
+                          <span>{entry.sessions} sessions</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
               <section className="listening-panel">
                 <h3 className="listening-panel-title">Recent Sessions</h3>
                 <div className="listening-table listening-table-compact">
@@ -276,7 +303,9 @@ export default function ListeningDashboardModal({
                       type="button"
                       className="listening-table-row listening-table-row-multiline listening-table-button"
                       onClick={() =>
-                        entry.chapterNumber !== null
+                        entry.sourceType === 'unit' && entry.unitSetId && entry.topicId
+                          ? onOpenUnit(entry.unitSetId, entry.topicId)
+                          : entry.chapterNumber !== null
                           ? onOpenChapter(
                               entry.bookId,
                               entry.chapterNumber,
@@ -289,11 +318,15 @@ export default function ListeningDashboardModal({
                     >
                       <div className="listening-table-main">
                         <strong>
-                          {entry.chapterTitle ?? entry.bookId}
+                          {entry.sourceType === 'unit'
+                            ? entry.topicTitle ?? entry.topicId ?? entry.bookId
+                            : entry.chapterTitle ?? entry.bookId}
                           {entry.subchapterTitle ? ` · ${entry.subchapterTitle}` : ''}
                         </strong>
                         <span>
-                          {entry.bookId}
+                          {entry.sourceType === 'unit'
+                            ? entry.unitSetTitle ?? entry.unitSetId ?? entry.bookId
+                            : entry.bookId}
                           {' · '}
                           {entry.sourceLabel}
                         </span>
