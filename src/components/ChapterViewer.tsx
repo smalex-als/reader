@@ -18,7 +18,11 @@ interface ChapterViewerProps {
   tocLoading: boolean;
   allowGenerate: boolean;
   allowEdit: boolean;
-  onEditChapter: () => void;
+  onEditChapter: (payload: {
+    versionId: string;
+    versionLabel: string | null;
+    text: string;
+  }) => void;
   textFontSize: number;
   onTextFontSizeChange: (value: number) => void;
   textTheme:
@@ -216,6 +220,8 @@ export default function ChapterViewer({
   const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
   const [outlineOpen, setOutlineOpen] = useState(true);
+  const [urlVersionReady, setUrlVersionReady] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const onPlayParagraphRef = useRef(onPlayParagraph);
   const textViewerRef = useRef<HTMLDivElement | null>(null);
   const appliedVersionNavigationRequestRef = useRef<number | null>(null);
@@ -340,6 +346,20 @@ export default function ChapterViewer({
     [onDisplayedTextChange, onFirstParagraphReady, selectedVersionId, setSelectedVersionId]
   );
 
+  const handleToolsToggle = useCallback(() => {
+    setToolsOpen((current) => {
+      const next = !current;
+      if (!next) {
+        setSettingsOpen(false);
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    setUrlVersionReady(false);
+  }, [bookId, chapterNumber]);
+
   useEffect(() => {
     if (!versionNavigationRequest) {
       return;
@@ -355,7 +375,53 @@ export default function ChapterViewer({
     }
     appliedVersionNavigationRequestRef.current = versionNavigationRequest.id;
     handleVersionChange(versionNavigationRequest.versionId);
+    setUrlVersionReady(true);
   }, [chapterNumber, handleVersionChange, versionNavigationRequest, versions]);
+
+  useEffect(() => {
+    if (urlVersionReady || !chapterNumber || versions.length === 0) {
+      return;
+    }
+    const requestedNavigationVersion =
+      versionNavigationRequest?.chapterNumber === chapterNumber &&
+      versions.some((version) => version.id === versionNavigationRequest.versionId)
+        ? versionNavigationRequest.versionId
+        : null;
+    if (requestedNavigationVersion) {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const requestedVersionId = params.get('version')?.trim() || '';
+    if (requestedVersionId && versions.some((version) => version.id === requestedVersionId)) {
+      if (requestedVersionId !== selectedVersionId) {
+        handleVersionChange(requestedVersionId);
+        return;
+      }
+    }
+    setUrlVersionReady(true);
+  }, [
+    chapterNumber,
+    handleVersionChange,
+    selectedVersionId,
+    urlVersionReady,
+    versionNavigationRequest,
+    versions
+  ]);
+
+  useEffect(() => {
+    if (!urlVersionReady || !chapterNumber) {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const nextVersionId = selectedVersionId || 'base';
+    if (params.get('version') === nextVersionId) {
+      return;
+    }
+    params.set('version', nextVersionId);
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+    window.history.replaceState(null, '', nextUrl);
+  }, [chapterNumber, selectedVersionId, urlVersionReady]);
 
   useEffect(() => {
     if (!displayText || !chapterNumber) {
@@ -701,7 +767,7 @@ export default function ChapterViewer({
         {pageMeta ? <div className="text-viewer-meta">{pageMeta}</div> : null}
         <div className="text-viewer-actions">
           {chapterNumber && versions.length > 0 ? (
-            <label className="text-viewer-version-select">
+            <label className="text-viewer-version-select text-viewer-current-version">
               <span>Version</span>
               <select
                 value={selectedVersionId}
@@ -718,144 +784,196 @@ export default function ChapterViewer({
               </select>
             </label>
           ) : null}
-          <button
-            type="button"
-            className="button button-primary"
-            onClick={() =>
-              onCreateUnit({
-                text: displayText ?? '',
-                chapterTitle,
-                versionLabel: selectedVersion?.label ?? null,
-                versionId: selectedVersionId
-              })
-            }
-            disabled={!chapterNumber || !displayText?.trim() || displayLoading || unitCreating}
-          >
-            {unitCreating ? 'Creating...' : 'Create a unit'}
-          </button>
-          <button
-            type="button"
-            className="button button-ghost modal-icon-button"
-            onClick={openVersionModal}
-            disabled={!canCreateVersion || versionSaving}
-            aria-label="Create text version"
-            title="Create text version"
-          >
-            <AddIcon />
-          </button>
-          {selectedVersion?.deletable ? (
+          {allowEdit && chapterNumber ? (
             <button
               type="button"
-              className="button button-ghost modal-icon-button"
-              onClick={() => void handleDeleteVersion()}
-              disabled={versionSaving}
-              aria-label="Delete selected version"
-              title="Delete selected version"
+              className="button button-secondary"
+              onClick={() =>
+                onEditChapter({
+                  versionId: selectedVersionId || 'base',
+                  versionLabel: selectedVersion?.label ?? null,
+                  text: displayText ?? ''
+                })
+              }
+              disabled={!displayText?.trim() || displayLoading}
             >
-              <TrashIcon />
+              Edit
             </button>
           ) : null}
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => setSettingsOpen((prev) => !prev)}
-            aria-expanded={settingsOpen}
-            aria-controls="text-viewer-settings"
+            onClick={handleToolsToggle}
+            aria-expanded={toolsOpen}
+            aria-controls="text-viewer-tools"
           >
-            {settingsOpen ? 'Hide settings' : 'Text settings'}
+            Tools
           </button>
-          {outlineItems.length > 0 ? (
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => setOutlineOpen((prev) => !prev)}
-              aria-expanded={outlineOpen}
-              aria-controls="text-viewer-outline"
-            >
-              {outlineOpen ? 'Hide outline' : 'Show outline'}
-            </button>
-          ) : null}
-          {chapterNumber && mp3VoiceOptions.length > 0 ? (
-            <label className="text-viewer-version-select">
-              <span>MP3 voice</span>
-              <select
-                value={mp3Voice}
-                onChange={(event) => onMp3VoiceChange(event.target.value)}
-                disabled={isAudioJobActive || audioGenerating}
-              >
-                {mp3VoiceOptions.map((voice) => (
-                  <option key={voice.id} value={voice.id}>
-                    {voice.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {chapterNumber ? (
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => void handleGenerateAudio()}
-              disabled={!canGenerateAudio || audioGenerating || audioDeleting || isAudioJobActive || !mp3Voice}
-            >
-              {audioGenerating
-                ? 'Queuing MP3…'
-                : chapterAudioReady && chapterAudioVersionId === selectedVersionId
-                  ? 'Regenerate MP3'
-                  : 'Generate MP3'}
-            </button>
-          ) : null}
-          {chapterNumber && isAudioJobActive ? (
-            <button type="button" className="button button-secondary" onClick={handleCancelAudioJob}>
-              Cancel
-            </button>
-          ) : null}
-          {chapterAudioReady && chapterAudioUrl ? (
-            <>
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={() =>
-                  onPlayAudio({
-                    title: chapterTitle ?? `Chapter ${chapterNumber}`,
-                    subtitle: selectedVersion?.label,
-                    url: chapterAudioUrl,
-                    chapterNumber,
-                    versionId: selectedVersionId,
-                    subchapters: chapterAudioSubchapters
-                  })
-                }
-                disabled={audioDeleting}
-              >
-                ▶ Play
-              </button>
-              <a
-                className="button button-secondary"
-                href={chapterAudioUrl}
-                download
-                aria-label="Download MP3 file"
-                title="Download MP3 file"
-              >
-                ↓
-              </a>
-              <button
-                type="button"
-                className="button button-secondary modal-icon-button"
-                onClick={() => void handleDeleteAudio()}
-                disabled={audioDeleting || isAudioJobActive}
-                aria-label="Delete MP3 file"
-                title="Delete MP3 file"
-              >
-                <TrashIcon size={16} />
-              </button>
-            </>
-          ) : null}
-          {allowEdit && chapterNumber ? (
-            <button type="button" className="button button-secondary" onClick={onEditChapter}>
-              Edit
-            </button>
-          ) : null}
         </div>
+        {toolsOpen ? (
+          <div className="text-viewer-tools-panel" id="text-viewer-tools">
+            <section className="text-viewer-tools-section" aria-label="Study tools">
+              <h3 className="text-viewer-tools-title">Study</h3>
+              <div className="text-viewer-tools-body">
+                <div className="text-viewer-tools-row">
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() =>
+                      onCreateUnit({
+                        text: displayText ?? '',
+                        chapterTitle,
+                        versionLabel: selectedVersion?.label ?? null,
+                        versionId: selectedVersionId
+                      })
+                    }
+                    disabled={!chapterNumber || !displayText?.trim() || displayLoading || unitCreating}
+                  >
+                    {unitCreating ? 'Creating...' : 'Create a unit'}
+                  </button>
+                </div>
+              </div>
+            </section>
+            <section className="text-viewer-tools-section" aria-label="Audio tools">
+              <h3 className="text-viewer-tools-title">Audio</h3>
+              <div className="text-viewer-tools-body">
+                <div className="text-viewer-tools-row">
+                  {chapterNumber && mp3VoiceOptions.length > 0 ? (
+                    <label className="text-viewer-version-select text-viewer-voice-select">
+                      <span>MP3 voice</span>
+                      <select
+                        value={mp3Voice}
+                        onChange={(event) => onMp3VoiceChange(event.target.value)}
+                        disabled={isAudioJobActive || audioGenerating}
+                      >
+                        {mp3VoiceOptions.map((voice) => (
+                          <option key={voice.id} value={voice.id}>
+                            {voice.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {chapterNumber ? (
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => void handleGenerateAudio()}
+                      disabled={!canGenerateAudio || audioGenerating || audioDeleting || isAudioJobActive || !mp3Voice}
+                    >
+                      {audioGenerating
+                        ? 'Queuing MP3…'
+                        : chapterAudioReady && chapterAudioVersionId === selectedVersionId
+                          ? 'Regenerate MP3'
+                          : 'Generate MP3'}
+                    </button>
+                  ) : null}
+                  {chapterNumber && isAudioJobActive ? (
+                    <button type="button" className="button button-secondary" onClick={handleCancelAudioJob}>
+                      Cancel
+                    </button>
+                  ) : null}
+                  {chapterAudioReady && chapterAudioUrl ? (
+                    <>
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        onClick={() =>
+                          onPlayAudio({
+                            title: chapterTitle ?? `Chapter ${chapterNumber}`,
+                            subtitle: selectedVersion?.label,
+                            url: chapterAudioUrl,
+                            chapterNumber,
+                            versionId: selectedVersionId,
+                            subchapters: chapterAudioSubchapters
+                          })
+                        }
+                        disabled={audioDeleting}
+                      >
+                        ▶ Play
+                      </button>
+                      <a
+                        className="button button-secondary modal-icon-button"
+                        href={chapterAudioUrl}
+                        download
+                        aria-label="Download MP3 file"
+                        title="Download MP3 file"
+                      >
+                        ↓
+                      </a>
+                      <button
+                        type="button"
+                        className="button button-secondary modal-icon-button"
+                        onClick={() => void handleDeleteAudio()}
+                        disabled={audioDeleting || isAudioJobActive}
+                        aria-label="Delete MP3 file"
+                        title="Delete MP3 file"
+                      >
+                        <TrashIcon size={16} />
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+            <section className="text-viewer-tools-section" aria-label="View tools">
+              <h3 className="text-viewer-tools-title">View</h3>
+              <div className="text-viewer-tools-body">
+                <div className="text-viewer-tools-row">
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => setSettingsOpen((prev) => !prev)}
+                    aria-expanded={settingsOpen}
+                    aria-controls="text-viewer-settings"
+                  >
+                    {settingsOpen ? 'Hide settings' : 'Text settings'}
+                  </button>
+                  {outlineItems.length > 0 ? (
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => setOutlineOpen((prev) => !prev)}
+                      aria-expanded={outlineOpen}
+                      aria-controls="text-viewer-outline"
+                    >
+                      {outlineOpen ? 'Hide outline' : 'Show outline'}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+            <section className="text-viewer-tools-section" aria-label="Version tools">
+              <h3 className="text-viewer-tools-title">Versions</h3>
+              <div className="text-viewer-tools-body">
+                <div className="text-viewer-tools-row">
+                  <button
+                    type="button"
+                    className="button button-ghost modal-icon-button"
+                    onClick={openVersionModal}
+                    disabled={!canCreateVersion || versionSaving}
+                    aria-label="Create text version"
+                    title="Create text version"
+                  >
+                    <AddIcon />
+                  </button>
+                  {selectedVersion?.deletable ? (
+                    <button
+                      type="button"
+                      className="button button-ghost modal-icon-button"
+                      onClick={() => void handleDeleteVersion()}
+                      disabled={versionSaving}
+                      aria-label="Delete selected version"
+                      title="Delete selected version"
+                    >
+                      <TrashIcon />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
         {settingsOpen ? (
           <div className="text-viewer-settings" id="text-viewer-settings">
             <div className="text-viewer-setting">

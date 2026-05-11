@@ -385,6 +385,39 @@ export async function getChapterTextVersionText({ bookId, chapterNumber, version
   };
 }
 
+export async function updateChapterTextVersion({ bookId, chapterNumber, versionId = 'base', content }) {
+  const { directory, chapterFilename, chapterPath } = await assertBaseChapter({ bookId, chapterNumber });
+  const resolvedVersionId = typeof versionId === 'string' && versionId.trim() ? versionId.trim() : 'base';
+  const rawText = typeof content === 'string' ? content.trim() : '';
+  if (!rawText) {
+    throw createHttpError(400, 'Chapter text is empty');
+  }
+
+  if (resolvedVersionId === 'base') {
+    await fs.writeFile(chapterPath, rawText, 'utf8');
+  } else {
+    const meta = await loadVersionMeta({ directory, chapterNumber });
+    const target = meta.versions.find((entry) => entry?.id === resolvedVersionId);
+    if (!target?.filename) {
+      throw createHttpError(404, 'Chapter text version not found');
+    }
+    await fs.writeFile(path.join(directory, target.filename), rawText, 'utf8');
+    await writeJsonFile(meta.metaPath, {
+      latestVersionId: resolvedVersionId,
+      versions: meta.versions.map((entry) =>
+        entry?.id === resolvedVersionId ? { ...entry, updatedAt: new Date().toISOString() } : entry
+      )
+    });
+  }
+
+  const versionsPayload = await listChapterTextVersions({ bookId, chapterNumber });
+  return {
+    ...versionsPayload,
+    updatedVersionId: resolvedVersionId,
+    file: resolvedVersionId === 'base' ? `/data/${bookId}/${chapterFilename}` : undefined
+  };
+}
+
 async function buildPromptInput({ bookId, chapterNumber, chapterText }) {
   const [bookCard, toc] = await Promise.all([
     loadBookCard(bookId),

@@ -106,6 +106,11 @@ export default function App() {
     setEditorChapterNumber
   } = useModalState();
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
+  const [editorTextVersion, setEditorTextVersion] = useState<{
+    versionId: string;
+    versionLabel: string | null;
+    text: string;
+  } | null>(null);
   const [unitsRefreshToken, setUnitsRefreshToken] = useState(0);
   const [unitCreating, setUnitCreating] = useState(false);
   const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
@@ -1609,9 +1614,13 @@ export default function App() {
       bookId,
       chapterNumber: editorChapterNumber ?? chapterNumber,
       chapterTitle: editorChapterTitle,
+      versionId: editorTextVersion?.versionId ?? null,
+      versionLabel: editorTextVersion?.versionLabel ?? null,
+      initialText: editorTextVersion?.text ?? null,
       onClose: () => {
         setEditorOpen(false);
         setEditorChapterNumber(null);
+        setEditorTextVersion(null);
       },
       onSaved: (nextToc: TocEntry[] | null) => {
         if (nextToc) {
@@ -1619,6 +1628,7 @@ export default function App() {
         }
         setEditorOpen(false);
         setEditorChapterNumber(null);
+        setEditorTextVersion(null);
         setChapterViewRefresh((prev) => prev + 1);
       }
     },
@@ -1629,9 +1639,10 @@ export default function App() {
       pageRange: chapterRange,
       tocLoading,
       allowGenerate: !isTextBook,
-      allowEdit: isTextBook,
-      onEditChapter: () => {
+      allowEdit: true,
+      onEditChapter: (payload: { versionId: string; versionLabel: string | null; text: string }) => {
         setEditorChapterNumber(chapterNumber);
+        setEditorTextVersion(payload);
         setEditorOpen(true);
       },
       textFontSize: settings.textFontSize,

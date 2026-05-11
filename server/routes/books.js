@@ -41,6 +41,7 @@ import {
   deletePromptFromLibrary,
   listChapterTextPromptLibrary,
   listChapterTextVersions,
+  updateChapterTextVersion,
   updatePromptInLibrary
 } from '../lib/chapterTextVersions.js';
 import { generateChapterMemoryCard, loadChapterMemoryCard } from '../lib/memoryCard.js';
@@ -617,6 +618,18 @@ router.post('/api/books/:id/chapters/:chapter/text-versions', asyncHandler(async
     customPrompt: typeof req.body?.customPrompt === 'string' ? req.body.customPrompt : '',
     addToLibrary: req.body?.addToLibrary === true,
     promptName: typeof req.body?.promptName === 'string' ? req.body.promptName : ''
+  });
+  res.json({ book: bookId, chapterNumber, ...result });
+}));
+
+router.put('/api/books/:id/chapters/:chapter/text-versions/:versionId', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const result = await updateChapterTextVersion({
+    bookId,
+    chapterNumber,
+    versionId: req.params.versionId,
+    content: typeof req.body?.content === 'string' ? req.body.content : ''
   });
   res.json({ book: bookId, chapterNumber, ...result });
 }));

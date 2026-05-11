@@ -5,6 +5,9 @@ interface ChapterEditorProps {
   bookId: string | null;
   chapterNumber: number | null;
   chapterTitle: string | null;
+  versionId?: string | null;
+  versionLabel?: string | null;
+  initialText?: string | null;
   onClose: () => void;
   onSaved: (toc: TocEntry[] | null) => void;
 }
@@ -17,6 +20,9 @@ export default function ChapterEditor({
   bookId,
   chapterNumber,
   chapterTitle,
+  versionId = null,
+  versionLabel = null,
+  initialText = null,
   onClose,
   onSaved
 }: ChapterEditorProps) {
@@ -25,11 +31,20 @@ export default function ChapterEditor({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const editingTextVersion = Boolean(versionId);
 
   useEffect(() => {
     if (!bookId || !chapterNumber) {
       setDraftText('');
       setDraftTitle('');
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    if (initialText !== null) {
+      setDraftText(initialText);
+      setDraftTitle(chapterTitle ?? '');
       setError(null);
       setLoading(false);
       return;
@@ -71,7 +86,7 @@ export default function ChapterEditor({
     return () => {
       canceled = true;
     };
-  }, [bookId, chapterNumber, chapterTitle]);
+  }, [bookId, chapterNumber, chapterTitle, initialText]);
 
   const handleSave = useCallback(async () => {
     if (!bookId || !chapterNumber || saving) {
@@ -80,14 +95,18 @@ export default function ChapterEditor({
     setSaving(true);
     setError(null);
     try {
-      const response = await fetch(
-        `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: draftText, title: draftTitle })
-        }
-      );
+      const url = editingTextVersion
+        ? `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/text-versions/${encodeURIComponent(versionId || 'base')}`
+        : `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}`;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          editingTextVersion
+            ? { content: draftText }
+            : { content: draftText, title: draftTitle }
+        )
+      });
       if (!response.ok) {
         throw new Error(`Save failed: ${response.status}`);
       }
@@ -99,21 +118,27 @@ export default function ChapterEditor({
     } finally {
       setSaving(false);
     }
-  }, [bookId, chapterNumber, draftText, draftTitle, onSaved, saving]);
+  }, [bookId, chapterNumber, draftText, draftTitle, editingTextVersion, onSaved, saving, versionId]);
 
   return (
     <div className="chapter-editor">
       <header className="chapter-editor-header">
         <div className="chapter-editor-title">
-          <span className="text-viewer-label">Edit Chapter</span>
-          <input
-            type="text"
-            className="input chapter-editor-title-input"
-            placeholder="Chapter title"
-            value={draftTitle}
-            onChange={(event) => setDraftTitle(event.target.value)}
-            disabled={loading || saving}
-          />
+          <span className="text-viewer-label">
+            {editingTextVersion ? `Edit ${versionLabel ?? versionId ?? 'text version'}` : 'Edit Chapter'}
+          </span>
+          {editingTextVersion ? (
+            <strong className="chapter-editor-title-input">{chapterTitle ?? 'Chapter text'}</strong>
+          ) : (
+            <input
+              type="text"
+              className="input chapter-editor-title-input"
+              placeholder="Chapter title"
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              disabled={loading || saving}
+            />
+          )}
         </div>
         <div className="chapter-editor-actions">
           <button type="button" className="button" onClick={handleSave} disabled={saving || loading}>
