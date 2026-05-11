@@ -125,6 +125,7 @@ export default function ReaderSidebar({
     streamState.status === 'streaming' ||
     streamState.status === 'connecting' ||
     streamState.status === 'paused';
+  const showReaderControls = mainView === 'reader';
 
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
@@ -199,124 +200,130 @@ export default function ReaderSidebar({
         </button>
       </div>
 
-      <div className="reader-sidebar-section">
-        {!collapsed ? <span className="reader-sidebar-section-title">Mode</span> : null}
-        {[
-          { mode: 'pages' as const, label: 'Pages', icon: 'pages' as const, disabled: disablePagesMode },
-          { mode: 'scroll' as const, label: 'Scroll', icon: 'scroll' as const, disabled: disableScrollMode },
-          { mode: 'text' as const, label: 'Text', icon: 'text' as const, disabled: false },
-          { mode: 'audio' as const, label: 'Audio', icon: 'audio' as const, disabled: false }
-        ].map((item) => (
-          <button
-            key={item.mode}
-            type="button"
-            className={`reader-sidebar-action ${
-              mainView === 'reader' && viewMode === item.mode ? 'reader-sidebar-action-active' : ''
-            }`}
-            onClick={() => onViewModeChange(item.mode)}
-            disabled={controlsDisabled || item.disabled}
-            title={item.label}
-            data-tooltip={item.label}
-          >
-            <SidebarIcon name={item.icon} />
-            <span className="reader-sidebar-label">{item.label}</span>
-          </button>
-        ))}
-      </div>
+      {showReaderControls ? (
+        <div className="reader-sidebar-section">
+          {!collapsed ? <span className="reader-sidebar-section-title">Mode</span> : null}
+          {[
+            { mode: 'pages' as const, label: 'Pages', icon: 'pages' as const, disabled: disablePagesMode },
+            { mode: 'scroll' as const, label: 'Scroll', icon: 'scroll' as const, disabled: disableScrollMode },
+            { mode: 'text' as const, label: 'Text', icon: 'text' as const, disabled: false },
+            { mode: 'audio' as const, label: 'Audio', icon: 'audio' as const, disabled: false }
+          ].map((item) => (
+            <button
+              key={item.mode}
+              type="button"
+              className={`reader-sidebar-action ${viewMode === item.mode ? 'reader-sidebar-action-active' : ''}`}
+              onClick={() => onViewModeChange(item.mode)}
+              disabled={controlsDisabled || item.disabled}
+              title={item.label}
+              data-tooltip={item.label}
+            >
+              <SidebarIcon name={item.icon} />
+              <span className="reader-sidebar-label">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
-      <div className="reader-sidebar-section reader-sidebar-navigation">
-        {!collapsed ? <span className="reader-sidebar-section-title">Page</span> : null}
-        <div className="reader-sidebar-pager">
-          <button type="button" className="reader-sidebar-small-button" onClick={onPrev} disabled={controlsDisabled} aria-label="Previous page" data-tooltip="Previous page">
-            &lt;
+      {showReaderControls ? (
+        <div className="reader-sidebar-section reader-sidebar-navigation">
+          {!collapsed ? <span className="reader-sidebar-section-title">Page</span> : null}
+          <div className="reader-sidebar-pager">
+            <button type="button" className="reader-sidebar-small-button" onClick={onPrev} disabled={controlsDisabled} aria-label="Previous page" data-tooltip="Previous page">
+              &lt;
+            </button>
+            <span className="reader-sidebar-page-count">{pageLabel}</span>
+            <button type="button" className="reader-sidebar-small-button" onClick={onNext} disabled={controlsDisabled} aria-label="Next page" data-tooltip="Next page">
+              &gt;
+            </button>
+          </div>
+          {!collapsed ? (
+            <label className="reader-sidebar-goto">
+              <span>Go to</span>
+              <input
+                type="number"
+                min={1}
+                max={Math.max(1, manifestLength)}
+                value={pageDraft}
+                placeholder={manifestLength === 0 ? '-' : String(currentPage + 1)}
+                disabled={controlsDisabled}
+                onChange={(event) => setPageDraft(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    submitPage();
+                  }
+                }}
+              />
+            </label>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showReaderControls ? (
+        <div className="reader-sidebar-section">
+          <button type="button" className="reader-sidebar-action" onClick={onOpenToc} disabled={controlsDisabled} title="Table of contents" data-tooltip="Table of contents">
+            <SidebarIcon name="toc" />
+            <span className="reader-sidebar-label">TOC</span>
           </button>
-          <span className="reader-sidebar-page-count">{pageLabel}</span>
-          <button type="button" className="reader-sidebar-small-button" onClick={onNext} disabled={controlsDisabled} aria-label="Next page" data-tooltip="Next page">
-            &gt;
+          <button type="button" className="reader-sidebar-action" onClick={onOpenSearch} disabled={!currentBook} title="Search" data-tooltip="Search">
+            <SidebarIcon name="search" />
+            <span className="reader-sidebar-label">Search</span>
+          </button>
+          <button
+            type="button"
+            className={`reader-sidebar-action ${isBookmarked ? 'reader-sidebar-action-active' : ''}`}
+            onClick={onToggleBookmark}
+            disabled={controlsDisabled}
+            title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+            data-tooltip={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          >
+            <SidebarIcon name="bookmark" />
+            <span className="reader-sidebar-label">{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
+          </button>
+          <button type="button" className="reader-sidebar-action" onClick={onShowBookmarks} disabled={!currentBook} title="Bookmarks" data-tooltip="Bookmarks">
+            <SidebarIcon name="bookmark" />
+            <span className="reader-sidebar-label">Bookmarks</span>
+            {!collapsed ? <span className="reader-sidebar-count">{bookmarksCount}</span> : null}
           </button>
         </div>
-        {!collapsed ? (
-          <label className="reader-sidebar-goto">
-            <span>Go to</span>
-            <input
-              type="number"
-              min={1}
-              max={Math.max(1, manifestLength)}
-              value={pageDraft}
-              placeholder={manifestLength === 0 ? '-' : String(currentPage + 1)}
-              disabled={controlsDisabled}
-              onChange={(event) => setPageDraft(event.currentTarget.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  submitPage();
-                }
-              }}
-            />
-          </label>
-        ) : null}
-      </div>
+      ) : null}
 
-      <div className="reader-sidebar-section">
-        <button type="button" className="reader-sidebar-action" onClick={onOpenToc} disabled={controlsDisabled} title="Table of contents" data-tooltip="Table of contents">
-          <SidebarIcon name="toc" />
-          <span className="reader-sidebar-label">TOC</span>
-        </button>
-        <button type="button" className="reader-sidebar-action" onClick={onOpenSearch} disabled={!currentBook} title="Search" data-tooltip="Search">
-          <SidebarIcon name="search" />
-          <span className="reader-sidebar-label">Search</span>
-        </button>
-        <button
-          type="button"
-          className={`reader-sidebar-action ${isBookmarked ? 'reader-sidebar-action-active' : ''}`}
-          onClick={onToggleBookmark}
-          disabled={controlsDisabled}
-          title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-          data-tooltip={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
-        >
-          <SidebarIcon name="bookmark" />
-          <span className="reader-sidebar-label">{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
-        </button>
-        <button type="button" className="reader-sidebar-action" onClick={onShowBookmarks} disabled={!currentBook} title="Bookmarks" data-tooltip="Bookmarks">
-          <SidebarIcon name="bookmark" />
-          <span className="reader-sidebar-label">Bookmarks</span>
-          {!collapsed ? <span className="reader-sidebar-count">{bookmarksCount}</span> : null}
-        </button>
-      </div>
-
-      <div className="reader-sidebar-section">
-        {!collapsed ? <span className="reader-sidebar-section-title">Audio</span> : null}
-        {!collapsed ? (
-          <label className="reader-sidebar-select">
-            <span>Voice</span>
-            <select
-              value={streamVoice}
-              disabled={controlsDisabled}
-              onChange={(event) => onStreamVoiceChange(event.currentTarget.value)}
-            >
-              {streamVoiceOptions.map((voice) => (
-                <option key={voice.id} value={voice.id}>
-                  {voice.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <button
-          type="button"
-          className={`reader-sidebar-action ${streamActive ? 'reader-sidebar-action-active' : ''}`}
-          onClick={streamActive ? onStopStream : onPlayStream}
-          disabled={controlsDisabled}
-          title={streamActive ? 'Stop stream' : 'Play stream'}
-          data-tooltip={streamActive ? 'Stop stream' : 'Play stream'}
-        >
-          <SidebarIcon name="play" />
-          <span className="reader-sidebar-label">{streamActive ? 'Stop Stream' : 'Play Stream'}</span>
-        </button>
-        <button type="button" className="reader-sidebar-action" onClick={onOpenListeningDashboard} title="Listening dashboard" data-tooltip="Listening dashboard">
-          <SidebarIcon name="dashboard" />
-          <span className="reader-sidebar-label">Dashboard</span>
-        </button>
-      </div>
+      {showReaderControls ? (
+        <div className="reader-sidebar-section">
+          {!collapsed ? <span className="reader-sidebar-section-title">Audio</span> : null}
+          {!collapsed ? (
+            <label className="reader-sidebar-select">
+              <span>Voice</span>
+              <select
+                value={streamVoice}
+                disabled={controlsDisabled}
+                onChange={(event) => onStreamVoiceChange(event.currentTarget.value)}
+              >
+                {streamVoiceOptions.map((voice) => (
+                  <option key={voice.id} value={voice.id}>
+                    {voice.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button
+            type="button"
+            className={`reader-sidebar-action ${streamActive ? 'reader-sidebar-action-active' : ''}`}
+            onClick={streamActive ? onStopStream : onPlayStream}
+            disabled={controlsDisabled}
+            title={streamActive ? 'Stop stream' : 'Play stream'}
+            data-tooltip={streamActive ? 'Stop stream' : 'Play stream'}
+          >
+            <SidebarIcon name="play" />
+            <span className="reader-sidebar-label">{streamActive ? 'Stop Stream' : 'Play Stream'}</span>
+          </button>
+          <button type="button" className="reader-sidebar-action" onClick={onOpenListeningDashboard} title="Listening dashboard" data-tooltip="Listening dashboard">
+            <SidebarIcon name="dashboard" />
+            <span className="reader-sidebar-label">Dashboard</span>
+          </button>
+        </div>
+      ) : null}
 
       <div className="reader-sidebar-footer">
         <button type="button" className="reader-sidebar-action" onClick={onOpenSettings} title="Settings" data-tooltip="Settings">
