@@ -100,6 +100,8 @@ function getTopicLabels(unit: UnitItem) {
       question: 'Question',
       of: 'of',
       submitAnswer: 'Submit answer',
+      nextQuestion: 'Next question',
+      done: 'Done',
       answerPlaceholder: 'Write your answer here',
       checkingAnswer: 'Checking...',
       yourAnswer: 'Your answer',
@@ -118,18 +120,20 @@ function getTopicLabels(unit: UnitItem) {
     learningGoal: 'Цель',
     summary: 'Краткое содержание',
     keyPoints: 'Главное',
-      selfCheckQuestions: 'Вопросы для самопроверки',
-      selfCheck: 'Самопроверка',
-      question: 'Вопрос',
-      of: 'из',
-      submitAnswer: 'Проверить ответ',
-      answerPlaceholder: 'Напиши свой ответ здесь',
-      checkingAnswer: 'Проверяю...',
-      yourAnswer: 'Твой ответ',
-      referenceAnswer: 'Пример ответа',
-      strengths: 'Что хорошо',
-      improvements: 'Что улучшить',
-      back: 'Назад',
+    selfCheckQuestions: 'Вопросы для самопроверки',
+    selfCheck: 'Самопроверка',
+    question: 'Вопрос',
+    of: 'из',
+    submitAnswer: 'Проверить ответ',
+    nextQuestion: 'Следующий вопрос',
+    done: 'Готово',
+    answerPlaceholder: 'Напиши свой ответ здесь',
+    checkingAnswer: 'Проверяю...',
+    yourAnswer: 'Твой ответ',
+    referenceAnswer: 'Пример ответа',
+    strengths: 'Что хорошо',
+    improvements: 'Что улучшить',
+    back: 'Назад',
     markAsRead: 'Отметить прочитанным',
     markAsUnread: 'Отметить непрочитанным',
     quiz: 'Квиз',
@@ -325,6 +329,13 @@ export default function UnitsView({
       setSelfCheckAnswer('');
       setSelfCheckError(null);
       setSelfCheckResult(null);
+    };
+    const goToNextSelfCheckQuestion = () => {
+      if (selfCheckIndex >= selfCheckQuestions.length - 1) {
+        closeSelfCheck();
+        return;
+      }
+      selectSelfCheckQuestion(selfCheckIndex + 1);
     };
     const submitSelfCheckAnswer = async () => {
       if (!selectedSet || !selectedUnit || !currentSelfCheckQuestion || !selfCheckAnswer.trim()) {
@@ -649,10 +660,22 @@ export default function UnitsView({
                       <button
                         type="button"
                         className="button button-primary"
-                        onClick={() => void submitSelfCheckAnswer()}
-                        disabled={selfCheckLoading || !selfCheckAnswer.trim()}
+                        onClick={() => {
+                          if (selfCheckResult) {
+                            goToNextSelfCheckQuestion();
+                            return;
+                          }
+                          void submitSelfCheckAnswer();
+                        }}
+                        disabled={selfCheckLoading || (!selfCheckResult && !selfCheckAnswer.trim())}
                       >
-                        {selfCheckLoading ? labels.checkingAnswer : labels.submitAnswer}
+                        {selfCheckLoading
+                          ? labels.checkingAnswer
+                          : selfCheckResult
+                          ? selfCheckIndex >= selfCheckQuestions.length - 1
+                            ? labels.done
+                            : labels.nextQuestion
+                          : labels.submitAnswer}
                       </button>
                     </footer>
                   </div>
