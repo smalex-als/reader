@@ -44,6 +44,12 @@ type AudioJobStatus = {
   error?: string | null;
   audioUrl?: string | null;
   subchapters?: FloatingAudioSubchapter[];
+  progress?: {
+    percent: number;
+    current: number;
+    total: number;
+    label?: string | null;
+  } | null;
 };
 
 async function readErrorMessage(response: Response) {
@@ -158,6 +164,7 @@ export default function AudioView({
             error?: string | null;
             audioUrl?: string | null;
             subchapters?: FloatingAudioSubchapter[];
+            progress?: AudioJobStatus['progress'];
           };
         };
         const job = payload?.job;
@@ -173,7 +180,8 @@ export default function AudioView({
             status,
             error: job.error ?? null,
             audioUrl: job.audioUrl ?? null,
-            subchapters: job.subchapters ?? []
+            subchapters: job.subchapters ?? [],
+            progress: job.progress ?? null
           }
         }));
         if (status === 'completed') {
@@ -229,6 +237,7 @@ export default function AudioView({
             error?: string | null;
             audioUrl?: string | null;
             subchapters?: FloatingAudioSubchapter[];
+            progress?: AudioJobStatus['progress'];
           };
         };
         const job = payload?.job;
@@ -241,7 +250,8 @@ export default function AudioView({
               status,
               error: job.error ?? null,
               audioUrl: job.audioUrl ?? null,
-              subchapters: job.subchapters ?? []
+              subchapters: job.subchapters ?? [],
+              progress: job.progress ?? null
             }
           }));
           schedulePoll(chapterNumber);
@@ -529,6 +539,32 @@ export default function AudioView({
                       </>
                     ) : null}
                   </div>
+                  {isAudioJobActive && jobStatus?.progress ? (
+                    <div className="mp3-generation-progress audio-row-progress">
+                      <div
+                        className="mp3-generation-progress-track"
+                        role="progressbar"
+                        aria-valuenow={jobStatus.progress.percent}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`MP3 generation progress for chapter ${entry.chapterNumber}`}
+                      >
+                        <div
+                          className="mp3-generation-progress-fill"
+                          style={{ width: `${jobStatus.progress.percent}%` }}
+                        />
+                      </div>
+                      <div className="mp3-generation-progress-meta">
+                        <span>{jobStatus.progress.label ?? 'Generating MP3'}</span>
+                        <span>
+                          {jobStatus.progress.percent}%
+                          {jobStatus.progress.total > 0
+                            ? ` · ${jobStatus.progress.current}/${jobStatus.progress.total}`
+                            : ''}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
                   {jobStatus?.status === 'failed' ? (
                     <p className="audio-row-error">
                       {jobStatus.error ?? 'Audio generation failed.'}

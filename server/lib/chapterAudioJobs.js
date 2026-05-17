@@ -28,6 +28,21 @@ let cachedJobs = null;
 let writeQueue = Promise.resolve();
 const PCM_BYTES_PER_SECOND = PCM_STREAM_SAMPLE_RATE * PCM_STREAM_CHANNEL_COUNT * (PCM_STREAM_BIT_DEPTH / 8);
 
+function normalizeProgress(progress) {
+  if (!progress || typeof progress !== 'object') {
+    return null;
+  }
+  const percent = Number.parseInt(progress.percent, 10);
+  const current = Number.parseInt(progress.current, 10);
+  const total = Number.parseInt(progress.total, 10);
+  return {
+    percent: Number.isFinite(percent) ? Math.max(0, Math.min(100, percent)) : 0,
+    current: Number.isFinite(current) ? Math.max(0, current) : 0,
+    total: Number.isFinite(total) ? Math.max(0, total) : 0,
+    label: typeof progress.label === 'string' ? progress.label : null
+  };
+}
+
 function roundSeconds(value) {
   return Math.round(value * 1000) / 1000;
 }
@@ -88,7 +103,8 @@ function normalizeJob(job) {
     startedAt: job.startedAt ?? null,
     updatedAt: job.updatedAt ?? null,
     error: job.error ?? null,
-    audioUrl: job.audioUrl ?? null
+    audioUrl: job.audioUrl ?? null,
+    progress: normalizeProgress(job.progress)
   };
 }
 
@@ -135,7 +151,8 @@ export async function cancelChapterAudioJob(bookId, chapterNumber) {
   return updateJob(bookId, chapterNumber, {
     status: 'canceled',
     error: null,
-    audioUrl: null
+    audioUrl: null,
+    progress: null
   });
 }
 
@@ -165,7 +182,8 @@ async function finalizeFailure(bookId, chapterNumber, error) {
   const message = error instanceof Error ? error.message : 'Audio generation failed';
   await updateJob(bookId, chapterNumber, {
     status: 'failed',
-    error: message
+    error: message,
+    progress: null
   });
 }
 
@@ -250,12 +268,13 @@ async function runChapterAudioJob({
       status: 'running',
       versionId: versionId ?? 'base',
       startedAt: new Date().toISOString(),
-      error: null
+      error: null,
+      progress: { percent: 15, current: 0, total: 0, label: 'Preparing MP3' }
     });
 
     const signal = activeSignals.get(key);
     if (signal?.canceled) {
-      await updateJob(bookId, chapterNumber, { status: 'canceled' });
+      await updateJob(bookId, chapterNumber, { status: 'canceled', progress: null });
       return;
     }
     if (force) {
@@ -263,8 +282,16 @@ async function runChapterAudioJob({
     }
 
     if (provider === 'xai') {
+      await updateJob(bookId, chapterNumber, {
+        status: 'running',
+        progress: { percent: 35, current: 0, total: 0, label: 'Generating MP3' }
+      });
       const result = await generateChapterXaiAudio({ bookId, chapterNumber, versionId, voice, force });
       if (!('existingAudioUrl' in result)) {
+        await updateJob(bookId, chapterNumber, {
+          status: 'running',
+          progress: { percent: 85, current: 0, total: 0, label: 'Creating subtitles' }
+        });
         await startSubtitlesAfterAudio({
           bookId,
           chapterNumber,
@@ -278,7 +305,8 @@ async function runChapterAudioJob({
         status: 'completed',
         versionId: result.versionId ?? versionId ?? 'base',
         audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
-        error: null
+        error: null,
+        progress: { percent: 100, current: 1, total: 1, label: 'MP3 ready' }
       });
       await finishJobLog({
         status: 'ok',
@@ -292,8 +320,16 @@ async function runChapterAudioJob({
     }
 
     if (provider === 'yandex') {
+      await updateJob(bookId, chapterNumber, {
+        status: 'running',
+        progress: { percent: 35, current: 0, total: 0, label: 'Generating MP3' }
+      });
       const result = await generateChapterYandexAudio({ bookId, chapterNumber, versionId, voice, force });
       if (!('existingAudioUrl' in result)) {
+        await updateJob(bookId, chapterNumber, {
+          status: 'running',
+          progress: { percent: 85, current: 0, total: 0, label: 'Creating subtitles' }
+        });
         await startSubtitlesAfterAudio({
           bookId,
           chapterNumber,
@@ -307,7 +343,8 @@ async function runChapterAudioJob({
         status: 'completed',
         versionId: result.versionId ?? versionId ?? 'base',
         audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
-        error: null
+        error: null,
+        progress: { percent: 100, current: 1, total: 1, label: 'MP3 ready' }
       });
       await finishJobLog({
         status: 'ok',
@@ -327,7 +364,8 @@ async function runChapterAudioJob({
         status: 'completed',
         versionId: preparation.versionId ?? versionId ?? 'base',
         audioUrl: preparation.existingAudioUrl,
-        error: null
+        error: null,
+        progress: { percent: 100, current: 1, total: 1, label: 'MP3 ready' }
       });
       await finishJobLog({
         status: 'ok',
@@ -346,6 +384,15 @@ async function runChapterAudioJob({
     let activeSubchapter = null;
     const subchapters = [];
     try {
+      await updateJob(bookId, chapterNumber, {
+        status: 'running',
+        progress: {
+          percent: 25,
+          current: 0,
+          total: preparation.textChunks.length,
+          label: 'Generating MP3'
+        }
+      });
       for (let index = 0; index < preparation.textChunks.length; index += 1) {
         const chunk = preparation.textChunks[index];
         const chunkText = typeof chunk === 'string' ? chunk : chunk.text;
@@ -395,7 +442,17 @@ async function runChapterAudioJob({
         }
         await pcmHandle.write(pcmBuffer);
         pcmLength += pcmBuffer.length;
-        await updateJob(bookId, chapterNumber, { status: 'running' });
+        const current = index + 1;
+        const total = preparation.textChunks.length;
+        await updateJob(bookId, chapterNumber, {
+          status: 'running',
+          progress: {
+            percent: Math.round(25 + (current / total) * 60),
+            current,
+            total,
+            label: 'Generating MP3'
+          }
+        });
       }
       const closed = closeSubchapter(activeSubchapter, pcmLength / PCM_BYTES_PER_SECOND);
       if (closed) {
@@ -413,7 +470,7 @@ async function runChapterAudioJob({
           console.warn('Failed to delete canceled PCM file', error);
         }
       }
-      await updateJob(bookId, chapterNumber, { status: 'canceled' });
+      await updateJob(bookId, chapterNumber, { status: 'canceled', progress: null });
       await finishJobLog({
         status: 'aborted',
         source: 'streaming',
@@ -440,6 +497,15 @@ async function runChapterAudioJob({
     if (!mp3Stat?.isFile()) {
       throw createHttpError(502, 'Failed to save chapter audio');
     }
+    await updateJob(bookId, chapterNumber, {
+      status: 'running',
+      progress: {
+        percent: 90,
+        current: preparation.textChunks.length,
+        total: preparation.textChunks.length,
+        label: 'Creating subtitles'
+      }
+    });
     await startSubtitlesAfterAudio({
       bookId,
       chapterNumber,
@@ -452,7 +518,13 @@ async function runChapterAudioJob({
       status: 'completed',
       versionId: preparation.versionId ?? versionId ?? 'base',
       audioUrl: preparation.mp3Url,
-      error: null
+      error: null,
+      progress: {
+        percent: 100,
+        current: preparation.textChunks.length,
+        total: preparation.textChunks.length,
+        label: 'MP3 ready'
+      }
     });
     await finishJobLog({
       status: 'ok',
@@ -513,6 +585,7 @@ export async function enqueueChapterAudioJob({
     startedAt: null,
     updatedAt: new Date().toISOString(),
     error: null,
+    progress: { percent: 5, current: 0, total: 0, label: 'Queued' },
     audioUrl:
       existing &&
       !force &&

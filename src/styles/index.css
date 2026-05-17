@@ -1761,6 +1761,10 @@ body {
   justify-content: flex-end;
 }
 
+.audio-row-progress {
+  flex-basis: 100%;
+}
+
 .audio-native-play {
   min-width: 6.5rem;
 }
@@ -2522,6 +2526,34 @@ body {
   margin: 0;
   font-size: 0.95rem;
   color: var(--text-viewer-muted);
+}
+
+.mp3-generation-progress {
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.mp3-generation-progress-track {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--text-viewer-border-soft);
+}
+
+.mp3-generation-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--text-viewer-accent);
+  transition: width 0.25s ease;
+}
+
+.mp3-generation-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.4rem;
+  color: var(--text-viewer-subtle);
+  font-size: 0.82rem;
 }
 
 .text-viewer-action {

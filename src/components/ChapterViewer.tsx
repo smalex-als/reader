@@ -914,6 +914,32 @@ export default function ChapterViewer({
                     </>
                   ) : null}
                 </div>
+                {isAudioJobActive && audioJob?.progress ? (
+                  <div className="mp3-generation-progress">
+                    <div
+                      className="mp3-generation-progress-track"
+                      role="progressbar"
+                      aria-valuenow={audioJob.progress.percent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label="MP3 generation progress"
+                    >
+                      <div
+                        className="mp3-generation-progress-fill"
+                        style={{ width: `${audioJob.progress.percent}%` }}
+                      />
+                    </div>
+                    <div className="mp3-generation-progress-meta">
+                      <span>{audioJob.progress.label ?? 'Generating MP3'}</span>
+                      <span>
+                        {audioJob.progress.percent}%
+                        {audioJob.progress.total > 0
+                          ? ` · ${audioJob.progress.current}/${audioJob.progress.total}`
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </section>
             <section className="text-viewer-tools-section" aria-label="View tools">

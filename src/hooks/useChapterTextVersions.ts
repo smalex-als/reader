@@ -14,6 +14,12 @@ type AudioJobStatus = {
   audioUrl?: string | null;
   versionId?: string | null;
   subchapters?: FloatingAudioSubchapter[];
+  progress?: {
+    percent: number;
+    current: number;
+    total: number;
+    label?: string | null;
+  } | null;
 };
 
 type UseChapterTextVersionsOptions = {
@@ -339,7 +345,8 @@ export function useChapterTextVersions({
           error: job.error ?? null,
           audioUrl: job.audioUrl ?? null,
           versionId: job.versionId ?? null,
-          subchapters: job.subchapters ?? []
+          subchapters: job.subchapters ?? [],
+          progress: job.progress ?? null
         });
         if (job.status === 'completed') {
           clearAudioPoll();
@@ -448,7 +455,8 @@ export function useChapterTextVersions({
           status: payload.job.status,
           error: payload.job.error ?? null,
           audioUrl: payload.job.audioUrl ?? null,
-          versionId: payload.job.versionId ?? selectedVersionId
+          versionId: payload.job.versionId ?? selectedVersionId,
+          progress: payload.job.progress ?? null
         });
         scheduleAudioPoll(chapterNumber);
       } else {
@@ -597,7 +605,7 @@ export function useChapterTextVersions({
       if (!response.ok) {
         throw new Error(`Audio cancel failed: ${response.status}`);
       }
-      setAudioJob({ status: 'canceled', error: null, audioUrl: null, versionId: selectedVersionId });
+      setAudioJob({ status: 'canceled', error: null, audioUrl: null, versionId: selectedVersionId, progress: null });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to cancel chapter audio.';
       setAudioError(message);
