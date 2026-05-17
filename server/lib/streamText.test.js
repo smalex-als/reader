@@ -253,6 +253,21 @@ test('keeps markdown subchapters in separate speech chunks', () => {
   assert.match(chunks[1], /^Second section\.\nB+/);
 });
 
+test('keeps standalone uppercase story titles in separate speech sections', () => {
+  const input = [
+    'STORY OF THE YOUNG MAN WITH THE CREAM TARTS.',
+    'DURING his residence in London, the accomplished Prince Florizel of Bohemia gained the affection of all classes.',
+    'He greeted the news with delight, and hastened to make ready.'
+  ].join('\n');
+
+  const output = prepareChapterSpeechSections(input);
+
+  assert.deepEqual(output, [
+    'STORY OF THE YOUNG MAN WITH THE CREAM TARTS.',
+    'DURING his residence in London, the accomplished Prince Florizel of Bohemia gained the affection of all classes.\nHe greeted the news with delight, and hastened to make ready.'
+  ]);
+});
+
 test('prefers line breaks over mid-line chunk splits', () => {
   const firstLine = 'A'.repeat(650);
   const secondLine = 'B'.repeat(650);
@@ -268,6 +283,30 @@ test('prefers line breaks over mid-line chunk splits', () => {
 test('uses sentence endings before falling back to spaces', () => {
   const firstSentence = 'A'.repeat(995) + '.';
   const secondSentence = 'B'.repeat(400) + '.';
+  const input = `${firstSentence} ${secondSentence}`;
+
+  const output = splitStreamChunks(input, 0);
+
+  assert.equal(output.length, 2);
+  assert.equal(output[0], firstSentence);
+  assert.equal(output[1], secondSentence);
+});
+
+test('keeps trailing quotes with sentence-ending chunks', () => {
+  const firstSentence = `"${'A'.repeat(995)}."`;
+  const secondSentence = `"${'B'.repeat(400)}."`;
+  const input = `${firstSentence} ${secondSentence}`;
+
+  const output = splitStreamChunks(input, 0);
+
+  assert.equal(output.length, 2);
+  assert.equal(output[0], firstSentence);
+  assert.equal(output[1], secondSentence);
+});
+
+test('keeps trailing brackets with sentence-ending chunks', () => {
+  const firstSentence = `(${'A'.repeat(995)}.)`;
+  const secondSentence = `${'B'.repeat(400)}.`;
   const input = `${firstSentence} ${secondSentence}`;
 
   const output = splitStreamChunks(input, 0);

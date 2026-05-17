@@ -12,14 +12,13 @@ import { assertBookDirectory } from './books.js';
 import { getChapterTextVersionText } from './chapterTextVersions.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
-import { prepareChapterSpeechSegments, splitStreamChunks, stripMarkdown } from './streamText.js';
+import { prepareChapterSpeechSegments, stripMarkdown } from './streamText.js';
+import { splitTextForStreaming } from './streamAudioText.js';
 
 const SAMPLE_RATE = 24_000;
 const CHANNEL_COUNT = 1;
 const BIT_DEPTH = 16;
 const CHAPTER_PAD_LENGTH = 3;
-const STREAM_TEXT_LIMIT = 2000;
-const STREAM_QUERY_TEXT_LIMIT = 1200;
 const execFileAsync = promisify(execFile);
 export const PCM_STREAM_SAMPLE_RATE = SAMPLE_RATE;
 export const PCM_STREAM_CHANNEL_COUNT = CHANNEL_COUNT;
@@ -473,64 +472,6 @@ async function streamSingleTextSegmentToWritable(text, voice, writable, signal, 
     }
   }
   throw lastError;
-}
-
-function splitTextForStreaming(input) {
-  const splitForEncodedLength = (chunk) => {
-    const trimmed = chunk.trim();
-    if (!trimmed) {
-      return [];
-    }
-    if (
-      trimmed.length <= STREAM_TEXT_LIMIT &&
-      encodeURIComponent(trimmed).length <= STREAM_QUERY_TEXT_LIMIT
-    ) {
-      return [trimmed];
-    }
-
-    const parts = [];
-    let remaining = trimmed;
-    while (remaining.length > 0) {
-      let candidate = '';
-      let consumedLength = 0;
-      const words = remaining.split(/\s+/);
-
-      for (let index = 0; index < words.length; index += 1) {
-        const nextCandidate = candidate ? `${candidate} ${words[index]}` : words[index];
-        if (
-          nextCandidate.length > STREAM_TEXT_LIMIT ||
-          encodeURIComponent(nextCandidate).length > STREAM_QUERY_TEXT_LIMIT
-        ) {
-          if (!candidate) {
-            let sliceLength = Math.min(STREAM_TEXT_LIMIT, words[index].length);
-            while (sliceLength > 1) {
-              const slice = words[index].slice(0, sliceLength).trim();
-              if (encodeURIComponent(slice).length <= STREAM_QUERY_TEXT_LIMIT) {
-                candidate = slice;
-                consumedLength = sliceLength;
-                break;
-              }
-              sliceLength -= 1;
-            }
-          }
-          break;
-        }
-        candidate = nextCandidate;
-        consumedLength = candidate.length;
-      }
-
-      const nextPart = candidate.trim();
-      if (!nextPart) {
-        break;
-      }
-      parts.push(nextPart);
-      remaining = remaining.slice(consumedLength).trim();
-    }
-
-    return parts;
-  };
-
-  return splitStreamChunks(input.trim(), 0).flatMap(splitForEncodedLength);
 }
 
 export function createTextPcmStream(text, voice, signal, requestId = createStreamLogId()) {

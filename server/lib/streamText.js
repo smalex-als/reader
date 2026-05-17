@@ -18,6 +18,7 @@ const OCR_SPEECH_EXCLUDED_MARKER = '<|speech_removed|>';
 const OCR_SPEECH_EXCLUDED_END_MARKER = '<|/speech_removed|>';
 const SPEECH_TERMINAL_PUNCTUATION_PATTERN = /[.!?:;…]$/u;
 const TRAILING_QUOTE_OR_BRACKET_PATTERN = /["')\]}»”’]+$/u;
+const TRAILING_SENTENCE_CLOSER_PATTERN = /["')\]}»”’]/u;
 
 function removeExcludedOcrBlocks(text) {
   const input = typeof text === 'string' ? text : '';
@@ -327,7 +328,7 @@ function splitMarkdownSections(text) {
   const input = typeof text === 'string' ? text : '';
   const matches = Array.from(input.matchAll(MARKDOWN_HEADING_PATTERN));
   if (matches.length === 0) {
-    return [input];
+    return splitUppercaseHeadingSections(input);
   }
 
   const sections = [];
@@ -346,6 +347,45 @@ function splitMarkdownSections(text) {
     }
   }
 
+  return sections.length > 0 ? sections.flatMap(splitUppercaseHeadingSections) : splitUppercaseHeadingSections(input);
+}
+
+function isUppercaseHeadingLine(line) {
+  const trimmed = line.trim();
+  if (trimmed.length < 4 || trimmed.length > 120) {
+    return false;
+  }
+  if (!/[A-Z]/.test(trimmed) || /[a-z]/.test(trimmed)) {
+    return false;
+  }
+  const words = trimmed.match(/[A-Z]{2,}/g) || [];
+  return words.length >= 2;
+}
+
+function splitUppercaseHeadingSections(text) {
+  const input = typeof text === 'string' ? text : '';
+  const lines = input.split(/\r?\n/);
+  const sections = [];
+  let current = [];
+
+  const flushCurrent = () => {
+    const section = current.join('\n').trim();
+    if (section) {
+      sections.push(section);
+    }
+    current = [];
+  };
+
+  for (const line of lines) {
+    if (isUppercaseHeadingLine(line)) {
+      flushCurrent();
+      sections.push(line.trim());
+      continue;
+    }
+    current.push(line);
+  }
+
+  flushCurrent();
   return sections.length > 0 ? sections : [input];
 }
 
@@ -384,9 +424,13 @@ function findSentenceBreakBackward(input, start, end) {
     if (char !== '.' && char !== '!' && char !== '?') {
       continue;
     }
-    const nextChar = input[index + 1] ?? '';
+    let breakIndex = index + 1;
+    while (breakIndex < input.length && TRAILING_SENTENCE_CLOSER_PATTERN.test(input[breakIndex])) {
+      breakIndex += 1;
+    }
+    const nextChar = input[breakIndex] ?? '';
     if (!nextChar || /\s|["')\]]/.test(nextChar)) {
-      return index + 1;
+      return breakIndex;
     }
   }
   return -1;
@@ -432,9 +476,13 @@ function findBreakForward(input, idealEnd, maxEnd) {
     if (char !== '.' && char !== '!' && char !== '?') {
       continue;
     }
-    const nextChar = input[cursor + 1] ?? '';
+    let breakIndex = cursor + 1;
+    while (breakIndex < input.length && TRAILING_SENTENCE_CLOSER_PATTERN.test(input[breakIndex])) {
+      breakIndex += 1;
+    }
+    const nextChar = input[breakIndex] ?? '';
     if (!nextChar || /\s|["')\]]/.test(nextChar)) {
-      return cursor + 1;
+      return breakIndex;
     }
   }
   index = input.indexOf(' ', idealEnd);
