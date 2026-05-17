@@ -7,7 +7,7 @@ from sync_subtitles_mfa.textgrid import Word
 
 
 class SRTTest(unittest.TestCase):
-    def test_cues_split_on_word_count_duration_and_pause(self) -> None:
+    def test_short_unfinished_cues_merge_across_pause(self) -> None:
         words = [
             Word(0.0, 0.2, "This"),
             Word(0.25, 0.5, "is"),
@@ -19,14 +19,13 @@ class SRTTest(unittest.TestCase):
 
         cues = cues_from_words(words, max_words_per_cue=4, max_cue_duration=4.0, pause_threshold=0.6)
 
-        self.assertEqual(len(cues), 2)
-        self.assertEqual(cues[0].text, "This is the first")
-        self.assertEqual(cues[1].text, "Next cue")
+        self.assertEqual(len(cues), 1)
+        self.assertEqual(cues[0].text, "This is the first Next cue")
 
         with tempfile.TemporaryDirectory() as temp_dir:
             out = Path(temp_dir) / "out.srt"
             write_srt(cues, out)
-            self.assertTrue(out.read_text(encoding="utf-8").startswith("1\n00:00:00,000 --> 00:00:01,100"))
+            self.assertTrue(out.read_text(encoding="utf-8").startswith("1\n00:00:00,000 --> 00:00:02,500"))
 
     def test_format_timestamp_rounds_to_srt_milliseconds(self) -> None:
         self.assertEqual(format_timestamp(3661.2345), "01:01:01,234")
@@ -93,6 +92,19 @@ class SRTTest(unittest.TestCase):
                 "You should have kept forty pounds. Forty pounds! repeated the Prince.",
                 "Why, in heaven’s name, forty pounds?",
             ],
+        )
+
+    def test_incomplete_cue_merges_short_continuation_without_considering_gap(self) -> None:
+        cues = merge_short_cues(
+            [
+                Cue(610.88, 613.43, "A ruined man, yes, returned the other suspiciously,"),
+                Cue(615.06, 615.99, "or else a millionaire.."),
+            ]
+        )
+
+        self.assertEqual(
+            [cue.text for cue in cues],
+            ["A ruined man, yes, returned the other suspiciously, or else a millionaire.."],
         )
 
     def test_wrap_words_uses_multiple_lines_for_long_sentences(self) -> None:

@@ -10,7 +10,6 @@ MIN_SUBTITLE_CUE_CHARS = 32
 MIN_SUBTITLE_CUE_WORDS = 6
 MAX_MERGED_SUBTITLE_CUE_CHARS = 140
 MAX_MERGED_SUBTITLE_CUE_SECONDS = 12.0
-MAX_SMALL_CUE_MERGE_GAP_SECONDS = 0.6
 
 
 @dataclass(frozen=True)
@@ -62,32 +61,40 @@ def merge_short_cues(
     min_words: int = MIN_SUBTITLE_CUE_WORDS,
     max_chars: int = MAX_MERGED_SUBTITLE_CUE_CHARS,
     max_duration: float = MAX_MERGED_SUBTITLE_CUE_SECONDS,
-    max_gap: float = MAX_SMALL_CUE_MERGE_GAP_SECONDS,
 ) -> list[Cue]:
     merged: list[Cue] = []
     pending: Cue | None = None
     pending_started_small = False
+    pending_merged = False
 
     for cue in cues:
         if pending is None:
             pending = cue
             pending_started_small = is_small_cue(cue, min_chars=min_chars, min_words=min_words)
-        elif pending_started_small and can_merge_cues(
+            pending_merged = False
+        elif (
+            pending_started_small
+            or (ends_incomplete(pending.text) and is_small_cue(cue, min_chars=min_chars, min_words=min_words))
+        ) and can_merge_cues(
             pending,
             cue,
             max_chars=max_chars,
             max_duration=max_duration,
-            max_gap=max_gap,
+        ) and not (
+            pending_merged
+            and starts_new_sentence_after_terminal(pending.text, cue.text)
         ):
             pending = Cue(
                 start=pending.start,
                 end=cue.end,
                 text=join_cue_text(pending.text, cue.text),
             )
+            pending_merged = True
         else:
             merged.append(pending)
             pending = cue
             pending_started_small = is_small_cue(cue, min_chars=min_chars, min_words=min_words)
+            pending_merged = False
 
     if pending is not None:
         merged.append(pending)
@@ -100,20 +107,25 @@ def is_small_cue(cue: Cue, *, min_chars: int, min_words: int) -> bool:
     return len(text) < min_chars or len(text.split()) <= min_words
 
 
+def ends_incomplete(text: str) -> bool:
+    return text.rstrip().endswith((",", ";", ":", "-", "—", "–"))
+
+
+def starts_new_sentence_after_terminal(left: str, right: str) -> bool:
+    left = left.rstrip()
+    right = right.lstrip()
+    return bool(left and right and left[-1] in ".?!" and right[0].isupper())
+
+
 def can_merge_cues(
     left: Cue,
     right: Cue,
     *,
     max_chars: int,
     max_duration: float,
-    max_gap: float,
 ) -> bool:
     text = join_cue_text(left.text, right.text)
-    return (
-        right.start - left.end <= max_gap
-        and len(text) <= max_chars
-        and right.end - left.start <= max_duration
-    )
+    return len(text) <= max_chars and right.end - left.start <= max_duration
 
 
 def join_cue_text(left: str, right: str) -> str:
