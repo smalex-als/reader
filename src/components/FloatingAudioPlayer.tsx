@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { emitFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
+import { emitFloatingAudioSubchapterSelect, emitFloatingAudioTime } from '@/lib/floatingAudioEvents';
 
 export type FloatingAudioSubchapter = {
   title: string;
@@ -19,6 +19,7 @@ export type FloatingAudioTrack = {
   chapterNumber?: number | null;
   versionId?: string | null;
   subchapters?: FloatingAudioSubchapter[];
+  startSeconds?: number;
 };
 
 export type FloatingAudioPlaybackState = 'loading' | 'playing' | 'paused' | 'ended' | 'error';
@@ -220,11 +221,15 @@ export default function FloatingAudioPlayer({
     }
     const audio = audioRef.current;
     audio.preload = 'metadata';
-    audio.currentTime = 0;
     audio.src = track.url;
     audio.load();
+    if (track.startSeconds && track.startSeconds > 0) {
+      audio.currentTime = track.startSeconds;
+    }
     onPlaybackStateChange?.('loading', track);
     const nextDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    const nextCurrentTime = Math.max(0, track.startSeconds ?? 0);
+    setCurrentTime(nextCurrentTime);
     if (nextDuration) {
       setDuration(nextDuration);
     }
@@ -232,6 +237,19 @@ export default function FloatingAudioPlayer({
       setPlaying(false);
     });
   }, [onPlaybackStateChange, track]);
+
+
+  useEffect(() => {
+    if (!track) {
+      return;
+    }
+    emitFloatingAudioTime({
+      track,
+      currentTime,
+      duration,
+      playing
+    });
+  }, [currentTime, duration, playing, track]);
 
   useEffect(() => {
     let cancelled = false;
