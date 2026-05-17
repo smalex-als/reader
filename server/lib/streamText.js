@@ -255,6 +255,7 @@ function normalizeSpokenTemperatureUnits(text) {
 
 function normalizeTypographyForSpeech(text) {
   return text
+    .replace(/([:;])[ \t]*[‐‑‒–—―−]+[ \t]*/g, '$1 ')
     .replace(DASH_LIKE_PATTERN, ' - ')
     .replace(/[ \t]+-[ \t]+/g, ', ');
 }

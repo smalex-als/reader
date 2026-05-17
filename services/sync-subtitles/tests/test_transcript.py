@@ -43,6 +43,14 @@ class TranscriptTest(unittest.TestCase):
             "ЗАГОЛОВОК Сильная гибкая мышца лучше выдерживает нагрузку",
         )
 
+    def test_tokenize_removes_comma_added_after_colon_dash_quote(self) -> None:
+        tokens = tokenize_transcript('words:, “You will,” he said.')
+
+        self.assertEqual(
+            [token.surface for token in tokens],
+            ["words:", "You", "will,", "he", "said."],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

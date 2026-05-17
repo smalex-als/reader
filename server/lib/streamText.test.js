@@ -130,6 +130,14 @@ test('normalizes unicode dashes into smooth speech pauses', () => {
   assert.equal(output, 'Police cars in Germany, with lights and registration marks, were seen nearby. Two-phase commit, Saga.');
 });
 
+test('does not add comma after colon before quoted speech', () => {
+  const input = 'The Prince addressed him in these words:—\n\n“You will, I am sure, pardon my curiosity.';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'The Prince addressed him in these words:\n\n“You will, I am sure, pardon my curiosity.');
+});
+
 test('removes markdown asterisk dividers before speech cleanup', () => {
   const input = ['Intro paragraph.', '***', 'Next section.', '* * *', 'Final section.'].join('\n');
 

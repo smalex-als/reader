@@ -99,7 +99,11 @@ def sentence_suffix(value: str) -> str:
     for char in value:
         if char in ".,!?;:\"')]}":
             suffix += char
-    return suffix
+    return normalize_sentence_suffix(suffix)
+
+
+def normalize_sentence_suffix(value: str) -> str:
+    return value.replace(":,", ":").replace(";,", ";")
 
 
 def strip_wrapping_punctuation(value: str) -> str:
