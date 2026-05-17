@@ -2,7 +2,16 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from sync_subtitles_mfa.srt import Cue, cues_from_words, format_timestamp, join_words, merge_short_cues, wrap_words, write_srt
+from sync_subtitles_mfa.srt import (
+    Cue,
+    clamp_cue_durations,
+    cues_from_words,
+    format_timestamp,
+    join_words,
+    merge_short_cues,
+    wrap_words,
+    write_srt,
+)
 from sync_subtitles_mfa.textgrid import Word
 
 
@@ -309,6 +318,58 @@ class SRTTest(unittest.TestCase):
 
         self.assertEqual(narrow.text, "one two three\nfour five")
         self.assertEqual(wide.text, "one two three four five")
+
+    def test_collapses_pathological_alignment_gap(self) -> None:
+        cues = clamp_cue_durations(
+            [
+                Cue(1214.89, 1247.72, "let me ask you, what would be my despair,"),
+                Cue(1247.9, 1949.77, "and what the concern and disaster"),
+                Cue(1952.03, 1952.32, "of a great nation?"),
+            ]
+        )
+
+        self.assertEqual(cues[0].start, 1214.89)
+        self.assertEqual(cues[0].end, 1226.89)
+        self.assertAlmostEqual(cues[1].start, 1227.07)
+        self.assertAlmostEqual(cues[1].end, 1239.07)
+        self.assertAlmostEqual(cues[2].start, 1239.25)
+        self.assertAlmostEqual(cues[2].end, 1239.55)
+
+    def test_merges_incomplete_phrase_despite_pathological_alignment_gap(self) -> None:
+        words = [
+            Word(1214.89, 1215.2, "let"),
+            Word(1215.2, 1215.5, "me"),
+            Word(1215.5, 1215.8, "ask"),
+            Word(1215.8, 1216.1, "you,"),
+            Word(1216.1, 1216.4, "what"),
+            Word(1216.4, 1216.7, "would"),
+            Word(1216.7, 1217.0, "be"),
+            Word(1217.0, 1247.72, "my despair,"),
+            Word(1247.9, 1248.2, "and"),
+            Word(1248.2, 1248.5, "what"),
+            Word(1248.5, 1248.8, "the"),
+            Word(1248.8, 1249.1, "concern"),
+            Word(1249.1, 1249.4, "and"),
+            Word(1249.4, 1949.77, "disaster"),
+            Word(1952.03, 1952.1, "of"),
+            Word(1952.1, 1952.18, "a"),
+            Word(1952.18, 1952.25, "great"),
+            Word(1952.25, 1952.32, "nation?"),
+        ]
+
+        cues = cues_from_words(
+            words,
+            max_words_per_cue=8,
+            max_cue_duration=6,
+            max_line_chars=200,
+        )
+
+        self.assertEqual(
+            [cue.text for cue in cues],
+            ["let me ask you, what would be my despair, and what the concern and disaster of a great nation?"],
+        )
+        self.assertEqual(cues[0].start, 1214.89)
+        self.assertEqual(cues[0].end, 1226.89)
 
 
 if __name__ == "__main__":

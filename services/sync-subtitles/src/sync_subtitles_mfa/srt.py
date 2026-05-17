@@ -10,6 +10,10 @@ MIN_SUBTITLE_CUE_CHARS = 32
 MIN_SUBTITLE_CUE_WORDS = 6
 MAX_MERGED_SUBTITLE_CUE_CHARS = 140
 MAX_MERGED_SUBTITLE_CUE_SECONDS = 12.0
+MAX_SUBTITLE_CUE_SECONDS = 12.0
+MIN_SUBTITLE_CUE_SECONDS = 0.3
+MAX_SUBTITLE_CUE_GAP_SECONDS = 2.0
+SUBTITLE_CUE_GAP_SECONDS = 0.18
 MAX_TRAILING_STARTER_WORDS = 8
 MAX_TRAILING_STARTER_CHARS = 72
 NON_TERMINAL_ABBREVIATIONS = {
@@ -77,7 +81,33 @@ def cues_from_words(
     grouped = merge_short_word_cues(cues)
     grouped = move_trailing_sentence_starters(grouped)
     grouped = merge_incomplete_word_cues(grouped)
-    return [cue_from_words(cue.words, max_line_chars=max_line_chars) for cue in grouped]
+    raw_cues = [cue_from_words(cue.words, max_line_chars=max_line_chars) for cue in grouped]
+    return clamp_cue_durations(raw_cues)
+
+
+def clamp_cue_durations(
+    cues: Sequence[Cue],
+    *,
+    max_duration: float = MAX_SUBTITLE_CUE_SECONDS,
+    min_duration: float = MIN_SUBTITLE_CUE_SECONDS,
+    max_gap: float = MAX_SUBTITLE_CUE_GAP_SECONDS,
+    inserted_gap: float = SUBTITLE_CUE_GAP_SECONDS,
+) -> list[Cue]:
+    output: list[Cue] = []
+    for index, cue in enumerate(cues):
+        next_start = cues[index + 1].start if index + 1 < len(cues) else None
+        start = cue.start
+        if output and start - output[-1].end > max_gap:
+            start = output[-1].end + inserted_gap
+        duration = max(min_duration, min(cue.end - cue.start, max_duration))
+        end = start + duration
+        if next_start is not None and next_start - cue.end <= max_gap:
+            end = min(end, next_start)
+        end = max(end, start + min_duration)
+        if next_start is not None and next_start - cue.end <= max_gap:
+            end = min(end, next_start)
+        output.append(Cue(start=start, end=end, text=cue.text))
+    return output
 
 
 def merge_incomplete_word_cues(
@@ -93,7 +123,12 @@ def merge_incomplete_word_cues(
         if (
             previous is not None
             and not ends_sentence(previous.words[-1].text)
-            and can_merge_word_lists(candidate_words, max_chars=max_chars, max_duration=max_duration)
+            and can_merge_word_lists(
+                candidate_words,
+                max_chars=max_chars,
+                max_duration=max_duration,
+                ignore_duration=True,
+            )
         ):
             output[-1] = WordCue(tuple(candidate_words))
         else:
@@ -252,11 +287,19 @@ def is_small_word_list(words: Sequence[Word], *, min_chars: int, min_words: int)
     return len(text.strip()) < min_chars or len(words) <= min_words
 
 
-def can_merge_word_lists(words: Sequence[Word], *, max_chars: int, max_duration: float) -> bool:
+def can_merge_word_lists(
+    words: Sequence[Word],
+    *,
+    max_chars: int,
+    max_duration: float,
+    ignore_duration: bool = False,
+) -> bool:
     if not words:
         return False
     text = join_words([word.text for word in words])
-    return len(text) <= max_chars and words[-1].end - words[0].start <= max_duration
+    if len(text) > max_chars:
+        return False
+    return ignore_duration or words[-1].end - words[0].start <= max_duration
 
 
 def merge_short_cues(
