@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import { onFloatingAudioTime } from '@/lib/floatingAudioEvents';
 import type { ToastMessage } from '@/types/app';
@@ -32,7 +33,32 @@ interface AudioLibraryViewProps {
   onPlayAudio: (payload: FloatingAudioTrack) => void;
   onOpenBook: (bookId: string, chapterNumber: number) => void;
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
+  textFontSize: number;
+  onTextFontSizeChange: (value: number) => void;
+  textTheme: 'dark' | 'dracula' | 'obsidian' | 'nord' | 'gruvbox' | 'solarized' | 'light' | 'warm';
+  onTextThemeChange: (value: string) => void;
 }
+
+const FONT_SIZE_OPTIONS = [
+  { label: 'Compact', value: 18 },
+  { label: 'Easy', value: 20 },
+  { label: 'Comfortable', value: 24 },
+  { label: 'Spacious', value: 26 },
+  { label: 'Grand', value: 28 },
+  { label: 'Theater', value: 30 },
+  { label: 'Cinema', value: 34 }
+];
+
+const COLOR_OPTIONS = [
+  { label: 'Night', value: 'dark' },
+  { label: 'Dracula', value: 'dracula' },
+  { label: 'Obsidian', value: 'obsidian' },
+  { label: 'Nord', value: 'nord' },
+  { label: 'Gruvbox', value: 'gruvbox' },
+  { label: 'Solarized', value: 'solarized' },
+  { label: 'White', value: 'light' },
+  { label: 'Warm', value: 'warm' }
+];
 
 async function readErrorMessage(response: Response) {
   try {
@@ -117,6 +143,21 @@ function parseSrt(text: string): SubtitleCue[] {
     });
 }
 
+function findStickyCueIndex(cues: SubtitleCue[], currentTime: number) {
+  if (cues.length === 0) {
+    return -1;
+  }
+  const activeIndex = cues.findIndex((cue) => currentTime >= cue.startSeconds && currentTime <= cue.endSeconds);
+  if (activeIndex >= 0) {
+    return activeIndex;
+  }
+  for (let index = cues.length - 1; index >= 0; index -= 1) {
+    if (currentTime >= cues[index].startSeconds) {
+      return index;
+    }
+  }
+  return 0;
+}
 
 function toFloatingTrack(item: AudioLibraryItem, startSeconds?: number): FloatingAudioTrack {
   return {
@@ -132,7 +173,16 @@ function toFloatingTrack(item: AudioLibraryItem, startSeconds?: number): Floatin
   };
 }
 
-export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }: AudioLibraryViewProps) {
+export default function AudioLibraryView({
+  onPlayAudio,
+  onOpenBook,
+  showToast,
+  textFontSize,
+  onTextFontSizeChange,
+  textTheme,
+  onTextThemeChange
+}: AudioLibraryViewProps) {
+  const libraryRef = useRef<HTMLDivElement | null>(null);
   const cueRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const [items, setItems] = useState<AudioLibraryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -141,6 +191,7 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
   const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
   const [subtitlesLoading, setSubtitlesLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -187,12 +238,10 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
     () => items.find((item) => item.id === selectedItemId) ?? null,
     [items, selectedItemId]
   );
-  const activeCueIndex = useMemo(
-    () =>
-      subtitleCues.findIndex(
-        (cue) => currentTime >= cue.startSeconds && currentTime <= cue.endSeconds
-      ),
-    [currentTime, subtitleCues]
+  const activeCueIndex = useMemo(() => findStickyCueIndex(subtitleCues, currentTime), [currentTime, subtitleCues]);
+  const transcriptStyle = useMemo(
+    () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
+    [textFontSize]
   );
 
   useEffect(() => {
@@ -246,7 +295,19 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
     if (activeCueIndex < 0) {
       return;
     }
-    cueRefs.current[activeCueIndex]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const container = libraryRef.current;
+    const activeCue = cueRefs.current[activeCueIndex];
+    if (!container || !activeCue) {
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const cueRect = activeCue.getBoundingClientRect();
+    const isFullyVisible = cueRect.top >= containerRect.top && cueRect.bottom <= containerRect.bottom;
+    if (isFullyVisible) {
+      return;
+    }
+    const nextScrollTop = container.scrollTop + cueRect.top - containerRect.top;
+    container.scrollTo({ top: Math.max(0, nextScrollTop), behavior: 'smooth' });
   }, [activeCueIndex]);
 
   const handleSelectItem = useCallback((item: AudioLibraryItem) => {
@@ -285,7 +346,7 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
     ].filter(Boolean);
 
     return (
-      <div className="audio-library audio-library-detail">
+      <div ref={libraryRef} className="audio-library audio-library-detail">
         <header className="audio-library-detail-header">
           <button type="button" className="button button-secondary" onClick={() => setSelectedItemId(null)}>
             Back
@@ -310,8 +371,64 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
                 SRT
               </a>
             ) : null}
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => setSettingsOpen((prev) => !prev)}
+              aria-expanded={settingsOpen}
+              aria-controls="audio-library-text-settings"
+            >
+              {settingsOpen ? 'Hide settings' : 'Text settings'}
+            </button>
           </div>
         </header>
+
+        {settingsOpen ? (
+          <div className="text-viewer-settings audio-library-settings" id="audio-library-text-settings">
+            <div className="text-viewer-setting">
+              <span className="text-viewer-setting-label">Font size</span>
+              <div className="text-viewer-radio-group" role="radiogroup" aria-label="Text size">
+                {FONT_SIZE_OPTIONS.map((option) => {
+                  const inputId = `audio-font-size-${option.value}`;
+                  return (
+                    <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
+                      <input
+                        id={inputId}
+                        type="radio"
+                        name="audio-font-size"
+                        value={option.value}
+                        checked={textFontSize === option.value}
+                        onChange={() => onTextFontSizeChange(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="text-viewer-setting">
+              <span className="text-viewer-setting-label">Color scheme</span>
+              <div className="text-viewer-radio-group" role="radiogroup" aria-label="Color scheme">
+                {COLOR_OPTIONS.map((option) => {
+                  const inputId = `audio-color-scheme-${option.value}`;
+                  return (
+                    <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
+                      <input
+                        id={inputId}
+                        type="radio"
+                        name="audio-color-scheme"
+                        value={option.value}
+                        checked={textTheme === option.value}
+                        onChange={() => onTextThemeChange(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <section className="audio-library-detail-summary" aria-label="MP3 details">
           <div className="audio-library-meta audio-library-detail-meta">
@@ -319,12 +436,18 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
               <span key={value}>{value}</span>
             ))}
           </div>
-          <button type="button" className="button" onClick={() => handlePlayItem(selectedItem)}>
-            Play in floating player
+          <button
+            type="button"
+            className="button button-secondary modal-icon-button"
+            onClick={() => handlePlayItem(selectedItem)}
+            aria-label="Play in floating player"
+            title="Play in floating player"
+          >
+            ▶
           </button>
         </section>
 
-        <section className="audio-library-transcript" aria-label="Subtitles transcript">
+        <section className="audio-library-transcript" style={transcriptStyle} aria-label="Subtitles transcript">
           {subtitlesLoading ? <p className="audio-viewer-status">Loading subtitles...</p> : null}
           {!subtitlesLoading && !selectedItem.srtUrl ? (
             <p className="audio-viewer-status">No SRT file exists for this MP3 yet.</p>
@@ -414,7 +537,6 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
                     {item.voice ? <span>{item.voice}</span> : null}
                     <span>{item.versionId}</span>
                     {item.hasSubtitles ? <span>SRT</span> : <span>No subtitles</span>}
-                    {item.subchapters.length > 0 ? <span>{item.subchapters.length} parts</span> : null}
                     {formatDate(item.generatedAt) ? <span>{formatDate(item.generatedAt)}</span> : null}
                   </div>
                 </div>

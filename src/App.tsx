@@ -1670,7 +1670,11 @@ export default function App() {
     audioLibraryViewProps: {
       onPlayAudio: handlePlayFloatingAudio,
       onOpenBook: handleOpenLibraryBook,
-      showToast
+      showToast,
+      textFontSize: settings.textFontSize,
+      onTextFontSizeChange: updateTextFontSize,
+      textTheme: settings.textTheme,
+      onTextThemeChange: updateTextTheme
     },
     unitsViewProps: {
       refreshToken: unitsRefreshToken,

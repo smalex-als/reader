@@ -101,6 +101,7 @@ export default function FloatingAudioPlayer({
 }: FloatingAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastEmittedSubchapterKeyRef = useRef<string | null>(null);
+  const lastEmittedTrackKeyRef = useRef<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -124,10 +125,6 @@ export default function FloatingAudioPlayer({
         .find((entry) => currentTime >= entry.startSeconds) ?? subchapters[0]
     );
   }, [currentTime, subchapters]);
-  const activeSubtitleCue = useMemo(
-    () => subtitleCues.find((cue) => currentTime >= cue.startSeconds && currentTime <= cue.endSeconds) ?? null,
-    [currentTime, subtitleCues]
-  );
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -208,6 +205,7 @@ export default function FloatingAudioPlayer({
         audioRef.current.pause();
       }
       lastEmittedSubchapterKeyRef.current = null;
+      lastEmittedTrackKeyRef.current = null;
       setPlaying(false);
       setCurrentTime(0);
       setDuration(0);
@@ -241,6 +239,11 @@ export default function FloatingAudioPlayer({
 
   useEffect(() => {
     if (!track) {
+      return;
+    }
+    const trackKey = `${track.url}:${track.startSeconds ?? 0}`;
+    if (lastEmittedTrackKeyRef.current !== trackKey) {
+      lastEmittedTrackKeyRef.current = trackKey;
       return;
     }
     emitFloatingAudioTime({
@@ -357,11 +360,6 @@ export default function FloatingAudioPlayer({
         <div className="floating-audio-title">{titleLine}</div>
         {activeSubchapter ? (
           <div className="floating-audio-subtitle">{activeSubchapter.title}</div>
-        ) : null}
-        {activeSubtitleCue ? (
-          <div className="floating-audio-caption" aria-live="polite">
-            {activeSubtitleCue.text}
-          </div>
         ) : null}
         <div className="floating-audio-controls">
           <button type="button" className="button floating-audio-play" onClick={togglePlayback}>
