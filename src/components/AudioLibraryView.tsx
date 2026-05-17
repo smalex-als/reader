@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import { onFloatingAudioTime } from '@/lib/floatingAudioEvents';
 import type { ToastMessage } from '@/types/app';
 
 type AudioLibraryItem = {
@@ -116,8 +117,22 @@ function parseSrt(text: string): SubtitleCue[] {
     });
 }
 
+
+function toFloatingTrack(item: AudioLibraryItem, startSeconds?: number): FloatingAudioTrack {
+  return {
+    title: item.chapterTitle,
+    subtitle: `${item.bookTitle} · Chapter ${item.chapterNumber}`,
+    url: item.audioUrl,
+    srtUrl: item.srtUrl,
+    provider: item.provider,
+    chapterNumber: item.chapterNumber,
+    versionId: item.versionId,
+    subchapters: item.subchapters,
+    startSeconds
+  };
+}
+
 export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }: AudioLibraryViewProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const cueRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const [items, setItems] = useState<AudioLibraryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -181,6 +196,18 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
   );
 
   useEffect(() => {
+    if (!selectedItem) {
+      return;
+    }
+    return onFloatingAudioTime((detail) => {
+      if (detail.track.url !== selectedItem.audioUrl) {
+        return;
+      }
+      setCurrentTime(detail.currentTime);
+    });
+  }, [selectedItem]);
+
+  useEffect(() => {
     let cancelled = false;
     cueRefs.current = {};
     setSubtitleCues([]);
@@ -226,15 +253,23 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
     setSelectedItemId(item.id);
   }, []);
 
-  const handleCueSelect = useCallback((cue: SubtitleCue) => {
-    const audio = audioRef.current;
-    if (!audio) {
-      return;
-    }
-    audio.currentTime = cue.startSeconds;
-    setCurrentTime(cue.startSeconds);
-    void audio.play();
-  }, []);
+  const handlePlayItem = useCallback(
+    (item: AudioLibraryItem, startSeconds?: number) => {
+      onPlayAudio(toFloatingTrack(item, startSeconds));
+    },
+    [onPlayAudio]
+  );
+
+  const handleCueSelect = useCallback(
+    (cue: SubtitleCue) => {
+      if (!selectedItem) {
+        return;
+      }
+      setCurrentTime(cue.startSeconds);
+      handlePlayItem(selectedItem, cue.startSeconds);
+    },
+    [handlePlayItem, selectedItem]
+  );
 
   if (selectedItem) {
     const bytes = formatBytes(selectedItem.bytes);
@@ -278,22 +313,15 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
           </div>
         </header>
 
-        <section className="audio-library-player-panel">
+        <section className="audio-library-detail-summary" aria-label="MP3 details">
           <div className="audio-library-meta audio-library-detail-meta">
             {meta.map((value) => (
               <span key={value}>{value}</span>
             ))}
           </div>
-          <audio
-            key={selectedItem.id}
-            ref={audioRef}
-            className="audio-library-native-player"
-            src={selectedItem.audioUrl}
-            controls
-            preload="metadata"
-            onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
-            onLoadedMetadata={(event) => setCurrentTime(event.currentTarget.currentTime || 0)}
-          />
+          <button type="button" className="button" onClick={() => handlePlayItem(selectedItem)}>
+            Play in floating player
+          </button>
         </section>
 
         <section className="audio-library-transcript" aria-label="Subtitles transcript">
@@ -358,7 +386,6 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
 
         <div className="audio-library-list">
           {filteredItems.map((item) => {
-            const subtitle = `${item.bookTitle} · Chapter ${item.chapterNumber}`;
             const bytes = formatBytes(item.bytes);
             return (
               <article
@@ -397,16 +424,7 @@ export default function AudioLibraryView({ onPlayAudio, onOpenBook, showToast }:
                     className="button"
                     onClick={(event) => {
                       event.stopPropagation();
-                      onPlayAudio({
-                        title: item.chapterTitle,
-                        subtitle,
-                        url: item.audioUrl,
-                        srtUrl: item.srtUrl,
-                        provider: item.provider,
-                        chapterNumber: item.chapterNumber,
-                        versionId: item.versionId,
-                        subchapters: item.subchapters
-                      });
+                      handlePlayItem(item);
                     }}
                   >
                     Play
