@@ -10,6 +10,22 @@ MIN_SUBTITLE_CUE_CHARS = 32
 MIN_SUBTITLE_CUE_WORDS = 6
 MAX_MERGED_SUBTITLE_CUE_CHARS = 140
 MAX_MERGED_SUBTITLE_CUE_SECONDS = 12.0
+NON_TERMINAL_ABBREVIATIONS = {
+    "mr.",
+    "mrs.",
+    "ms.",
+    "dr.",
+    "prof.",
+    "st.",
+    "sr.",
+    "jr.",
+    "col.",
+    "gen.",
+    "capt.",
+    "maj.",
+    "rev.",
+    "hon.",
+}
 
 
 @dataclass(frozen=True)
@@ -17,6 +33,11 @@ class Cue:
     start: float
     end: float
     text: str
+
+
+@dataclass(frozen=True)
+class WordCue:
+    words: tuple[Word, ...]
 
 
 def cues_from_words(
@@ -28,7 +49,7 @@ def cues_from_words(
     pause_threshold: float = 0.6,
     sentence_mode: Literal["balanced", "strict"] = "balanced",
 ) -> list[Cue]:
-    cues: list[Cue] = []
+    cues: list[WordCue] = []
     current: list[Word] = []
 
     for word in words:
@@ -43,15 +64,131 @@ def cues_from_words(
             pause_threshold=pause_threshold,
             sentence_mode=sentence_mode,
         ):
-            cues.append(cue_from_words(current, max_line_chars=max_line_chars))
+            cues.append(WordCue(tuple(current)))
             current = []
 
         current.append(word)
 
     if current:
-        cues.append(cue_from_words(current, max_line_chars=max_line_chars))
+        cues.append(WordCue(tuple(current)))
 
-    return merge_short_cues(cues)
+    return [
+        cue_from_words(cue.words, max_line_chars=max_line_chars)
+        for cue in merge_short_word_cues(cues)
+    ]
+
+
+def merge_short_word_cues(
+    cues: Sequence[WordCue],
+    *,
+    min_chars: int = MIN_SUBTITLE_CUE_CHARS,
+    min_words: int = MIN_SUBTITLE_CUE_WORDS,
+    max_chars: int = MAX_MERGED_SUBTITLE_CUE_CHARS,
+    max_duration: float = MAX_MERGED_SUBTITLE_CUE_SECONDS,
+) -> list[WordCue]:
+    output: list[WordCue] = []
+    pending: WordCue | None = None
+    pending_started_small = False
+    pending_merged = False
+    queue = list(cues)
+
+    while queue:
+        cue = queue.pop(0)
+        if pending is None:
+            pending = cue
+            pending_started_small = is_small_word_cue(cue, min_chars=min_chars, min_words=min_words)
+            pending_merged = False
+            continue
+
+        should_try_merge = pending_started_small or (
+            ends_incomplete(word_cue_text(pending))
+            and is_small_word_cue(cue, min_chars=min_chars, min_words=min_words)
+        )
+        if not should_try_merge:
+            output.append(pending)
+            pending = cue
+            pending_started_small = is_small_word_cue(cue, min_chars=min_chars, min_words=min_words)
+            pending_merged = False
+            continue
+
+        split = split_merge_word_cues(
+            pending,
+            cue,
+            min_chars=min_chars,
+            min_words=min_words,
+            max_chars=max_chars,
+            max_duration=max_duration,
+            block_new_sentence=pending_merged,
+        )
+        if split is None:
+            output.append(pending)
+            pending = cue
+            pending_started_small = is_small_word_cue(cue, min_chars=min_chars, min_words=min_words)
+            pending_merged = False
+            continue
+
+        pending = split[0]
+        pending_merged = True
+        if split[1] is not None:
+            queue.insert(0, split[1])
+
+    if pending is not None:
+        output.append(pending)
+
+    return output
+
+
+def split_merge_word_cues(
+    left: WordCue,
+    right: WordCue,
+    *,
+    min_chars: int,
+    min_words: int,
+    max_chars: int,
+    max_duration: float,
+    block_new_sentence: bool,
+) -> tuple[WordCue, WordCue | None] | None:
+    if not right.words:
+        return None
+    merged_words = list(left.words)
+    remaining_words = list(right.words)
+
+    while remaining_words and is_small_word_list(merged_words, min_chars=min_chars, min_words=min_words):
+        if block_new_sentence and starts_new_sentence_after_terminal(join_words([word.text for word in merged_words]), remaining_words[0].text):
+            return None
+        candidate = [*merged_words, remaining_words[0]]
+        if not can_merge_word_lists(candidate, max_chars=max_chars, max_duration=max_duration):
+            return None
+        moved_word = remaining_words.pop(0)
+        merged_words.append(moved_word)
+        if ends_phrase(moved_word.text):
+            break
+
+    if len(merged_words) == len(left.words):
+        return None
+    merged = WordCue(tuple(merged_words))
+    remainder = WordCue(tuple(remaining_words)) if remaining_words else None
+    return merged, remainder
+
+
+def word_cue_text(cue: WordCue) -> str:
+    return join_words([word.text for word in cue.words])
+
+
+def is_small_word_cue(cue: WordCue, *, min_chars: int, min_words: int) -> bool:
+    return is_small_word_list(list(cue.words), min_chars=min_chars, min_words=min_words)
+
+
+def is_small_word_list(words: Sequence[Word], *, min_chars: int, min_words: int) -> bool:
+    text = join_words([word.text for word in words])
+    return len(text.strip()) < min_chars or len(words) <= min_words
+
+
+def can_merge_word_lists(words: Sequence[Word], *, max_chars: int, max_duration: float) -> bool:
+    if not words:
+        return False
+    text = join_words([word.text for word in words])
+    return len(text) <= max_chars and words[-1].end - words[0].start <= max_duration
 
 
 def merge_short_cues(
@@ -109,6 +246,10 @@ def is_small_cue(cue: Cue, *, min_chars: int, min_words: int) -> bool:
 
 def ends_incomplete(text: str) -> bool:
     return text.rstrip().endswith((",", ";", ":", "-", "—", "–"))
+
+
+def ends_phrase(text: str) -> bool:
+    return text.rstrip().endswith((",", ";", ":", ".", "?", "!"))
 
 
 def starts_new_sentence_after_terminal(left: str, right: str) -> bool:
@@ -201,7 +342,10 @@ def join_words(words: Sequence[str]) -> str:
 
 
 def ends_sentence(value: str) -> bool:
-    return value.rstrip("\"')]}").endswith((".", "?", "!"))
+    normalized = value.rstrip("\"')]}”’").lower()
+    if normalized in NON_TERMINAL_ABBREVIATIONS:
+        return False
+    return normalized.endswith((".", "?", "!"))
 
 
 def write_srt(cues: Sequence[Cue], out: Path) -> None:

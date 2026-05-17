@@ -33,6 +33,29 @@ class SRTTest(unittest.TestCase):
     def test_join_words_recombines_hyphenated_source_tokens(self) -> None:
         self.assertEqual(join_words(["correctness-", "sensitive", "system."]), "correctness-sensitive system.")
 
+    def test_abbreviation_does_not_end_sentence(self) -> None:
+        words = [
+            Word(0.0, 0.2, "I"),
+            Word(0.2, 0.4, "like"),
+            Word(0.4, 0.6, "you,"),
+            Word(0.6, 1.0, "Mr."),
+            Word(1.0, 1.3, "Godall,"),
+            Word(1.3, 1.6, "returned"),
+            Word(1.6, 1.8, "the"),
+            Word(1.8, 2.1, "young"),
+            Word(2.1, 2.4, "man;"),
+        ]
+
+        cues = cues_from_words(
+            words,
+            max_words_per_cue=40,
+            max_cue_duration=20,
+            pause_threshold=0.6,
+            sentence_mode="strict",
+        )
+
+        self.assertEqual([cue.text for cue in cues], ["I like you, Mr. Godall, returned the young man;"])
+
     def test_strict_sentence_mode_keeps_sentence_together(self) -> None:
         words = [
             Word(0.0, 0.1, "This"),
@@ -105,6 +128,40 @@ class SRTTest(unittest.TestCase):
         self.assertEqual(
             [cue.text for cue in cues],
             ["A ruined man, yes, returned the other suspiciously, or else a millionaire.."],
+        )
+
+    def test_abbreviation_keeps_original_phrase_together(self) -> None:
+        words = [
+            Word(417.94, 418.2, "I"),
+            Word(418.2, 418.5, "like"),
+            Word(418.5, 418.8, "you,"),
+            Word(418.8, 421.37, "Mr."),
+            Word(421.37, 421.8, "Godall,"),
+            Word(421.8, 422.1, "returned"),
+            Word(422.1, 422.4, "the"),
+            Word(422.4, 422.8, "young"),
+            Word(422.8, 423.1, "man;"),
+            Word(423.1, 423.4, "you"),
+            Word(423.4, 423.7, "inspire"),
+            Word(423.7, 424.0, "me"),
+            Word(424.0, 424.3, "with"),
+            Word(424.3, 424.6, "a"),
+            Word(424.6, 425.0, "natural"),
+            Word(425.0, 425.4, "confidence;"),
+        ]
+
+        cues = cues_from_words(
+            words,
+            max_words_per_cue=40,
+            max_cue_duration=20,
+            max_line_chars=200,
+            pause_threshold=0.6,
+            sentence_mode="strict",
+        )
+
+        self.assertEqual(
+            [cue.text for cue in cues],
+            ["I like you, Mr. Godall, returned the young man; you inspire me with a natural confidence;"],
         )
 
     def test_wrap_words_uses_multiple_lines_for_long_sentences(self) -> None:
