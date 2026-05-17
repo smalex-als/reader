@@ -10,6 +10,8 @@ MIN_SUBTITLE_CUE_CHARS = 32
 MIN_SUBTITLE_CUE_WORDS = 6
 MAX_MERGED_SUBTITLE_CUE_CHARS = 140
 MAX_MERGED_SUBTITLE_CUE_SECONDS = 12.0
+MAX_TRAILING_STARTER_WORDS = 8
+MAX_TRAILING_STARTER_CHARS = 72
 NON_TERMINAL_ABBREVIATIONS = {
     "mr.",
     "mrs.",
@@ -72,10 +74,76 @@ def cues_from_words(
     if current:
         cues.append(WordCue(tuple(current)))
 
-    return [
-        cue_from_words(cue.words, max_line_chars=max_line_chars)
-        for cue in merge_short_word_cues(cues)
-    ]
+    grouped = merge_short_word_cues(cues)
+    grouped = move_trailing_sentence_starters(grouped)
+    grouped = merge_incomplete_word_cues(grouped)
+    return [cue_from_words(cue.words, max_line_chars=max_line_chars) for cue in grouped]
+
+
+def merge_incomplete_word_cues(
+    cues: Sequence[WordCue],
+    *,
+    max_chars: int = MAX_MERGED_SUBTITLE_CUE_CHARS,
+    max_duration: float = MAX_MERGED_SUBTITLE_CUE_SECONDS,
+) -> list[WordCue]:
+    output: list[WordCue] = []
+    for cue in cues:
+        previous = output[-1] if output else None
+        candidate_words = [*(previous.words if previous else ()), *cue.words]
+        if (
+            previous is not None
+            and not ends_sentence(previous.words[-1].text)
+            and can_merge_word_lists(candidate_words, max_chars=max_chars, max_duration=max_duration)
+        ):
+            output[-1] = WordCue(tuple(candidate_words))
+        else:
+            output.append(cue)
+    return output
+
+
+def move_trailing_sentence_starters(
+    cues: Sequence[WordCue],
+    *,
+    max_words: int = MAX_TRAILING_STARTER_WORDS,
+    max_chars: int = MAX_TRAILING_STARTER_CHARS,
+) -> list[WordCue]:
+    output = list(cues)
+    for index in range(len(output) - 1):
+        cue = output[index]
+        split_index = trailing_sentence_starter_index(cue.words, max_words=max_words, max_chars=max_chars)
+        if split_index is None:
+            continue
+        suffix = cue.words[split_index:]
+        prefix = cue.words[:split_index]
+        if not prefix or not suffix:
+            continue
+        output[index] = WordCue(tuple(prefix))
+        output[index + 1] = WordCue(tuple([*suffix, *output[index + 1].words]))
+    return output
+
+
+def trailing_sentence_starter_index(
+    words: Sequence[Word],
+    *,
+    max_words: int,
+    max_chars: int,
+) -> int | None:
+    if len(words) <= 1:
+        return None
+    for index in range(len(words) - 2, -1, -1):
+        if not ends_boundary(words[index].text):
+            continue
+        suffix = words[index + 1:]
+        suffix_text = join_words([word.text for word in suffix])
+        if (
+            suffix
+            and len(suffix) <= max_words
+            and len(suffix_text) <= max_chars
+            and not ends_sentence(suffix[-1].text)
+        ):
+            return index + 1
+        return None
+    return None
 
 
 def merge_short_word_cues(
@@ -250,6 +318,10 @@ def ends_incomplete(text: str) -> bool:
 
 def ends_phrase(text: str) -> bool:
     return text.rstrip().endswith((",", ";", ":", ".", "?", "!"))
+
+
+def ends_boundary(text: str) -> bool:
+    return ends_sentence(text) or ends_phrase(text)
 
 
 def starts_new_sentence_after_terminal(left: str, right: str) -> bool:
