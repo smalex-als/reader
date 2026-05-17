@@ -6,6 +6,12 @@ from typing import Iterable, Literal, Sequence
 
 from .textgrid import Word
 
+MIN_SUBTITLE_CUE_CHARS = 32
+MIN_SUBTITLE_CUE_WORDS = 6
+MAX_MERGED_SUBTITLE_CUE_CHARS = 140
+MAX_MERGED_SUBTITLE_CUE_SECONDS = 12.0
+MAX_SMALL_CUE_MERGE_GAP_SECONDS = 0.6
+
 
 @dataclass(frozen=True)
 class Cue:
@@ -46,7 +52,72 @@ def cues_from_words(
     if current:
         cues.append(cue_from_words(current, max_line_chars=max_line_chars))
 
-    return cues
+    return merge_short_cues(cues)
+
+
+def merge_short_cues(
+    cues: Sequence[Cue],
+    *,
+    min_chars: int = MIN_SUBTITLE_CUE_CHARS,
+    min_words: int = MIN_SUBTITLE_CUE_WORDS,
+    max_chars: int = MAX_MERGED_SUBTITLE_CUE_CHARS,
+    max_duration: float = MAX_MERGED_SUBTITLE_CUE_SECONDS,
+    max_gap: float = MAX_SMALL_CUE_MERGE_GAP_SECONDS,
+) -> list[Cue]:
+    merged: list[Cue] = []
+    pending: Cue | None = None
+    pending_started_small = False
+
+    for cue in cues:
+        if pending is None:
+            pending = cue
+            pending_started_small = is_small_cue(cue, min_chars=min_chars, min_words=min_words)
+        elif pending_started_small and can_merge_cues(
+            pending,
+            cue,
+            max_chars=max_chars,
+            max_duration=max_duration,
+            max_gap=max_gap,
+        ):
+            pending = Cue(
+                start=pending.start,
+                end=cue.end,
+                text=join_cue_text(pending.text, cue.text),
+            )
+        else:
+            merged.append(pending)
+            pending = cue
+            pending_started_small = is_small_cue(cue, min_chars=min_chars, min_words=min_words)
+
+    if pending is not None:
+        merged.append(pending)
+
+    return merged
+
+
+def is_small_cue(cue: Cue, *, min_chars: int, min_words: int) -> bool:
+    text = cue.text.strip()
+    return len(text) < min_chars or len(text.split()) <= min_words
+
+
+def can_merge_cues(
+    left: Cue,
+    right: Cue,
+    *,
+    max_chars: int,
+    max_duration: float,
+    max_gap: float,
+) -> bool:
+    text = join_cue_text(left.text, right.text)
+    return (
+        right.start - left.end <= max_gap
+        and len(text) <= max_chars
+        and right.end - left.start <= max_duration
+    )
+
+
+def join_cue_text(left: str, right: str) -> str:
+    return f"{left.strip()} {right.strip()}".strip()
 
 
 def should_start_new_cue(

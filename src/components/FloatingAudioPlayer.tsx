@@ -68,7 +68,7 @@ function parseTimestamp(value: string) {
 }
 
 function parseSrt(text: string): SubtitleCue[] {
-  return text
+  const cues = text
     .replace(/\r/g, '')
     .split(/\n{2,}/)
     .flatMap((block) => {
@@ -89,6 +89,55 @@ function parseSrt(text: string): SubtitleCue[] {
       }
       return [{ startSeconds, endSeconds, text: cueText }];
     });
+  return mergeAwkwardSubtitleCues(cues);
+}
+
+const MIN_SUBTITLE_CUE_CHARS = 32;
+const MIN_SUBTITLE_CUE_WORDS = 6;
+const MAX_MERGED_SUBTITLE_CUE_CHARS = 140;
+const MAX_MERGED_SUBTITLE_CUE_SECONDS = 12;
+const MAX_SMALL_CUE_MERGE_GAP_SECONDS = 0.6;
+
+function countWords(input: string) {
+  return input.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function isSmallSubtitleCue(cue: SubtitleCue) {
+  const text = cue.text.trim();
+  return text.length < MIN_SUBTITLE_CUE_CHARS || countWords(text) <= MIN_SUBTITLE_CUE_WORDS;
+}
+
+function canMergeSubtitleCues(left: SubtitleCue, right: SubtitleCue) {
+  const mergedText = `${left.text.trim()} ${right.text.trim()}`.trim();
+  const gapSeconds = right.startSeconds - left.endSeconds;
+  return (
+    gapSeconds <= MAX_SMALL_CUE_MERGE_GAP_SECONDS &&
+    mergedText.length <= MAX_MERGED_SUBTITLE_CUE_CHARS &&
+    right.endSeconds - left.startSeconds <= MAX_MERGED_SUBTITLE_CUE_SECONDS
+  );
+}
+
+function mergeAwkwardSubtitleCues(cues: SubtitleCue[]) {
+  const merged: SubtitleCue[] = [];
+  let pending: SubtitleCue | null = null;
+  let pendingStartedSmall = false;
+  for (const cue of cues) {
+    if (!pending) {
+      pending = { ...cue };
+      pendingStartedSmall = isSmallSubtitleCue(cue);
+    } else if (pendingStartedSmall && canMergeSubtitleCues(pending, cue)) {
+      pending.endSeconds = cue.endSeconds;
+      pending.text = `${pending.text.trim()} ${cue.text.trim()}`.trim();
+    } else {
+      merged.push(pending);
+      pending = { ...cue };
+      pendingStartedSmall = isSmallSubtitleCue(cue);
+    }
+  }
+  if (pending) {
+    merged.push(pending);
+  }
+  return merged;
 }
 
 export default function FloatingAudioPlayer({

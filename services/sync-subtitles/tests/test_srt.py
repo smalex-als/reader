@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from sync_subtitles_mfa.srt import cues_from_words, format_timestamp, join_words, wrap_words, write_srt
+from sync_subtitles_mfa.srt import Cue, cues_from_words, format_timestamp, join_words, merge_short_cues, wrap_words, write_srt
 from sync_subtitles_mfa.textgrid import Word
 
 
@@ -52,7 +52,48 @@ class SRTTest(unittest.TestCase):
             sentence_mode="strict",
         )
 
-        self.assertEqual([cue.text for cue in cues], ["This sentence stays together.", "Next one."])
+        self.assertEqual([cue.text for cue in cues], ["This sentence stays together. Next one."])
+
+    def test_merges_short_cue_runs(self) -> None:
+        cues = merge_short_cues(
+            [
+                Cue(1.0, 2.0, "You are not fooling me?"),
+                Cue(2.2, 3.0, "he asked."),
+                Cue(4.0, 5.0, "Ruined?"),
+                Cue(5.2, 6.0, "said the young man."),
+                Cue(7.0, 8.0, "You are the men for me!"),
+                Cue(8.2, 9.0, "he cried, with an almost terrible gaiety."),
+            ]
+        )
+
+        self.assertEqual(
+            [cue.text for cue in cues],
+            [
+                "You are not fooling me? he asked.",
+                "Ruined? said the young man.",
+                "You are the men for me! he cried, with an almost terrible gaiety.",
+            ],
+        )
+
+    def test_short_cue_run_does_not_attach_to_previous_normal_cue(self) -> None:
+        cues = merge_short_cues(
+            [
+                Cue(14.41, 18.18, "Unhappy man, he cried, you should not have burned them all!"),
+                Cue(18.5, 20.27, "You should have kept forty pounds."),
+                Cue(20.6, 21.74, "Forty pounds!"),
+                Cue(22.07, 23.08, "repeated the Prince."),
+                Cue(23.79, 26.38, "Why, in heaven’s name, forty pounds?"),
+            ]
+        )
+
+        self.assertEqual(
+            [cue.text for cue in cues],
+            [
+                "Unhappy man, he cried, you should not have burned them all!",
+                "You should have kept forty pounds. Forty pounds! repeated the Prince.",
+                "Why, in heaven’s name, forty pounds?",
+            ],
+        )
 
     def test_wrap_words_uses_multiple_lines_for_long_sentences(self) -> None:
         lines = wrap_words(["one", "two", "three", "four", "five"], max_line_chars=13)
