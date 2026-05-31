@@ -6,6 +6,7 @@ import {
   OCR_BACKEND,
   OCR_TIMEOUT_MS,
   OCR_DEEPSEEK_HOST,
+  OCR_DEEPSEEK_CONCURRENCY,
   OCR_DEEPSEEK_MODEL,
   OCR_DEEPSEEK_PATH,
   OCR_DEEPSEEK_PROMPT
@@ -30,6 +31,44 @@ function createOcrTimeoutError(timeoutMs) {
   const error = new Error(`OCR timed out after ${timeoutMs}ms`);
   error.code = 'OCR_TIMEOUT';
   return error;
+}
+
+let activeDeepseekOcrRequests = 0;
+const deepseekOcrQueue = [];
+
+function grantDeepseekOcrSlots() {
+  while (
+    activeDeepseekOcrRequests < OCR_DEEPSEEK_CONCURRENCY &&
+    deepseekOcrQueue.length > 0
+  ) {
+    activeDeepseekOcrRequests += 1;
+    const resolve = deepseekOcrQueue.shift();
+    resolve?.();
+  }
+}
+
+async function acquireDeepseekOcrSlot() {
+  if (activeDeepseekOcrRequests < OCR_DEEPSEEK_CONCURRENCY) {
+    activeDeepseekOcrRequests += 1;
+    return;
+  }
+  await new Promise((resolve) => {
+    deepseekOcrQueue.push(resolve);
+  });
+}
+
+function releaseDeepseekOcrSlot() {
+  activeDeepseekOcrRequests = Math.max(0, activeDeepseekOcrRequests - 1);
+  grantDeepseekOcrSlots();
+}
+
+async function runWithDeepseekOcrSlot(task) {
+  await acquireDeepseekOcrSlot();
+  try {
+    return await task();
+  } finally {
+    releaseDeepseekOcrSlot();
+  }
 }
 
 async function withOcrTimeout(task, timeoutMs) {
@@ -145,7 +184,7 @@ export async function loadPageText(imageUrl, options = {}) {
   const ocrBackend = resolveOcrBackend(engine);
   try {
     if (ocrBackend === 'deepseek_ocr') {
-      text = await extractTextFromDeepseekOcr(absolute, timeoutMs);
+      text = await runWithDeepseekOcrSlot(() => extractTextFromDeepseekOcr(absolute, timeoutMs));
     } else if (ocrBackend === 'openai') {
       const prompt = getTextPrompt({
         backend: ocrBackend,

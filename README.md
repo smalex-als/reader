@@ -96,6 +96,7 @@ Server environment variables:
 - `YANDEX_STREAM_VOICES` (comma-separated Yandex stream voices; defaults to `alena,jane,zahar,oksana,ermil,marina`)
 - `YANDEX_TTS_LANG`, `YANDEX_TTS_SPEED`, and `YANDEX_TTS_SAMPLE_RATE` (optional Yandex stream voice settings; defaults to `ru-RU`, `1.0`, and `48000`; audio is resampled to the app stream rate)
 - `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://reader.test:11434`)
+- `OCR_DEEPSEEK_CONCURRENCY` (max active Deepseek OCR requests; default `1`, so extra requests wait server-side instead of overloading the model)
 - `OCR_DEEPSEEK_MODEL` (default `deepseek-ocr`)
 - `OCR_DEEPSEEK_PROMPT` (default `\n<|grounding|>Convert the\ndocument to markdown.`)
 - `HOST` (default `0.0.0.0`)
