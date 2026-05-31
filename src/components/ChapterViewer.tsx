@@ -820,25 +820,92 @@ export default function ChapterViewer({
         </div>
         {toolsOpen ? (
           <div className="text-viewer-tools-panel" id="text-viewer-tools">
-            <section className="text-viewer-tools-section" aria-label="Study tools">
-              <h3 className="text-viewer-tools-title">Study</h3>
+            <section className="text-viewer-tools-section" aria-label="View tools">
+              <h3 className="text-viewer-tools-title">View</h3>
               <div className="text-viewer-tools-body">
                 <div className="text-viewer-tools-row">
                   <button
                     type="button"
-                    className="button button-primary"
-                    onClick={() =>
-                      onCreateUnit({
-                        text: displayText ?? '',
-                        chapterTitle,
-                        versionLabel: selectedVersion?.label ?? null,
-                        versionId: selectedVersionId
-                      })
-                    }
-                    disabled={!chapterNumber || !displayText?.trim() || displayLoading || unitCreating}
+                    className="button button-secondary"
+                    onClick={() => setSettingsOpen((prev) => !prev)}
+                    aria-expanded={settingsOpen}
+                    aria-controls="text-viewer-settings"
                   >
-                    {unitCreating ? 'Creating...' : 'Create a unit'}
+                    {settingsOpen ? 'Hide settings' : 'Text settings'}
                   </button>
+                  {outlineItems.length > 0 ? (
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => setOutlineOpen((prev) => !prev)}
+                      aria-expanded={outlineOpen}
+                      aria-controls="text-viewer-outline"
+                    >
+                      {outlineOpen ? 'Hide outline' : 'Show outline'}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+            {onCreateChapter || (onDeleteChapter && chapterNumber) ? (
+              <section className="text-viewer-tools-section" aria-label="Chapter tools">
+                <h3 className="text-viewer-tools-title">Chapter</h3>
+                <div className="text-viewer-tools-body">
+                  <div className="text-viewer-tools-row">
+                    {onCreateChapter ? (
+                      <button
+                        type="button"
+                        className="button button-ghost modal-icon-button"
+                        onClick={() => void onCreateChapter()}
+                        disabled={chapterCreating}
+                        aria-label="Create chapter"
+                        title="Create chapter"
+                      >
+                        <AddIcon />
+                      </button>
+                    ) : null}
+                    {onDeleteChapter && chapterNumber ? (
+                      <button
+                        type="button"
+                        className="button button-ghost modal-icon-button"
+                        onClick={() => void onDeleteChapter(chapterNumber)}
+                        disabled={chapterDeleting || displayLoading}
+                        aria-label="Delete chapter"
+                        title="Delete chapter"
+                      >
+                        <TrashIcon />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+            <section className="text-viewer-tools-section" aria-label="Version tools">
+              <h3 className="text-viewer-tools-title">Versions</h3>
+              <div className="text-viewer-tools-body">
+                <div className="text-viewer-tools-row">
+                  <button
+                    type="button"
+                    className="button button-ghost modal-icon-button"
+                    onClick={openVersionModal}
+                    disabled={!canCreateVersion || versionSaving}
+                    aria-label="Create text version"
+                    title="Create text version"
+                  >
+                    <AddIcon />
+                  </button>
+                  {selectedVersion?.deletable ? (
+                    <button
+                      type="button"
+                      className="button button-ghost modal-icon-button"
+                      onClick={() => void handleDeleteVersion()}
+                      disabled={versionSaving}
+                      aria-label="Delete selected version"
+                      title="Delete selected version"
+                    >
+                      <TrashIcon />
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -950,92 +1017,25 @@ export default function ChapterViewer({
                 ) : null}
               </div>
             </section>
-            <section className="text-viewer-tools-section" aria-label="View tools">
-              <h3 className="text-viewer-tools-title">View</h3>
+            <section className="text-viewer-tools-section" aria-label="Study tools">
+              <h3 className="text-viewer-tools-title">Study</h3>
               <div className="text-viewer-tools-body">
                 <div className="text-viewer-tools-row">
                   <button
                     type="button"
-                    className="button button-secondary"
-                    onClick={() => setSettingsOpen((prev) => !prev)}
-                    aria-expanded={settingsOpen}
-                    aria-controls="text-viewer-settings"
+                    className="button button-primary"
+                    onClick={() =>
+                      onCreateUnit({
+                        text: displayText ?? '',
+                        chapterTitle,
+                        versionLabel: selectedVersion?.label ?? null,
+                        versionId: selectedVersionId
+                      })
+                    }
+                    disabled={!chapterNumber || !displayText?.trim() || displayLoading || unitCreating}
                   >
-                    {settingsOpen ? 'Hide settings' : 'Text settings'}
+                    {unitCreating ? 'Creating...' : 'Create a unit'}
                   </button>
-                  {outlineItems.length > 0 ? (
-                    <button
-                      type="button"
-                      className="button button-secondary"
-                      onClick={() => setOutlineOpen((prev) => !prev)}
-                      aria-expanded={outlineOpen}
-                      aria-controls="text-viewer-outline"
-                    >
-                      {outlineOpen ? 'Hide outline' : 'Show outline'}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-            {onCreateChapter || (onDeleteChapter && chapterNumber) ? (
-              <section className="text-viewer-tools-section" aria-label="Chapter tools">
-                <h3 className="text-viewer-tools-title">Chapter</h3>
-                <div className="text-viewer-tools-body">
-                  <div className="text-viewer-tools-row">
-                    {onCreateChapter ? (
-                      <button
-                        type="button"
-                        className="button button-ghost modal-icon-button"
-                        onClick={() => void onCreateChapter()}
-                        disabled={chapterCreating}
-                        aria-label="Create chapter"
-                        title="Create chapter"
-                      >
-                        <AddIcon />
-                      </button>
-                    ) : null}
-                    {onDeleteChapter && chapterNumber ? (
-                      <button
-                        type="button"
-                        className="button button-ghost modal-icon-button"
-                        onClick={() => void onDeleteChapter(chapterNumber)}
-                        disabled={chapterDeleting || displayLoading}
-                        aria-label="Delete chapter"
-                        title="Delete chapter"
-                      >
-                        <TrashIcon />
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </section>
-            ) : null}
-            <section className="text-viewer-tools-section" aria-label="Version tools">
-              <h3 className="text-viewer-tools-title">Versions</h3>
-              <div className="text-viewer-tools-body">
-                <div className="text-viewer-tools-row">
-                  <button
-                    type="button"
-                    className="button button-ghost modal-icon-button"
-                    onClick={openVersionModal}
-                    disabled={!canCreateVersion || versionSaving}
-                    aria-label="Create text version"
-                    title="Create text version"
-                  >
-                    <AddIcon />
-                  </button>
-                  {selectedVersion?.deletable ? (
-                    <button
-                      type="button"
-                      className="button button-ghost modal-icon-button"
-                      onClick={() => void handleDeleteVersion()}
-                      disabled={versionSaving}
-                      aria-label="Delete selected version"
-                      title="Delete selected version"
-                    >
-                      <TrashIcon />
-                    </button>
-                  ) : null}
                 </div>
               </div>
             </section>
