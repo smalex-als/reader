@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { TOC_FILENAME } from '../config.js';
+import { DETAILED_TOC_FILENAME, TOC_FILENAME } from '../config.js';
 import { createHttpError } from './errors.js';
 import { ensureDataDir, safeStat } from './fs.js';
 import {
@@ -67,9 +67,25 @@ async function loadRawToc(bookId) {
   }
 }
 
-async function saveRawToc(bookId, entries) {
+async function loadRawTocFile(bookId, filename) {
   const directory = await assertBookDirectory(bookId);
-  const tocPath = path.join(directory, TOC_FILENAME);
+  const tocPath = path.join(directory, filename);
+  const stat = await safeStat(tocPath);
+  if (!stat?.isFile()) {
+    return [];
+  }
+  try {
+    const raw = await fs.readFile(tocPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveRawToc(bookId, entries, filename = TOC_FILENAME) {
+  const directory = await assertBookDirectory(bookId);
+  const tocPath = path.join(directory, filename);
   await fs.writeFile(tocPath, JSON.stringify(entries, null, 2), 'utf8');
   return entries;
 }
@@ -109,6 +125,11 @@ async function listChapterNumbers(bookId) {
 export async function getTextChapterCount(bookId) {
   const numbers = await listChapterNumbers(bookId);
   return numbers.length;
+}
+
+export async function getTextChapterNavigationCount(bookId) {
+  const numbers = await listChapterNumbers(bookId);
+  return numbers.length > 0 ? Math.max(...numbers) : 0;
 }
 
 export async function createTextBook(bookName) {
@@ -226,5 +247,61 @@ export async function updateTextChapter(bookId, chapterNumber, content, title) {
     chapterTitle,
     chapterFile: `/data/${bookId}/${filename}`,
     toc: updated
+  };
+}
+
+export async function deleteTextChapter(bookId, chapterNumber) {
+  const bookType = await getBookType(bookId);
+  if (bookType !== 'text') {
+    throw createHttpError(400, 'Chapters can only be deleted from text books');
+  }
+  if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
+    throw createHttpError(400, 'Valid chapter number is required');
+  }
+
+  const directory = await assertBookDirectory(bookId);
+  const suffix = String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0');
+  const chapterPrefixPattern = new RegExp(`^chapter${suffix}(?:\\.|$)`, 'i');
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const matchingFiles = entries
+    .filter((entry) => entry.isFile() && chapterPrefixPattern.test(entry.name))
+    .map((entry) => path.join(directory, entry.name));
+
+  const chapterFile = path.join(directory, formatChapterFilename(chapterNumber));
+  const chapterStat = await safeStat(chapterFile);
+  if (!chapterStat?.isFile()) {
+    throw createHttpError(404, 'Chapter text not found');
+  }
+
+  await Promise.all(matchingFiles.map((filePath) => fs.rm(filePath, { force: true })));
+
+  const chapterIndex = chapterNumber - 1;
+  const toc = (await loadRawTocFile(bookId, TOC_FILENAME))
+    .map(normalizeTocEntry)
+    .filter(Boolean)
+    .filter((entry) => entry.page !== chapterIndex)
+    .sort((a, b) => a.page - b.page);
+  const detailedToc = (await loadRawTocFile(bookId, DETAILED_TOC_FILENAME))
+    .filter((entry) => {
+      const page = Number.parseInt(entry?.page, 10);
+      return Number.isInteger(page) && page >= 0 && page !== chapterIndex;
+    })
+    .sort((a, b) => a.page - b.page);
+  await saveRawToc(bookId, toc, TOC_FILENAME);
+  await saveRawToc(bookId, detailedToc, DETAILED_TOC_FILENAME);
+
+  const existingMeta = (await loadBookMeta(bookId)) || { type: 'text' };
+  await saveBookMeta(bookId, {
+    ...existingMeta,
+    type: 'text',
+    updatedAt: new Date().toISOString()
+  });
+
+  return {
+    chapterNumber,
+    chapterIndex,
+    deletedFiles: matchingFiles.length,
+    toc,
+    detailedToc
   };
 }

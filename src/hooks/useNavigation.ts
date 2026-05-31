@@ -83,7 +83,12 @@ export function useNavigation({
   const handlePrev = useCallback(() => {
     if (viewMode === 'text' || viewMode === 'audio') {
       if (isTextBook) {
-        renderPage(currentPage - 1);
+        const existingPages = sortedTocEntries
+          .map((entry) => entry.page)
+          .filter((page) => Number.isInteger(page) && page >= 0 && page < navigationCount)
+          .sort((a, b) => a - b);
+        const previousExistingPage = [...existingPages].reverse().find((page) => page < currentPage);
+        renderPage(previousExistingPage ?? currentPage - 1);
         return;
       }
       if (currentChapterIndex === null) {
@@ -97,12 +102,26 @@ export function useNavigation({
       return;
     }
     renderPage(currentPage - 1);
-  }, [currentChapterIndex, currentPage, goToChapterIndex, isTextBook, renderPage, viewMode]);
+  }, [
+    currentChapterIndex,
+    currentPage,
+    goToChapterIndex,
+    isTextBook,
+    navigationCount,
+    renderPage,
+    sortedTocEntries,
+    viewMode
+  ]);
 
   const handleNext = useCallback(() => {
     if (viewMode === 'text' || viewMode === 'audio') {
       if (isTextBook) {
-        renderPage(currentPage + 1);
+        const existingPages = sortedTocEntries
+          .map((entry) => entry.page)
+          .filter((page) => Number.isInteger(page) && page >= 0 && page < navigationCount)
+          .sort((a, b) => a - b);
+        const nextExistingPage = existingPages.find((page) => page > currentPage);
+        renderPage(nextExistingPage ?? currentPage + 1);
         return;
       }
       if (currentChapterIndex === null) {
@@ -121,7 +140,9 @@ export function useNavigation({
     currentPage,
     goToChapterIndex,
     isTextBook,
+    navigationCount,
     renderPage,
+    sortedTocEntries,
     sortedTocEntries.length,
     viewMode
   ]);

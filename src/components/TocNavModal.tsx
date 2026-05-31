@@ -62,10 +62,20 @@ export default function TocNavModal({
   }
 
   const formatWordCount = (value?: number) => {
-    if (!value) {
+    if (typeof value !== 'number') {
+      return 'Text stats unavailable';
+    }
+    if (value <= 0) {
       return 'No text';
     }
     return new Intl.NumberFormat(undefined, { notation: value >= 1000 ? 'compact' : 'standard' }).format(value) + ' words';
+  };
+
+  const formatTocListeningTime = (value?: number) => {
+    if (typeof value !== 'number') {
+      return 'audio estimate unavailable';
+    }
+    return formatListeningTime(value);
   };
 
   return (
@@ -128,7 +138,7 @@ export default function TocNavModal({
                     <span className="toc-nav-copy">
                       <span className="toc-nav-title">{entry.title}</span>
                       <span className="toc-nav-meta">
-                        {formatWordCount(entry.stats?.wordCount)} · {formatListeningTime(entry.stats?.listeningSeconds)}
+                        {formatWordCount(entry.stats?.wordCount)} · {formatTocListeningTime(entry.stats?.listeningSeconds)}
                       </span>
                     </span>
                     <span className="toc-nav-page">Page {entry.page + 1}</span>

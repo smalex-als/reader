@@ -9,6 +9,7 @@ import {
   markBookOpened,
   removeBookStorage,
   saveLastBook,
+  saveLastPage,
   saveSettingsForBook,
   saveStreamVoiceForBook
 } from '@/lib/storage';
@@ -103,6 +104,7 @@ export function useBookSession<StreamVoice extends string>({
   const [loading, setLoading] = useState(false);
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [uploadingChapter, setUploadingChapter] = useState(false);
+  const [deletingChapter, setDeletingChapter] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [libraryStateReady, setLibraryStateReady] = useState(false);
   const pendingPageRef = useRef<number | null>(null);
@@ -267,6 +269,7 @@ export function useBookSession<StreamVoice extends string>({
           manifest: string[];
           bookType?: 'image' | 'text';
           chapterCount?: number;
+          chapterFileCount?: number;
         }>(`/api/books/${encodeURIComponent(bookId)}/manifest`);
         const nextBookType = data.bookType === 'text' ? 'text' : 'image';
         const nextChapterCount =
@@ -290,7 +293,11 @@ export function useBookSession<StreamVoice extends string>({
         const requestedView = requestedViewFromLocation;
         if (nextBookType === 'text') {
           setViewMode(requestedView && requestedView !== 'pages' ? requestedView : 'text');
-          showToast(`Loaded ${nextChapterCount} chapters`, 'success');
+          const loadedChapters =
+            typeof data.chapterFileCount === 'number' && Number.isInteger(data.chapterFileCount)
+              ? data.chapterFileCount
+              : nextChapterCount;
+          showToast(`Loaded ${loadedChapters} chapters`, 'success');
         } else {
           setViewMode(requestedView === 'scroll' || requestedView === 'pages' ? requestedView : 'pages');
           showToast(`Loaded ${nextManifest.length} pages`, 'success');
@@ -376,6 +383,7 @@ export function useBookSession<StreamVoice extends string>({
           bookType?: 'text';
           chapterIndex?: number;
           chapterCount?: number;
+          chapterFileCount?: number;
           toc?: TocEntry[];
         };
         const newBookId = data.book;
@@ -441,6 +449,7 @@ export function useBookSession<StreamVoice extends string>({
           bookType?: 'text';
           chapterIndex?: number;
           chapterCount?: number;
+          chapterFileCount?: number;
           toc?: TocEntry[];
         };
         const newBookId = data.book;
@@ -545,6 +554,66 @@ export function useBookSession<StreamVoice extends string>({
     [bookId, showToast]
   );
 
+  const handleDeleteChapter = useCallback(
+    async (chapterNumber: number) => {
+      if (!bookId || bookType !== 'text') {
+        return;
+      }
+      if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
+        showToast('Valid chapter is required', 'error');
+        return;
+      }
+      const confirmed = window.confirm(
+        `Delete chapter ${chapterNumber}? Other chapter numbers will stay unchanged.`
+      );
+      if (!confirmed) {
+        return;
+      }
+      setDeletingChapter(true);
+      try {
+        const data = await fetchJson<{
+          book: string;
+          bookType?: 'text';
+          chapterNumber: number;
+          chapterIndex: number;
+          chapterCount?: number;
+          chapterFileCount?: number;
+          toc?: TocEntry[];
+        }>(`/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}`, {
+          method: 'DELETE'
+        });
+        const nextChapterCount = Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0;
+        const nextToc = Array.isArray(data.toc) ? data.toc : [];
+        setChapterCount(nextChapterCount);
+        onUpdateTocEntries(nextToc);
+        if (nextChapterCount <= 0) {
+          setCurrentPage(0);
+        } else {
+          const deletedIndex = Number.isInteger(data.chapterIndex) ? data.chapterIndex : chapterNumber - 1;
+          const sortedPages = nextToc
+            .map((entry) => entry.page)
+            .filter((page) => Number.isInteger(page) && page >= 0 && page < nextChapterCount)
+            .sort((a, b) => a - b);
+          const nextExistingPage =
+            sortedPages.find((page) => page > deletedIndex) ??
+            [...sortedPages].reverse().find((page) => page < deletedIndex) ??
+            clamp(Math.min(deletedIndex, nextChapterCount - 1), 0, nextChapterCount - 1);
+          setCurrentPage(nextExistingPage);
+          saveLastPage(bookId, nextExistingPage);
+        }
+        setEditorOpen(false);
+        setEditorChapterNumber(null);
+        showToast(`Deleted chapter ${data.chapterNumber}`, 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Unable to delete chapter', 'error');
+      } finally {
+        setDeletingChapter(false);
+      }
+    },
+    [bookId, bookType, onUpdateTocEntries, setEditorChapterNumber, setEditorOpen, showToast]
+  );
+
   return {
     books,
     bookId,
@@ -560,10 +629,12 @@ export function useBookSession<StreamVoice extends string>({
     bookModalOpen,
     setBookModalOpen,
     uploadingChapter,
+    deletingChapter,
     uploadingPdf,
     handleUploadChapter,
     handleCreateChapter,
     handleUploadPdf,
-    handleDeleteBook
+    handleDeleteBook,
+    handleDeleteChapter
   };
 }

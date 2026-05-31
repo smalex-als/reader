@@ -18,11 +18,13 @@ interface ChapterViewerProps {
   tocLoading: boolean;
   allowGenerate: boolean;
   allowEdit: boolean;
+  chapterDeleting?: boolean;
   onEditChapter: (payload: {
     versionId: string;
     versionLabel: string | null;
     text: string;
   }) => void;
+  onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
   textFontSize: number;
   onTextFontSizeChange: (value: number) => void;
   textTheme:
@@ -196,7 +198,9 @@ export default function ChapterViewer({
   tocLoading,
   allowGenerate,
   allowEdit,
+  chapterDeleting = false,
   onEditChapter,
+  onDeleteChapter,
   textFontSize,
   onTextFontSizeChange,
   textTheme,
@@ -969,6 +973,25 @@ export default function ChapterViewer({
                 </div>
               </div>
             </section>
+            {onDeleteChapter && chapterNumber ? (
+              <section className="text-viewer-tools-section" aria-label="Chapter tools">
+                <h3 className="text-viewer-tools-title">Chapter</h3>
+                <div className="text-viewer-tools-body">
+                  <div className="text-viewer-tools-row">
+                    <button
+                      type="button"
+                      className="button button-ghost modal-icon-button"
+                      onClick={() => void onDeleteChapter(chapterNumber)}
+                      disabled={chapterDeleting || displayLoading}
+                      aria-label="Delete chapter"
+                      title="Delete chapter"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
             <section className="text-viewer-tools-section" aria-label="Version tools">
               <h3 className="text-viewer-tools-title">Versions</h3>
               <div className="text-viewer-tools-body">
@@ -1062,6 +1085,9 @@ export default function ChapterViewer({
               {generating ? 'Generating…' : 'Generate Chapter'}
             </button>
           </div>
+        )}
+        {!tocLoading && !allowGenerate && chapterNumber && !displayLoading && missingFile && (
+          <p className="text-viewer-status">{missingFile} is missing.</p>
         )}
         {!tocLoading && chapterNumber && !displayLoading && !missingFile && displayError && (
           <p className="text-viewer-status">{displayError}</p>

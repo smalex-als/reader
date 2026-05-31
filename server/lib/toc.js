@@ -6,12 +6,12 @@ import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
 import { deriveTextPathsFromImageUrl } from './paths.js';
 import { getOpenAI } from './openai.js';
-import { getTextChapterCount } from './textBooks.js';
+import { getTextChapterNavigationCount } from './textBooks.js';
 
 async function getTocMaxIndex(bookId) {
   const bookType = await getBookType(bookId);
   if (bookType === 'text') {
-    const chapterCount = await getTextChapterCount(bookId);
+    const chapterCount = await getTextChapterNavigationCount(bookId);
     return Math.max(0, chapterCount - 1);
   }
   const manifest = await loadManifest(bookId);

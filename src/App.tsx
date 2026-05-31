@@ -169,11 +169,13 @@ export default function App() {
     bookModalOpen,
     setBookModalOpen,
     uploadingChapter,
+    deletingChapter,
     uploadingPdf,
     handleUploadChapter,
     handleCreateChapter,
     handleUploadPdf,
-    handleDeleteBook
+    handleDeleteBook,
+    handleDeleteChapter
   } = useBookSession({
     settings,
     setSettings,
@@ -1640,11 +1642,13 @@ export default function App() {
       tocLoading,
       allowGenerate: !isTextBook,
       allowEdit: true,
+      chapterDeleting: deletingChapter,
       onEditChapter: (payload: { versionId: string; versionLabel: string | null; text: string }) => {
         setEditorChapterNumber(chapterNumber);
         setEditorTextVersion(payload);
         setEditorOpen(true);
       },
+      onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
       textFontSize: settings.textFontSize,
       onTextFontSizeChange: updateTextFontSize,
       textTheme: settings.textTheme,

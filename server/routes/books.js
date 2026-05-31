@@ -56,7 +56,9 @@ import {
   addTextChapter,
   createTextBook,
   createEmptyTextChapter,
+  deleteTextChapter,
   getTextChapterCount,
+  getTextChapterNavigationCount,
   updateTextChapter
 } from '../lib/textBooks.js';
 import {
@@ -287,8 +289,11 @@ router.get('/api/books/:id/manifest', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const bookType = await getBookType(bookId);
   if (bookType === 'text') {
-    const chapterCount = await getTextChapterCount(bookId);
-    res.json({ book: bookId, manifest: [], bookType, chapterCount });
+    const [chapterCount, chapterFileCount] = await Promise.all([
+      getTextChapterNavigationCount(bookId),
+      getTextChapterCount(bookId)
+    ]);
+    res.json({ book: bookId, manifest: [], bookType, chapterCount, chapterFileCount });
     return;
   }
   const manifest = await loadManifest(bookId);
@@ -298,10 +303,10 @@ router.get('/api/books/:id/manifest', asyncHandler(async (req, res) => {
 router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   res.setHeader('Cache-Control', 'no-store');
-  const toc = await loadToc(bookId);
+  const [toc, bookType] = await Promise.all([loadToc(bookId), getBookType(bookId)]);
   const chapters = await Promise.all(
     toc.map(async (entry, index) => {
-      const chapterNumber = index + 1;
+      const chapterNumber = bookType === 'text' && Number.isInteger(entry.page) ? entry.page + 1 : index + 1;
       const versions = await listChapterTextVersions({ bookId, chapterNumber }).catch((error) => {
         if (error?.status === 404) {
           return null;
@@ -730,8 +735,11 @@ router.post('/api/books/text', upload.single('file'), asyncHandler(async (req, r
   const bookId = await createTextBook(bookName);
   const result = await addTextChapter(bookId, { title: chapterTitle, content });
   await invalidateBookSearchIndex(bookId);
-  const chapterCount = await getTextChapterCount(bookId);
-  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+  const [chapterCount, chapterFileCount] = await Promise.all([
+    getTextChapterNavigationCount(bookId),
+    getTextChapterCount(bookId)
+  ]);
+  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
 }));
 
 router.post('/api/books/text/empty', asyncHandler(async (req, res) => {
@@ -739,8 +747,11 @@ router.post('/api/books/text/empty', asyncHandler(async (req, res) => {
   const bookId = await createTextBook(bookName);
   const result = await createEmptyTextChapter(bookId, chapterTitle);
   await invalidateBookSearchIndex(bookId);
-  const chapterCount = await getTextChapterCount(bookId);
-  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+  const [chapterCount, chapterFileCount] = await Promise.all([
+    getTextChapterNavigationCount(bookId),
+    getTextChapterCount(bookId)
+  ]);
+  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
 }));
 
 router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async (req, res) => {
@@ -753,8 +764,11 @@ router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async
   const content = file.buffer.toString('utf8');
   const result = await addTextChapter(bookId, { title: chapterTitle, content });
   await invalidateBookSearchIndex(bookId);
-  const chapterCount = await getTextChapterCount(bookId);
-  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+  const [chapterCount, chapterFileCount] = await Promise.all([
+    getTextChapterNavigationCount(bookId),
+    getTextChapterCount(bookId)
+  ]);
+  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
 }));
 
 router.post('/api/books/:id/chapters/empty', asyncHandler(async (req, res) => {
@@ -762,8 +776,11 @@ router.post('/api/books/:id/chapters/empty', asyncHandler(async (req, res) => {
   const { chapterTitle } = req.body || {};
   const result = await createEmptyTextChapter(bookId, chapterTitle);
   await invalidateBookSearchIndex(bookId);
-  const chapterCount = await getTextChapterCount(bookId);
-  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+  const [chapterCount, chapterFileCount] = await Promise.all([
+    getTextChapterNavigationCount(bookId),
+    getTextChapterCount(bookId)
+  ]);
+  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
 }));
 
 router.put('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => {
@@ -772,8 +789,31 @@ router.put('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => 
   const { content, title } = req.body || {};
   const result = await updateTextChapter(bookId, chapterNumber, content, title);
   await invalidateBookSearchIndex(bookId);
-  const chapterCount = await getTextChapterCount(bookId);
-  res.json({ book: bookId, bookType: 'text', chapterCount, ...result });
+  const [chapterCount, chapterFileCount] = await Promise.all([
+    getTextChapterNavigationCount(bookId),
+    getTextChapterCount(bookId)
+  ]);
+  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
+}));
+
+router.delete('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const result = await deleteTextChapter(bookId, chapterNumber);
+  await invalidateBookSearchIndex(bookId);
+  const [chapterCount, chapterFileCount] = await Promise.all([
+    getTextChapterNavigationCount(bookId),
+    getTextChapterCount(bookId)
+  ]);
+  const tocWithStats = await attachTocStats(bookId, result.toc);
+  res.json({
+    book: bookId,
+    bookType: 'text',
+    chapterCount,
+    chapterFileCount,
+    ...result,
+    toc: tocWithStats
+  });
 }));
 
 export default router;

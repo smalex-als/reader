@@ -185,6 +185,7 @@ Chapters and narration:
 - `POST /api/books/:id/chapters`
 - `POST /api/books/:id/chapters/empty`
 - `PUT /api/books/:id/chapters/:chapter`
+- `DELETE /api/books/:id/chapters/:chapter`
 - `POST /api/books/:id/chapters/generate`
 - `POST /api/books/:id/chapters/:chapter/narration`
 - `GET /api/books/:id/chapters/:chapter/text-versions`
