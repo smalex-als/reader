@@ -90,6 +90,20 @@ export async function saveToc(bookId, toc, options = {}) {
   return normalized;
 }
 
+export async function updateTocTitle(bookId, pageIndex, title, options = {}) {
+  if (!Number.isInteger(pageIndex) || pageIndex < 0) {
+    throw createHttpError(400, 'Valid page is required');
+  }
+  const cleanedTitle = typeof title === 'string' ? title.trim() : '';
+  const current = await loadToc(bookId, options);
+  const existing = current.find((entry) => entry.page === pageIndex);
+  const nextTitle = cleanedTitle || existing?.title || `Chapter ${pageIndex + 1}`;
+  const next = existing
+    ? current.map((entry) => (entry.page === pageIndex ? { ...entry, title: nextTitle } : entry))
+    : [...current, { title: nextTitle, page: pageIndex }];
+  return saveToc(bookId, next, options);
+}
+
 function extractJsonArray(text) {
   if (typeof text !== 'string') {
     return null;

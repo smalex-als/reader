@@ -101,11 +101,7 @@ export default function ChapterEditor({
       const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          editingTextVersion
-            ? { content: draftText }
-            : { content: draftText, title: draftTitle }
-        )
+        body: JSON.stringify({ content: draftText, title: draftTitle })
       });
       if (!response.ok) {
         throw new Error(`Save failed: ${response.status}`);
@@ -127,18 +123,14 @@ export default function ChapterEditor({
           <span className="text-viewer-label">
             {editingTextVersion ? `Edit ${versionLabel ?? versionId ?? 'text version'}` : 'Edit Chapter'}
           </span>
-          {editingTextVersion ? (
-            <strong className="chapter-editor-title-input">{chapterTitle ?? 'Chapter text'}</strong>
-          ) : (
-            <input
-              type="text"
-              className="input chapter-editor-title-input"
-              placeholder="Chapter title"
-              value={draftTitle}
-              onChange={(event) => setDraftTitle(event.target.value)}
-              disabled={loading || saving}
-            />
-          )}
+          <input
+            type="text"
+            className="input chapter-editor-title-input"
+            placeholder="Chapter title"
+            value={draftTitle}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            disabled={loading || saving}
+          />
         </div>
         <div className="chapter-editor-actions">
           <button type="button" className="button" onClick={handleSave} disabled={saving || loading}>

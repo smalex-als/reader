@@ -25,7 +25,7 @@ import {
   sanitizeBookmarkInput,
   saveBookmarks
 } from '../lib/bookmarks.js';
-import { generateTocFromOcr, loadToc, saveToc } from '../lib/toc.js';
+import { generateTocFromOcr, loadToc, saveToc, updateTocTitle } from '../lib/toc.js';
 import { attachTocStats } from '../lib/tocStats.js';
 import { generateChapterText } from '../lib/chapters.js';
 import {
@@ -630,13 +630,15 @@ router.post('/api/books/:id/chapters/:chapter/text-versions', asyncHandler(async
 router.put('/api/books/:id/chapters/:chapter/text-versions/:versionId', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const title = typeof req.body?.title === 'string' ? req.body.title : null;
   const result = await updateChapterTextVersion({
     bookId,
     chapterNumber,
     versionId: req.params.versionId,
     content: typeof req.body?.content === 'string' ? req.body.content : ''
   });
-  res.json({ book: bookId, chapterNumber, ...result });
+  const toc = title !== null ? await updateTocTitle(bookId, chapterNumber - 1, title) : null;
+  res.json({ book: bookId, chapterNumber, ...result, ...(toc ? { toc: await attachTocStats(bookId, toc) } : {}) });
 }));
 
 router.delete('/api/books/:id/chapters/:chapter/text-versions/:versionId', asyncHandler(async (req, res) => {
@@ -739,7 +741,14 @@ router.post('/api/books/text', upload.single('file'), asyncHandler(async (req, r
     getTextChapterNavigationCount(bookId),
     getTextChapterCount(bookId)
   ]);
-  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
+  res.json({
+    book: bookId,
+    bookType: 'text',
+    chapterCount,
+    chapterFileCount,
+    ...result,
+    toc: await attachTocStats(bookId, result.toc)
+  });
 }));
 
 router.post('/api/books/text/empty', asyncHandler(async (req, res) => {
@@ -751,7 +760,14 @@ router.post('/api/books/text/empty', asyncHandler(async (req, res) => {
     getTextChapterNavigationCount(bookId),
     getTextChapterCount(bookId)
   ]);
-  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
+  res.json({
+    book: bookId,
+    bookType: 'text',
+    chapterCount,
+    chapterFileCount,
+    ...result,
+    toc: await attachTocStats(bookId, result.toc)
+  });
 }));
 
 router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async (req, res) => {
@@ -793,7 +809,14 @@ router.put('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => 
     getTextChapterNavigationCount(bookId),
     getTextChapterCount(bookId)
   ]);
-  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
+  res.json({
+    book: bookId,
+    bookType: 'text',
+    chapterCount,
+    chapterFileCount,
+    ...result,
+    toc: await attachTocStats(bookId, result.toc)
+  });
 }));
 
 router.delete('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => {
