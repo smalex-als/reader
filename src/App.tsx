@@ -1642,12 +1642,18 @@ export default function App() {
       tocLoading,
       allowGenerate: !isTextBook,
       allowEdit: true,
+      chapterCreating: uploadingChapter,
       chapterDeleting: deletingChapter,
       onEditChapter: (payload: { versionId: string; versionLabel: string | null; text: string }) => {
         setEditorChapterNumber(chapterNumber);
         setEditorTextVersion(payload);
         setEditorOpen(true);
       },
+      onCreateChapter: isTextBook
+        ? () => {
+            void handleCreateChapter({ bookName: '', chapterTitle: '' });
+          }
+        : undefined,
       onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
       textFontSize: settings.textFontSize,
       onTextFontSizeChange: updateTextFontSize,

@@ -18,12 +18,14 @@ interface ChapterViewerProps {
   tocLoading: boolean;
   allowGenerate: boolean;
   allowEdit: boolean;
+  chapterCreating?: boolean;
   chapterDeleting?: boolean;
   onEditChapter: (payload: {
     versionId: string;
     versionLabel: string | null;
     text: string;
   }) => void;
+  onCreateChapter?: () => void | Promise<void>;
   onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
   textFontSize: number;
   onTextFontSizeChange: (value: number) => void;
@@ -198,8 +200,10 @@ export default function ChapterViewer({
   tocLoading,
   allowGenerate,
   allowEdit,
+  chapterCreating = false,
   chapterDeleting = false,
   onEditChapter,
+  onCreateChapter,
   onDeleteChapter,
   textFontSize,
   onTextFontSizeChange,
@@ -973,21 +977,35 @@ export default function ChapterViewer({
                 </div>
               </div>
             </section>
-            {onDeleteChapter && chapterNumber ? (
+            {onCreateChapter || (onDeleteChapter && chapterNumber) ? (
               <section className="text-viewer-tools-section" aria-label="Chapter tools">
                 <h3 className="text-viewer-tools-title">Chapter</h3>
                 <div className="text-viewer-tools-body">
                   <div className="text-viewer-tools-row">
-                    <button
-                      type="button"
-                      className="button button-ghost modal-icon-button"
-                      onClick={() => void onDeleteChapter(chapterNumber)}
-                      disabled={chapterDeleting || displayLoading}
-                      aria-label="Delete chapter"
-                      title="Delete chapter"
-                    >
-                      <TrashIcon />
-                    </button>
+                    {onCreateChapter ? (
+                      <button
+                        type="button"
+                        className="button button-ghost modal-icon-button"
+                        onClick={() => void onCreateChapter()}
+                        disabled={chapterCreating}
+                        aria-label="Create chapter"
+                        title="Create chapter"
+                      >
+                        <AddIcon />
+                      </button>
+                    ) : null}
+                    {onDeleteChapter && chapterNumber ? (
+                      <button
+                        type="button"
+                        className="button button-ghost modal-icon-button"
+                        onClick={() => void onDeleteChapter(chapterNumber)}
+                        disabled={chapterDeleting || displayLoading}
+                        aria-label="Delete chapter"
+                        title="Delete chapter"
+                      >
+                        <TrashIcon />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </section>
