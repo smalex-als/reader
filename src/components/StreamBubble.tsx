@@ -44,7 +44,7 @@ export default function StreamBubble({
 
   useEffect(() => {
     if (isVisible) {
-      setDisplayStatus((current) => (status === 'connecting' && current === 'paused' ? current : status));
+      setDisplayStatus(status);
       setRenderVisible(true);
       return;
     }

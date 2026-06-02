@@ -75,6 +75,9 @@ export function useStreamingAudio(
   const hasStartedPlaybackRef = useRef(false);
   const silentFramesRef = useRef(0);
   const sessionRef = useRef(0);
+  const audioChainSessionRef = useRef(0);
+  const audioShutdownRef = useRef<Promise<void>>(Promise.resolve());
+  const playbackPausedRef = useRef(false);
   const stopRequestedRef = useRef(false);
   const sourceEndedRef = useRef(false);
   const firstAudioRef = useRef(false);
@@ -140,6 +143,7 @@ export function useStreamingAudio(
   }, [stopPlaybackTimer]);
 
   const silencePlayback = useCallback(() => {
+    audioChainSessionRef.current += 1;
     stopPlaybackTimer();
     clearFinalizeTimer();
     playbackSamplesRef.current = 0;
@@ -152,24 +156,34 @@ export function useStreamingAudio(
     activeRequestPageKeyRef.current = null;
     pcmRemainderRef.current = null;
 
-      const node = workletRef.current;
+    const node = workletRef.current;
+    workletRef.current = null;
     if (node) {
+      try {
+        node.port.onmessage = null;
+        node.port.postMessage({ type: 'reset' });
+      } catch {
+        // ignore stale worklet errors
+      }
       try {
         node.disconnect();
       } catch {
         // ignore disconnect errors
       }
-      node.port.postMessage({ type: 'reset' });
-      workletRef.current = null;
+      try {
+        node.port.close();
+      } catch {
+        // ignore port close errors
+      }
     }
     const ctx = audioCtxRef.current;
+    audioCtxRef.current = null;
     if (ctx) {
-      try {
-        ctx.close();
-      } catch {
-        // ignore close errors
-      }
-      audioCtxRef.current = null;
+      const closeContext = ctx.state === 'closed' ? Promise.resolve() : ctx.close().catch(() => {});
+      audioShutdownRef.current = audioShutdownRef.current.then(
+        () => closeContext,
+        () => closeContext
+      );
     }
   }, [clearFinalizeTimer, stopPlaybackTimer]);
 
@@ -189,8 +203,9 @@ export function useStreamingAudio(
   const finalizeStream = useCallback(
     (status: StreamState['status'] = 'idle', error?: string) => {
       sessionRef.current += 1;
-      stopRequestedRef.current = false;
       const pauseAtStartPageKey = status === 'idle' ? pauseAtStartPageKeyRef.current : null;
+      stopRequestedRef.current = false;
+      playbackPausedRef.current = Boolean(pauseAtStartPageKey);
       stopAfterCurrentPageKeyRef.current = null;
       pauseAtStartPageKeyRef.current = null;
       clearQueue();
@@ -225,6 +240,7 @@ export function useStreamingAudio(
     (pageKey: string) => {
       sessionRef.current += 1;
       stopRequestedRef.current = false;
+      playbackPausedRef.current = true;
       sourceEndedRef.current = true;
       stopAfterCurrentPageKeyRef.current = null;
       pauseAtStartPageKeyRef.current = null;
@@ -311,17 +327,65 @@ export function useStreamingAudio(
     [clearFinalizeTimer, finalizeStream, pauseCompletedStreamAtStart, startPlaybackTimer]
   );
 
-  const createAudioChain = useCallback(async () => {
+  const createAudioChain = useCallback(async (sessionId: number) => {
     silencePlayback();
+    await audioShutdownRef.current;
+    if (sessionRef.current !== sessionId || stopRequestedRef.current) {
+      return false;
+    }
+    const audioChainSession = audioChainSessionRef.current + 1;
+    audioChainSessionRef.current = audioChainSession;
     sourceEndedRef.current = false;
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: SAMPLE_RATE });
     await ctx.audioWorklet.addModule('/stream-worklet.js');
+    if (
+      sessionRef.current !== sessionId ||
+      stopRequestedRef.current ||
+      audioChainSessionRef.current !== audioChainSession
+    ) {
+      void ctx.close().catch(() => {});
+      return false;
+    }
     const node = new AudioWorkletNode(ctx, 'stream-player');
-    node.port.onmessage = (event) => handleWorkletMessage(event.data);
+    node.port.onmessage = (event) => {
+      if (audioChainSessionRef.current !== audioChainSession) {
+        return;
+      }
+      handleWorkletMessage(event.data);
+    };
     node.connect(ctx.destination);
     audioCtxRef.current = ctx;
     workletRef.current = node;
+    return true;
   }, [handleWorkletMessage, silencePlayback]);
+
+  const resumePlaybackContext = useCallback(async (sessionId: number) => {
+    if (playbackPausedRef.current || sessionRef.current !== sessionId || stopRequestedRef.current) {
+      return false;
+    }
+    const ctx = audioCtxRef.current;
+    if (!ctx || ctx.state === 'closed') {
+      return false;
+    }
+    if (ctx.state !== 'running') {
+      try {
+        await ctx.resume();
+      } catch {
+        return false;
+      }
+    }
+    if (playbackPausedRef.current || sessionRef.current !== sessionId || stopRequestedRef.current) {
+      if (ctx.state === 'running') {
+        try {
+          await ctx.suspend();
+        } catch {
+          // ignore suspend errors
+        }
+      }
+      return false;
+    }
+    return true;
+  }, []);
 
   const appendAudio = useCallback((chunk: Float32Array, pageKey: string | null) => {
     const stopAfterPageKey = stopAfterCurrentPageKeyRef.current;
@@ -392,9 +456,12 @@ export function useStreamingAudio(
         pcmCacheRef.current.set(cacheKey, cachedChunks);
         requestInFlightRef.current = false;
         activeRequestPageKeyRef.current = null;
-        await audioCtxRef.current?.resume();
+        await resumePlaybackContext(sessionId);
         firstAudioRef.current = true;
-        setStreamState((prev) => ({ ...prev, status: prev.status === 'paused' ? 'paused' : 'streaming' }));
+        setStreamState((prev) => ({
+          ...prev,
+          status: playbackPausedRef.current || prev.status === 'paused' ? 'paused' : 'streaming'
+        }));
         for (const cachedChunk of cachedChunks) {
           if (sessionRef.current !== sessionId || stopRequestedRef.current) {
             sourceEndedRef.current = true;
@@ -441,7 +508,7 @@ export function useStreamingAudio(
         const reader = response.body.getReader();
         readerRef.current = reader;
         requestInFlightRef.current = false;
-        await audioCtxRef.current?.resume();
+        await resumePlaybackContext(sessionId);
 
         while (sessionRef.current === sessionId && !stopRequestedRef.current) {
           const { done, value } = await reader.read();
@@ -483,7 +550,10 @@ export function useStreamingAudio(
           if (!receivedSegmentAudio) {
             receivedSegmentAudio = true;
             firstAudioRef.current = true;
-            setStreamState((prev) => ({ ...prev, status: prev.status === 'paused' ? 'paused' : 'streaming' }));
+            setStreamState((prev) => ({
+              ...prev,
+              status: playbackPausedRef.current || prev.status === 'paused' ? 'paused' : 'streaming'
+            }));
           }
         }
 
@@ -570,6 +640,7 @@ export function useStreamingAudio(
       const sessionId = sessionRef.current + 1;
       sessionRef.current = sessionId;
       stopRequestedRef.current = false;
+      playbackPausedRef.current = false;
       firstAudioRef.current = false;
       stopAfterCurrentPageKeyRef.current = null;
       pauseAtStartPageKeyRef.current = pauseAtStartOnComplete ? pageKey : null;
@@ -585,7 +656,10 @@ export function useStreamingAudio(
       setStreamState(nextState);
 
       try {
-        await createAudioChain();
+        const audioReady = await createAudioChain(sessionId);
+        if (!audioReady) {
+          return;
+        }
       } catch (error) {
         console.error('Unable to create audio worklet', error);
         finalizeStream('error', 'Audio setup failed');
@@ -635,9 +709,10 @@ export function useStreamingAudio(
   );
 
   const pauseStream = useCallback(async () => {
-    if (streamState.status !== 'streaming') {
+    if (streamStateRef.current.status !== 'streaming') {
       return;
     }
+    playbackPausedRef.current = true;
     stopPlaybackTimer();
     const ctx = audioCtxRef.current;
     if (ctx && ctx.state === 'running') {
@@ -652,12 +727,13 @@ export function useStreamingAudio(
       streamStateRef.current = nextState;
       return nextState;
     });
-  }, [stopPlaybackTimer, streamState.status]);
+  }, [stopPlaybackTimer]);
 
   const resumeStream = useCallback(async () => {
-    if (streamState.status !== 'paused') {
+    if (streamStateRef.current.status !== 'paused') {
       return;
     }
+    playbackPausedRef.current = false;
     const ctx = audioCtxRef.current;
     if (ctx && ctx.state !== 'running') {
       try {
@@ -674,10 +750,11 @@ export function useStreamingAudio(
       streamStateRef.current = nextState;
       return nextState;
     });
-  }, [startPlaybackTimer, streamState.status]);
+  }, [startPlaybackTimer]);
 
   const stopStream = useCallback(() => {
     stopRequestedRef.current = true;
+    playbackPausedRef.current = false;
     sourceEndedRef.current = true;
     stopAfterCurrentPageKeyRef.current = null;
     pauseAtStartPageKeyRef.current = null;
@@ -709,6 +786,7 @@ export function useStreamingAudio(
       stopAfterCurrentPageKeyRef.current = null;
       pauseAtStartPageKeyRef.current = null;
       stopRequestedRef.current = false;
+      playbackPausedRef.current = true;
       sourceEndedRef.current = true;
       clearQueue();
       closeStreamRequest();
