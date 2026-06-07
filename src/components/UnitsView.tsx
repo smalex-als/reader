@@ -1,9 +1,9 @@
 import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CloseIcon from '@/components/CloseIcon';
-import type { SelfCheckResult, StreamState, ToastMessage, UnitItem, UnitSet } from '@/types/app';
+import type { AppSettings, SelfCheckResult, StreamState, ToastMessage, UnitItem, UnitSet } from '@/types/app';
 
 interface UnitsViewProps {
   refreshToken: number;
@@ -17,7 +17,32 @@ interface UnitsViewProps {
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   onOpenSource: (bookId: string, chapterNumber: number) => void;
   onOpenTopicQuiz: (payload: { unitSetId: string; topicId: string; label: string }) => void;
+  textFontSize: number;
+  onTextFontSizeChange: (value: number) => void;
+  textTheme: AppSettings['textTheme'];
+  onTextThemeChange: (value: string) => void;
 }
+
+const FONT_SIZE_OPTIONS = [
+  { label: 'Compact', value: 18 },
+  { label: 'Easy', value: 20 },
+  { label: 'Comfortable', value: 24 },
+  { label: 'Spacious', value: 26 },
+  { label: 'Grand', value: 28 },
+  { label: 'Theater', value: 30 },
+  { label: 'Cinema', value: 34 }
+];
+
+const COLOR_OPTIONS: { label: string; value: AppSettings['textTheme'] }[] = [
+  { label: 'Night', value: 'dark' },
+  { label: 'Dracula', value: 'dracula' },
+  { label: 'Obsidian', value: 'obsidian' },
+  { label: 'Nord', value: 'nord' },
+  { label: 'Gruvbox', value: 'gruvbox' },
+  { label: 'Solarized', value: 'solarized' },
+  { label: 'White', value: 'light' },
+  { label: 'Warm', value: 'warm' }
+];
 
 async function readErrorMessage(response: Response) {
   try {
@@ -169,18 +194,27 @@ export default function UnitsView({
   onStopAudio,
   showToast,
   onOpenSource,
-  onOpenTopicQuiz
+  onOpenTopicQuiz,
+  textFontSize,
+  onTextFontSizeChange,
+  textTheme,
+  onTextThemeChange
 }: UnitsViewProps) {
   const [items, setItems] = useState<UnitSet[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [selfCheckOpen, setSelfCheckOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selfCheckIndex, setSelfCheckIndex] = useState(0);
   const [selfCheckAnswer, setSelfCheckAnswer] = useState('');
   const [selfCheckLoading, setSelfCheckLoading] = useState(false);
   const [selfCheckError, setSelfCheckError] = useState<string | null>(null);
   const [selfCheckResult, setSelfCheckResult] = useState<SelfCheckResult | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
+  const textStyle = useMemo(
+    () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
+    [textFontSize]
+  );
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -542,11 +576,66 @@ export default function UnitsView({
             >
               {topicStreamActive ? labels.stopTts : labels.playTts}
             </button>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => setSettingsOpen((prev) => !prev)}
+              aria-expanded={settingsOpen}
+              aria-controls="unit-library-text-settings"
+            >
+              {settingsOpen ? 'Hide settings' : 'Text settings'}
+            </button>
           </div>
+          {settingsOpen ? (
+            <div className="text-viewer-settings unit-library-settings" id="unit-library-text-settings">
+              <div className="text-viewer-setting">
+                <span className="text-viewer-setting-label">Font size</span>
+                <div className="text-viewer-radio-group" role="radiogroup" aria-label="Text size">
+                  {FONT_SIZE_OPTIONS.map((option) => {
+                    const inputId = `unit-font-size-${option.value}`;
+                    return (
+                      <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
+                        <input
+                          id={inputId}
+                          type="radio"
+                          name="unit-font-size"
+                          value={option.value}
+                          checked={textFontSize === option.value}
+                          onChange={() => onTextFontSizeChange(option.value)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="text-viewer-setting">
+                <span className="text-viewer-setting-label">Color scheme</span>
+                <div className="text-viewer-radio-group" role="radiogroup" aria-label="Color scheme">
+                  {COLOR_OPTIONS.map((option) => {
+                    const inputId = `unit-color-scheme-${option.value}`;
+                    return (
+                      <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
+                        <input
+                          id={inputId}
+                          type="radio"
+                          name="unit-color-scheme"
+                          value={option.value}
+                          checked={textTheme === option.value}
+                          onChange={() => onTextThemeChange(option.value)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </header>
 
         <article className="unit-library-unit-panel">
-          <div className="text-viewer-markdown unit-library-markdown">
+          <div className="text-viewer-markdown unit-library-markdown" style={textStyle}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {topicText}
             </ReactMarkdown>

@@ -1936,6 +1936,10 @@ body {
   flex-basis: auto;
 }
 
+.unit-library-settings {
+  grid-column: 1 / -1;
+}
+
 .audio-library-detail-header {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

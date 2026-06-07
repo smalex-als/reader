@@ -1703,7 +1703,11 @@ export default function App() {
       onOpenTopicQuiz: ({ label }: { unitSetId: string; topicId: string; label: string }) => {
         setUnitQuizLabel(label);
         void handleOpenUnitTopicQuiz().then(() => setUnitsRefreshToken((prev) => prev + 1));
-      }
+      },
+      textFontSize: settings.textFontSize,
+      onTextFontSizeChange: updateTextFontSize,
+      textTheme: settings.textTheme,
+      onTextThemeChange: updateTextTheme
     },
     audioViewProps: {
       bookId,
