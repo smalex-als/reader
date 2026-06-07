@@ -68,75 +68,30 @@ function extractTextFromNode(node: ReactNode): string {
   return '';
 }
 
-function isMostlyRussianText(value: string) {
-  const cyrillicMatches = value.match(/[А-Яа-яЁё]/g)?.length ?? 0;
-  if (cyrillicMatches === 0) {
-    return false;
-  }
-  const latinMatches = value.match(/[A-Za-z]/g)?.length ?? 0;
-  return cyrillicMatches >= latinMatches;
-}
-
-function getTopicLabels(unit: UnitItem) {
-  const text = [
-    unit.title,
-    unit.summary,
-    unit.learningGoal,
-    unit.content,
-    ...unit.keyPoints,
-    ...unit.selfCheckQuestions
-  ].join('\n');
-  if (!isMostlyRussianText(text)) {
-    return {
-      learningGoal: 'Learning goal',
-      summary: 'Summary',
-      keyPoints: 'Key points',
-      selfCheckQuestions: 'Self-check questions',
-      selfCheck: 'Self-check',
-      question: 'Question',
-      of: 'of',
-      submitAnswer: 'Submit answer',
-      nextQuestion: 'Next question',
-      done: 'Done',
-      answerPlaceholder: 'Write your answer here',
-      checkingAnswer: 'Checking...',
-      yourAnswer: 'Your answer',
-      referenceAnswer: 'Reference answer',
-      strengths: 'Strengths',
-      improvements: 'Improve',
-      back: 'Back',
-      markAsRead: 'Mark as read',
-      markAsUnread: 'Mark as unread',
-      quiz: 'Quiz',
-      playTts: 'Play TTS',
-      stopTts: 'Stop TTS'
-    };
-  }
-  return {
-    learningGoal: 'Цель',
-    summary: 'Краткое содержание',
-    keyPoints: 'Главное',
-    selfCheckQuestions: 'Вопросы для самопроверки',
-    selfCheck: 'Самопроверка',
-    question: 'Вопрос',
-    of: 'из',
-    submitAnswer: 'Проверить ответ',
-    nextQuestion: 'Следующий вопрос',
-    done: 'Готово',
-    answerPlaceholder: 'Напиши свой ответ здесь',
-    checkingAnswer: 'Проверяю...',
-    yourAnswer: 'Твой ответ',
-    referenceAnswer: 'Пример ответа',
-    strengths: 'Что хорошо',
-    improvements: 'Что улучшить',
-    back: 'Назад',
-    markAsRead: 'Отметить прочитанным',
-    markAsUnread: 'Отметить непрочитанным',
-    quiz: 'Квиз',
-    playTts: 'Озвучить',
-    stopTts: 'Стоп'
-  };
-}
+const TOPIC_LABELS = {
+  learningGoal: 'Learning goal',
+  summary: 'Summary',
+  keyPoints: 'Key points',
+  selfCheckQuestions: 'Self-check questions',
+  selfCheck: 'Self-check',
+  question: 'Question',
+  of: 'of',
+  submitAnswer: 'Submit answer',
+  nextQuestion: 'Next question',
+  done: 'Done',
+  answerPlaceholder: 'Write your answer here',
+  checkingAnswer: 'Checking...',
+  yourAnswer: 'Your answer',
+  referenceAnswer: 'Reference answer',
+  strengths: 'Strengths',
+  improvements: 'Improve',
+  back: 'Back',
+  markAsRead: 'Mark as read',
+  markAsUnread: 'Mark as unread',
+  quiz: 'Quiz',
+  playTts: 'Play TTS',
+  stopTts: 'Stop TTS'
+};
 
 function ReadStatusIcon({ read }: { read: boolean }) {
   return (
@@ -307,7 +262,7 @@ export default function UnitsView({
       (streamState.status === 'connecting' ||
         streamState.status === 'streaming' ||
         streamState.status === 'paused');
-    const labels = getTopicLabels(selectedUnit);
+    const labels = TOPIC_LABELS;
     const topicText = [
       selectedUnit.learningGoal ? `**${labels.learningGoal}:** ${selectedUnit.learningGoal}` : '',
       selectedUnit.summary ? `**${labels.summary}:** ${selectedUnit.summary}` : '',
