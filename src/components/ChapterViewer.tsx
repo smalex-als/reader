@@ -5,10 +5,12 @@ import remarkGfm from 'remark-gfm';
 import AddIcon from '@/components/AddIcon';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
+import type { AppSettings } from '@/types/app';
 
 interface ChapterViewerProps {
   bookId: string | null;
@@ -29,15 +31,7 @@ interface ChapterViewerProps {
   onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
   textFontSize: number;
   onTextFontSizeChange: (value: number) => void;
-  textTheme:
-    | 'dark'
-    | 'dracula'
-    | 'obsidian'
-    | 'nord'
-    | 'gruvbox'
-    | 'solarized'
-    | 'light'
-    | 'warm';
+  textTheme: AppSettings['textTheme'];
   onTextThemeChange: (value: string) => void;
   mp3Voice: string;
   mp3VoiceOptions: readonly { id: string; label: string }[];
@@ -289,26 +283,6 @@ export default function ChapterViewer({
     refreshToken,
     mp3Voice
   });
-  const FONT_SIZE_OPTIONS = [
-    { label: 'Compact', value: 18 },
-    { label: 'Easy', value: 20 },
-    { label: 'Comfortable', value: 24 },
-    { label: 'Spacious', value: 26 },
-    { label: 'Grand', value: 28 },
-    { label: 'Theater', value: 30 },
-    { label: 'Cinema', value: 34 }
-  ];
-  const COLOR_OPTIONS = [
-    { label: 'Night', value: 'dark' },
-    { label: 'Dracula', value: 'dracula' },
-    { label: 'Obsidian', value: 'obsidian' },
-    { label: 'Nord', value: 'nord' },
-    { label: 'Gruvbox', value: 'gruvbox' },
-    { label: 'Solarized', value: 'solarized' },
-    { label: 'White', value: 'light' },
-    { label: 'Warm', value: 'warm' }
-  ];
-
   const textStyle = useMemo(
     () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
     [textFontSize]
@@ -334,13 +308,6 @@ export default function ChapterViewer({
     }
     return `Chapter ${chapterNumber}`;
   }, [chapterNumber]);
-
-  const handleFontSizeChange = useCallback(
-    (value: number) => {
-      onTextFontSizeChange(value);
-    },
-    [onTextFontSizeChange]
-  );
 
   const handleVersionChange = useCallback(
     (nextVersionId: string) => {
@@ -1042,50 +1009,14 @@ export default function ChapterViewer({
           </div>
         ) : null}
         {settingsOpen ? (
-          <div className="text-viewer-settings" id="text-viewer-settings">
-            <div className="text-viewer-setting">
-              <span className="text-viewer-setting-label">Font size</span>
-              <div className="text-viewer-radio-group" role="radiogroup" aria-label="Text size">
-                {FONT_SIZE_OPTIONS.map((option) => {
-                  const inputId = `text-font-size-${option.value}`;
-                  return (
-                    <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
-                      <input
-                        id={inputId}
-                        type="radio"
-                        name="text-font-size"
-                        value={option.value}
-                        checked={textFontSize === option.value}
-                        onChange={() => handleFontSizeChange(option.value)}
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="text-viewer-setting">
-              <span className="text-viewer-setting-label">Color scheme</span>
-              <div className="text-viewer-radio-group" role="radiogroup" aria-label="Color scheme">
-                {COLOR_OPTIONS.map((option) => {
-                  const inputId = `text-color-scheme-${option.value}`;
-                  return (
-                    <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
-                      <input
-                        id={inputId}
-                        type="radio"
-                        name="text-color-scheme"
-                        value={option.value}
-                        checked={textTheme === option.value}
-                        onChange={() => onTextThemeChange(option.value)}
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <TextSettingsPanel
+            id="text-viewer-settings"
+            controlPrefix="text"
+            textFontSize={textFontSize}
+            onTextFontSizeChange={onTextFontSizeChange}
+            textTheme={textTheme}
+            onTextThemeChange={onTextThemeChange}
+          />
         ) : null}
       </header>
       <section className="text-viewer-body">

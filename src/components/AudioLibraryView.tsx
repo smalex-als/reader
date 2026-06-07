@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import TextSettingsPanel from '@/components/TextSettingsPanel';
 import { onFloatingAudioTime } from '@/lib/floatingAudioEvents';
-import type { ToastMessage } from '@/types/app';
+import type { AppSettings, ToastMessage } from '@/types/app';
 
 type AudioLibraryItem = {
   id: string;
@@ -35,30 +36,9 @@ interface AudioLibraryViewProps {
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
   textFontSize: number;
   onTextFontSizeChange: (value: number) => void;
-  textTheme: 'dark' | 'dracula' | 'obsidian' | 'nord' | 'gruvbox' | 'solarized' | 'light' | 'warm';
+  textTheme: AppSettings['textTheme'];
   onTextThemeChange: (value: string) => void;
 }
-
-const FONT_SIZE_OPTIONS = [
-  { label: 'Compact', value: 18 },
-  { label: 'Easy', value: 20 },
-  { label: 'Comfortable', value: 24 },
-  { label: 'Spacious', value: 26 },
-  { label: 'Grand', value: 28 },
-  { label: 'Theater', value: 30 },
-  { label: 'Cinema', value: 34 }
-];
-
-const COLOR_OPTIONS = [
-  { label: 'Night', value: 'dark' },
-  { label: 'Dracula', value: 'dracula' },
-  { label: 'Obsidian', value: 'obsidian' },
-  { label: 'Nord', value: 'nord' },
-  { label: 'Gruvbox', value: 'gruvbox' },
-  { label: 'Solarized', value: 'solarized' },
-  { label: 'White', value: 'light' },
-  { label: 'Warm', value: 'warm' }
-];
 
 async function readErrorMessage(response: Response) {
   try {
@@ -448,50 +428,15 @@ export default function AudioLibraryView({
         </header>
 
         {settingsOpen ? (
-          <div className="text-viewer-settings audio-library-settings" id="audio-library-text-settings">
-            <div className="text-viewer-setting">
-              <span className="text-viewer-setting-label">Font size</span>
-              <div className="text-viewer-radio-group" role="radiogroup" aria-label="Text size">
-                {FONT_SIZE_OPTIONS.map((option) => {
-                  const inputId = `audio-font-size-${option.value}`;
-                  return (
-                    <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
-                      <input
-                        id={inputId}
-                        type="radio"
-                        name="audio-font-size"
-                        value={option.value}
-                        checked={textFontSize === option.value}
-                        onChange={() => onTextFontSizeChange(option.value)}
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="text-viewer-setting">
-              <span className="text-viewer-setting-label">Color scheme</span>
-              <div className="text-viewer-radio-group" role="radiogroup" aria-label="Color scheme">
-                {COLOR_OPTIONS.map((option) => {
-                  const inputId = `audio-color-scheme-${option.value}`;
-                  return (
-                    <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
-                      <input
-                        id={inputId}
-                        type="radio"
-                        name="audio-color-scheme"
-                        value={option.value}
-                        checked={textTheme === option.value}
-                        onChange={() => onTextThemeChange(option.value)}
-                      />
-                      <span>{option.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <TextSettingsPanel
+            id="audio-library-text-settings"
+            className="audio-library-settings"
+            controlPrefix="audio"
+            textFontSize={textFontSize}
+            onTextFontSizeChange={onTextFontSizeChange}
+            textTheme={textTheme}
+            onTextThemeChange={onTextThemeChange}
+          />
         ) : null}
 
         <section className="audio-library-detail-summary" aria-label="MP3 details">
