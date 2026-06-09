@@ -68,12 +68,23 @@ function extractTextFromNode(node: ReactNode): string {
   return '';
 }
 
-const TOPIC_LABELS = {
+const CONTENT_LABELS_EN = {
   learningGoal: 'Learning goal',
   summary: 'Summary',
   keyPoints: 'Key points',
-  selfCheckQuestions: 'Self-check questions',
+  selfCheckQuestions: 'Self-check questions'
+};
+
+const CONTENT_LABELS_RU = {
+  learningGoal: 'Цель',
+  summary: 'Краткое содержание',
+  keyPoints: 'Главное',
+  selfCheckQuestions: 'Вопросы для самопроверки'
+};
+
+const UNIT_UI_LABELS = {
   selfCheck: 'Self-check',
+  selfCheckQuestions: 'Self-check questions',
   question: 'Question',
   of: 'of',
   submitAnswer: 'Submit answer',
@@ -92,6 +103,27 @@ const TOPIC_LABELS = {
   playTts: 'Play TTS',
   stopTts: 'Stop TTS'
 };
+
+function isMostlyRussianText(value: string) {
+  const cyrillicMatches = value.match(/[А-Яа-яЁё]/g)?.length ?? 0;
+  if (cyrillicMatches === 0) {
+    return false;
+  }
+  const latinMatches = value.match(/[A-Za-z]/g)?.length ?? 0;
+  return cyrillicMatches >= latinMatches;
+}
+
+function getContentLabels(unit: UnitItem) {
+  const text = [
+    unit.title,
+    unit.summary,
+    unit.learningGoal,
+    unit.content,
+    ...unit.keyPoints,
+    ...unit.selfCheckQuestions
+  ].join('\n');
+  return isMostlyRussianText(text) ? CONTENT_LABELS_RU : CONTENT_LABELS_EN;
+}
 
 function ReadStatusIcon({ read }: { read: boolean }) {
   return (
@@ -262,16 +294,17 @@ export default function UnitsView({
       (streamState.status === 'connecting' ||
         streamState.status === 'streaming' ||
         streamState.status === 'paused');
-    const labels = TOPIC_LABELS;
+    const labels = UNIT_UI_LABELS;
+    const contentLabels = getContentLabels(selectedUnit);
     const topicText = [
-      selectedUnit.learningGoal ? `**${labels.learningGoal}:** ${selectedUnit.learningGoal}` : '',
-      selectedUnit.summary ? `**${labels.summary}:** ${selectedUnit.summary}` : '',
+      selectedUnit.learningGoal ? `**${contentLabels.learningGoal}:** ${selectedUnit.learningGoal}` : '',
+      selectedUnit.summary ? `**${contentLabels.summary}:** ${selectedUnit.summary}` : '',
       selectedUnit.keyPoints.length > 0
-        ? `**${labels.keyPoints}:**\n${selectedUnit.keyPoints.map((point) => `- ${point}`).join('\n')}`
+        ? `**${contentLabels.keyPoints}:**\n${selectedUnit.keyPoints.map((point) => `- ${point}`).join('\n')}`
         : '',
       selectedUnit.content,
       selectedUnit.selfCheckQuestions.length > 0
-        ? `**${labels.selfCheckQuestions}:**\n${selectedUnit.selfCheckQuestions
+        ? `**${contentLabels.selfCheckQuestions}:**\n${selectedUnit.selfCheckQuestions
             .map((question) => `- ${question}`)
             .join('\n')}`
         : ''
