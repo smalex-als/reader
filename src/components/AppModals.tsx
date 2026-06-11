@@ -31,7 +31,6 @@ type SearchModalProps = ComponentProps<typeof SearchModal>;
 type BookCardModalProps = ComponentProps<typeof BookCardModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
 type QuizModalProps = ComponentProps<typeof QuizModal>;
-type ImagePreviewModalProps = ComponentProps<typeof ImagePreviewModal>;
 type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
 type ListeningDashboardModalProps = ComponentProps<typeof ListeningDashboardModal>;
 type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
@@ -49,7 +48,6 @@ interface AppModalsProps {
   bookCardModalProps: BookCardModalProps;
   settingsModalProps: SettingsModalProps;
   quizModalProps: QuizModalProps;
-  imagePreviewModalProps: ImagePreviewModalProps;
   vocabularyModalProps: VocabularyModalProps;
   listeningDashboardModalProps: ListeningDashboardModalProps;
   memoryCardModalProps: MemoryCardModalProps;
@@ -75,7 +73,6 @@ export default function AppModals({
   bookCardModalProps,
   settingsModalProps,
   quizModalProps,
-  imagePreviewModalProps,
   vocabularyModalProps,
   listeningDashboardModalProps,
   memoryCardModalProps
@@ -98,7 +95,7 @@ export default function AppModals({
       {renderInPortal(<MemoryCardModal {...memoryCardModalProps} />, portalTarget)}
       {renderInPortal(<PromptEditorModal />, portalTarget)}
       {renderInPortal(<ListeningDashboardModal {...listeningDashboardModalProps} />, portalTarget)}
-      {renderInPortal(<ImagePreviewModal {...imagePreviewModalProps} />, portalTarget)}
+      {renderInPortal(<ImagePreviewModal />, portalTarget)}
       {renderInPortal(<JobWorkerModal />, portalTarget)}
       <OcrQueueModal {...ocrQueueModalProps} />
     </>

@@ -2,18 +2,11 @@ import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import {
   appActions,
+  selectImagePreview,
   selectImagePreviewWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { ImagePreviewTarget } from '@/types/app';
-
-interface ImagePreviewModalProps {
-  open: boolean;
-  preview: ImagePreviewTarget | null;
-  onEnhanced?: (url: string) => void;
-  onClose: () => void;
-}
 
 function normalizeCaption(caption: string | null | undefined) {
   const input = typeof caption === 'string' ? caption : '';
@@ -21,9 +14,31 @@ function normalizeCaption(caption: string | null | undefined) {
   return stripped || null;
 }
 
-export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }: ImagePreviewModalProps) {
+function makePreviewKey(
+  bookId: string,
+  imageFilename: string,
+  bounds: [number, number, number, number]
+) {
+  const [left, top, right, bottom] = bounds;
+  return `${bookId}:${imageFilename}:${left}:${top}:${right}:${bottom}`;
+}
+
+export default function ImagePreviewModal() {
   const dispatch = useAppDispatch();
+  const preview = useAppSelector(selectImagePreview);
   const { enhancing, error } = useAppSelector(selectImagePreviewWorkflow);
+  const open = preview !== null;
+  const handleClose = () => {
+    dispatch(appActions.closeImagePreview());
+  };
+  const handleEnhancedUrl = (url: string | null) => {
+    if (!preview) {
+      return;
+    }
+    const previewKey = makePreviewKey(preview.bookId, preview.imageFilename, preview.bounds);
+    dispatch(appActions.setImagePreviewCachedEnhancedUrl(previewKey, url));
+    dispatch(appActions.setImagePreviewEnhancedUrl(url));
+  };
 
   useEffect(() => {
     if (!open) {
@@ -34,11 +49,11 @@ export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }
         return;
       }
       event.preventDefault();
-      onClose();
+      handleClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, open]);
+  }, [open]);
 
   useEffect(() => {
     dispatch(appActions.resetImagePreviewStatus());
@@ -86,7 +101,7 @@ export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }
                   if (!payload.url) {
                     throw new Error('Enhanced image URL is missing');
                   }
-                  onEnhanced?.(payload.url);
+                  handleEnhancedUrl(payload.url);
                 } catch (fetchError) {
                   dispatch(appActions.setImagePreviewError(
                     fetchError instanceof Error ? fetchError.message : 'Unable to enhance image.'
@@ -104,7 +119,7 @@ export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }
                 type="button"
                 className="button button-secondary"
                 onClick={() => {
-                  onEnhanced?.('');
+                  handleEnhancedUrl(null);
                 }}
               >
                 Show Original
@@ -113,7 +128,7 @@ export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }
             <button
               type="button"
               className="button button-ghost modal-icon-button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Close image preview"
               title="Close image preview"
             >

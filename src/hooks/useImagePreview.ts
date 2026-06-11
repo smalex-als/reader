@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import {
   appActions,
-  selectImagePreview,
   selectImagePreviewWorkflow,
   useAppDispatch,
   useAppSelector
@@ -18,7 +17,6 @@ function makePreviewKey(
 
 export function useImagePreview({ bookId }: { bookId: string | null }) {
   const dispatch = useAppDispatch();
-  const imagePreview = useAppSelector(selectImagePreview);
   const { enhancedUrls } = useAppSelector(selectImagePreviewWorkflow);
 
   const handleOpenImagePreview = useCallback(
@@ -52,26 +50,7 @@ export function useImagePreview({ bookId }: { bookId: string | null }) {
     [bookId, dispatch, enhancedUrls]
   );
 
-  const handleImagePreviewEnhanced = useCallback(
-    (url: string) => {
-      if (!imagePreview) {
-        return;
-      }
-      const previewKey = makePreviewKey(imagePreview.bookId, imagePreview.imageFilename, imagePreview.bounds);
-      dispatch(appActions.setImagePreviewCachedEnhancedUrl(previewKey, url || null));
-      dispatch(appActions.setImagePreviewEnhancedUrl(url || null));
-    },
-    [dispatch, imagePreview]
-  );
-
-  const closeImagePreview = useCallback(() => {
-    dispatch(appActions.closeImagePreview());
-  }, [dispatch]);
-
   return {
-    imagePreview,
-    handleOpenImagePreview,
-    handleImagePreviewEnhanced,
-    closeImagePreview
+    handleOpenImagePreview
   };
 }

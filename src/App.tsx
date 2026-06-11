@@ -733,12 +733,7 @@ export default function App() {
     chapterNumber,
     currentChapterTitle: currentChapterEntry?.title ?? null
   });
-  const {
-    imagePreview,
-    handleOpenImagePreview,
-    handleImagePreviewEnhanced,
-    closeImagePreview
-  } = useImagePreview({ bookId });
+  const { handleOpenImagePreview } = useImagePreview({ bookId });
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
       applyZoomMode(mode);
@@ -1063,12 +1058,6 @@ export default function App() {
         }
         handleCloseQuiz();
       }
-    },
-    imagePreviewModalProps: {
-      open: imagePreview !== null,
-      preview: imagePreview,
-      onEnhanced: handleImagePreviewEnhanced,
-      onClose: closeImagePreview
     },
     vocabularyModalProps: {
       open: vocabularyOpen,
