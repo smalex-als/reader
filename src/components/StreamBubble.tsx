@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import type { StreamState } from '@/types/app';
 import { useStreamUi } from '@/hooks/useStreamUi';
 import {
   appActions,
   selectReaderSession,
+  selectStreamRuntime,
   selectStreamUiControls,
   selectViewerWorkflow,
   selectVoiceWorkflow,
@@ -11,15 +11,10 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-interface StreamBubbleProps {
-  streamState: StreamState;
-}
-
-export default function StreamBubble({
-  streamState
-}: StreamBubbleProps) {
+export default function StreamBubble() {
   const dispatch = useAppDispatch();
   const { viewMode } = useAppSelector(selectReaderSession);
+  const streamState = useAppSelector(selectStreamRuntime);
   const { autoFollowStream } = useAppSelector(selectStreamUiControls);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);

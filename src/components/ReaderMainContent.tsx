@@ -20,8 +20,6 @@ import {
 type ViewerProps = ComponentProps<typeof Viewer>;
 type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
 type ChapterViewerProps = ComponentProps<typeof ChapterViewer>;
-type UnitsViewProps = ComponentProps<typeof UnitsView>;
-type StreamBubbleProps = ComponentProps<typeof StreamBubble>;
 
 interface ReaderMainContentProps {
   viewerShellRef: RefObject<HTMLDivElement>;
@@ -30,8 +28,6 @@ interface ReaderMainContentProps {
   viewerProps: ViewerProps;
   scrollViewerProps: ScrollViewerProps;
   chapterViewerProps: ChapterViewerProps;
-  unitsViewProps: UnitsViewProps;
-  streamBubbleProps: StreamBubbleProps;
 }
 
 export default function ReaderMainContent({
@@ -40,9 +36,7 @@ export default function ReaderMainContent({
   footerMessage,
   viewerProps,
   scrollViewerProps,
-  chapterViewerProps,
-  unitsViewProps,
-  streamBubbleProps
+  chapterViewerProps
 }: ReaderMainContentProps) {
   const { mainView } = useAppSelector(selectNavigationState);
   const { viewMode } = useAppSelector(selectReaderSession);
@@ -67,7 +61,7 @@ export default function ReaderMainContent({
         {mainView === 'audio-library' ? (
           <AudioLibraryView />
         ) : mainView === 'units' ? (
-          <UnitsView {...unitsViewProps} />
+          <UnitsView />
         ) : viewMode === 'pages' ? (
           <Viewer {...viewerProps} />
         ) : viewMode === 'scroll' ? (
@@ -82,7 +76,7 @@ export default function ReaderMainContent({
           <AudioView />
         )}
         {loading && <div className="viewer-status">Loading...</div>}
-        <StreamBubble {...streamBubbleProps} />
+        <StreamBubble />
         <FloatingAudioPlayer />
         <div ref={modalHostRef} className="modal-portal" />
       </div>

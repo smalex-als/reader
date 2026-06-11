@@ -223,6 +223,11 @@ export default function App() {
     stopAfterCurrentStream,
     pauseStreamAtStart
   } = useStreamingAudio();
+
+  useEffect(() => {
+    dispatch(appActions.setStreamRuntime(streamState));
+  }, [dispatch, streamState]);
+
   const {
     floatingAudioPlaybackState,
     playFloatingAudio: handlePlayFloatingAudio
@@ -790,10 +795,6 @@ export default function App() {
     }
   });
 
-  const sidebarProps = {
-    streamState
-  };
-
   const settingsToolbarProps = {
     ocrQueueTotal: ocrQueueState.total,
     ocrQueueProcessed: ocrQueueState.processed,
@@ -807,15 +808,6 @@ export default function App() {
     ocrQueueModalProps: {
       jobs: ocrJobs,
       paused: ocrPaused
-    },
-    quizModalProps: {
-      streamState
-    },
-    vocabularyModalProps: {
-      streamState
-    },
-    memoryCardModalProps: {
-      streamState
     }
   };
 
@@ -837,20 +829,12 @@ export default function App() {
     chapterViewerProps: {
       playingParagraphStart: activeTextParagraph.startIndex,
       playingParagraphMode: activeTextParagraph.mode
-    },
-    unitsViewProps: {
-      streamState
-    },
-    streamBubbleProps: {
-      streamState
     }
   };
 
   return (
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
-      <ReaderSidebar
-        {...sidebarProps}
-      />
+      <ReaderSidebar />
       <ReaderMainContent {...mainContentProps} />
       <ReaderModalLayer
         {...modalProps}

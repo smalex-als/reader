@@ -5,18 +5,14 @@ import {
   selectBookSessionWorkflow,
   selectNavigationState,
   selectReaderSession,
+  selectStreamRuntime,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import { useShowBookmarks, useToggleBookmark } from '@/hooks/useBookmarks';
-import type { StreamState } from '@/types/app';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
-
-interface ReaderSidebarProps {
-  streamState: StreamState;
-}
 
 const SIDEBAR_COLLAPSED_KEY = 'scanned-reader:sidebarCollapsed';
 const SIDEBAR_USER_COLLAPSED_KEY = 'scanned-reader:sidebarCollapsedUserSet';
@@ -62,7 +58,7 @@ function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'a
   );
 }
 
-export default function ReaderSidebar({ streamState }: ReaderSidebarProps) {
+export default function ReaderSidebar() {
   const dispatch = useAppDispatch();
   const showBookmarks = useShowBookmarks();
   const toggleBookmark = useToggleBookmark();
@@ -70,6 +66,7 @@ export default function ReaderSidebar({ streamState }: ReaderSidebarProps) {
   const { mainView } = useAppSelector(selectNavigationState);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
+  const streamState = useAppSelector(selectStreamRuntime);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const [collapsed, setCollapsed] = useState(readInitialCollapsed);
   const [pageDraft, setPageDraft] = useState('');

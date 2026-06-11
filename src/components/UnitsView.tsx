@@ -9,16 +9,13 @@ import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import {
   appActions,
   selectNavigationState,
+  selectStreamRuntime,
   selectUnitWorkflow,
   selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { SelfCheckResult, StreamState, UnitItem, UnitSet } from '@/types/app';
-
-interface UnitsViewProps {
-  streamState: StreamState;
-}
+import type { SelfCheckResult, UnitItem, UnitSet } from '@/types/app';
 
 async function readErrorMessage(response: Response) {
   try {
@@ -146,12 +143,11 @@ function ReadStatusIcon({ read }: { read: boolean }) {
   );
 }
 
-export default function UnitsView({
-  streamState
-}: UnitsViewProps) {
+export default function UnitsView() {
   const dispatch = useAppDispatch();
   const { selectedUnitSetId: selectedSetId, selectedUnitTopicId: selectedTopicId } =
     useAppSelector(selectNavigationState);
+  const streamState = useAppSelector(selectStreamRuntime);
   const { refreshToken } = useAppSelector(selectUnitWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;

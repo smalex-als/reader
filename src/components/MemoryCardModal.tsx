@@ -10,21 +10,16 @@ import {
   appActions,
   selectMemoryCardWorkflow,
   selectModalOpen,
+  selectStreamRuntime,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { StreamState } from '@/types/app';
 
-interface MemoryCardModalProps {
-  streamState: StreamState;
-}
-
-export default function MemoryCardModal({
-  streamState
-}: MemoryCardModalProps) {
+export default function MemoryCardModal() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('memoryCard'));
+  const streamState = useAppSelector(selectStreamRuntime);
   const {
     loading,
     error,

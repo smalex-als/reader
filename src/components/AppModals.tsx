@@ -22,17 +22,11 @@ import JobWorkerModal from '@/components/JobWorkerModal';
 
 type OcrQueueModalProps = ComponentProps<typeof OcrQueueModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
-type QuizModalProps = ComponentProps<typeof QuizModal>;
-type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
-type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
   ocrQueueModalProps: OcrQueueModalProps;
   settingsModalProps: SettingsModalProps;
-  quizModalProps: QuizModalProps;
-  vocabularyModalProps: VocabularyModalProps;
-  memoryCardModalProps: MemoryCardModalProps;
 }
 
 function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
@@ -45,10 +39,7 @@ function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
 export default function AppModals({
   portalTarget,
   ocrQueueModalProps,
-  settingsModalProps,
-  quizModalProps,
-  vocabularyModalProps,
-  memoryCardModalProps
+  settingsModalProps
 }: AppModalsProps) {
   return (
     <>
@@ -63,9 +54,9 @@ export default function AppModals({
       {renderInPortal(<SearchModal />, portalTarget)}
       {renderInPortal(<BookCardModal />, portalTarget)}
       {renderInPortal(<SettingsModal {...settingsModalProps} />, portalTarget)}
-      {renderInPortal(<QuizModal {...quizModalProps} />, portalTarget)}
-      {renderInPortal(<VocabularyModal {...vocabularyModalProps} />, portalTarget)}
-      {renderInPortal(<MemoryCardModal {...memoryCardModalProps} />, portalTarget)}
+      {renderInPortal(<QuizModal />, portalTarget)}
+      {renderInPortal(<VocabularyModal />, portalTarget)}
+      {renderInPortal(<MemoryCardModal />, portalTarget)}
       {renderInPortal(<PromptEditorModal />, portalTarget)}
       {renderInPortal(<ListeningDashboardModal />, portalTarget)}
       {renderInPortal(<ImagePreviewModal />, portalTarget)}

@@ -24,6 +24,7 @@ import type {
   PageTextOcrEngine,
   Quiz,
   SearchResult,
+  StreamState,
   TocEntry,
   ToastMessage,
   ViewerMetrics
@@ -238,6 +239,8 @@ export interface StreamUiControlsState {
   playbackRate: number;
 }
 
+export type StreamRuntimeState = StreamState;
+
 export interface UnitWorkflowState {
   refreshToken: number;
   quizLabel: string;
@@ -346,6 +349,7 @@ export interface CentralAppState {
   refreshTokens: AppRefreshTokens;
   readerPreferences: ReaderPreferencesState;
   streamUiControls: StreamUiControlsState;
+  streamRuntime: StreamRuntimeState;
   unitWorkflow: UnitWorkflowState;
   ocrEdit: OcrEditState;
   floatingAudio: FloatingAudioState;
@@ -472,6 +476,7 @@ export type AppAction =
   | { type: 'streamUi/toggleAutoFollow' }
   | { type: 'streamUi/setSelectedBlockKey'; key: string | null }
   | { type: 'streamUi/setPlaybackRate'; rate: number }
+  | { type: 'streamRuntime/set'; streamState: StreamRuntimeState }
   | { type: 'unitWorkflow/refresh' }
   | { type: 'unitWorkflow/setQuizLabel'; label: string }
   | { type: 'unitWorkflow/setCreating'; creating: boolean }
@@ -566,6 +571,13 @@ const initialAudioState: AudioState = {
   currentPageKey: null
 };
 
+const initialStreamRuntimeState: StreamRuntimeState = {
+  status: 'idle',
+  pageKey: null,
+  playbackSeconds: 0,
+  modelSeconds: 0
+};
+
 const initialTocWorkflow: TocWorkflowState = {
   variant: 'main',
   entries: [],
@@ -653,6 +665,7 @@ const initialAppState: CentralAppState = {
     selectedStreamBlockKey: null,
     playbackRate: 1
   },
+  streamRuntime: initialStreamRuntimeState,
   unitWorkflow: {
     refreshToken: 0,
     quizLabel: 'Topic',
@@ -919,6 +932,10 @@ export const appActions = {
     index
   }),
   clearTocCommandRequest: (): AppAction => ({ type: 'tocCommand/clearRequest' }),
+  setStreamRuntime: (streamState: StreamRuntimeState): AppAction => ({
+    type: 'streamRuntime/set',
+    streamState
+  }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -2051,6 +2068,11 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           playbackRate: action.rate
         }
       };
+    case 'streamRuntime/set':
+      return {
+        ...state,
+        streamRuntime: action.streamState
+      };
     case 'unitWorkflow/refresh':
       return {
         ...state,
@@ -2555,6 +2577,7 @@ export const selectChapterTextContext = (state: CentralAppState) => state.chapte
 export const selectRefreshTokens = (state: CentralAppState) => state.refreshTokens;
 export const selectReaderPreferences = (state: CentralAppState) => state.readerPreferences;
 export const selectStreamUiControls = (state: CentralAppState) => state.streamUiControls;
+export const selectStreamRuntime = (state: CentralAppState) => state.streamRuntime;
 export const selectUnitWorkflow = (state: CentralAppState) => state.unitWorkflow;
 export const selectOcrEdit = (state: CentralAppState) => state.ocrEdit;
 export const selectFloatingAudio = (state: CentralAppState) => state.floatingAudio;
