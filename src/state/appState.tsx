@@ -7,7 +7,15 @@ import {
   type ReactNode
 } from 'react';
 import type { MainView, ViewMode } from '@/lib/appConstants';
-import type { AudioState, Bookmark, ImagePreviewTarget, PageTextOcrEngine, Quiz, SearchResult } from '@/types/app';
+import type {
+  AudioState,
+  Bookmark,
+  ChapterVocabulary,
+  ImagePreviewTarget,
+  PageTextOcrEngine,
+  Quiz,
+  SearchResult
+} from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
@@ -149,6 +157,12 @@ export interface QuizWorkflowEntry {
 
 export type QuizWorkflowState = Record<QuizModal, QuizWorkflowEntry>;
 
+export interface VocabularyWorkflowState {
+  loading: boolean;
+  error: string | null;
+  vocabulary: ChapterVocabulary | null;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -167,6 +181,7 @@ export interface CentralAppState {
   searchWorkflow: SearchWorkflowState;
   bookmarkWorkflow: BookmarkWorkflowState;
   quizWorkflow: QuizWorkflowState;
+  vocabularyWorkflow: VocabularyWorkflowState;
 }
 
 export type AppAction =
@@ -227,7 +242,11 @@ export type AppAction =
   | { type: 'quizWorkflow/reset'; modal: QuizModal }
   | { type: 'quizWorkflow/setLoading'; modal: QuizModal; loading: boolean }
   | { type: 'quizWorkflow/setError'; modal: QuizModal; error: string | null }
-  | { type: 'quizWorkflow/setQuiz'; modal: QuizModal; quiz: Quiz | null };
+  | { type: 'quizWorkflow/setQuiz'; modal: QuizModal; quiz: Quiz | null }
+  | { type: 'vocabularyWorkflow/reset' }
+  | { type: 'vocabularyWorkflow/setLoading'; loading: boolean }
+  | { type: 'vocabularyWorkflow/setError'; error: string | null }
+  | { type: 'vocabularyWorkflow/setVocabulary'; vocabulary: ChapterVocabulary | null };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -363,6 +382,11 @@ const initialAppState: CentralAppState = {
       error: null,
       quiz: null
     }
+  },
+  vocabularyWorkflow: {
+    loading: false,
+    error: null,
+    vocabulary: null
   }
 };
 
@@ -527,6 +551,19 @@ export const appActions = {
     type: 'quizWorkflow/setQuiz',
     modal,
     quiz
+  }),
+  resetVocabulary: (): AppAction => ({ type: 'vocabularyWorkflow/reset' }),
+  setVocabularyLoading: (loading: boolean): AppAction => ({
+    type: 'vocabularyWorkflow/setLoading',
+    loading
+  }),
+  setVocabularyError: (error: string | null): AppAction => ({
+    type: 'vocabularyWorkflow/setError',
+    error
+  }),
+  setVocabulary: (vocabulary: ChapterVocabulary | null): AppAction => ({
+    type: 'vocabularyWorkflow/setVocabulary',
+    vocabulary
   })
 };
 
@@ -1032,6 +1069,39 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           }
         }
       };
+    case 'vocabularyWorkflow/reset':
+      return {
+        ...state,
+        vocabularyWorkflow: {
+          loading: false,
+          error: null,
+          vocabulary: null
+        }
+      };
+    case 'vocabularyWorkflow/setLoading':
+      return {
+        ...state,
+        vocabularyWorkflow: {
+          ...state.vocabularyWorkflow,
+          loading: action.loading
+        }
+      };
+    case 'vocabularyWorkflow/setError':
+      return {
+        ...state,
+        vocabularyWorkflow: {
+          ...state.vocabularyWorkflow,
+          error: action.error
+        }
+      };
+    case 'vocabularyWorkflow/setVocabulary':
+      return {
+        ...state,
+        vocabularyWorkflow: {
+          ...state.vocabularyWorkflow,
+          vocabulary: action.vocabulary
+        }
+      };
     default:
       return state;
   }
@@ -1090,3 +1160,4 @@ export const selectTocWorkflow = (state: CentralAppState) => state.tocWorkflow;
 export const selectSearchWorkflow = (state: CentralAppState) => state.searchWorkflow;
 export const selectBookmarkWorkflow = (state: CentralAppState) => state.bookmarkWorkflow;
 export const selectQuizWorkflow = (modal: QuizModal) => (state: CentralAppState) => state.quizWorkflow[modal];
+export const selectVocabularyWorkflow = (state: CentralAppState) => state.vocabularyWorkflow;

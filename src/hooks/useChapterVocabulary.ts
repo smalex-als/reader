@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
+import { useCallback, useEffect } from 'react';
+import {
+  appActions,
+  selectModalOpen,
+  selectVocabularyWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { ChapterVocabulary } from '@/types/app';
 
 type ChapterRange = {
@@ -16,26 +22,27 @@ type UseChapterVocabularyOptions = {
 export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: UseChapterVocabularyOptions) {
   const dispatch = useAppDispatch();
   const vocabularyOpen = useAppSelector(selectModalOpen('vocabulary'));
-  const [vocabularyLoading, setVocabularyLoading] = useState(false);
-  const [vocabularyError, setVocabularyError] = useState<string | null>(null);
-  const [vocabulary, setVocabulary] = useState<ChapterVocabulary | null>(null);
+  const {
+    loading: vocabularyLoading,
+    error: vocabularyError,
+    vocabulary
+  } = useAppSelector(selectVocabularyWorkflow);
 
   useEffect(() => {
-    setVocabulary(null);
-    setVocabularyError(null);
-  }, [bookId, chapterNumber]);
+    dispatch(appActions.resetVocabulary());
+  }, [bookId, chapterNumber, dispatch]);
 
   const loadVocabulary = useCallback(async (force = false) => {
     if (!bookId || !chapterNumber) {
-      setVocabularyError('Move to a page inside a known chapter to open vocabulary.');
-      setVocabulary(null);
+      dispatch(appActions.setVocabularyError('Move to a page inside a known chapter to open vocabulary.'));
+      dispatch(appActions.setVocabulary(null));
       dispatch(appActions.openModal('vocabulary'));
       return;
     }
 
     dispatch(appActions.openModal('vocabulary'));
-    setVocabularyLoading(true);
-    setVocabularyError(null);
+    dispatch(appActions.setVocabularyLoading(true));
+    dispatch(appActions.setVocabularyError(null));
 
     try {
       const baseUrl = `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/vocabulary`;
@@ -67,19 +74,19 @@ export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: Us
         file?: string;
       };
 
-      setVocabulary({
+      dispatch(appActions.setVocabulary({
         chapterNumber: payload.chapterNumber,
         title: payload.title,
         items: Array.isArray(payload.items) ? payload.items : [],
         source: payload.source,
         file: payload.file
-      });
+      }));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load vocabulary.';
-      setVocabularyError(message);
-      setVocabulary(null);
+      dispatch(appActions.setVocabularyError(message));
+      dispatch(appActions.setVocabulary(null));
     } finally {
-      setVocabularyLoading(false);
+      dispatch(appActions.setVocabularyLoading(false));
     }
   }, [bookId, chapterNumber, chapterRange, dispatch]);
 
