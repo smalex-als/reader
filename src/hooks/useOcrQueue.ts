@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useToast } from '@/hooks/useToast';
 
 export type OcrJobStatus = 'pending' | 'running' | 'completed' | 'error';
 
@@ -23,7 +24,6 @@ interface OcrQueueProgress {
 interface UseOcrQueueOptions {
   manifest: string[];
   currentPage: number;
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
 function createJobId(counter: number) {
@@ -41,7 +41,8 @@ async function requestPageText(imageUrl: string, options: { signal?: AbortSignal
   }
 }
 
-export function useOcrQueue({ manifest, currentPage, showToast }: UseOcrQueueOptions) {
+export function useOcrQueue({ manifest, currentPage }: UseOcrQueueOptions) {
+  const { showToast } = useToast();
   const [jobs, setJobs] = useState<OcrJob[]>([]);
   const [paused, setPaused] = useState(false);
   const idCounterRef = useRef(0);

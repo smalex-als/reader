@@ -226,8 +226,7 @@ export default function App() {
   } = useTocManager({
     bookId,
     manifestLength: isTextBook ? chapterCount : manifest.length,
-    viewMode,
-    showToast
+    viewMode
   });
   useEffect(() => {
     tocEntriesRef.current = setTocEntries;
@@ -549,7 +548,7 @@ export default function App() {
     resetQueue,
     retryFailed,
     togglePause
-  } = useOcrQueue({ manifest, currentPage, showToast });
+  } = useOcrQueue({ manifest, currentPage });
   const {
     closePrintModal,
     createPrintPdf,

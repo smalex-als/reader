@@ -7,7 +7,8 @@ import {
   useAppSelector,
   type TocVariant
 } from '@/state/appState';
-import type { TocEntry, ToastMessage } from '@/types/app';
+import { useToast } from '@/hooks/useToast';
+import type { TocEntry } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
@@ -21,15 +22,15 @@ type TocManagerOptions = {
   bookId: string | null;
   manifestLength: number;
   viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-  showToast: (message: string, kind?: ToastMessage['kind']) => void;
 };
 
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
 
-export function useTocManager({ bookId, manifestLength, viewMode, showToast }: TocManagerOptions) {
+export function useTocManager({ bookId, manifestLength, viewMode }: TocManagerOptions) {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const tocOpen = useAppSelector(selectModalOpen('tocNav'));
   const tocManageOpen = useAppSelector(selectModalOpen('tocManage'));
   const {
