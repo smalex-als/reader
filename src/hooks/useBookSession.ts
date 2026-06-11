@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import type { ViewMode } from '@/lib/appConstants';
+import { createDefaultSettings, type ViewMode } from '@/lib/appConstants';
 import { useToast } from '@/hooks/useToast';
 import { clamp } from '@/lib/math';
 import {
   appActions,
   selectBookSessionWorkflow,
   selectModalOpen,
+  selectNavigationState,
   selectReaderSession,
   selectViewerWorkflow,
   selectVoiceWorkflow,
@@ -27,13 +28,6 @@ import {
 import type { AppSettings, TocEntry } from '@/types/app';
 
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
-
-type BookSessionOptions<StreamVoice extends string> = {
-  urlSyncPaused?: boolean;
-  isStreamVoice: (value: string) => value is StreamVoice;
-  getDefaultStreamVoice: () => StreamVoice;
-  createDefaultSettings: () => AppSettings;
-};
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
@@ -83,18 +77,14 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
 
-export function useBookSession<StreamVoice extends string>({
-  urlSyncPaused = false,
-  isStreamVoice,
-  getDefaultStreamVoice,
-  createDefaultSettings
-}: BookSessionOptions<StreamVoice>) {
+export function useBookSession() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
+  const { mainView } = useAppSelector(selectNavigationState);
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { settings } = useAppSelector(selectViewerWorkflow);
-  const { streamVoice } = useAppSelector(selectVoiceWorkflow);
+  const { defaultStreamVoice, streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const {
     books,
     manifest,
@@ -108,6 +98,15 @@ export function useBookSession<StreamVoice extends string>({
   } = useAppSelector(selectBookSessionWorkflow);
   const pendingPageRef = useRef<number | null>(null);
   const shouldUseLocationPositionRef = useRef(true);
+  const urlSyncPaused = mainView === 'units';
+  const isStreamVoice = useCallback(
+    (value: string) => streamVoiceOptions.length === 0 || streamVoiceOptions.some((voice) => voice.id === value),
+    [streamVoiceOptions]
+  );
+  const getDefaultStreamVoice = useCallback(
+    () => defaultStreamVoice || streamVoiceOptions[0]?.id || '',
+    [defaultStreamVoice, streamVoiceOptions]
+  );
 
   const setBooks: Dispatch<SetStateAction<string[]>> = useCallback(
     (next) => {

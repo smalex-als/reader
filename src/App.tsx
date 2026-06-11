@@ -15,7 +15,7 @@ import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useStreamControls } from '@/hooks/useStreamControls';
 import { useMp3Voice, useStreamVoices } from '@/hooks/useStreamVoices';
-import { useUnitsRouteState, useUnitsRouteSync } from '@/hooks/useUnitsRoute';
+import { useUnitsRouteSync } from '@/hooks/useUnitsRoute';
 import { useStreamHistoryLogger } from '@/hooks/useStreamHistoryLogger';
 import { useOcrEditMode } from '@/hooks/useOcrEditMode';
 import { useShareLink } from '@/hooks/useShareLink';
@@ -60,7 +60,6 @@ export default function App() {
   const studyModeToggleRequest = useAppSelector(selectStudyModeToggleRequest);
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const tocCommandRequest = useAppSelector(selectTocCommandRequest);
-  const { mainView } = useUnitsRouteState();
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
@@ -81,10 +80,7 @@ export default function App() {
   const fullscreenControls = useFullscreen(viewerShellRef);
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
-  const {
-    isStreamVoice,
-    getDefaultStreamVoice
-  } = useStreamVoices();
+  useStreamVoices();
   const {
     bookId,
     setBookId,
@@ -97,12 +93,7 @@ export default function App() {
     loading,
     handleCreateChapter,
     handleDeleteChapter
-  } = useBookSession({
-    urlSyncPaused: mainView === 'units',
-    isStreamVoice,
-    getDefaultStreamVoice,
-    createDefaultSettings
-  });
+  } = useBookSession();
 
   useUnitsRouteSync();
 
