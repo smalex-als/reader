@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { appActions, selectModalOpen, useAppDispatch, useAppSelector, type SimpleModal } from '@/state/appState';
 import type { Quiz } from '@/types/app';
 
 type UseQuizOptions = {
   targetKey: string | null;
+  modal: Extract<SimpleModal, 'chapterQuiz' | 'unitQuiz'>;
   unavailableMessage: string;
   buildUrl: () => string | null;
   buildPostBody?: (force: boolean) => Record<string, unknown>;
 };
 
-export function useQuiz({ targetKey, unavailableMessage, buildUrl, buildPostBody }: UseQuizOptions) {
-  const [quizOpen, setQuizOpen] = useState(false);
+export function useQuiz({ targetKey, modal, unavailableMessage, buildUrl, buildPostBody }: UseQuizOptions) {
+  const dispatch = useAppDispatch();
+  const quizOpen = useAppSelector(selectModalOpen(modal));
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -27,11 +30,11 @@ export function useQuiz({ targetKey, unavailableMessage, buildUrl, buildPostBody
     if (!baseUrl || !targetKey) {
       setQuizError(unavailableMessage);
       setQuiz(null);
-      setQuizOpen(true);
+      dispatch(appActions.openModal(modal));
       return;
     }
 
-    setQuizOpen(true);
+    dispatch(appActions.openModal(modal));
     setQuizLoading(true);
     setQuizError(null);
     setQuiz(null);
@@ -78,7 +81,7 @@ export function useQuiz({ targetKey, unavailableMessage, buildUrl, buildPostBody
         setQuizLoading(false);
       }
     }
-  }, [buildPostBody, buildUrl, targetKey, unavailableMessage]);
+  }, [buildPostBody, buildUrl, dispatch, modal, targetKey, unavailableMessage]);
 
   const openQuiz = useCallback(async () => {
     await loadQuiz(false);
@@ -89,8 +92,8 @@ export function useQuiz({ targetKey, unavailableMessage, buildUrl, buildPostBody
   }, [loadQuiz]);
 
   const closeQuiz = useCallback(() => {
-    setQuizOpen(false);
-  }, []);
+    dispatch(appActions.closeModal(modal));
+  }, [dispatch, modal]);
 
   return {
     quizOpen,

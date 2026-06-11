@@ -21,7 +21,11 @@ export type SimpleModal =
   | 'tocManage'
   | 'text'
   | 'print'
-  | 'bookmarks';
+  | 'bookmarks'
+  | 'chapterQuiz'
+  | 'unitQuiz'
+  | 'vocabulary'
+  | 'memoryCard';
 
 export interface AppUiState {
   modals: Record<SimpleModal, boolean> & {
@@ -68,6 +72,10 @@ const initialAppState: CentralAppState = {
       text: false,
       print: false,
       bookmarks: false,
+      chapterQuiz: false,
+      unitQuiz: false,
+      vocabulary: false,
+      memoryCard: false,
       bookCard: false
     },
     bookCardBookId: null,

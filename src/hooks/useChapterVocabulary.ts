@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
 import type { ChapterVocabulary } from '@/types/app';
 
 type ChapterRange = {
@@ -13,7 +14,8 @@ type UseChapterVocabularyOptions = {
 };
 
 export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: UseChapterVocabularyOptions) {
-  const [vocabularyOpen, setVocabularyOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const vocabularyOpen = useAppSelector(selectModalOpen('vocabulary'));
   const [vocabularyLoading, setVocabularyLoading] = useState(false);
   const [vocabularyError, setVocabularyError] = useState<string | null>(null);
   const [vocabulary, setVocabulary] = useState<ChapterVocabulary | null>(null);
@@ -27,11 +29,11 @@ export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: Us
     if (!bookId || !chapterNumber) {
       setVocabularyError('Move to a page inside a known chapter to open vocabulary.');
       setVocabulary(null);
-      setVocabularyOpen(true);
+      dispatch(appActions.openModal('vocabulary'));
       return;
     }
 
-    setVocabularyOpen(true);
+    dispatch(appActions.openModal('vocabulary'));
     setVocabularyLoading(true);
     setVocabularyError(null);
 
@@ -79,7 +81,7 @@ export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: Us
     } finally {
       setVocabularyLoading(false);
     }
-  }, [bookId, chapterNumber, chapterRange]);
+  }, [bookId, chapterNumber, chapterRange, dispatch]);
 
   const openVocabulary = useCallback(async () => {
     await loadVocabulary(false);
@@ -90,8 +92,8 @@ export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: Us
   }, [loadVocabulary]);
 
   const closeVocabulary = useCallback(() => {
-    setVocabularyOpen(false);
-  }, []);
+    dispatch(appActions.closeModal('vocabulary'));
+  }, [dispatch]);
 
   return {
     vocabularyOpen,

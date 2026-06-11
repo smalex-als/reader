@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
 import type { ChapterMemoryCard } from '@/types/app';
 
 type ChapterRange = {
@@ -13,7 +14,8 @@ type UseChapterMemoryCardOptions = {
 };
 
 export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: UseChapterMemoryCardOptions) {
-  const [memoryCardOpen, setMemoryCardOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const memoryCardOpen = useAppSelector(selectModalOpen('memoryCard'));
   const [memoryCardLoading, setMemoryCardLoading] = useState(false);
   const [memoryCardError, setMemoryCardError] = useState<string | null>(null);
   const [memoryCard, setMemoryCard] = useState<ChapterMemoryCard | null>(null);
@@ -27,11 +29,11 @@ export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: Us
     if (!bookId || !chapterNumber) {
       setMemoryCardError('Move to a page inside a known chapter to open a memory card.');
       setMemoryCard(null);
-      setMemoryCardOpen(true);
+      dispatch(appActions.openModal('memoryCard'));
       return;
     }
 
-    setMemoryCardOpen(true);
+    dispatch(appActions.openModal('memoryCard'));
     setMemoryCardLoading(true);
     setMemoryCardError(null);
 
@@ -79,7 +81,7 @@ export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: Us
     } finally {
       setMemoryCardLoading(false);
     }
-  }, [bookId, chapterNumber, chapterRange]);
+  }, [bookId, chapterNumber, chapterRange, dispatch]);
 
   const openMemoryCard = useCallback(async () => {
     await loadMemoryCard(false);
@@ -90,8 +92,8 @@ export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: Us
   }, [loadMemoryCard]);
 
   const closeMemoryCard = useCallback(() => {
-    setMemoryCardOpen(false);
-  }, []);
+    dispatch(appActions.closeModal('memoryCard'));
+  }, [dispatch]);
 
   return {
     memoryCardOpen,

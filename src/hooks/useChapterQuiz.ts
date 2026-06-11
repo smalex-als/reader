@@ -35,6 +35,7 @@ export function useChapterQuiz({ bookId, chapterNumber, chapterRange }: UseChapt
 
   return useQuiz({
     targetKey: bookId && chapterNumber ? `quiz::chapter-${chapterNumber}` : null,
+    modal: 'chapterQuiz',
     unavailableMessage: 'Move to a page inside a known chapter to open a quiz.',
     buildUrl,
     buildPostBody

@@ -36,9 +36,6 @@ type HotkeysOptions = {
   toggleFullscreen: () => Promise<void> | void;
   bookModalOpen: boolean;
   imagePreviewOpen: boolean;
-  quizOpen: boolean;
-  vocabularyOpen: boolean;
-  memoryCardOpen: boolean;
   closeBookModal: () => void;
   openBookModal: () => void;
   onOpenQuiz: () => void;
@@ -79,9 +76,6 @@ export function useHotkeys({
   toggleFullscreen,
   bookModalOpen,
   imagePreviewOpen,
-  quizOpen,
-  vocabularyOpen,
-  memoryCardOpen,
   closeBookModal,
   openBookModal,
   onOpenQuiz,
@@ -98,9 +92,14 @@ export function useHotkeys({
   const settingsOpen = useAppSelector(selectModalOpen('settings'));
   const tocOpen = useAppSelector(selectModalOpen('tocNav'));
   const tocManageOpen = useAppSelector(selectModalOpen('tocManage'));
+  const chapterQuizOpen = useAppSelector(selectModalOpen('chapterQuiz'));
+  const unitQuizOpen = useAppSelector(selectModalOpen('unitQuiz'));
+  const vocabularyOpen = useAppSelector(selectModalOpen('vocabulary'));
+  const memoryCardOpen = useAppSelector(selectModalOpen('memoryCard'));
   const listeningDashboardOpen = useAppSelector(selectModalOpen('listeningDashboard'));
   const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
   const bookCardOpen = useAppSelector(selectBookCardOpen);
+  const quizOpen = chapterQuizOpen || unitQuizOpen;
   const hotkeys = useMemo(
     () => [
       { keys: 'Arrow keys', action: 'Pan image' },
@@ -445,7 +444,8 @@ export function useHotkeys({
     tocOpen,
     tocManageOpen,
     settingsOpen,
-    quizOpen,
+    chapterQuizOpen,
+    unitQuizOpen,
     vocabularyOpen,
     memoryCardOpen,
     listeningDashboardOpen,

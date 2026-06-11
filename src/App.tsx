@@ -844,9 +844,6 @@ export default function App() {
     toggleFullscreen,
     bookModalOpen,
     imagePreviewOpen: imagePreview !== null,
-    quizOpen,
-    vocabularyOpen,
-    memoryCardOpen,
     closeBookModal,
     openBookModal,
     onOpenQuiz: () => {

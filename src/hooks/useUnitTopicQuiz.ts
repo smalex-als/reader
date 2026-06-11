@@ -16,6 +16,7 @@ export function useUnitTopicQuiz({ unitSetId, topicId }: UseUnitTopicQuizOptions
 
   return useQuiz({
     targetKey: unitSetId && topicId ? `quiz::unit-${unitSetId}::topic-${topicId}` : null,
+    modal: 'unitQuiz',
     unavailableMessage: 'Open a unit topic to create a quiz.',
     buildUrl
   });
