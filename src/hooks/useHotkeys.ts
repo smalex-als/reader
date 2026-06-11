@@ -1,5 +1,12 @@
 import { useEffect, useMemo, type RefObject } from 'react';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
+import {
+  appActions,
+  selectBookCardOpen,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { AppSettings, StreamState, ViewerPan } from '@/types/app';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
@@ -28,41 +35,25 @@ type HotkeysOptions = {
   gotoInputRef: RefObject<HTMLInputElement>;
   toggleFullscreen: () => Promise<void> | void;
   textModalOpen: boolean;
-  helpOpen: boolean;
   printModalOpen: boolean;
   bookmarksOpen: boolean;
-  searchOpen: boolean;
-  bookCardOpen: boolean;
   bookModalOpen: boolean;
   imagePreviewOpen: boolean;
-  ocrQueueOpen: boolean;
   tocOpen: boolean;
   tocManageOpen: boolean;
-  settingsOpen: boolean;
   quizOpen: boolean;
   vocabularyOpen: boolean;
   memoryCardOpen: boolean;
-  listeningDashboardOpen: boolean;
-  promptEditorOpen: boolean;
   closeTextModal: () => void;
   closeBookModal: () => void;
   closePrintModal: () => void;
   closeBookmarks: () => void;
-  openSearch: () => void;
-  closeSearch: () => void;
-  closeBookCard: () => void;
-  closePromptEditor: () => void;
-  setOcrQueueOpen: (open: boolean) => void;
   setTocOpen: (open: boolean) => void;
   setTocManageOpen: (open: boolean) => void;
-  setSettingsOpen: (open: boolean) => void;
-  openHelp: () => void;
-  closeHelp: () => void;
   openBookModal: () => void;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
   onOpenMemoryCard: () => void;
-  onOpenListeningDashboard: () => void;
 };
 
 function isTextInput(element: EventTarget | null) {
@@ -97,42 +88,34 @@ export function useHotkeys({
   gotoInputRef,
   toggleFullscreen,
   textModalOpen,
-  helpOpen,
   printModalOpen,
   bookmarksOpen,
-  searchOpen,
-  bookCardOpen,
   bookModalOpen,
   imagePreviewOpen,
-  ocrQueueOpen,
   tocOpen,
   tocManageOpen,
-  settingsOpen,
   quizOpen,
   vocabularyOpen,
   memoryCardOpen,
-  listeningDashboardOpen,
-  promptEditorOpen,
   closeTextModal,
   closeBookModal,
   closePrintModal,
   closeBookmarks,
-  openSearch,
-  closeSearch,
-  closeBookCard,
-  closePromptEditor,
-  setOcrQueueOpen,
   setTocOpen,
   setTocManageOpen,
-  setSettingsOpen,
-  openHelp,
-  closeHelp,
   openBookModal,
   onOpenQuiz,
   onOpenVocabulary,
-  onOpenMemoryCard,
-  onOpenListeningDashboard
+  onOpenMemoryCard
 }: HotkeysOptions) {
+  const dispatch = useAppDispatch();
+  const helpOpen = useAppSelector(selectModalOpen('help'));
+  const searchOpen = useAppSelector(selectModalOpen('search'));
+  const ocrQueueOpen = useAppSelector(selectModalOpen('ocrQueue'));
+  const settingsOpen = useAppSelector(selectModalOpen('settings'));
+  const listeningDashboardOpen = useAppSelector(selectModalOpen('listeningDashboard'));
+  const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
+  const bookCardOpen = useAppSelector(selectBookCardOpen);
   const hotkeys = useMemo(
     () => [
       { keys: 'Arrow keys', action: 'Pan image' },
@@ -214,7 +197,7 @@ export function useHotkeys({
       switch (key) {
         case '?':
           event.preventDefault();
-          openHelp();
+          dispatch(appActions.openModal('help'));
           break;
         case 'arrowleft':
           if (viewMode !== 'pages' || !currentImage) {
@@ -275,7 +258,8 @@ export function useHotkeys({
           break;
         case '0':
           event.preventDefault();
-          onOpenListeningDashboard();
+          dispatch(appActions.closeModal('settings'));
+          dispatch(appActions.openModal('listeningDashboard'));
           break;
         case 'w':
           if (viewMode !== 'pages' || !currentImage) {
@@ -379,14 +363,14 @@ export function useHotkeys({
           break;
         case ',':
           event.preventDefault();
-          setSettingsOpen(true);
+          dispatch(appActions.openModal('settings'));
           break;
         case '/':
           if (event.shiftKey) {
             return;
           }
           event.preventDefault();
-          openSearch();
+          dispatch(appActions.openModal('search'));
           break;
         case 'f':
           if (event.metaKey || event.ctrlKey) {
@@ -403,7 +387,7 @@ export function useHotkeys({
             closeBookModal();
           }
           if (ocrQueueOpen) {
-            setOcrQueueOpen(false);
+            dispatch(appActions.closeModal('ocrQueue'));
           }
           if (tocOpen) {
             setTocOpen(false);
@@ -412,10 +396,10 @@ export function useHotkeys({
             setTocManageOpen(false);
           }
           if (settingsOpen) {
-            setSettingsOpen(false);
+            dispatch(appActions.closeModal('settings'));
           }
           if (helpOpen) {
-            closeHelp();
+            dispatch(appActions.closeModal('help'));
           }
           if (printModalOpen) {
             closePrintModal();
@@ -424,13 +408,13 @@ export function useHotkeys({
             closeBookmarks();
           }
           if (searchOpen) {
-            closeSearch();
+            dispatch(appActions.closeModal('search'));
           }
           if (bookCardOpen) {
-            closeBookCard();
+            dispatch(appActions.closeBookCard());
           }
           if (promptEditorOpen) {
-            closePromptEditor();
+            dispatch(appActions.closeModal('promptEditor'));
           }
           break;
         default:
@@ -470,11 +454,8 @@ export function useHotkeys({
     bookCardOpen,
     imagePreviewOpen,
     closeBookmarks,
-    openSearch,
-    closeSearch,
-    closeBookCard,
-    closePromptEditor,
     closePrintModal,
+    dispatch,
     ocrQueueOpen,
     streamStatus,
     viewMode,
@@ -487,20 +468,15 @@ export function useHotkeys({
     memoryCardOpen,
     listeningDashboardOpen,
     promptEditorOpen,
-    setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,
-    setSettingsOpen,
-    openHelp,
-    closeHelp,
     toggleTextModal,
     triggerBackgroundOcr,
     toggleOcrEditMode,
     gotoInputRef,
     onOpenQuiz,
     onOpenVocabulary,
-    onOpenMemoryCard,
-    onOpenListeningDashboard
+    onOpenMemoryCard
   ]);
 
   return { hotkeys };

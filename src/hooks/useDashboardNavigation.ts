@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
 import { saveLastPage } from '@/lib/storage';
+import { appActions, useAppDispatch } from '@/state/appState';
 import type { MainView } from '@/lib/appConstants';
 import type { TocEntry } from '@/types/app';
 
@@ -14,8 +15,6 @@ interface UseDashboardNavigationOptions {
   setViewMode: (mode: ViewMode) => void;
   setSelectedUnitSetId: (id: string | null) => void;
   setSelectedUnitTopicId: (id: string | null) => void;
-  setSettingsOpen: (open: boolean) => void;
-  closeListeningDashboard: () => void;
 }
 
 export function useDashboardNavigation({
@@ -25,10 +24,13 @@ export function useDashboardNavigation({
   setMainView,
   setViewMode,
   setSelectedUnitSetId,
-  setSelectedUnitTopicId,
-  setSettingsOpen,
-  closeListeningDashboard
+  setSelectedUnitTopicId
 }: UseDashboardNavigationOptions) {
+  const dispatch = useAppDispatch();
+  const closeListeningDashboard = useCallback(() => {
+    dispatch(appActions.closeModal('listeningDashboard'));
+  }, [dispatch]);
+
   const handleOpenDashboardBook = useCallback(
     (targetBookId: string) => {
       closeListeningDashboard();
@@ -97,9 +99,9 @@ export function useDashboardNavigation({
   );
 
   const handleOpenAudioLibrary = useCallback(() => {
-    setSettingsOpen(false);
+    dispatch(appActions.closeModal('settings'));
     setMainView('audio-library');
-  }, [setMainView, setSettingsOpen]);
+  }, [dispatch, setMainView]);
 
   const handleOpenLibraryBook = useCallback(
     (targetBookId: string, targetChapterNumber: number) => {

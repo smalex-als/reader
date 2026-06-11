@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
+import { appActions, useAppDispatch } from '@/state/appState';
 import type { MainView } from '@/lib/appConstants';
 import type { UnitSet } from '@/types/app';
 
@@ -11,7 +12,6 @@ interface UseUnitActionsOptions {
   setMainView: (view: MainView) => void;
   setSelectedUnitSetId: (id: string | null) => void;
   setSelectedUnitTopicId: (id: string | null) => void;
-  setSettingsOpen: (open: boolean) => void;
 }
 
 export function useUnitActions({
@@ -21,9 +21,9 @@ export function useUnitActions({
   showToast,
   setMainView,
   setSelectedUnitSetId,
-  setSelectedUnitTopicId,
-  setSettingsOpen
+  setSelectedUnitTopicId
 }: UseUnitActionsOptions) {
+  const dispatch = useAppDispatch();
   const [unitsRefreshToken, setUnitsRefreshToken] = useState(0);
   const [unitCreating, setUnitCreating] = useState(false);
   const [unitQuizLabel, setUnitQuizLabel] = useState('Topic');
@@ -33,11 +33,11 @@ export function useUnitActions({
   }, []);
 
   const handleOpenUnits = useCallback(() => {
-    setSettingsOpen(false);
+    dispatch(appActions.closeModal('settings'));
     setSelectedUnitSetId(null);
     setSelectedUnitTopicId(null);
     setMainView('units');
-  }, [setMainView, setSelectedUnitSetId, setSelectedUnitTopicId, setSettingsOpen]);
+  }, [dispatch, setMainView, setSelectedUnitSetId, setSelectedUnitTopicId]);
 
   const handleCreateUnit = useCallback(
     async (payload: {
@@ -73,7 +73,7 @@ export function useUnitActions({
         setUnitsRefreshToken((prev) => prev + 1);
         setSelectedUnitSetId(result.item.id);
         setSelectedUnitTopicId(null);
-        setSettingsOpen(false);
+        dispatch(appActions.closeModal('settings'));
         setMainView('units');
         showToast('Unit created', 'success');
       } catch (error) {
@@ -87,10 +87,10 @@ export function useUnitActions({
       bookId,
       chapterNumber,
       currentChapterTitle,
+      dispatch,
       setMainView,
       setSelectedUnitSetId,
       setSelectedUnitTopicId,
-      setSettingsOpen,
       showToast
     ]
   );

@@ -694,9 +694,7 @@ export default function App() {
     setMainView,
     setViewMode,
     setSelectedUnitSetId,
-    setSelectedUnitTopicId,
-    setSettingsOpen,
-    closeListeningDashboard
+    setSelectedUnitTopicId
   });
 
   const handleSelectSearchResult = useCallback((result: SearchResult) => {
@@ -794,8 +792,7 @@ export default function App() {
     showToast,
     setMainView,
     setSelectedUnitSetId,
-    setSelectedUnitTopicId,
-    setSettingsOpen
+    setSelectedUnitTopicId
   });
   const {
     imagePreview,
@@ -846,36 +843,21 @@ export default function App() {
     gotoInputRef,
     toggleFullscreen,
     textModalOpen,
-    helpOpen,
     printModalOpen,
     bookmarksOpen,
-    searchOpen,
-    bookCardOpen,
     bookModalOpen,
     imagePreviewOpen: imagePreview !== null,
-    ocrQueueOpen,
     tocOpen,
     tocManageOpen,
-    settingsOpen,
     quizOpen,
     vocabularyOpen,
     memoryCardOpen,
-    listeningDashboardOpen,
-    promptEditorOpen,
     closeTextModal,
     closeBookModal,
     closePrintModal,
     closeBookmarks,
-    openSearch,
-    closeSearch,
-    closeBookCard,
-    closePromptEditor,
-    setOcrQueueOpen,
     setTocOpen,
     setTocManageOpen,
-    setSettingsOpen,
-    openHelp,
-    closeHelp,
     openBookModal,
     onOpenQuiz: () => {
       setSettingsOpen(false);
@@ -892,10 +874,6 @@ export default function App() {
     onOpenMemoryCard: () => {
       setSettingsOpen(false);
       void handleOpenMemoryCard();
-    },
-    onOpenListeningDashboard: () => {
-      setSettingsOpen(false);
-      openListeningDashboard();
     }
   });
 
