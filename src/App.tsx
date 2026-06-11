@@ -8,6 +8,7 @@ import { useBookmarks } from '@/hooks/useBookmarks';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
+import { useChapterTextContext } from '@/hooks/useChapterTextContext';
 import { useChapterVersionNavigation } from '@/hooks/useChapterVersionNavigation';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { useUnitActions } from '@/hooks/useUnitActions';
@@ -107,11 +108,12 @@ export default function App() {
     setEditorTextVersion
   } = useModalState();
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
-  const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
-    fullText: string;
-    startIndex: number;
-    key: string;
-  } | null>(null);
+  const {
+    displayedChapterText,
+    setDisplayedChapterText,
+    firstChapterParagraph,
+    setFirstChapterParagraph
+  } = useChapterTextContext();
   const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
   const [bookCardRefreshToken, setBookCardRefreshToken] = useState(0);
   const pendingAlignTopRef = useRef(false);
@@ -384,12 +386,6 @@ export default function App() {
     updatePageTextBlocks
   } = usePageText(currentImage, showToast);
   const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('deepseek_ocr');
-  const [displayedChapterText, setDisplayedChapterText] = useState<{
-    text: string;
-    chapterTitle: string | null;
-    versionLabel: string | null;
-    versionId: string | null;
-  } | null>(null);
   const {
     chapterVersionNavigationRequest,
     requestChapterVersionNavigation,

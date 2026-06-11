@@ -64,10 +64,29 @@ export interface ChapterVersionNavigationRequest {
   versionId: string;
 }
 
+export interface DisplayedChapterText {
+  text: string;
+  chapterTitle: string | null;
+  versionLabel: string | null;
+  versionId: string | null;
+}
+
+export interface ChapterParagraph {
+  fullText: string;
+  startIndex: number;
+  key: string;
+}
+
+export interface ChapterTextContextState {
+  displayedChapterText: DisplayedChapterText | null;
+  firstChapterParagraph: ChapterParagraph | null;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
   chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
+  chapterTextContext: ChapterTextContextState;
 }
 
 export type AppAction =
@@ -93,7 +112,9 @@ export type AppAction =
       chapterNumber: number;
       versionId: string;
     }
-  | { type: 'chapterVersionNavigation/clear' };
+  | { type: 'chapterVersionNavigation/clear' }
+  | { type: 'chapterText/setDisplayed'; displayedChapterText: DisplayedChapterText | null }
+  | { type: 'chapterText/setFirstParagraph'; firstChapterParagraph: ChapterParagraph | null };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -146,7 +167,11 @@ const initialAppState: CentralAppState = {
     }
   },
   navigation: getInitialNavigation(),
-  chapterVersionNavigationRequest: null
+  chapterVersionNavigationRequest: null,
+  chapterTextContext: {
+    displayedChapterText: null,
+    firstChapterParagraph: null
+  }
 };
 
 export const appActions = {
@@ -191,7 +216,15 @@ export const appActions = {
     chapterNumber,
     versionId
   }),
-  clearChapterVersionNavigation: (): AppAction => ({ type: 'chapterVersionNavigation/clear' })
+  clearChapterVersionNavigation: (): AppAction => ({ type: 'chapterVersionNavigation/clear' }),
+  setDisplayedChapterText: (displayedChapterText: DisplayedChapterText | null): AppAction => ({
+    type: 'chapterText/setDisplayed',
+    displayedChapterText
+  }),
+  setFirstChapterParagraph: (firstChapterParagraph: ChapterParagraph | null): AppAction => ({
+    type: 'chapterText/setFirstParagraph',
+    firstChapterParagraph
+  })
 };
 
 export function appReducer(state: CentralAppState, action: AppAction): CentralAppState {
@@ -382,6 +415,22 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ...state,
         chapterVersionNavigationRequest: null
       };
+    case 'chapterText/setDisplayed':
+      return {
+        ...state,
+        chapterTextContext: {
+          ...state.chapterTextContext,
+          displayedChapterText: action.displayedChapterText
+        }
+      };
+    case 'chapterText/setFirstParagraph':
+      return {
+        ...state,
+        chapterTextContext: {
+          ...state.chapterTextContext,
+          firstChapterParagraph: action.firstChapterParagraph
+        }
+      };
     default:
       return state;
   }
@@ -426,3 +475,4 @@ export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.set
 export const selectNavigationState = (state: CentralAppState) => state.navigation;
 export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
   state.chapterVersionNavigationRequest;
+export const selectChapterTextContext = (state: CentralAppState) => state.chapterTextContext;
