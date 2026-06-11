@@ -7,11 +7,12 @@ import {
   type ReactNode
 } from 'react';
 import type { MainView, ViewMode } from '@/lib/appConstants';
-import type { AudioState, Bookmark, ImagePreviewTarget, PageTextOcrEngine, SearchResult } from '@/types/app';
+import type { AudioState, Bookmark, ImagePreviewTarget, PageTextOcrEngine, Quiz, SearchResult } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
 export type TocVariant = 'main' | 'detailed';
+export type QuizModal = 'chapterQuiz' | 'unitQuiz';
 
 export type SimpleModal =
   | 'help'
@@ -140,6 +141,14 @@ export interface BookmarkWorkflowState {
   loading: boolean;
 }
 
+export interface QuizWorkflowEntry {
+  loading: boolean;
+  error: string | null;
+  quiz: Quiz | null;
+}
+
+export type QuizWorkflowState = Record<QuizModal, QuizWorkflowEntry>;
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -157,6 +166,7 @@ export interface CentralAppState {
   tocWorkflow: TocWorkflowState;
   searchWorkflow: SearchWorkflowState;
   bookmarkWorkflow: BookmarkWorkflowState;
+  quizWorkflow: QuizWorkflowState;
 }
 
 export type AppAction =
@@ -213,7 +223,11 @@ export type AppAction =
   | { type: 'searchWorkflow/setLoading'; loading: boolean }
   | { type: 'bookmarkWorkflow/reset' }
   | { type: 'bookmarkWorkflow/setItems'; items: Bookmark[] }
-  | { type: 'bookmarkWorkflow/setLoading'; loading: boolean };
+  | { type: 'bookmarkWorkflow/setLoading'; loading: boolean }
+  | { type: 'quizWorkflow/reset'; modal: QuizModal }
+  | { type: 'quizWorkflow/setLoading'; modal: QuizModal; loading: boolean }
+  | { type: 'quizWorkflow/setError'; modal: QuizModal; error: string | null }
+  | { type: 'quizWorkflow/setQuiz'; modal: QuizModal; quiz: Quiz | null };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -337,6 +351,18 @@ const initialAppState: CentralAppState = {
   bookmarkWorkflow: {
     items: [],
     loading: false
+  },
+  quizWorkflow: {
+    chapterQuiz: {
+      loading: false,
+      error: null,
+      quiz: null
+    },
+    unitQuiz: {
+      loading: false,
+      error: null,
+      quiz: null
+    }
   }
 };
 
@@ -482,6 +508,25 @@ export const appActions = {
   setBookmarksLoading: (loading: boolean): AppAction => ({
     type: 'bookmarkWorkflow/setLoading',
     loading
+  }),
+  resetQuiz: (modal: QuizModal): AppAction => ({
+    type: 'quizWorkflow/reset',
+    modal
+  }),
+  setQuizLoading: (modal: QuizModal, loading: boolean): AppAction => ({
+    type: 'quizWorkflow/setLoading',
+    modal,
+    loading
+  }),
+  setQuizError: (modal: QuizModal, error: string | null): AppAction => ({
+    type: 'quizWorkflow/setError',
+    modal,
+    error
+  }),
+  setQuiz: (modal: QuizModal, quiz: Quiz | null): AppAction => ({
+    type: 'quizWorkflow/setQuiz',
+    modal,
+    quiz
   })
 };
 
@@ -942,6 +987,51 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           loading: action.loading
         }
       };
+    case 'quizWorkflow/reset':
+      return {
+        ...state,
+        quizWorkflow: {
+          ...state.quizWorkflow,
+          [action.modal]: {
+            loading: false,
+            error: null,
+            quiz: null
+          }
+        }
+      };
+    case 'quizWorkflow/setLoading':
+      return {
+        ...state,
+        quizWorkflow: {
+          ...state.quizWorkflow,
+          [action.modal]: {
+            ...state.quizWorkflow[action.modal],
+            loading: action.loading
+          }
+        }
+      };
+    case 'quizWorkflow/setError':
+      return {
+        ...state,
+        quizWorkflow: {
+          ...state.quizWorkflow,
+          [action.modal]: {
+            ...state.quizWorkflow[action.modal],
+            error: action.error
+          }
+        }
+      };
+    case 'quizWorkflow/setQuiz':
+      return {
+        ...state,
+        quizWorkflow: {
+          ...state.quizWorkflow,
+          [action.modal]: {
+            ...state.quizWorkflow[action.modal],
+            quiz: action.quiz
+          }
+        }
+      };
     default:
       return state;
   }
@@ -999,3 +1089,4 @@ export const selectPrintWorkflow = (state: CentralAppState) => state.printWorkfl
 export const selectTocWorkflow = (state: CentralAppState) => state.tocWorkflow;
 export const selectSearchWorkflow = (state: CentralAppState) => state.searchWorkflow;
 export const selectBookmarkWorkflow = (state: CentralAppState) => state.bookmarkWorkflow;
+export const selectQuizWorkflow = (modal: QuizModal) => (state: CentralAppState) => state.quizWorkflow[modal];

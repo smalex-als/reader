@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { appActions, selectModalOpen, useAppDispatch, useAppSelector, type SimpleModal } from '@/state/appState';
+import { useCallback, useEffect, useRef } from 'react';
+import {
+  appActions,
+  selectModalOpen,
+  selectQuizWorkflow,
+  useAppDispatch,
+  useAppSelector,
+  type QuizModal
+} from '@/state/appState';
 import type { Quiz } from '@/types/app';
 
 type UseQuizOptions = {
   targetKey: string | null;
-  modal: Extract<SimpleModal, 'chapterQuiz' | 'unitQuiz'>;
+  modal: QuizModal;
   unavailableMessage: string;
   buildUrl: () => string | null;
   buildPostBody?: (force: boolean) => Record<string, unknown>;
@@ -13,31 +20,27 @@ type UseQuizOptions = {
 export function useQuiz({ targetKey, modal, unavailableMessage, buildUrl, buildPostBody }: UseQuizOptions) {
   const dispatch = useAppDispatch();
   const quizOpen = useAppSelector(selectModalOpen(modal));
-  const [quizLoading, setQuizLoading] = useState(false);
-  const [quizError, setQuizError] = useState<string | null>(null);
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const { loading: quizLoading, error: quizError, quiz } = useAppSelector(selectQuizWorkflow(modal));
   const requestIdRef = useRef(0);
 
   useEffect(() => {
     requestIdRef.current += 1;
-    setQuiz(null);
-    setQuizError(null);
-    setQuizLoading(false);
-  }, [targetKey]);
+    dispatch(appActions.resetQuiz(modal));
+  }, [dispatch, modal, targetKey]);
 
   const loadQuiz = useCallback(async (force = false) => {
     const baseUrl = buildUrl();
     if (!baseUrl || !targetKey) {
-      setQuizError(unavailableMessage);
-      setQuiz(null);
+      dispatch(appActions.setQuizError(modal, unavailableMessage));
+      dispatch(appActions.setQuiz(modal, null));
       dispatch(appActions.openModal(modal));
       return;
     }
 
     dispatch(appActions.openModal(modal));
-    setQuizLoading(true);
-    setQuizError(null);
-    setQuiz(null);
+    dispatch(appActions.setQuizLoading(modal, true));
+    dispatch(appActions.setQuizError(modal, null));
+    dispatch(appActions.setQuiz(modal, null));
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
@@ -59,7 +62,7 @@ export function useQuiz({ targetKey, modal, unavailableMessage, buildUrl, buildP
       if (requestIdRef.current !== requestId) {
         return;
       }
-      setQuiz({
+      dispatch(appActions.setQuiz(modal, {
         contextKey: payload.contextKey ?? targetKey,
         chapterNumber: payload.chapterNumber,
         unitSetId: payload.unitSetId,
@@ -68,17 +71,17 @@ export function useQuiz({ targetKey, modal, unavailableMessage, buildUrl, buildP
         questions: Array.isArray(payload.questions) ? payload.questions : [],
         source: payload.source,
         file: payload.file
-      });
+      }));
     } catch (error) {
       if (requestIdRef.current !== requestId) {
         return;
       }
       const message = error instanceof Error ? error.message : 'Unable to load quiz.';
-      setQuizError(message);
-      setQuiz(null);
+      dispatch(appActions.setQuizError(modal, message));
+      dispatch(appActions.setQuiz(modal, null));
     } finally {
       if (requestIdRef.current === requestId) {
-        setQuizLoading(false);
+        dispatch(appActions.setQuizLoading(modal, false));
       }
     }
   }, [buildPostBody, buildUrl, dispatch, modal, targetKey, unavailableMessage]);
