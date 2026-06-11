@@ -109,6 +109,11 @@ export interface UnitWorkflowState {
   quizLabel: string;
 }
 
+export interface OcrEditState {
+  editMode: boolean;
+  saving: boolean;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -119,6 +124,7 @@ export interface CentralAppState {
   readerPreferences: ReaderPreferencesState;
   streamUiControls: StreamUiControlsState;
   unitWorkflow: UnitWorkflowState;
+  ocrEdit: OcrEditState;
 }
 
 export type AppAction =
@@ -158,7 +164,9 @@ export type AppAction =
   | { type: 'streamUi/setSelectedBlockKey'; key: string | null }
   | { type: 'streamUi/setPlaybackRate'; rate: number }
   | { type: 'unitWorkflow/refresh' }
-  | { type: 'unitWorkflow/setQuizLabel'; label: string };
+  | { type: 'unitWorkflow/setQuizLabel'; label: string }
+  | { type: 'ocrEdit/setMode'; enabled: boolean }
+  | { type: 'ocrEdit/setSaving'; saving: boolean };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -250,6 +258,10 @@ const initialAppState: CentralAppState = {
   unitWorkflow: {
     refreshToken: 0,
     quizLabel: 'Topic'
+  },
+  ocrEdit: {
+    editMode: false,
+    saving: false
   }
 };
 
@@ -336,6 +348,14 @@ export const appActions = {
   setUnitQuizLabel: (label: string): AppAction => ({
     type: 'unitWorkflow/setQuizLabel',
     label
+  }),
+  setOcrEditMode: (enabled: boolean): AppAction => ({
+    type: 'ocrEdit/setMode',
+    enabled
+  }),
+  setOcrEditSaving: (saving: boolean): AppAction => ({
+    type: 'ocrEdit/setSaving',
+    saving
   })
 };
 
@@ -639,6 +659,22 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           quizLabel: action.label
         }
       };
+    case 'ocrEdit/setMode':
+      return {
+        ...state,
+        ocrEdit: {
+          ...state.ocrEdit,
+          editMode: action.enabled
+        }
+      };
+    case 'ocrEdit/setSaving':
+      return {
+        ...state,
+        ocrEdit: {
+          ...state.ocrEdit,
+          saving: action.saving
+        }
+      };
     default:
       return state;
   }
@@ -689,3 +725,4 @@ export const selectRefreshTokens = (state: CentralAppState) => state.refreshToke
 export const selectReaderPreferences = (state: CentralAppState) => state.readerPreferences;
 export const selectStreamUiControls = (state: CentralAppState) => state.streamUiControls;
 export const selectUnitWorkflow = (state: CentralAppState) => state.unitWorkflow;
+export const selectOcrEdit = (state: CentralAppState) => state.ocrEdit;

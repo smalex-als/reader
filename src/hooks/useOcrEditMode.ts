@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import {
+  appActions,
+  selectOcrEdit,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { PageText, PageTextOcrEngine } from '@/types/app';
 
 interface UseOcrEditModeOptions {
@@ -28,10 +34,24 @@ export function useOcrEditMode(options: UseOcrEditModeOptions) {
     showToast
   } = options;
 
-  const [ocrEditMode, setOcrEditMode] = useState(false);
-  const [ocrEditSaving, setOcrEditSaving] = useState(false);
+  const dispatch = useAppDispatch();
+  const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
   const ocrEditBaselineRef = useRef<string | null>(null);
   const ocrEditImageRef = useRef<string | null>(null);
+
+  const setOcrEditMode = useCallback(
+    (enabled: boolean) => {
+      dispatch(appActions.setOcrEditMode(enabled));
+    },
+    [dispatch]
+  );
+
+  const setOcrEditSaving = useCallback(
+    (saving: boolean) => {
+      dispatch(appActions.setOcrEditSaving(saving));
+    },
+    [dispatch]
+  );
 
   useEffect(() => {
     if (ocrEditImageRef.current === currentImage) {
@@ -41,7 +61,7 @@ export function useOcrEditMode(options: UseOcrEditModeOptions) {
     ocrEditBaselineRef.current = null;
     setOcrEditMode(false);
     setOcrEditSaving(false);
-  }, [currentImage]);
+  }, [currentImage, setOcrEditMode, setOcrEditSaving]);
 
   const toggleOcrEditMode = useCallback(async () => {
     if (!currentImage || isTextBook) {
@@ -79,7 +99,17 @@ export function useOcrEditMode(options: UseOcrEditModeOptions) {
       return;
     }
     setOcrEditMode(true);
-  }, [currentImage, currentText, fetchPageText, isTextBook, ocrEditMode, savePageText, showToast]);
+  }, [
+    currentImage,
+    currentText,
+    fetchPageText,
+    isTextBook,
+    ocrEditMode,
+    savePageText,
+    setOcrEditMode,
+    setOcrEditSaving,
+    showToast
+  ]);
 
   const toggleSpeechBlock = useCallback(
     async (blockId: string) => {
