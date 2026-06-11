@@ -49,7 +49,6 @@ import {
 } from '@/lib/appConstants';
 import type {
   AppSettings,
-  PageTextOcrEngine,
   SearchResult,
   TocEntry
 } from '@/types/app';
@@ -735,18 +734,6 @@ export default function App() {
     },
     bookmarksModalProps: {
       onSelect: handleSelectBookmark
-    },
-    textModalProps: {
-      onRegenerate: (engine: PageTextOcrEngine) => {
-        setRegeneratedText(true);
-        void fetchPageText({ force: true, engine });
-      },
-      onSave: (nextText: string) => {
-        void savePageText(nextText);
-      },
-      onCopyText: (textValue: string) => {
-        void handleCopyText(textValue);
-      }
     },
     tocNavModalProps: {
       onGoToPage: (pageIndex: number) => renderPage(pageIndex)

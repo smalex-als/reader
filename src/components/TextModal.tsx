@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { usePageText } from '@/hooks/usePageText';
+import { useToast } from '@/hooks/useToast';
+import { copyToClipboard } from '@/lib/clipboard';
 import {
   appActions,
   selectBookSessionWorkflow,
@@ -10,20 +13,10 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { PageTextOcrEngine } from '@/types/app';
 
-interface TextModalProps {
-  onRegenerate: (engine: PageTextOcrEngine) => void;
-  onSave: (nextText: string) => void;
-  onCopyText: (textValue: string) => void;
-}
-
-export default function TextModal({
-  onRegenerate,
-  onSave,
-  onCopyText
-}: TextModalProps) {
+export default function TextModal() {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('text'));
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
@@ -35,6 +28,7 @@ export default function TextModal({
   } = useAppSelector(selectPageTextWorkflow);
   const { pageTextOcrEngine: ocrEngine } = useAppSelector(selectReaderPreferences);
   const currentImage = manifest[currentPage] ?? null;
+  const { fetchPageText, savePageText } = usePageText(currentImage);
   const title = currentImage ?? 'Page text';
   const text = currentImage ? textCache[currentImage] ?? null : null;
   const [draftText, setDraftText] = useState('');
@@ -67,6 +61,11 @@ export default function TextModal({
   }, [text]);
   const isDirty = draftText !== displayedText;
   const canCopy = Boolean(draftText.trim());
+  const handleCopy = async () => {
+    const copied = await copyToClipboard(draftText.trim());
+    showToast(copied ? 'Copied page text to clipboard' : 'Unable to copy text', copied ? 'success' : 'error');
+    setCopied(true);
+  };
 
   if (!open) {
     return null;
@@ -130,10 +129,7 @@ export default function TextModal({
           <button
             type="button"
             className={`button button-secondary ${copied ? 'button-active' : ''}`}
-            onClick={() => {
-              onCopyText(draftText);
-              setCopied(true);
-            }}
+            onClick={() => void handleCopy()}
             disabled={loading || saving || !canCopy}
           >
             {copied ? 'Copied' : 'Copy Text'}
@@ -141,7 +137,10 @@ export default function TextModal({
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => onRegenerate(ocrEngine)}
+            onClick={() => {
+              dispatch(appActions.setRegeneratedPageText(true));
+              void fetchPageText({ force: true, engine: ocrEngine });
+            }}
             disabled={loading || saving}
           >
             Regenerate
@@ -149,7 +148,7 @@ export default function TextModal({
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => onSave(draftText)}
+            onClick={() => void savePageText(draftText)}
             disabled={loading || saving || !isDirty}
           >
             {saving ? 'Saving…' : 'Save'}

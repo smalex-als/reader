@@ -22,7 +22,6 @@ import JobWorkerModal from '@/components/JobWorkerModal';
 
 type BookSelectModalProps = ComponentProps<typeof BookSelectModal>;
 type BookmarksModalProps = ComponentProps<typeof BookmarksModal>;
-type TextModalProps = ComponentProps<typeof TextModal>;
 type TocNavModalProps = ComponentProps<typeof TocNavModal>;
 type TocModalProps = ComponentProps<typeof TocModal>;
 type OcrQueueModalProps = ComponentProps<typeof OcrQueueModal>;
@@ -37,7 +36,6 @@ interface AppModalsProps {
   portalTarget?: HTMLElement | null;
   bookSelectModalProps: BookSelectModalProps;
   bookmarksModalProps: BookmarksModalProps;
-  textModalProps: TextModalProps;
   tocNavModalProps: TocNavModalProps;
   tocModalProps: TocModalProps;
   ocrQueueModalProps: OcrQueueModalProps;
@@ -60,7 +58,6 @@ export default function AppModals({
   portalTarget,
   bookSelectModalProps,
   bookmarksModalProps,
-  textModalProps,
   tocNavModalProps,
   tocModalProps,
   ocrQueueModalProps,
@@ -78,7 +75,7 @@ export default function AppModals({
       <BookSelectModal {...bookSelectModalProps} />
       {renderInPortal(<HelpModal />, portalTarget)}
       <BookmarksModal {...bookmarksModalProps} />
-      {renderInPortal(<TextModal {...textModalProps} />, portalTarget)}
+      {renderInPortal(<TextModal />, portalTarget)}
       {renderInPortal(<TocNavModal {...tocNavModalProps} />, portalTarget)}
       {renderInPortal(<TocModal {...tocModalProps} />, portalTarget)}
       {renderInPortal(<SearchModal {...searchModalProps} />, portalTarget)}
