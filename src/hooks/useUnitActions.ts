@@ -1,6 +1,11 @@
 import { useCallback, useState } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
-import { appActions, useAppDispatch } from '@/state/appState';
+import {
+  appActions,
+  selectUnitWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { UnitSet } from '@/types/app';
 
 interface UseUnitActionsOptions {
@@ -17,13 +22,19 @@ export function useUnitActions({
   showToast
 }: UseUnitActionsOptions) {
   const dispatch = useAppDispatch();
-  const [unitsRefreshToken, setUnitsRefreshToken] = useState(0);
+  const { refreshToken: unitsRefreshToken, quizLabel: unitQuizLabel } = useAppSelector(selectUnitWorkflow);
   const [unitCreating, setUnitCreating] = useState(false);
-  const [unitQuizLabel, setUnitQuizLabel] = useState('Topic');
 
   const refreshUnits = useCallback(() => {
-    setUnitsRefreshToken((prev) => prev + 1);
-  }, []);
+    dispatch(appActions.refreshUnits());
+  }, [dispatch]);
+
+  const setUnitQuizLabel = useCallback(
+    (label: string) => {
+      dispatch(appActions.setUnitQuizLabel(label));
+    },
+    [dispatch]
+  );
 
   const handleOpenUnits = useCallback(() => {
     dispatch(appActions.closeModal('settings'));
@@ -63,7 +74,7 @@ export function useUnitActions({
             content
           })
         });
-        setUnitsRefreshToken((prev) => prev + 1);
+        dispatch(appActions.refreshUnits());
         dispatch(appActions.setSelectedUnitSetId(result.item.id));
         dispatch(appActions.setSelectedUnitTopicId(null));
         dispatch(appActions.closeModal('settings'));

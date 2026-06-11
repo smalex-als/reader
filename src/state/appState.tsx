@@ -104,6 +104,11 @@ export interface StreamUiControlsState {
   playbackRate: number;
 }
 
+export interface UnitWorkflowState {
+  refreshToken: number;
+  quizLabel: string;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -113,6 +118,7 @@ export interface CentralAppState {
   refreshTokens: AppRefreshTokens;
   readerPreferences: ReaderPreferencesState;
   streamUiControls: StreamUiControlsState;
+  unitWorkflow: UnitWorkflowState;
 }
 
 export type AppAction =
@@ -150,7 +156,9 @@ export type AppAction =
   | { type: 'preferences/setQuizAutoPlayEnabled'; enabled: boolean }
   | { type: 'streamUi/toggleAutoFollow' }
   | { type: 'streamUi/setSelectedBlockKey'; key: string | null }
-  | { type: 'streamUi/setPlaybackRate'; rate: number };
+  | { type: 'streamUi/setPlaybackRate'; rate: number }
+  | { type: 'unitWorkflow/refresh' }
+  | { type: 'unitWorkflow/setQuizLabel'; label: string };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -238,6 +246,10 @@ const initialAppState: CentralAppState = {
     autoFollowStream: true,
     selectedStreamBlockKey: null,
     playbackRate: 1
+  },
+  unitWorkflow: {
+    refreshToken: 0,
+    quizLabel: 'Topic'
   }
 };
 
@@ -319,7 +331,12 @@ export const appActions = {
     type: 'streamUi/setSelectedBlockKey',
     key
   }),
-  setPlaybackRate: (rate: number): AppAction => ({ type: 'streamUi/setPlaybackRate', rate })
+  setPlaybackRate: (rate: number): AppAction => ({ type: 'streamUi/setPlaybackRate', rate }),
+  refreshUnits: (): AppAction => ({ type: 'unitWorkflow/refresh' }),
+  setUnitQuizLabel: (label: string): AppAction => ({
+    type: 'unitWorkflow/setQuizLabel',
+    label
+  })
 };
 
 export function appReducer(state: CentralAppState, action: AppAction): CentralAppState {
@@ -606,6 +623,22 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           playbackRate: action.rate
         }
       };
+    case 'unitWorkflow/refresh':
+      return {
+        ...state,
+        unitWorkflow: {
+          ...state.unitWorkflow,
+          refreshToken: state.unitWorkflow.refreshToken + 1
+        }
+      };
+    case 'unitWorkflow/setQuizLabel':
+      return {
+        ...state,
+        unitWorkflow: {
+          ...state.unitWorkflow,
+          quizLabel: action.label
+        }
+      };
     default:
       return state;
   }
@@ -655,3 +688,4 @@ export const selectChapterTextContext = (state: CentralAppState) => state.chapte
 export const selectRefreshTokens = (state: CentralAppState) => state.refreshTokens;
 export const selectReaderPreferences = (state: CentralAppState) => state.readerPreferences;
 export const selectStreamUiControls = (state: CentralAppState) => state.streamUiControls;
+export const selectUnitWorkflow = (state: CentralAppState) => state.unitWorkflow;
