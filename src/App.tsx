@@ -130,7 +130,6 @@ export default function App() {
     handleUploadChapter,
     handleCreateChapter,
     handleUploadPdf,
-    handleDeleteBook,
     handleDeleteChapter
   } = useBookSession({
     settings,
@@ -740,7 +739,6 @@ export default function App() {
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null,
     bookSelectModalProps: {
-      onDelete: handleDeleteBook,
       onUploadChapter: handleUploadChapter,
       onUploadPdf: handleUploadPdf
     },

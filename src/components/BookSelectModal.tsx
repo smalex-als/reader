@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useDeleteBook } from '@/hooks/useBookSession';
 import {
   appActions,
   selectBookSessionWorkflow,
@@ -30,17 +31,16 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 }
 
 interface BookSelectModalProps {
-  onDelete: (bookId: string) => void;
   onUploadChapter: (file: File, details: { bookName: string; chapterTitle: string }) => void;
   onUploadPdf: (file: File) => void;
 }
 
 export default function BookSelectModal({
-  onDelete,
   onUploadChapter,
   onUploadPdf
 }: BookSelectModalProps) {
   const dispatch = useAppDispatch();
+  const deleteBook = useDeleteBook();
   const open = useAppSelector(selectModalOpen('bookSelect'));
   const { bookId: currentBook } = useAppSelector(selectReaderSession);
   const { books, uploadingChapter, uploadingPdf } = useAppSelector(selectBookSessionWorkflow);
@@ -329,7 +329,7 @@ export default function BookSelectModal({
                         <button
                           type="button"
                           className="button button-ghost book-select-delete"
-                          onClick={() => onDelete(book)}
+                          onClick={() => void deleteBook(book)}
                           aria-label={`Delete ${book}`}
                         >
                           Delete

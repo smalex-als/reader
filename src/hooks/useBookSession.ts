@@ -609,42 +609,6 @@ export function useBookSession<StreamVoice extends string>({
     [onUpdateTocEntries, setBookId, setBookModalOpen, setCurrentPage, setViewMode, showToast]
   );
 
-  const handleDeleteBook = useCallback(
-    async (targetBookId: string) => {
-      const confirmed = window.confirm(
-        `Delete "${targetBookId}" and all of its files? This cannot be undone.`
-      );
-      if (!confirmed) {
-        return;
-      }
-      try {
-        const data = await fetchJson<{ book: string; books: string[] }>(
-          `/api/books/${encodeURIComponent(targetBookId)}`,
-          { method: 'DELETE' }
-        );
-        removeBookStorage(targetBookId);
-        setBooks(data.books);
-        showToast(`Deleted ${data.book}`, 'success');
-
-        if (bookId === targetBookId) {
-          if (data.books.length === 0) {
-            setBookId(null);
-            setBookModalOpen(true);
-            showToast('No books found. Add files to /data to begin.', 'info');
-          } else {
-            const fallback = data.books[0];
-            setBookId(fallback);
-            saveLastBook(fallback);
-          }
-        }
-      } catch (error) {
-        console.error(error);
-        showToast('Unable to delete book', 'error');
-      }
-    },
-    [bookId, setBookId, setBookModalOpen, showToast]
-  );
-
   const handleDeleteChapter = useCallback(
     async (chapterNumber: number) => {
       if (!bookId || bookType !== 'text') {
@@ -733,7 +697,48 @@ export function useBookSession<StreamVoice extends string>({
     handleUploadChapter,
     handleCreateChapter,
     handleUploadPdf,
-    handleDeleteBook,
     handleDeleteChapter
   };
+}
+
+export function useDeleteBook() {
+  const { showToast } = useToast();
+  const dispatch = useAppDispatch();
+  const { bookId } = useAppSelector(selectReaderSession);
+
+  return useCallback(
+    async (targetBookId: string) => {
+      const confirmed = window.confirm(
+        `Delete "${targetBookId}" and all of its files? This cannot be undone.`
+      );
+      if (!confirmed) {
+        return;
+      }
+      try {
+        const data = await fetchJson<{ book: string; books: string[] }>(
+          `/api/books/${encodeURIComponent(targetBookId)}`,
+          { method: 'DELETE' }
+        );
+        removeBookStorage(targetBookId);
+        dispatch(appActions.setBookSessionBooks(data.books));
+        showToast(`Deleted ${data.book}`, 'success');
+
+        if (bookId === targetBookId) {
+          if (data.books.length === 0) {
+            dispatch(appActions.setReaderBookId(null));
+            dispatch(appActions.setModalOpen('bookSelect', true));
+            showToast('No books found. Add files to /data to begin.', 'info');
+          } else {
+            const fallback = data.books[0];
+            dispatch(appActions.setReaderBookId(fallback));
+            saveLastBook(fallback);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        showToast('Unable to delete book', 'error');
+      }
+    },
+    [bookId, dispatch, showToast]
+  );
 }
