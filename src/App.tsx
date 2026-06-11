@@ -149,7 +149,7 @@ export default function App() {
     getDefaultStreamVoice,
     mp3VoiceOptions,
     getDefaultMp3Voice
-  } = useStreamVoices({ showToast });
+  } = useStreamVoices();
   const {
     books,
     bookId,
@@ -529,8 +529,7 @@ export default function App() {
     isTextBook,
     fetchPageText,
     savePageText,
-    updatePageTextBlocks,
-    showToast
+    updatePageTextBlocks
   });
 
   useEffect(() => {
@@ -770,8 +769,7 @@ export default function App() {
   } = useUnitActions({
     bookId,
     chapterNumber,
-    currentChapterTitle: currentChapterEntry?.title ?? null,
-    showToast
+    currentChapterTitle: currentChapterEntry?.title ?? null
   });
   const {
     imagePreview,

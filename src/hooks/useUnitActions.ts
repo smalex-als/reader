@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
+import { useToast } from '@/hooks/useToast';
 import {
   appActions,
   selectUnitWorkflow,
@@ -12,16 +13,15 @@ interface UseUnitActionsOptions {
   bookId: string | null;
   chapterNumber: number | null;
   currentChapterTitle: string | null;
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
 export function useUnitActions({
   bookId,
   chapterNumber,
-  currentChapterTitle,
-  showToast
+  currentChapterTitle
 }: UseUnitActionsOptions) {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const {
     refreshToken: unitsRefreshToken,
     quizLabel: unitQuizLabel,

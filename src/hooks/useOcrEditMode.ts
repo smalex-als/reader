@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useToast } from '@/hooks/useToast';
 import {
   appActions,
   selectOcrEdit,
@@ -20,7 +21,6 @@ interface UseOcrEditModeOptions {
   updatePageTextBlocks: (
     updater: (blocks: PageText['blocks']) => PageText['blocks']
   ) => PageText | null;
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
 export function useOcrEditMode(options: UseOcrEditModeOptions) {
@@ -30,11 +30,11 @@ export function useOcrEditMode(options: UseOcrEditModeOptions) {
     isTextBook,
     fetchPageText,
     savePageText,
-    updatePageTextBlocks,
-    showToast
+    updatePageTextBlocks
   } = options;
 
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
   const ocrEditBaselineRef = useRef<string | null>(null);
   const ocrEditImageRef = useRef<string | null>(null);

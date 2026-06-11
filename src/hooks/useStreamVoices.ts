@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
+import { useToast } from '@/hooks/useToast';
 import { loadMp3VoiceForBook, saveMp3VoiceForBook } from '@/lib/storage';
 import {
   appActions,
@@ -9,16 +10,12 @@ import {
 } from '@/state/appState';
 import type { StreamVoice, StreamVoiceOption } from '@/lib/appConstants';
 
-interface UseStreamVoicesOptions {
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
-}
-
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
 
-export function useStreamVoices(options: UseStreamVoicesOptions) {
-  const { showToast } = options;
+export function useStreamVoices() {
+  const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const { streamVoiceOptions, defaultStreamVoice, streamVoice } = useAppSelector(selectVoiceWorkflow);
 
