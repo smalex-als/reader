@@ -54,7 +54,7 @@ export function createApp() {
   app.use(eventsRouter);
   app.use(jobsRouter);
 
-  app.get('*', (req, res, next) => {
+  app.get('/{*splat}', (req, res, next) => {
     if (req.path.startsWith('/api/')) {
       return next();
     }
