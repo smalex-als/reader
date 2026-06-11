@@ -272,9 +272,8 @@ export default function App() {
   const {
     floatingAudioPlaybackState,
     playFloatingAudio: handlePlayFloatingAudio,
-    closeFloatingAudio: handleCloseFloatingAudio,
     handlePlaybackStateChange: handleFloatingAudioPlaybackStateChange
-  } = useFloatingAudio({ bookId, audioState, stopAudio, syncFloatingAudioState });
+  } = useFloatingAudio({ bookId, audioState, syncFloatingAudioState });
   const isListening =
     audioState.status === 'playing' ||
     streamState.status === 'streaming' ||
@@ -907,7 +906,6 @@ export default function App() {
       onStopStream: handleStopStream
     },
     floatingAudioPlayerProps: {
-      onClose: handleCloseFloatingAudio,
       onPlaybackStateChange: handleFloatingAudioPlaybackStateChange
     }
   };

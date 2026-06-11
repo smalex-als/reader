@@ -15,7 +15,6 @@ import type {
 } from '@/types/floatingAudio';
 
 interface FloatingAudioPlayerProps {
-  onClose: () => void;
   onPlaybackStateChange?: (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => void;
 }
 
@@ -142,7 +141,6 @@ function mergeAwkwardSubtitleCues(cues: SubtitleCue[]) {
 }
 
 export default function FloatingAudioPlayer({
-  onClose,
   onPlaybackStateChange
 }: FloatingAudioPlayerProps) {
   const dispatch = useAppDispatch();
@@ -392,6 +390,13 @@ export default function FloatingAudioPlayer({
     setSeeking(false);
   }, []);
 
+  const handleClose = () => {
+    if (track?.kind === 'page-tts' || track?.kind === 'text-tts') {
+      dispatch(appActions.stopAudio());
+    }
+    dispatch(appActions.closeFloatingAudio());
+  };
+
   const titleLine = useMemo(() => {
     if (!track) {
       return '';
@@ -485,7 +490,7 @@ export default function FloatingAudioPlayer({
         >
           {minimized ? '□' : '−'}
         </button>
-        <button type="button" className="button floating-audio-icon-button" onClick={onClose} aria-label="Close audio player" title="Close">
+        <button type="button" className="button floating-audio-icon-button" onClick={handleClose} aria-label="Close audio player" title="Close">
           ✕
         </button>
       </div>

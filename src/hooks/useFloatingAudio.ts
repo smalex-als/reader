@@ -11,12 +11,11 @@ import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/flo
 interface UseFloatingAudioOptions {
   bookId: string | null;
   audioState: AudioState;
-  stopAudio: () => void;
   syncFloatingAudioState: (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => void;
 }
 
 export function useFloatingAudio(options: UseFloatingAudioOptions) {
-  const { bookId, audioState, stopAudio, syncFloatingAudioState } = options;
+  const { bookId, audioState, syncFloatingAudioState } = options;
   const dispatch = useAppDispatch();
   const { track: floatingAudio, playbackState: floatingAudioPlaybackState } = useAppSelector(selectFloatingAudio);
 
@@ -26,13 +25,6 @@ export function useFloatingAudio(options: UseFloatingAudioOptions) {
     },
     [dispatch]
   );
-
-  const closeFloatingAudio = useCallback(() => {
-    if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
-      stopAudio();
-    }
-    dispatch(appActions.closeFloatingAudio());
-  }, [dispatch, floatingAudio?.kind, stopAudio]);
 
   const handlePlaybackStateChange = useCallback(
     (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => {
@@ -58,7 +50,6 @@ export function useFloatingAudio(options: UseFloatingAudioOptions) {
   return {
     floatingAudioPlaybackState,
     playFloatingAudio,
-    closeFloatingAudio,
     handlePlaybackStateChange
   };
 }
