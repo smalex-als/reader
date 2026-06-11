@@ -229,7 +229,7 @@ export default function App() {
   useEffect(() => {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);
-  const { renderPage, handlePrev, handleNext } = useNavigation({
+  const { handlePrev, handleNext } = useNavigation({
     navigationCount,
     currentPage,
     viewMode,
@@ -483,11 +483,7 @@ export default function App() {
 
   const {
     handleOpenAudioLibrary
-  } = useDashboardNavigation({
-    bookId,
-    setBookId,
-    renderPage
-  });
+  } = useDashboardNavigation();
 
   const applyFilters = useCallback(
     (

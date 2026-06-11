@@ -4,27 +4,26 @@ import { saveLastPage } from '@/lib/storage';
 import {
   appActions,
   selectDashboardNavigationRequest,
+  selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { TocEntry } from '@/types/app';
 
-interface UseDashboardNavigationOptions {
-  bookId: string | null;
-  setBookId: (bookId: string | null) => void;
-  renderPage: (page: number) => void;
-}
-
-export function useDashboardNavigation({
-  bookId,
-  setBookId,
-  renderPage
-}: UseDashboardNavigationOptions) {
+export function useDashboardNavigation() {
   const dispatch = useAppDispatch();
+  const { bookId } = useAppSelector(selectReaderSession);
   const dashboardNavigationRequest = useAppSelector(selectDashboardNavigationRequest);
   const closeListeningDashboard = useCallback(() => {
     dispatch(appActions.closeModal('listeningDashboard'));
   }, [dispatch]);
+
+  const setBookId = useCallback(
+    (targetBookId: string | null) => {
+      dispatch(appActions.setReaderBookId(targetBookId));
+    },
+    [dispatch]
+  );
 
   const handleOpenDashboardBook = useCallback(
     (targetBookId: string) => {
@@ -75,12 +74,12 @@ export function useDashboardNavigation({
       saveLastPage(targetBookId, targetPage);
       closeListeningDashboard();
       if (bookId === targetBookId) {
-        renderPage(targetPage);
+        dispatch(appActions.requestPageNavigation(targetPage));
         return;
       }
       setBookId(targetBookId);
     },
-    [bookId, closeListeningDashboard, renderPage, setBookId]
+    [bookId, closeListeningDashboard, dispatch, setBookId]
   );
 
   const handleOpenDashboardUnit = useCallback(
@@ -120,11 +119,11 @@ export function useDashboardNavigation({
       if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
         saveLastPage(targetBookId, targetChapterNumber - 1);
         if (bookId === targetBookId) {
-          renderPage(targetChapterNumber - 1);
+          dispatch(appActions.requestPageNavigation(targetChapterNumber - 1));
         }
       }
     },
-    [bookId, dispatch, renderPage, setBookId]
+    [bookId, dispatch, setBookId]
   );
 
   useEffect(() => {
