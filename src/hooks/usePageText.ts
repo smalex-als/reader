@@ -185,7 +185,6 @@ export function usePageText(currentImage: string | null) {
     resetTextState,
     savePageText,
     setRegeneratedText,
-    textCache,
     textLoading,
     toggleTextModal,
     updatePageTextBlocks

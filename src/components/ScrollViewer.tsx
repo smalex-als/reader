@@ -2,8 +2,16 @@ import { forwardRef, useEffect, useMemo, useRef, type HTMLAttributes } from 'rea
 import { Virtuoso, type ListRange, type VirtuosoHandle } from 'react-virtuoso';
 import OcrOverlay from '@/components/OcrOverlay';
 import { parseStreamLocator } from '@/lib/streamLocator';
+import {
+  selectBookSessionWorkflow,
+  selectOcrEdit,
+  selectPageTextWorkflow,
+  selectReaderSession,
+  selectStreamUiControls,
+  selectViewerWorkflow,
+  useAppSelector
+} from '@/state/appState';
 import type { PageText } from '@/types/app';
-import type { AppSettings } from '@/types/app';
 
 const PAGE_VISIBILITY_THRESHOLD = 0.35;
 const BLOCK_VISIBILITY_THRESHOLD = 0.55;
@@ -14,18 +22,9 @@ const BLOCK_SCROLL_TARGET_OFFSET = 88;
 const VIEWPORT_PREFETCH_PADDING = 1;
 
 interface ScrollViewerProps {
-  manifest: string[];
-  currentPage: number;
-  settings: Pick<AppSettings, 'invert' | 'brightness' | 'contrast'>;
-  textCache: Record<string, PageText>;
-  pageText: PageText | null;
-  editMode: boolean;
   currentStreamBlockKey: string | null;
   playingStreamBlockKey: string | null;
-  dimOutsideBlocks: boolean;
-  dimOutsideBlocksIntensity: number;
   streamPageKey: string | null;
-  autoFollowEnabled: boolean;
   fetchPageTextByImage: (
     image: string,
     options?: { force?: boolean; silent?: boolean; updateCurrentState?: boolean }
@@ -70,24 +69,30 @@ function scrollBlockIntoReadingZone(scroller: HTMLDivElement, block: HTMLElement
 }
 
 export default function ScrollViewer({
-  manifest,
-  currentPage,
-  settings,
-  textCache,
-  pageText,
-  editMode,
   currentStreamBlockKey,
   playingStreamBlockKey,
-  dimOutsideBlocks,
-  dimOutsideBlocksIntensity,
   streamPageKey,
-  autoFollowEnabled,
   fetchPageTextByImage,
   onPlayTextBlock,
   onToggleSpeechBlock,
   onOpenImagePreview,
   onCurrentPageChange
 }: ScrollViewerProps) {
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
+  const { editMode } = useAppSelector(selectOcrEdit);
+  const { autoFollowStream: autoFollowEnabled } = useAppSelector(selectStreamUiControls);
+  const currentImage = manifest[currentPage] ?? null;
+  const pageText = currentImage ? textCache[currentImage] ?? null : null;
+  const {
+    invert,
+    brightness,
+    contrast,
+    dimOutsideBlocks,
+    dimOutsideBlocksIntensity
+  } = settings;
   const virtuosoRef = useRef<VirtuosoHandle | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const internalPageRef = useRef(currentPage);
@@ -117,11 +122,11 @@ export default function ScrollViewer({
   );
 
   const filters = useMemo(() => {
-    const invertFilter = settings.invert ? 'invert(1)' : 'invert(0)';
-    const brightnessFilter = `brightness(${settings.brightness}%)`;
-    const contrastFilter = `contrast(${settings.contrast}%)`;
+    const invertFilter = invert ? 'invert(1)' : 'invert(0)';
+    const brightnessFilter = `brightness(${brightness}%)`;
+    const contrastFilter = `contrast(${contrast}%)`;
     return `${invertFilter} ${brightnessFilter} ${contrastFilter}`;
-  }, [settings.brightness, settings.contrast, settings.invert]);
+  }, [brightness, contrast, invert]);
   const currentStreamLocator = useMemo(() => parseStreamLocator(currentStreamBlockKey), [currentStreamBlockKey]);
   const playingStreamLocator = useMemo(() => parseStreamLocator(playingStreamBlockKey), [playingStreamBlockKey]);
 

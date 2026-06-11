@@ -51,7 +51,7 @@ export function useStreamControls({
 }: UseStreamControlsOptions) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
-  const { autoFollowStream, selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
+  const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
 
   const setSelectedStreamBlockKey = useCallback(
     (key: string | null) => {
@@ -156,13 +156,7 @@ export function useStreamControls({
     [mp3VoiceOptions, setMp3Voice]
   );
 
-  const toggleAutoFollowStream = useCallback(() => {
-    dispatch(appActions.toggleAutoFollowStream());
-  }, [dispatch]);
-
   return {
-    autoFollowStream,
-    toggleAutoFollowStream,
     selectedStreamBlockKey,
     setSelectedStreamBlockKey,
     selectedStreamLocator,

@@ -321,7 +321,6 @@ export default function App() {
     resetTextState,
     savePageText,
     setRegeneratedText,
-    textCache,
     textLoading,
     toggleTextModal,
     updatePageTextBlocks
@@ -414,7 +413,6 @@ export default function App() {
     onSequenceComplete: handleStreamSequenceComplete
   });
   const {
-    autoFollowStream,
     setSelectedStreamBlockKey,
     streamPositionActive,
     playingStreamLocator,
@@ -448,8 +446,6 @@ export default function App() {
   });
 
   const {
-    ocrEditMode,
-    ocrEditSaving,
     toggleOcrEditMode: handleToggleOcrEditMode,
     toggleSpeechBlock: handleToggleSpeechBlock
   } = useOcrEditMode({
@@ -966,12 +962,8 @@ export default function App() {
     textTheme: settings.textTheme,
     footerMessage,
     viewerProps: {
-      imageUrl: currentImage,
-      pageText: currentText,
-      editMode: ocrEditMode,
       currentBlockId: activeStreamLocator?.imageUrl === currentImage ? activeStreamLocator.blockId : null,
       playingBlockId: playingStreamLocator?.imageUrl === currentImage ? playingStreamLocator.blockId : null,
-      settings,
       onPan: updatePan,
       onZoom: updateZoom,
       onMetricsChange: handleMetricsChange,
@@ -982,27 +974,13 @@ export default function App() {
       onToggleSpeechBlock: (blockId: string) => {
         void handleToggleSpeechBlock(blockId);
       },
-      onOpenImagePreview: handleOpenImagePreview,
-      rotation: settings.rotation
+      onOpenImagePreview: handleOpenImagePreview
     },
     scrollViewerProps: {
-      manifest,
-      currentPage,
-      settings: {
-        invert: settings.invert,
-        brightness: settings.brightness,
-        contrast: settings.contrast
-      },
-      textCache,
-      pageText: currentText,
-      editMode: ocrEditMode,
       currentStreamBlockKey:
         activeStreamLocator ? makeStreamLocator(activeStreamLocator.imageUrl, activeStreamLocator.blockId) : null,
       playingStreamBlockKey: streamPositionActive ? streamState.pageKey : null,
-      dimOutsideBlocks: settings.dimOutsideBlocks,
-      dimOutsideBlocksIntensity: settings.dimOutsideBlocksIntensity,
       streamPageKey: streamPositionActive ? streamState.pageKey : null,
-      autoFollowEnabled: autoFollowStream,
       fetchPageTextByImage,
       onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
         setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));

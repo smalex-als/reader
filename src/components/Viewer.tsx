@@ -2,15 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import OcrOverlay from '@/components/OcrOverlay';
-import type { AppSettings, PageText, ViewerMetrics, ViewerPan } from '@/types/app';
+import {
+  selectBookSessionWorkflow,
+  selectOcrEdit,
+  selectPageTextWorkflow,
+  selectReaderSession,
+  selectViewerWorkflow,
+  useAppSelector
+} from '@/state/appState';
+import type { AppSettings, ViewerMetrics, ViewerPan } from '@/types/app';
 
 interface ViewerProps {
-  imageUrl: string | null;
-  pageText: PageText | null;
-  editMode: boolean;
   currentBlockId?: string | null;
   playingBlockId?: string | null;
-  settings: AppSettings;
   onPan: (pan: ViewerPan) => void;
   onZoom: (zoom: number, mode?: AppSettings['zoomMode'], pan?: ViewerPan) => void;
   onMetricsChange: (metrics: ViewerMetrics) => void;
@@ -21,7 +25,6 @@ interface ViewerProps {
     bounds: [number, number, number, number];
     caption?: string | null;
   }) => void;
-  rotation: number;
 }
 
 const INITIAL_METRICS: ViewerMetrics = {
@@ -35,20 +38,23 @@ const INITIAL_METRICS: ViewerMetrics = {
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
 export default function Viewer({
-  imageUrl,
-  pageText,
-  editMode,
   currentBlockId = null,
   playingBlockId = null,
-  settings,
   onPan,
   onZoom,
   onMetricsChange,
   onPlayTextBlock,
   onToggleSpeechBlock,
-  onOpenImagePreview,
-  rotation
+  onOpenImagePreview
 }: ViewerProps) {
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
+  const { editMode } = useAppSelector(selectOcrEdit);
+  const imageUrl = manifest[currentPage] ?? null;
+  const pageText = imageUrl ? textCache[imageUrl] ?? null : null;
+  const rotation = settings.rotation;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointerState = useRef<{ active: boolean; startX: number; startY: number; pan: ViewerPan }>({

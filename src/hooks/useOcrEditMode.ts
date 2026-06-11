@@ -135,8 +135,6 @@ export function useOcrEditMode(options: UseOcrEditModeOptions) {
   );
 
   return {
-    ocrEditMode,
-    ocrEditSaving,
     toggleOcrEditMode,
     toggleSpeechBlock
   };
