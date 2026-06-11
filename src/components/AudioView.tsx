@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChapterTextVersion, TocEntry, ToastMessage } from '@/types/app';
+import { useToast } from '@/hooks/useToast';
+import type { ChapterTextVersion, TocEntry } from '@/types/app';
 import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/types/floatingAudio';
 import TrashIcon from '@/components/TrashIcon';
 
@@ -10,7 +11,6 @@ interface AudioViewProps {
   mp3Voice: string;
   mp3VoiceOptions: readonly { id: string; label: string }[];
   onMp3VoiceChange: (voice: string) => void;
-  showToast: (message: string, kind?: ToastMessage['kind']) => void;
   onOpenChapterText: (pageIndex: number, versionId?: string, chapterNumber?: number) => void;
   onPlayAudio: (payload: FloatingAudioTrack) => void;
 }
@@ -68,10 +68,10 @@ export default function AudioView({
   mp3Voice,
   mp3VoiceOptions,
   onMp3VoiceChange,
-  showToast,
   onOpenChapterText,
   onPlayAudio
 }: AudioViewProps) {
+  const { showToast } = useToast();
   const [statusMap, setStatusMap] = useState<Record<number, ChapterStatus>>({});
   const [statusLoading, setStatusLoading] = useState(false);
   const [audioBusy, setAudioBusy] = useState<Record<number, boolean>>({});

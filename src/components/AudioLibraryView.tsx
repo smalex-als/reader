@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
+import { useToast } from '@/hooks/useToast';
 import { onFloatingAudioTime } from '@/lib/floatingAudioEvents';
-import type { AppSettings, ToastMessage } from '@/types/app';
+import type { AppSettings } from '@/types/app';
 import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/types/floatingAudio';
 
 type AudioLibraryItem = {
@@ -33,7 +34,6 @@ type SubtitleCue = {
 interface AudioLibraryViewProps {
   onPlayAudio: (payload: FloatingAudioTrack) => void;
   onOpenBook: (bookId: string, chapterNumber: number) => void;
-  showToast: (message: string, kind?: ToastMessage['kind']) => void;
   textFontSize: number;
   onTextFontSizeChange: (value: number) => void;
   textTheme: AppSettings['textTheme'];
@@ -220,12 +220,12 @@ function toFloatingTrack(item: AudioLibraryItem, startSeconds?: number): Floatin
 export default function AudioLibraryView({
   onPlayAudio,
   onOpenBook,
-  showToast,
   textFontSize,
   onTextFontSizeChange,
   textTheme,
   onTextThemeChange
 }: AudioLibraryViewProps) {
+  const { showToast } = useToast();
   const libraryRef = useRef<HTMLDivElement | null>(null);
   const cueRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const [items, setItems] = useState<AudioLibraryItem[]>([]);

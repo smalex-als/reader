@@ -1339,7 +1339,6 @@ export default function App() {
     audioLibraryViewProps: {
       onPlayAudio: handlePlayFloatingAudio,
       onOpenBook: handleOpenLibraryBook,
-      showToast,
       textFontSize: settings.textFontSize,
       onTextFontSizeChange: updateTextFontSize,
       textTheme: settings.textTheme,
@@ -1357,7 +1356,6 @@ export default function App() {
       streamState,
       onPlayTopicParagraph: handlePlayChapterParagraph,
       onStopAudio: handleStopStream,
-      showToast,
       onOpenSource: handleOpenUnitSource,
       onOpenTopicQuiz: ({ label }: { unitSetId: string; topicId: string; label: string }) => {
         setUnitQuizLabel(label);
@@ -1375,7 +1373,6 @@ export default function App() {
       mp3Voice,
       mp3VoiceOptions,
       onMp3VoiceChange: handleMp3VoiceChange,
-      showToast,
       onOpenChapterText: (pageIndex: number, versionId?: string, targetChapterNumber?: number) => {
         if (versionId && targetChapterNumber) {
           requestChapterVersionNavigation(targetChapterNumber, versionId);

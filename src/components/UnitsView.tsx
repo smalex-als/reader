@@ -4,7 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
-import type { AppSettings, SelfCheckResult, StreamState, ToastMessage, UnitItem, UnitSet } from '@/types/app';
+import { useToast } from '@/hooks/useToast';
+import type { AppSettings, SelfCheckResult, StreamState, UnitItem, UnitSet } from '@/types/app';
 
 interface UnitsViewProps {
   refreshToken: number;
@@ -15,7 +16,6 @@ interface UnitsViewProps {
   streamState: StreamState;
   onPlayTopicParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   onStopAudio: () => void;
-  showToast: (message: string, kind?: ToastMessage['kind']) => void;
   onOpenSource: (bookId: string, chapterNumber: number) => void;
   onOpenTopicQuiz: (payload: { unitSetId: string; topicId: string; label: string }) => void;
   textFontSize: number;
@@ -159,7 +159,6 @@ export default function UnitsView({
   streamState,
   onPlayTopicParagraph,
   onStopAudio,
-  showToast,
   onOpenSource,
   onOpenTopicQuiz,
   textFontSize,
@@ -167,6 +166,7 @@ export default function UnitsView({
   textTheme,
   onTextThemeChange
 }: UnitsViewProps) {
+  const { showToast } = useToast();
   const [items, setItems] = useState<UnitSet[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
