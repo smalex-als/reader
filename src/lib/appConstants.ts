@@ -20,6 +20,7 @@ export const TEXT_THEME_OPTIONS = [
 export type TextTheme = (typeof TEXT_THEME_OPTIONS)[number];
 
 export type MainView = 'reader' | 'audio-library' | 'units';
+export type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
 export type StreamVoice = string;
 export type StreamVoiceOption = {

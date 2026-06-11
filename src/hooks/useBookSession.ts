@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ViewMode } from '@/lib/appConstants';
 import { clamp } from '@/lib/math';
-import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
 import {
-  loadLastBook,
+  appActions,
+  selectModalOpen,
+  selectReaderSession,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import {
   loadLastPage,
   loadLibraryStateFromServer,
   loadSettingsForBook,
@@ -17,8 +23,6 @@ import {
 import type { AppSettings, TocEntry, ToastMessage, ViewerMetrics } from '@/types/app';
 
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
-
-type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
 type BookSessionOptions<StreamVoice extends string> = {
   settings: AppSettings;
@@ -96,15 +100,13 @@ export function useBookSession<StreamVoice extends string>({
   createDefaultSettings
 }: BookSessionOptions<StreamVoice>) {
   const [books, setBooks] = useState<string[]>([]);
-  const [bookId, rawSetBookId] = useState<string | null>(() => getBookFromLocation() ?? loadLastBook());
   const [manifest, setManifest] = useState<string[]>([]);
   const [bookType, setBookType] = useState<'image' | 'text'>('image');
   const [chapterCount, setChapterCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>('pages');
   const [loading, setLoading] = useState(false);
   const dispatch = useAppDispatch();
   const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
+  const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const [uploadingChapter, setUploadingChapter] = useState(false);
   const [deletingChapter, setDeletingChapter] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
@@ -114,8 +116,22 @@ export function useBookSession<StreamVoice extends string>({
 
   const setBookId = useCallback((nextBookId: string | null, options?: { preferLocationPosition?: boolean }) => {
     shouldUseLocationPositionRef.current = options?.preferLocationPosition ?? false;
-    rawSetBookId(nextBookId);
-  }, []);
+    dispatch(appActions.setReaderBookId(nextBookId));
+  }, [dispatch]);
+
+  const setCurrentPage = useCallback(
+    (page: number) => {
+      dispatch(appActions.setReaderCurrentPage(page));
+    },
+    [dispatch]
+  );
+
+  const setViewMode = useCallback(
+    (mode: ViewMode) => {
+      dispatch(appActions.setReaderViewMode(mode));
+    },
+    [dispatch]
+  );
 
   const setBookModalOpen = useCallback(
     (open: boolean) => {
@@ -132,7 +148,7 @@ export function useBookSession<StreamVoice extends string>({
           return;
         }
         if (!getBookFromLocation() && state.lastBook) {
-          rawSetBookId(state.lastBook);
+          setBookId(state.lastBook);
         }
       })
       .finally(() => {
@@ -143,7 +159,7 @@ export function useBookSession<StreamVoice extends string>({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setBookId]);
 
   useEffect(() => {
     if (!libraryStateReady) {
@@ -154,7 +170,7 @@ export function useBookSession<StreamVoice extends string>({
         const data = await fetchJson<{ books: string[] }>('/api/books');
         setBooks(data.books);
         if (data.books.length === 0) {
-          rawSetBookId(null);
+          setBookId(null);
           showToast('No books found. Add files to /data to begin.', 'info');
           return;
         }
@@ -233,7 +249,7 @@ export function useBookSession<StreamVoice extends string>({
       window.removeEventListener('popstate', handleLocationChange);
       window.removeEventListener('hashchange', handleLocationChange);
     };
-  }, []);
+  }, [setBookId]);
 
   useEffect(() => {
     if (!libraryStateReady) {
@@ -329,7 +345,9 @@ export function useBookSession<StreamVoice extends string>({
     libraryStateReady,
     setMetrics,
     setSettings,
+    setCurrentPage,
     setStreamVoice,
+    setViewMode,
     showToast,
   ]);
 
@@ -417,7 +435,17 @@ export function useBookSession<StreamVoice extends string>({
         setUploadingChapter(false);
       }
     },
-    [bookId, bookType, books, onUpdateTocEntries, setBookModalOpen, showToast]
+    [
+      bookId,
+      bookType,
+      books,
+      onUpdateTocEntries,
+      setBookId,
+      setBookModalOpen,
+      setCurrentPage,
+      setViewMode,
+      showToast
+    ]
   );
 
   const handleCreateChapter = useCallback(
@@ -488,7 +516,19 @@ export function useBookSession<StreamVoice extends string>({
         setUploadingChapter(false);
       }
     },
-    [bookId, bookType, books, onUpdateTocEntries, setBookModalOpen, setEditorChapterNumber, setEditorOpen, showToast]
+    [
+      bookId,
+      bookType,
+      books,
+      onUpdateTocEntries,
+      setBookId,
+      setBookModalOpen,
+      setCurrentPage,
+      setEditorChapterNumber,
+      setEditorOpen,
+      setViewMode,
+      showToast
+    ]
   );
 
   const handleUploadPdf = useCallback(
@@ -524,7 +564,7 @@ export function useBookSession<StreamVoice extends string>({
         setUploadingPdf(false);
       }
     },
-    [onUpdateTocEntries, setBookModalOpen, showToast]
+    [onUpdateTocEntries, setBookId, setBookModalOpen, setCurrentPage, setViewMode, showToast]
   );
 
   const handleDeleteBook = useCallback(
@@ -546,7 +586,7 @@ export function useBookSession<StreamVoice extends string>({
 
         if (bookId === targetBookId) {
           if (data.books.length === 0) {
-            rawSetBookId(null);
+            setBookId(null);
             setBookModalOpen(true);
             showToast('No books found. Add files to /data to begin.', 'info');
           } else {
@@ -560,7 +600,7 @@ export function useBookSession<StreamVoice extends string>({
         showToast('Unable to delete book', 'error');
       }
     },
-    [bookId, setBookModalOpen, showToast]
+    [bookId, setBookId, setBookModalOpen, showToast]
   );
 
   const handleDeleteChapter = useCallback(
@@ -620,7 +660,15 @@ export function useBookSession<StreamVoice extends string>({
         setDeletingChapter(false);
       }
     },
-    [bookId, bookType, onUpdateTocEntries, setEditorChapterNumber, setEditorOpen, showToast]
+    [
+      bookId,
+      bookType,
+      onUpdateTocEntries,
+      setCurrentPage,
+      setEditorChapterNumber,
+      setEditorOpen,
+      showToast
+    ]
   );
 
   return {

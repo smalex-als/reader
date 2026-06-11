@@ -6,7 +6,7 @@ import {
   type Dispatch,
   type ReactNode
 } from 'react';
-import type { MainView } from '@/lib/appConstants';
+import type { MainView, ViewMode } from '@/lib/appConstants';
 import type { ImagePreviewTarget, PageTextOcrEngine } from '@/types/app';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
@@ -50,6 +50,12 @@ export interface AppNavigationState {
   mainView: MainView;
   selectedUnitSetId: string | null;
   selectedUnitTopicId: string | null;
+}
+
+export interface ReaderSessionState {
+  bookId: string | null;
+  currentPage: number;
+  viewMode: ViewMode;
 }
 
 export interface ChapterEditorTextVersion {
@@ -101,6 +107,7 @@ export interface StreamUiControlsState {
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
+  readerSession: ReaderSessionState;
   chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
   chapterTextContext: ChapterTextContextState;
   refreshTokens: AppRefreshTokens;
@@ -126,6 +133,9 @@ export type AppAction =
   | { type: 'navigation/setMainView'; view: MainView }
   | { type: 'navigation/setSelectedUnitSetId'; id: string | null }
   | { type: 'navigation/setSelectedUnitTopicId'; id: string | null }
+  | { type: 'readerSession/setBookId'; bookId: string | null }
+  | { type: 'readerSession/setCurrentPage'; page: number }
+  | { type: 'readerSession/setViewMode'; mode: ViewMode }
   | {
       type: 'chapterVersionNavigation/request';
       chapterNumber: number;
@@ -156,6 +166,23 @@ function getInitialNavigation(): AppNavigationState {
     mainView,
     selectedUnitSetId: mainView === 'units' ? params.get('unit') : null,
     selectedUnitTopicId: mainView === 'units' ? params.get('topic') : null
+  };
+}
+
+function getInitialReaderSession(): ReaderSessionState {
+  if (typeof window === 'undefined') {
+    return {
+      bookId: null,
+      currentPage: 0,
+      viewMode: 'pages'
+    };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const book = params.get('book')?.trim();
+  return {
+    bookId: book ? book : null,
+    currentPage: 0,
+    viewMode: 'pages'
   };
 }
 
@@ -193,6 +220,7 @@ const initialAppState: CentralAppState = {
     }
   },
   navigation: getInitialNavigation(),
+  readerSession: getInitialReaderSession(),
   chapterVersionNavigationRequest: null,
   chapterTextContext: {
     displayedChapterText: null,
@@ -249,6 +277,18 @@ export const appActions = {
   setSelectedUnitTopicId: (id: string | null): AppAction => ({
     type: 'navigation/setSelectedUnitTopicId',
     id
+  }),
+  setReaderBookId: (bookId: string | null): AppAction => ({
+    type: 'readerSession/setBookId',
+    bookId
+  }),
+  setReaderCurrentPage: (page: number): AppAction => ({
+    type: 'readerSession/setCurrentPage',
+    page
+  }),
+  setReaderViewMode: (mode: ViewMode): AppAction => ({
+    type: 'readerSession/setViewMode',
+    mode
   }),
   requestChapterVersionNavigation: (chapterNumber: number, versionId: string): AppAction => ({
     type: 'chapterVersionNavigation/request',
@@ -456,6 +496,30 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           selectedUnitTopicId: action.id
         }
       };
+    case 'readerSession/setBookId':
+      return {
+        ...state,
+        readerSession: {
+          ...state.readerSession,
+          bookId: action.bookId
+        }
+      };
+    case 'readerSession/setCurrentPage':
+      return {
+        ...state,
+        readerSession: {
+          ...state.readerSession,
+          currentPage: action.page
+        }
+      };
+    case 'readerSession/setViewMode':
+      return {
+        ...state,
+        readerSession: {
+          ...state.readerSession,
+          viewMode: action.mode
+        }
+      };
     case 'chapterVersionNavigation/request':
       return {
         ...state,
@@ -584,6 +648,7 @@ export const selectImagePreview = (state: CentralAppState) => state.ui.imagePrev
 export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
 export const selectNavigationState = (state: CentralAppState) => state.navigation;
+export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
   state.chapterVersionNavigationRequest;
 export const selectChapterTextContext = (state: CentralAppState) => state.chapterTextContext;
