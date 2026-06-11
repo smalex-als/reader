@@ -120,6 +120,10 @@ export interface FloatingAudioState {
   playbackState: FloatingAudioPlaybackState | 'idle';
 }
 
+export interface PrintWorkflowState {
+  selection: string;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -132,6 +136,7 @@ export interface CentralAppState {
   unitWorkflow: UnitWorkflowState;
   ocrEdit: OcrEditState;
   floatingAudio: FloatingAudioState;
+  printWorkflow: PrintWorkflowState;
 }
 
 export type AppAction =
@@ -176,7 +181,8 @@ export type AppAction =
   | { type: 'ocrEdit/setSaving'; saving: boolean }
   | { type: 'floatingAudio/play'; track: FloatingAudioTrack }
   | { type: 'floatingAudio/close' }
-  | { type: 'floatingAudio/setPlaybackState'; playbackState: FloatingAudioPlaybackState };
+  | { type: 'floatingAudio/setPlaybackState'; playbackState: FloatingAudioPlaybackState }
+  | { type: 'printWorkflow/setSelection'; selection: string };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -276,6 +282,9 @@ const initialAppState: CentralAppState = {
   floatingAudio: {
     track: null,
     playbackState: 'idle'
+  },
+  printWorkflow: {
+    selection: 'current'
   }
 };
 
@@ -379,6 +388,10 @@ export const appActions = {
   setFloatingAudioPlaybackState: (playbackState: FloatingAudioPlaybackState): AppAction => ({
     type: 'floatingAudio/setPlaybackState',
     playbackState
+  }),
+  setPrintSelection: (selection: string): AppAction => ({
+    type: 'printWorkflow/setSelection',
+    selection
   })
 };
 
@@ -722,6 +735,13 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           playbackState: action.playbackState
         }
       };
+    case 'printWorkflow/setSelection':
+      return {
+        ...state,
+        printWorkflow: {
+          selection: action.selection
+        }
+      };
     default:
       return state;
   }
@@ -774,3 +794,4 @@ export const selectStreamUiControls = (state: CentralAppState) => state.streamUi
 export const selectUnitWorkflow = (state: CentralAppState) => state.unitWorkflow;
 export const selectOcrEdit = (state: CentralAppState) => state.ocrEdit;
 export const selectFloatingAudio = (state: CentralAppState) => state.floatingAudio;
+export const selectPrintWorkflow = (state: CentralAppState) => state.printWorkflow;

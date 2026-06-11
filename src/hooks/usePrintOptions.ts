@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
+import {
+  appActions,
+  selectModalOpen,
+  selectPrintWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 interface PrintOption {
   id: string;
@@ -18,8 +24,15 @@ interface UsePrintOptionsParams {
 export function usePrintOptions({ bookId, manifest, currentPage, showToast }: UsePrintOptionsParams) {
   const dispatch = useAppDispatch();
   const printModalOpen = useAppSelector(selectModalOpen('print'));
-  const [printSelection, setPrintSelection] = useState<string>('current');
+  const { selection: printSelection } = useAppSelector(selectPrintWorkflow);
   const [printLoading, setPrintLoading] = useState(false);
+
+  const setPrintSelection = useCallback(
+    (selection: string) => {
+      dispatch(appActions.setPrintSelection(selection));
+    },
+    [dispatch]
+  );
 
   const printOptions = useMemo(() => {
     const options: PrintOption[] = [];
@@ -65,7 +78,7 @@ export function usePrintOptions({ bookId, manifest, currentPage, showToast }: Us
   const openPrintModal = useCallback(() => {
     dispatch(appActions.openModal('print'));
     if (selectedPrintOption) {
-      setPrintSelection(selectedPrintOption.id);
+      dispatch(appActions.setPrintSelection(selectedPrintOption.id));
     }
   }, [dispatch, selectedPrintOption]);
 
@@ -120,13 +133,13 @@ export function usePrintOptions({ bookId, manifest, currentPage, showToast }: Us
 
   useEffect(() => {
     if (printOptions.length === 0) {
-      setPrintSelection('current');
+      dispatch(appActions.setPrintSelection('current'));
       return;
     }
     if (!printOptions.some((option) => option.id === printSelection)) {
-      setPrintSelection(printOptions[0].id);
+      dispatch(appActions.setPrintSelection(printOptions[0].id));
     }
-  }, [printOptions, printSelection]);
+  }, [dispatch, printOptions, printSelection]);
 
   return {
     closePrintModal,
