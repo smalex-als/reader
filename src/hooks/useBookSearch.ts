@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
+import { useToast } from '@/hooks/useToast';
 import {
   appActions,
   selectSearchWorkflow,
@@ -10,11 +11,11 @@ import type { BookSearchResponse } from '@/types/app';
 
 interface UseBookSearchOptions {
   bookId: string | null;
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
 export function useBookSearch(options: UseBookSearchOptions) {
-  const { bookId, showToast } = options;
+  const { bookId } = options;
+  const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const {
     query: searchQuery,

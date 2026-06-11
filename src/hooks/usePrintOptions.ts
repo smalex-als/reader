@@ -6,6 +6,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useToast } from '@/hooks/useToast';
 
 interface PrintOption {
   id: string;
@@ -18,11 +19,11 @@ interface UsePrintOptionsParams {
   bookId: string | null;
   manifest: string[];
   currentPage: number;
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
-export function usePrintOptions({ bookId, manifest, currentPage, showToast }: UsePrintOptionsParams) {
+export function usePrintOptions({ bookId, manifest, currentPage }: UsePrintOptionsParams) {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const printModalOpen = useAppSelector(selectModalOpen('print'));
   const { selection: printSelection, loading: printLoading } = useAppSelector(selectPrintWorkflow);
 

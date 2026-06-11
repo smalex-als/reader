@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useToast } from '@/hooks/useToast';
 import { trackEvent } from '@/lib/analytics';
 import { copyToClipboard } from '@/lib/clipboard';
 
@@ -7,11 +8,11 @@ interface UseShareLinkOptions {
   currentPage: number;
   navigationCount: number;
   viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
 export function useShareLink(options: UseShareLinkOptions) {
-  const { bookId, currentPage, navigationCount, viewMode, showToast } = options;
+  const { bookId, currentPage, navigationCount, viewMode } = options;
+  const { showToast } = useToast();
   const shareOpenedTrackedRef = useRef(false);
 
   const shareLink = useCallback(async () => {

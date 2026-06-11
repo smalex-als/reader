@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useToast } from '@/hooks/useToast';
 import { copyToClipboard } from '@/lib/clipboard';
 import type { PageText } from '@/types/app';
 
@@ -6,15 +7,15 @@ interface UseCopyActionsOptions {
   currentImage: string | null;
   currentText: PageText | null;
   fetchPageText: () => Promise<PageText | null>;
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
 export function useCopyActions({
   currentImage,
   currentText,
-  fetchPageText,
-  showToast
+  fetchPageText
 }: UseCopyActionsOptions) {
+  const { showToast } = useToast();
+
   const handleCopyText = useCallback(async (overrideText?: string) => {
     if (!overrideText && !currentImage) {
       showToast('No page selected', 'error');

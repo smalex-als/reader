@@ -560,7 +560,7 @@ export default function App() {
     printOptions,
     selectedPrintOption,
     setPrintSelection
-  } = usePrintOptions({ bookId, manifest, currentPage, showToast });
+  } = usePrintOptions({ bookId, manifest, currentPage });
   useEffect(() => {
     if (
       !pendingAlignTopRef.current ||
@@ -665,7 +665,7 @@ export default function App() {
     searchResults,
     searchLoading,
     runSearch: handleSearch
-  } = useBookSearch({ bookId, showToast });
+  } = useBookSearch({ bookId });
 
   const {
     handleOpenDashboardBook,
@@ -747,16 +747,14 @@ export default function App() {
   const { handleCopyText, handleCopyVocabulary, handleCopyMemoryCard } = useCopyActions({
     currentImage,
     currentText,
-    fetchPageText,
-    showToast
+    fetchPageText
   });
 
   const { shareLink: handleShareLink } = useShareLink({
     bookId,
     currentPage,
     navigationCount,
-    viewMode,
-    showToast
+    viewMode
   });
 
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
