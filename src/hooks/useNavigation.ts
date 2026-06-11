@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
+import { useAudioController } from '@/hooks/useAudioController';
 import { clamp } from '@/lib/math';
 import { saveLastPage } from '@/lib/storage';
 import {
@@ -14,16 +15,15 @@ import {
 
 interface UseNavigationParams {
   pendingAlignTopRef: MutableRefObject<boolean>;
-  resetAudio: () => void;
   stopStream: () => void;
 }
 
 export function useNavigation({
   pendingAlignTopRef,
-  resetAudio,
   stopStream
 }: UseNavigationParams) {
   const dispatch = useAppDispatch();
+  const { resetAudio } = useAudioController();
   const pageNavigationRequest = useAppSelector(selectPageNavigationRequest);
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);

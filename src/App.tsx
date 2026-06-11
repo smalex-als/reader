@@ -167,7 +167,6 @@ export default function App() {
   const {
     currentText,
     fetchPageText,
-    fetchPageTextByImage,
     resetTextState,
     textLoading
   } = usePageText();
@@ -176,7 +175,6 @@ export default function App() {
   }, [bookId, chapterNumber, dispatch]);
   useNavigation({
     pendingAlignTopRef,
-    resetAudio,
     stopStream
   });
 
@@ -190,15 +188,12 @@ export default function App() {
     handlePlayNextStudyBlock,
     restartStreamFromPageKey
   } = useStreamSequence({
-    fetchPageText,
-    fetchPageTextByImage,
     startStream,
     enqueueStream,
     stopStream,
     pauseStream,
     resumeStream,
-    pauseStreamAtStart,
-    stopAudio
+    pauseStreamAtStart
   });
   const { setSelectedStreamBlockKey } = useStreamControls({
     startStreamSequence,
