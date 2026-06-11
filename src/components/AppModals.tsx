@@ -20,7 +20,6 @@ import MemoryCardModal from '@/components/MemoryCardModal';
 import PromptEditorModal from '@/components/PromptEditorModal';
 import JobWorkerModal from '@/components/JobWorkerModal';
 
-type ToastProps = ComponentProps<typeof Toast>;
 type PrintModalProps = ComponentProps<typeof PrintModal>;
 type BookSelectModalProps = ComponentProps<typeof BookSelectModal>;
 type HelpModalProps = ComponentProps<typeof HelpModal>;
@@ -42,7 +41,6 @@ type JobWorkerModalProps = ComponentProps<typeof JobWorkerModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
-  toastProps: ToastProps;
   printModalProps: PrintModalProps;
   bookSelectModalProps: BookSelectModalProps;
   helpModalProps: HelpModalProps;
@@ -72,7 +70,6 @@ function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
 
 export default function AppModals({
   portalTarget,
-  toastProps,
   printModalProps,
   bookSelectModalProps,
   helpModalProps,
@@ -94,7 +91,7 @@ export default function AppModals({
 }: AppModalsProps) {
   return (
     <>
-      <Toast {...toastProps} />
+      <Toast />
       <PrintModal {...printModalProps} />
       <BookSelectModal {...bookSelectModalProps} />
       {renderInPortal(<HelpModal {...helpModalProps} />, portalTarget)}

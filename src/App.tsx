@@ -136,7 +136,7 @@ export default function App() {
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const gotoInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { toast, showToast, dismiss } = useToast();
+  const { showToast } = useToast();
   const fullscreenControls = useFullscreen(viewerShellRef);
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
@@ -968,7 +968,6 @@ export default function App() {
 
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null,
-    toastProps: { toast, onDismiss: dismiss },
     printModalProps: {
       open: printModalOpen,
       options: printOptions,
