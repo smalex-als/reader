@@ -674,14 +674,9 @@ export default function App() {
     onFitWidth: () => applyZoomModeWithAlign('fit-width'),
     onFitHeight: () => applyZoomModeWithAlign('fit-height'),
     onRotate: updateRotation,
-    onToggleTextModal: () => {
-      setSettingsOpen(false);
-      toggleTextModal();
-    },
     onToggleOcrEditMode: () => {
       void handleToggleOcrEditMode();
     },
-    onCopyText: handleCopyText,
     onToggleFullscreen: () => void toggleFullscreen(),
     onCreateChapter: () => {
       if (!isTextBook) {

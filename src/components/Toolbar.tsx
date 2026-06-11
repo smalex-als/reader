@@ -9,6 +9,8 @@ import {
   useAppSelector
 } from '@/state/appState';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useCopyActions } from '@/hooks/useCopyActions';
+import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { clamp } from '@/lib/math';
 
@@ -24,9 +26,7 @@ interface ToolbarProps {
   onFitWidth: () => void;
   onFitHeight: () => void;
   onRotate: () => void;
-  onToggleTextModal: () => void;
   onToggleOcrEditMode: () => void;
-  onCopyText: () => void;
   onToggleFullscreen: () => void;
   onCreateChapter: () => void;
   onOpenQuiz: () => void;
@@ -50,9 +50,7 @@ export default function Toolbar({
   onFitWidth,
   onFitHeight,
   onRotate,
-  onToggleTextModal,
   onToggleOcrEditMode,
-  onCopyText,
   onToggleFullscreen,
   onCreateChapter,
   onOpenQuiz,
@@ -66,7 +64,7 @@ export default function Toolbar({
   ocrQueuePaused
 }: ToolbarProps) {
   const dispatch = useAppDispatch();
-  const { bookId: currentBook, viewMode } = useAppSelector(selectReaderSession);
+  const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
@@ -83,6 +81,13 @@ export default function Toolbar({
     dimOutsideBlocksIntensity
   } = settings;
   const isTextBook = bookType === 'text';
+  const currentImage = manifest[currentPage] ?? null;
+  const { currentText, fetchPageText, toggleTextModal } = usePageText(currentImage);
+  const { handleCopyText } = useCopyActions({
+    currentImage,
+    currentText,
+    fetchPageText
+  });
   const manifestLength = isTextBook ? chapterCount : manifest.length;
   const disableImageActions = isTextBook;
   const isModal = layout === 'modal';
@@ -134,6 +139,10 @@ export default function Toolbar({
   const handleOpenTocManage = () => {
     closeSettings();
     dispatch(appActions.openModal('tocManage'));
+  };
+  const handleToggleTextModal = () => {
+    closeSettings();
+    toggleTextModal();
   };
 
   return (
@@ -337,7 +346,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onToggleTextModal}
+            onClick={handleToggleTextModal}
             disabled={controlsDisabled || disableImageActions}
           >
             Page Text
@@ -353,7 +362,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onCopyText}
+            onClick={() => void handleCopyText()}
             disabled={controlsDisabled || disableImageActions}
             title="Copy page text"
           >
