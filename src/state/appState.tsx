@@ -82,11 +82,17 @@ export interface ChapterTextContextState {
   firstChapterParagraph: ChapterParagraph | null;
 }
 
+export interface AppRefreshTokens {
+  chapterView: number;
+  bookCards: number;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
   chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
   chapterTextContext: ChapterTextContextState;
+  refreshTokens: AppRefreshTokens;
 }
 
 export type AppAction =
@@ -114,7 +120,9 @@ export type AppAction =
     }
   | { type: 'chapterVersionNavigation/clear' }
   | { type: 'chapterText/setDisplayed'; displayedChapterText: DisplayedChapterText | null }
-  | { type: 'chapterText/setFirstParagraph'; firstChapterParagraph: ChapterParagraph | null };
+  | { type: 'chapterText/setFirstParagraph'; firstChapterParagraph: ChapterParagraph | null }
+  | { type: 'refresh/chapterView' }
+  | { type: 'refresh/bookCards' };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -171,6 +179,10 @@ const initialAppState: CentralAppState = {
   chapterTextContext: {
     displayedChapterText: null,
     firstChapterParagraph: null
+  },
+  refreshTokens: {
+    chapterView: 0,
+    bookCards: 0
   }
 };
 
@@ -224,7 +236,9 @@ export const appActions = {
   setFirstChapterParagraph: (firstChapterParagraph: ChapterParagraph | null): AppAction => ({
     type: 'chapterText/setFirstParagraph',
     firstChapterParagraph
-  })
+  }),
+  refreshChapterView: (): AppAction => ({ type: 'refresh/chapterView' }),
+  refreshBookCards: (): AppAction => ({ type: 'refresh/bookCards' })
 };
 
 export function appReducer(state: CentralAppState, action: AppAction): CentralAppState {
@@ -431,6 +445,22 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           firstChapterParagraph: action.firstChapterParagraph
         }
       };
+    case 'refresh/chapterView':
+      return {
+        ...state,
+        refreshTokens: {
+          ...state.refreshTokens,
+          chapterView: state.refreshTokens.chapterView + 1
+        }
+      };
+    case 'refresh/bookCards':
+      return {
+        ...state,
+        refreshTokens: {
+          ...state.refreshTokens,
+          bookCards: state.refreshTokens.bookCards + 1
+        }
+      };
     default:
       return state;
   }
@@ -476,3 +506,4 @@ export const selectNavigationState = (state: CentralAppState) => state.navigatio
 export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
   state.chapterVersionNavigationRequest;
 export const selectChapterTextContext = (state: CentralAppState) => state.chapterTextContext;
+export const selectRefreshTokens = (state: CentralAppState) => state.refreshTokens;

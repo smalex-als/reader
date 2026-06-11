@@ -17,6 +17,7 @@ import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
+import { useRefreshTokens } from '@/hooks/useRefreshTokens';
 import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useStreamControls } from '@/hooks/useStreamControls';
@@ -107,7 +108,6 @@ export default function App() {
     editorTextVersion,
     setEditorTextVersion
   } = useModalState();
-  const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
   const {
     displayedChapterText,
     setDisplayedChapterText,
@@ -115,7 +115,12 @@ export default function App() {
     setFirstChapterParagraph
   } = useChapterTextContext();
   const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
-  const [bookCardRefreshToken, setBookCardRefreshToken] = useState(0);
+  const {
+    chapterViewRefresh,
+    bookCardRefreshToken,
+    refreshChapterView,
+    refreshBookCards
+  } = useRefreshTokens();
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
@@ -1112,9 +1117,7 @@ export default function App() {
       open: bookCardOpen,
       bookId: bookCardBookId,
       onClose: closeBookCard,
-      onSaved: () => {
-        setBookCardRefreshToken((prev) => prev + 1);
-      }
+      onSaved: refreshBookCards
     },
     quizModalProps: {
       open: quizOpen || unitQuizOpen,
@@ -1213,9 +1216,7 @@ export default function App() {
     promptEditorModalProps: {
       open: promptEditorOpen,
       onClose: closePromptEditor,
-      onChanged: () => {
-        setChapterViewRefresh((prev) => prev + 1);
-      }
+      onChanged: refreshChapterView
     },
     jobWorkerModalProps: {
       open: jobWorkerOpen,
@@ -1301,7 +1302,7 @@ export default function App() {
         setEditorOpen(false);
         setEditorChapterNumber(null);
         setEditorTextVersion(null);
-        setChapterViewRefresh((prev) => prev + 1);
+        refreshChapterView();
       }
     },
     chapterViewerProps: {
