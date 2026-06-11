@@ -62,10 +62,7 @@ export default function App() {
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const tocCommandRequest = useAppSelector(selectTocCommandRequest);
   const { mainView } = useUnitsRouteState();
-  const {
-    displayedChapterText,
-    firstChapterParagraph
-  } = useChapterTextContext();
+  const { displayedChapterText } = useChapterTextContext();
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
@@ -217,27 +214,15 @@ export default function App() {
     handlePlayNextStudyBlock,
     restartStreamFromPageKey
   } = useStreamSequence({
-    viewMode,
-    isTextBook,
-    bookId,
-    chapterCount,
-    currentPage,
-    manifest,
-    firstChapterParagraph,
-    currentImage,
-    currentText,
     fetchPageText,
     fetchPageTextByImage,
-    streamState,
     startStream,
     enqueueStream,
     stopStream,
     pauseStream,
     resumeStream,
     pauseStreamAtStart,
-    stopAudio,
-    streamVoice,
-    studyMode: settings.studyMode
+    stopAudio
   });
   const {
     setSelectedStreamBlockKey,

@@ -2,31 +2,27 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
-import { appActions, useAppDispatch } from '@/state/appState';
+import {
+  appActions,
+  selectBookSessionWorkflow,
+  selectChapterTextContext,
+  selectPageTextWorkflow,
+  selectReaderSession,
+  selectStreamRuntime,
+  selectViewerWorkflow,
+  selectVoiceWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import type { ChapterParagraph } from '@/state/appState';
 import type { PageText, StreamState } from '@/types/app';
 
-type ChapterParagraph = {
-  fullText: string;
-  startIndex: number;
-  key: string;
-};
-
 type StreamSequenceOptions = {
-  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-  isTextBook: boolean;
-  bookId: string | null;
-  chapterCount: number;
-  currentPage: number;
-  manifest: string[];
-  firstChapterParagraph: ChapterParagraph | null;
-  currentImage: string | null;
-  currentText: PageText | null;
   fetchPageText: (options?: { force?: boolean; silent?: boolean }) => Promise<PageText | null>;
   fetchPageTextByImage: (
     image: string,
     options?: { force?: boolean; silent?: boolean; updateCurrentState?: boolean }
   ) => Promise<PageText | null>;
-  streamState: StreamState;
   startStream: (payload: {
     text: string;
     pageKey: string;
@@ -40,8 +36,6 @@ type StreamSequenceOptions = {
   resumeStream: () => Promise<void>;
   pauseStreamAtStart: (pageKey: string) => void;
   stopAudio: () => void;
-  streamVoice: string;
-  studyMode: boolean;
 };
 
 type StreamSource =
@@ -152,30 +146,29 @@ function getPageStreamSegments(pageText: PageText, imageUrl: string): PageStream
 }
 
 export function useStreamSequence({
-  viewMode,
-  isTextBook,
-  bookId,
-  chapterCount,
-  currentPage,
-  manifest,
-  firstChapterParagraph,
-  currentImage,
-  currentText,
   fetchPageText,
   fetchPageTextByImage,
-  streamState,
   startStream,
   enqueueStream,
   stopStream,
   pauseStream,
   resumeStream,
   pauseStreamAtStart,
-  stopAudio,
-  streamVoice,
-  studyMode
+  stopAudio
 }: StreamSequenceOptions) {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
+  const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { firstChapterParagraph } = useAppSelector(selectChapterTextContext);
+  const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
+  const streamState = useAppSelector(selectStreamRuntime);
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { streamVoice } = useAppSelector(selectVoiceWorkflow);
+  const isTextBook = bookType === 'text';
+  const currentImage = manifest[currentPage] ?? null;
+  const currentText = currentImage ? textCache[currentImage] ?? null : null;
+  const studyMode = settings.studyMode;
   const streamSequenceRef = useRef<{
     source: 'page' | 'chapter' | 'paragraph';
     baseKey: string;
