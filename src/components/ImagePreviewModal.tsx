@@ -1,5 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectImagePreviewWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { ImagePreviewTarget } from '@/types/app';
 
 interface ImagePreviewModalProps {
@@ -16,8 +22,8 @@ function normalizeCaption(caption: string | null | undefined) {
 }
 
 export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }: ImagePreviewModalProps) {
-  const [enhancing, setEnhancing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const { enhancing, error } = useAppSelector(selectImagePreviewWorkflow);
 
   useEffect(() => {
     if (!open) {
@@ -35,9 +41,8 @@ export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }
   }, [onClose, open]);
 
   useEffect(() => {
-    setEnhancing(false);
-    setError(null);
-  }, [open, preview?.cropUrl]);
+    dispatch(appActions.resetImagePreviewStatus());
+  }, [dispatch, open, preview?.cropUrl]);
 
   if (!open || !preview) {
     return null;
@@ -59,8 +64,8 @@ export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }
                 if (enhancing) {
                   return;
                 }
-                setEnhancing(true);
-                setError(null);
+                dispatch(appActions.setImagePreviewEnhancing(true));
+                dispatch(appActions.setImagePreviewError(null));
                 try {
                   const response = await fetch(
                     `/api/books/${encodeURIComponent(preview.bookId)}/image-preview/enhance`,
@@ -83,9 +88,11 @@ export default function ImagePreviewModal({ open, preview, onEnhanced, onClose }
                   }
                   onEnhanced?.(payload.url);
                 } catch (fetchError) {
-                  setError(fetchError instanceof Error ? fetchError.message : 'Unable to enhance image.');
+                  dispatch(appActions.setImagePreviewError(
+                    fetchError instanceof Error ? fetchError.message : 'Unable to enhance image.'
+                  ));
                 } finally {
-                  setEnhancing(false);
+                  dispatch(appActions.setImagePreviewEnhancing(false));
                 }
               }}
               disabled={enhancing}

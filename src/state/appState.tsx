@@ -198,6 +198,8 @@ export interface PageTextWorkflowState {
 
 export interface ImagePreviewWorkflowState {
   enhancedUrls: Record<string, string>;
+  enhancing: boolean;
+  error: string | null;
 }
 
 export interface ViewerWorkflowState {
@@ -320,7 +322,10 @@ export type AppAction =
   | { type: 'pageTextWorkflow/setLoading'; loading: boolean }
   | { type: 'pageTextWorkflow/setSaving'; saving: boolean }
   | { type: 'pageTextWorkflow/setRegenerated'; regenerated: boolean }
+  | { type: 'imagePreviewWorkflow/resetStatus' }
   | { type: 'imagePreviewWorkflow/setEnhancedUrl'; key: string; url: string | null }
+  | { type: 'imagePreviewWorkflow/setEnhancing'; enhancing: boolean }
+  | { type: 'imagePreviewWorkflow/setError'; error: string | null }
   | { type: 'viewerWorkflow/setSettings'; settings: AppSettings }
   | { type: 'viewerWorkflow/setMetrics'; metrics: ViewerMetrics | null }
   | { type: 'voiceWorkflow/setVoiceOptions'; options: StreamVoiceOption[]; defaultVoice: StreamVoice }
@@ -490,7 +495,9 @@ const initialAppState: CentralAppState = {
     regenerated: false
   },
   imagePreviewWorkflow: {
-    enhancedUrls: {}
+    enhancedUrls: {},
+    enhancing: false,
+    error: null
   },
   viewerWorkflow: {
     settings: createDefaultSettings(),
@@ -744,10 +751,19 @@ export const appActions = {
     type: 'pageTextWorkflow/setRegenerated',
     regenerated
   }),
+  resetImagePreviewStatus: (): AppAction => ({ type: 'imagePreviewWorkflow/resetStatus' }),
   setImagePreviewCachedEnhancedUrl: (key: string, url: string | null): AppAction => ({
     type: 'imagePreviewWorkflow/setEnhancedUrl',
     key,
     url
+  }),
+  setImagePreviewEnhancing: (enhancing: boolean): AppAction => ({
+    type: 'imagePreviewWorkflow/setEnhancing',
+    enhancing
+  }),
+  setImagePreviewError: (error: string | null): AppAction => ({
+    type: 'imagePreviewWorkflow/setError',
+    error
   }),
   setViewerSettings: (settings: AppSettings): AppAction => ({
     type: 'viewerWorkflow/setSettings',
@@ -1464,6 +1480,15 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           regenerated: action.regenerated
         }
       };
+    case 'imagePreviewWorkflow/resetStatus':
+      return {
+        ...state,
+        imagePreviewWorkflow: {
+          ...state.imagePreviewWorkflow,
+          enhancing: false,
+          error: null
+        }
+      };
     case 'imagePreviewWorkflow/setEnhancedUrl': {
       const nextEnhancedUrls = { ...state.imagePreviewWorkflow.enhancedUrls };
       if (action.url) {
@@ -1474,10 +1499,27 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         imagePreviewWorkflow: {
+          ...state.imagePreviewWorkflow,
           enhancedUrls: nextEnhancedUrls
         }
       };
     }
+    case 'imagePreviewWorkflow/setEnhancing':
+      return {
+        ...state,
+        imagePreviewWorkflow: {
+          ...state.imagePreviewWorkflow,
+          enhancing: action.enhancing
+        }
+      };
+    case 'imagePreviewWorkflow/setError':
+      return {
+        ...state,
+        imagePreviewWorkflow: {
+          ...state.imagePreviewWorkflow,
+          error: action.error
+        }
+      };
     case 'viewerWorkflow/setSettings':
       return {
         ...state,
