@@ -836,12 +836,10 @@ export default function App() {
       onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
       onCreateUnit: handleCreateUnit,
       onPlayParagraph: handlePlayChapterParagraph,
-      onPlayAudio: handlePlayFloatingAudio,
       playingParagraphStart: activeTextParagraph.startIndex,
       playingParagraphMode: activeTextParagraph.mode
     },
     audioLibraryViewProps: {
-      onPlayAudio: handlePlayFloatingAudio,
       onOpenBook: handleOpenLibraryBook
     },
     unitsViewProps: {
@@ -863,8 +861,7 @@ export default function App() {
         }
         setViewMode('text');
         renderPage(pageIndex);
-      },
-      onPlayAudio: handlePlayFloatingAudio
+      }
     },
     streamBubbleProps: {
       streamState,

@@ -3,7 +3,12 @@ import type { CSSProperties } from 'react';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import { useToast } from '@/hooks/useToast';
 import { onFloatingAudioTime } from '@/lib/floatingAudioEvents';
-import { selectViewerWorkflow, useAppSelector } from '@/state/appState';
+import {
+  appActions,
+  selectViewerWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/types/floatingAudio';
 
 type AudioLibraryItem = {
@@ -32,7 +37,6 @@ type SubtitleCue = {
 };
 
 interface AudioLibraryViewProps {
-  onPlayAudio: (payload: FloatingAudioTrack) => void;
   onOpenBook: (bookId: string, chapterNumber: number) => void;
 }
 
@@ -214,9 +218,9 @@ function toFloatingTrack(item: AudioLibraryItem, startSeconds?: number): Floatin
 }
 
 export default function AudioLibraryView({
-  onPlayAudio,
   onOpenBook
 }: AudioLibraryViewProps) {
+  const dispatch = useAppDispatch();
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
   const { showToast } = useToast();
@@ -354,9 +358,9 @@ export default function AudioLibraryView({
 
   const handlePlayItem = useCallback(
     (item: AudioLibraryItem, startSeconds?: number) => {
-      onPlayAudio(toFloatingTrack(item, startSeconds));
+      dispatch(appActions.playFloatingAudio(toFloatingTrack(item, startSeconds)));
     },
-    [onPlayAudio]
+    [dispatch]
   );
 
   const handleCueSelect = useCallback(

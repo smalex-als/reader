@@ -22,7 +22,6 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface ChapterViewerProps {
   onCreateChapter?: () => void | Promise<void>;
@@ -34,7 +33,6 @@ interface ChapterViewerProps {
     versionId: string | null;
   }) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
-  onPlayAudio: (payload: FloatingAudioTrack) => void;
   playingParagraphStart: number | null;
   playingParagraphMode: 'chapter' | 'narration' | null;
 }
@@ -171,7 +169,6 @@ export default function ChapterViewer({
   onDeleteChapter,
   onCreateUnit,
   onPlayParagraph,
-  onPlayAudio,
   playingParagraphStart,
   playingParagraphMode
 }: ChapterViewerProps) {
@@ -915,14 +912,14 @@ export default function ChapterViewer({
                         type="button"
                         className="button button-secondary"
                         onClick={() =>
-                          onPlayAudio({
+                          dispatch(appActions.playFloatingAudio({
                             title: chapterTitle ?? `Chapter ${chapterNumber}`,
                             subtitle: selectedVersion?.label,
                             url: chapterAudioUrl,
                             chapterNumber,
                             versionId: selectedVersionId,
                             subchapters: chapterAudioSubchapters
-                          })
+                          }))
                         }
                         disabled={audioDeleting}
                       >

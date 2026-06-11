@@ -9,12 +9,11 @@ import {
   useAppSelector
 } from '@/state/appState';
 import type { ChapterTextVersion } from '@/types/app';
-import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/types/floatingAudio';
+import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
 import TrashIcon from '@/components/TrashIcon';
 
 interface AudioViewProps {
   onOpenChapterText: (pageIndex: number, versionId?: string, chapterNumber?: number) => void;
-  onPlayAudio: (payload: FloatingAudioTrack) => void;
 }
 
 type ChapterStatus = {
@@ -63,7 +62,7 @@ async function readErrorMessage(response: Response) {
   }
 }
 
-export default function AudioView({ onOpenChapterText, onPlayAudio }: AudioViewProps) {
+export default function AudioView({ onOpenChapterText }: AudioViewProps) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { bookId } = useAppSelector(selectReaderSession);
@@ -513,7 +512,7 @@ export default function AudioView({ onOpenChapterText, onPlayAudio }: AudioViewP
                           type="button"
                           className="button audio-native-play"
                           onClick={() =>
-                            onPlayAudio({
+                            dispatch(appActions.playFloatingAudio({
                               title: entry.title,
                               subtitle: `Chapter ${entry.chapterNumber}`,
                               url: entry.audio.url,
@@ -521,7 +520,7 @@ export default function AudioView({ onOpenChapterText, onPlayAudio }: AudioViewP
                               chapterNumber: entry.chapterNumber,
                               versionId: latestVersionId,
                               subchapters: entry.audio.subchapters ?? []
-                            })
+                            }))
                           }
                           disabled={audioDeleting[entry.chapterNumber]}
                         >
