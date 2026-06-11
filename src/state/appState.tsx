@@ -11,6 +11,7 @@ import type { ImagePreviewTarget, PageTextOcrEngine } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
+export type TocVariant = 'main' | 'detailed';
 
 export type SimpleModal =
   | 'help'
@@ -124,6 +125,10 @@ export interface PrintWorkflowState {
   selection: string;
 }
 
+export interface TocWorkflowState {
+  variant: TocVariant;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -137,6 +142,7 @@ export interface CentralAppState {
   ocrEdit: OcrEditState;
   floatingAudio: FloatingAudioState;
   printWorkflow: PrintWorkflowState;
+  tocWorkflow: TocWorkflowState;
 }
 
 export type AppAction =
@@ -182,7 +188,8 @@ export type AppAction =
   | { type: 'floatingAudio/play'; track: FloatingAudioTrack }
   | { type: 'floatingAudio/close' }
   | { type: 'floatingAudio/setPlaybackState'; playbackState: FloatingAudioPlaybackState }
-  | { type: 'printWorkflow/setSelection'; selection: string };
+  | { type: 'printWorkflow/setSelection'; selection: string }
+  | { type: 'tocWorkflow/setVariant'; variant: TocVariant };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -285,6 +292,9 @@ const initialAppState: CentralAppState = {
   },
   printWorkflow: {
     selection: 'current'
+  },
+  tocWorkflow: {
+    variant: 'main'
   }
 };
 
@@ -392,6 +402,10 @@ export const appActions = {
   setPrintSelection: (selection: string): AppAction => ({
     type: 'printWorkflow/setSelection',
     selection
+  }),
+  setTocVariant: (variant: TocVariant): AppAction => ({
+    type: 'tocWorkflow/setVariant',
+    variant
   })
 };
 
@@ -742,6 +756,13 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           selection: action.selection
         }
       };
+    case 'tocWorkflow/setVariant':
+      return {
+        ...state,
+        tocWorkflow: {
+          variant: action.variant
+        }
+      };
     default:
       return state;
   }
@@ -795,3 +816,4 @@ export const selectUnitWorkflow = (state: CentralAppState) => state.unitWorkflow
 export const selectOcrEdit = (state: CentralAppState) => state.ocrEdit;
 export const selectFloatingAudio = (state: CentralAppState) => state.floatingAudio;
 export const selectPrintWorkflow = (state: CentralAppState) => state.printWorkflow;
+export const selectTocWorkflow = (state: CentralAppState) => state.tocWorkflow;
