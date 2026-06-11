@@ -1,34 +1,42 @@
 import { useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import type { ChapterVocabulary, StreamState } from '@/types/app';
+import {
+  appActions,
+  selectModalOpen,
+  selectVocabularyWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import type { StreamState } from '@/types/app';
 
 interface VocabularyModalProps {
-  open: boolean;
-  loading: boolean;
-  error: string | null;
   chapterLabel: string;
-  vocabulary: ChapterVocabulary | null;
   streamState: StreamState;
   onCopyList: (text: string) => void;
   onPlayAudio: (text: string, chapterNumber: number) => void;
   onStopAudio: () => void;
   onRegenerate: () => void;
-  onClose: () => void;
 }
 
 export default function VocabularyModal({
-  open,
-  loading,
-  error,
   chapterLabel,
-  vocabulary,
   streamState,
   onCopyList,
   onPlayAudio,
   onStopAudio,
-  onRegenerate,
-  onClose
+  onRegenerate
 }: VocabularyModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('vocabulary'));
+  const {
+    loading,
+    error,
+    vocabulary
+  } = useAppSelector(selectVocabularyWorkflow);
+  const handleClose = () => {
+    dispatch(appActions.closeModal('vocabulary'));
+  };
+
   useEffect(() => {
     if (!open) {
       return;
@@ -38,11 +46,11 @@ export default function VocabularyModal({
         return;
       }
       event.preventDefault();
-      onClose();
+      handleClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, open]);
+  }, [open]);
 
   const spokenText = useMemo(() => {
     if (!vocabulary) {
@@ -143,7 +151,7 @@ export default function VocabularyModal({
             <button
               type="button"
               className="button button-ghost modal-icon-button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Close vocabulary"
               title="Close vocabulary"
             >

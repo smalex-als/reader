@@ -300,13 +300,8 @@ export default function App() {
     topicId: selectedUnitTopicId
   });
   const {
-    vocabularyOpen,
-    vocabulary,
-    vocabularyLoading,
-    vocabularyError,
     openVocabulary: handleOpenVocabulary,
-    regenerateVocabulary: handleRegenerateVocabulary,
-    closeVocabulary: handleCloseVocabulary
+    regenerateVocabulary: handleRegenerateVocabulary
   } = useChapterVocabulary({
     bookId,
     chapterNumber,
@@ -1060,11 +1055,7 @@ export default function App() {
       }
     },
     vocabularyModalProps: {
-      open: vocabularyOpen,
-      loading: vocabularyLoading,
-      error: vocabularyError,
       chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
-      vocabulary,
       streamState,
       onCopyList: handleCopyVocabulary,
       onPlayAudio: (text: string, chapterNumberValue: number) => {
@@ -1074,8 +1065,7 @@ export default function App() {
         });
       },
       onStopAudio: handleStopStream,
-      onRegenerate: () => void handleRegenerateVocabulary(),
-      onClose: handleCloseVocabulary
+      onRegenerate: () => void handleRegenerateVocabulary()
     },
     memoryCardModalProps: {
       open: memoryCardOpen,

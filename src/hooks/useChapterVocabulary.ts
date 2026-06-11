@@ -1,10 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import {
   appActions,
-  selectModalOpen,
-  selectVocabularyWorkflow,
   useAppDispatch,
-  useAppSelector
 } from '@/state/appState';
 import type { ChapterVocabulary } from '@/types/app';
 
@@ -21,12 +18,6 @@ type UseChapterVocabularyOptions = {
 
 export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: UseChapterVocabularyOptions) {
   const dispatch = useAppDispatch();
-  const vocabularyOpen = useAppSelector(selectModalOpen('vocabulary'));
-  const {
-    loading: vocabularyLoading,
-    error: vocabularyError,
-    vocabulary
-  } = useAppSelector(selectVocabularyWorkflow);
 
   useEffect(() => {
     dispatch(appActions.resetVocabulary());
@@ -98,17 +89,8 @@ export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: Us
     await loadVocabulary(true);
   }, [loadVocabulary]);
 
-  const closeVocabulary = useCallback(() => {
-    dispatch(appActions.closeModal('vocabulary'));
-  }, [dispatch]);
-
   return {
-    vocabularyOpen,
-    vocabulary,
-    vocabularyLoading,
-    vocabularyError,
     openVocabulary,
-    regenerateVocabulary,
-    closeVocabulary
+    regenerateVocabulary
   };
 }
