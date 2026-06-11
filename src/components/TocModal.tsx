@@ -1,39 +1,27 @@
 import CloseIcon from '@/components/CloseIcon';
 import type { TocEntry } from '@/types/app';
 import { getDetailedTocLevel } from '@/lib/toc';
+import {
+  appActions,
+  selectBookSessionWorkflow,
+  selectModalOpen,
+  selectReaderSession,
+  selectTocWorkflow,
+  useAppDispatch,
+  useAppSelector,
+  type TocVariant
+} from '@/state/appState';
 
 interface TocModalProps {
-  open: boolean;
-  entries: TocEntry[];
-  variant: 'main' | 'detailed';
-  loading: boolean;
-  generating: boolean;
-  saving: boolean;
-  manifestLength: number;
-  chapterGeneratingIndex: number | null;
-  allowGenerate: boolean;
-  onClose: () => void;
-  onVariantChange: (variant: 'main' | 'detailed') => void;
-  onGenerate: (variant: 'main' | 'detailed') => void;
-  onSave: (variant: 'main' | 'detailed') => void;
-  onAddEntry: () => void;
-  onRemoveEntry: (index: number) => void;
-  onUpdateEntry: (index: number, next: TocEntry) => void;
+  onGenerate: (variant: TocVariant) => void;
+  onSave: (variant: TocVariant) => void;
+  onAddEntry: (pageIndex: number, variant: TocVariant) => void;
+  onRemoveEntry: (index: number, variant: TocVariant) => void;
+  onUpdateEntry: (index: number, next: TocEntry, variant: TocVariant) => void;
   onGenerateChapter: (index: number) => void;
 }
 
 export default function TocModal({
-  open,
-  entries,
-  variant,
-  loading,
-  generating,
-  saving,
-  manifestLength,
-  chapterGeneratingIndex,
-  allowGenerate,
-  onClose,
-  onVariantChange,
   onGenerate,
   onSave,
   onAddEntry,
@@ -41,6 +29,30 @@ export default function TocModal({
   onUpdateEntry,
   onGenerateChapter
 }: TocModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('tocManage'));
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const {
+    bookType,
+    chapterCount,
+    manifest
+  } = useAppSelector(selectBookSessionWorkflow);
+  const {
+    variant,
+    entries: tocEntries,
+    detailedEntries,
+    loading,
+    generating,
+    saving,
+    chapterGeneratingIndex
+  } = useAppSelector(selectTocWorkflow);
+  const entries = variant === 'detailed' ? detailedEntries : tocEntries;
+  const manifestLength = bookType === 'text' ? chapterCount : manifest.length;
+  const allowGenerate = bookType !== 'text';
+  const handleClose = () => {
+    dispatch(appActions.closeModal('tocManage'));
+  };
+
   if (!open) {
     return null;
   }
@@ -56,7 +68,7 @@ export default function TocModal({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close table of contents editor"
             title="Close table of contents editor"
           >
@@ -72,7 +84,7 @@ export default function TocModal({
             <button
               type="button"
               className={variant === 'main' ? 'button button-primary' : 'button button-secondary'}
-              onClick={() => onVariantChange('main')}
+              onClick={() => dispatch(appActions.setTocVariant('main'))}
               disabled={busy}
             >
               Main TOC
@@ -80,14 +92,14 @@ export default function TocModal({
             <button
               type="button"
               className={variant === 'detailed' ? 'button button-primary' : 'button button-secondary'}
-              onClick={() => onVariantChange('detailed')}
+              onClick={() => dispatch(appActions.setTocVariant('detailed'))}
               disabled={busy}
             >
               Detailed TOC
             </button>
           </div>
           <div className="modal-toolbar">
-            <button type="button" className="button" onClick={onAddEntry} disabled={busy}>
+            <button type="button" className="button" onClick={() => onAddEntry(currentPage, variant)} disabled={busy}>
               Add Entry
             </button>
             <button
@@ -121,7 +133,7 @@ export default function TocModal({
                     value={entry.title}
                     placeholder="Section title"
                     onChange={(event) =>
-                      onUpdateEntry(index, { ...entry, title: event.target.value })
+                      onUpdateEntry(index, { ...entry, title: event.target.value }, variant)
                     }
                     disabled={busy}
                   />
@@ -135,7 +147,7 @@ export default function TocModal({
                       onChange={(event) => {
                         const raw = Number.parseInt(event.target.value, 10);
                         const level = Number.isInteger(raw) ? Math.max(0, Math.min(raw, 2)) : 0;
-                        onUpdateEntry(index, { ...entry, level });
+                        onUpdateEntry(index, { ...entry, level }, variant);
                       }}
                       disabled={busy}
                     >
@@ -157,7 +169,7 @@ export default function TocModal({
                       const raw = Number.parseInt(event.target.value, 10);
                       const normalized = Number.isInteger(raw) ? raw - 1 : 0;
                       const clamped = Math.max(0, Math.min(normalized, manifestLength - 1));
-                      onUpdateEntry(index, { ...entry, page: clamped });
+                      onUpdateEntry(index, { ...entry, page: clamped }, variant);
                     }}
                     disabled={busy}
                   />
@@ -173,7 +185,7 @@ export default function TocModal({
                 <button
                   type="button"
                   className="button button-ghost"
-                  onClick={() => onRemoveEntry(index)}
+                  onClick={() => onRemoveEntry(index, variant)}
                   disabled={busy}
                 >
                   Remove
@@ -191,7 +203,7 @@ export default function TocModal({
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button type="button" className="button button-primary" onClick={onClose} disabled={busy}>
+          <button type="button" className="button button-primary" onClick={handleClose} disabled={busy}>
             Done
           </button>
         </footer>

@@ -1,32 +1,45 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import type { TocEntry } from '@/types/app';
 import { formatListeningTime } from '@/lib/listeningTime';
 import { getDetailedTocLevel } from '@/lib/toc';
+import {
+  appActions,
+  selectModalOpen,
+  selectReaderSession,
+  selectTocWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 interface TocNavModalProps {
-  open: boolean;
-  entries: TocEntry[];
-  variant: 'main' | 'detailed';
-  loading: boolean;
-  currentPage: number;
-  onClose: () => void;
-  onVariantChange: (variant: 'main' | 'detailed') => void;
   onGoToPage: (pageIndex: number) => void;
 }
 
-export default function TocNavModal({
-  open,
-  entries,
-  variant,
-  loading,
-  currentPage,
-  onClose,
-  onVariantChange,
-  onGoToPage
-}: TocNavModalProps) {
+export default function TocNavModal({ onGoToPage }: TocNavModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('tocNav'));
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const {
+    variant,
+    entries: tocEntries,
+    detailedEntries,
+    loading
+  } = useAppSelector(selectTocWorkflow);
   const activeEntryRef = useRef<HTMLButtonElement | null>(null);
   const modalBodyRef = useRef<HTMLElement | null>(null);
+  const entries = useMemo(() => {
+    const source = variant === 'detailed' ? detailedEntries : tocEntries;
+    return [...source]
+      .filter((entry) => Number.isInteger(entry.page))
+      .sort((a, b) => a.page - b.page);
+  }, [detailedEntries, tocEntries, variant]);
+  const handleClose = () => {
+    dispatch(appActions.closeModal('tocNav'));
+  };
+  const handleGoToPage = (pageIndex: number) => {
+    dispatch(appActions.closeModal('tocNav'));
+    onGoToPage(pageIndex);
+  };
 
   useEffect(() => {
     if (!open || loading) {
@@ -86,7 +99,7 @@ export default function TocNavModal({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close table of contents"
             title="Close table of contents"
           >
@@ -102,14 +115,14 @@ export default function TocNavModal({
             <button
               type="button"
               className={variant === 'main' ? 'button button-primary' : 'button button-secondary'}
-              onClick={() => onVariantChange('main')}
+              onClick={() => dispatch(appActions.setTocVariant('main'))}
             >
               Main TOC
             </button>
             <button
               type="button"
               className={variant === 'detailed' ? 'button button-primary' : 'button button-secondary'}
-              onClick={() => onVariantChange('detailed')}
+              onClick={() => dispatch(appActions.setTocVariant('detailed'))}
             >
               Detailed TOC
             </button>
@@ -131,7 +144,7 @@ export default function TocNavModal({
                   <button
                     type="button"
                     className={`toc-nav-button ${isActive ? 'toc-nav-button-active' : ''}`}
-                    onClick={() => onGoToPage(entry.page)}
+                    onClick={() => handleGoToPage(entry.page)}
                     aria-current={isActive ? 'page' : undefined}
                     ref={isActive ? activeEntryRef : null}
                   >
@@ -149,7 +162,7 @@ export default function TocNavModal({
           </ul>
         </section>
         <footer className="modal-footer">
-          <button type="button" className="button button-primary" onClick={onClose}>
+          <button type="button" className="button button-primary" onClick={handleClose}>
             Done
           </button>
         </footer>

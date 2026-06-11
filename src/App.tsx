@@ -188,19 +188,12 @@ export default function App() {
   const {
     tocOpen,
     setTocOpen,
-    tocManageOpen,
     setTocManageOpen,
     tocEntries,
     setTocEntries,
-    detailedTocEntries,
-    tocVariant,
-    setTocVariant,
     sortedTocEntries,
     sortedDetailedTocEntries,
     tocLoading,
-    tocGenerating,
-    tocSaving,
-    chapterGeneratingIndex,
     handleGenerateToc,
     handleSaveToc,
     handleAddTocEntry,
@@ -216,9 +209,6 @@ export default function App() {
     tocEntriesRef.current = setTocEntries;
   }, [setTocEntries]);
   const { mp3Voice, setMp3Voice } = useMp3Voice({ bookId, mp3VoiceOptions, getDefaultMp3Voice });
-  const visibleTocEntries = tocVariant === 'detailed' ? detailedTocEntries : tocEntries;
-  const visibleSortedTocEntries =
-    tocVariant === 'detailed' ? sortedDetailedTocEntries : sortedTocEntries;
   const currentChapterIndex = useMemo(() => {
     if (isTextBook) {
       return navigationCount > 0 ? currentPage : null;
@@ -921,36 +911,14 @@ export default function App() {
       }
     },
     tocNavModalProps: {
-      open: tocOpen,
-      entries: visibleSortedTocEntries,
-      variant: tocVariant,
-      loading: tocLoading,
-      currentPage,
-      onClose: () => setTocOpen(false),
-      onVariantChange: setTocVariant,
-      onGoToPage: (pageIndex: number) => {
-        setTocOpen(false);
-        renderPage(pageIndex);
-      }
+      onGoToPage: (pageIndex: number) => renderPage(pageIndex)
     },
     tocModalProps: {
-      open: tocManageOpen,
-      entries: visibleTocEntries,
-      variant: tocVariant,
-      loading: tocLoading,
-      generating: tocGenerating,
-      saving: tocSaving,
-      manifestLength: isTextBook ? chapterCount : manifest.length,
-      chapterGeneratingIndex,
-      allowGenerate: !isTextBook,
-      onClose: () => setTocManageOpen(false),
-      onVariantChange: setTocVariant,
       onGenerate: handleGenerateToc,
       onSave: handleSaveToc,
-      onAddEntry: () => handleAddTocEntry(currentPage, tocVariant),
-      onRemoveEntry: (index: number) => handleRemoveTocEntry(index, tocVariant),
-      onUpdateEntry: (index: number, next: TocEntry) =>
-        handleUpdateTocEntry(index, next, tocVariant),
+      onAddEntry: handleAddTocEntry,
+      onRemoveEntry: handleRemoveTocEntry,
+      onUpdateEntry: handleUpdateTocEntry,
       onGenerateChapter: handleGenerateChapter
     },
     ocrQueueModalProps: {
