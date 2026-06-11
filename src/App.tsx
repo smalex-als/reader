@@ -70,11 +70,7 @@ export default function App() {
   } = useUnitsRouteState();
   const {
     openHelp,
-    listeningDashboardOpen,
     openListeningDashboard,
-    closeListeningDashboard,
-    ocrQueueOpen,
-    setOcrQueueOpen,
     openOcrQueue,
     closeOcrQueue,
     openJobWorker,
@@ -922,8 +918,6 @@ export default function App() {
       onGenerateChapter: handleGenerateChapter
     },
     ocrQueueModalProps: {
-      open: ocrQueueOpen,
-      onClose: closeOcrQueue,
       jobs: ocrJobs,
       paused: ocrPaused,
       onTogglePause: togglePause,
@@ -987,11 +981,9 @@ export default function App() {
       onRegenerate: () => void handleRegenerateMemoryCard()
     },
     listeningDashboardModalProps: {
-      open: listeningDashboardOpen,
       onOpenBook: handleOpenDashboardBook,
       onOpenChapter: handleOpenDashboardChapter,
-      onOpenUnit: handleOpenDashboardUnit,
-      onClose: closeListeningDashboard
+      onOpenUnit: handleOpenDashboardUnit
     }
   };
 

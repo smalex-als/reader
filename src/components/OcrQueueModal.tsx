@@ -1,9 +1,13 @@
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { OcrJob } from '@/hooks/useOcrQueue';
 
 interface OcrQueueModalProps {
-  open: boolean;
-  onClose: () => void;
   jobs: OcrJob[];
   paused: boolean;
   onTogglePause: () => void;
@@ -28,8 +32,6 @@ function getStatusLabel(status: OcrJob['status']) {
 }
 
 export default function OcrQueueModal({
-  open,
-  onClose,
   jobs,
   paused,
   onTogglePause,
@@ -39,6 +41,12 @@ export default function OcrQueueModal({
   onRetryFailed,
   onClearQueue
 }: OcrQueueModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('ocrQueue'));
+  const handleClose = () => {
+    dispatch(appActions.closeModal('ocrQueue'));
+  };
+
   if (!open) {
     return null;
   }
@@ -71,7 +79,7 @@ export default function OcrQueueModal({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close OCR queue"
             title="Close OCR queue"
           >
@@ -141,7 +149,7 @@ export default function OcrQueueModal({
           >
             {paused ? 'Resume' : 'Pause'}
           </button>
-          <button type="button" className="button button-primary" onClick={onClose}>
+          <button type="button" className="button button-primary" onClick={handleClose}>
             Done
           </button>
         </footer>

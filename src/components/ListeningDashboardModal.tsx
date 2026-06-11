@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { ListeningDashboardData } from '@/types/app';
 
 interface ListeningDashboardModalProps {
-  open: boolean;
   onOpenBook: (bookId: string) => void;
   onOpenChapter: (
     bookId: string,
@@ -13,7 +18,6 @@ interface ListeningDashboardModalProps {
     pageKeyEnd?: string | null
   ) => void;
   onOpenUnit: (unitSetId: string, topicId: string) => void;
-  onClose: () => void;
 }
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -57,15 +61,18 @@ function formatDay(value: string) {
 }
 
 export default function ListeningDashboardModal({
-  open,
   onOpenBook,
   onOpenChapter,
-  onOpenUnit,
-  onClose
+  onOpenUnit
 }: ListeningDashboardModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('listeningDashboard'));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ListeningDashboardData | null>(null);
+  const handleClose = useCallback(() => {
+    dispatch(appActions.closeModal('listeningDashboard'));
+  }, [dispatch]);
 
   useEffect(() => {
     if (!open) {
@@ -76,11 +83,11 @@ export default function ListeningDashboardModal({
         return;
       }
       event.preventDefault();
-      onClose();
+      handleClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, open]);
+  }, [handleClose, open]);
 
   useEffect(() => {
     if (!open) {
@@ -135,7 +142,7 @@ export default function ListeningDashboardModal({
             <button
               type="button"
               className="button button-ghost modal-icon-button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Close dashboard"
               title="Close dashboard"
             >
