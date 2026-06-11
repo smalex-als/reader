@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useToast } from '@/hooks/useToast';
+import { copyToClipboard } from '@/lib/clipboard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -15,18 +17,17 @@ import type { StreamState } from '@/types/app';
 
 interface MemoryCardModalProps {
   streamState: StreamState;
-  onCopyText: (text: string) => void;
   onPlayAudio: (text: string, chapterNumber: number) => void;
   onStopAudio: () => void;
 }
 
 export default function MemoryCardModal({
   streamState,
-  onCopyText,
   onPlayAudio,
   onStopAudio
 }: MemoryCardModalProps) {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('memoryCard'));
   const {
     loading,
@@ -47,6 +48,15 @@ export default function MemoryCardModal({
   const handleClose = () => {
     onStopAudio();
     dispatch(appActions.closeModal('memoryCard'));
+  };
+  const handleCopyText = async () => {
+    const trimmed = memoryCard?.text.trim() ?? '';
+    if (!trimmed) {
+      showToast('No memory card available to copy', 'error');
+      return;
+    }
+    const copied = await copyToClipboard(trimmed);
+    showToast(copied ? 'Copied memory card to clipboard' : 'Unable to copy memory card', copied ? 'success' : 'error');
   };
 
   useEffect(() => {
@@ -114,12 +124,7 @@ export default function MemoryCardModal({
             <button
               type="button"
               className="button button-secondary modal-icon-button"
-              onClick={() => {
-                if (!memoryCard?.text) {
-                  return;
-                }
-                onCopyText(memoryCard.text);
-              }}
+              onClick={() => void handleCopyText()}
               disabled={!memoryCard || loading}
               aria-label="Copy text"
               title="Copy text"

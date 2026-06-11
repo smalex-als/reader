@@ -571,7 +571,7 @@ export default function App() {
     closeOcrQueue();
   }, [bookId, closeOcrQueue, resetQueue]);
 
-  const { handleCopyText, handleCopyVocabulary, handleCopyMemoryCard } = useCopyActions({
+  const { handleCopyText } = useCopyActions({
     currentImage,
     currentText,
     fetchPageText
@@ -737,7 +737,6 @@ export default function App() {
     },
     vocabularyModalProps: {
       streamState,
-      onCopyList: handleCopyVocabulary,
       onPlayAudio: (text: string, chapterNumberValue: number) => {
         void handlePlaySingleStream({
           text,
@@ -748,7 +747,6 @@ export default function App() {
     },
     memoryCardModalProps: {
       streamState,
-      onCopyText: handleCopyMemoryCard,
       onPlayAudio: (text: string, chapterNumberValue: number) => {
         void handlePlaySingleStream({
           text,

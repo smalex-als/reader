@@ -2,6 +2,8 @@ import { useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useToast } from '@/hooks/useToast';
+import { copyToClipboard } from '@/lib/clipboard';
 import {
   appActions,
   selectModalOpen,
@@ -13,18 +15,17 @@ import type { StreamState } from '@/types/app';
 
 interface VocabularyModalProps {
   streamState: StreamState;
-  onCopyList: (text: string) => void;
   onPlayAudio: (text: string, chapterNumber: number) => void;
   onStopAudio: () => void;
 }
 
 export default function VocabularyModal({
   streamState,
-  onCopyList,
   onPlayAudio,
   onStopAudio
 }: VocabularyModalProps) {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('vocabulary'));
   const {
     loading,
@@ -44,6 +45,15 @@ export default function VocabularyModal({
   });
   const handleClose = () => {
     dispatch(appActions.closeModal('vocabulary'));
+  };
+  const handleCopyList = async () => {
+    const trimmed = spokenText.trim();
+    if (!trimmed) {
+      showToast('No vocabulary available to copy', 'error');
+      return;
+    }
+    const copied = await copyToClipboard(trimmed);
+    showToast(copied ? 'Copied vocabulary to clipboard' : 'Unable to copy vocabulary', copied ? 'success' : 'error');
   };
 
   useEffect(() => {
@@ -121,12 +131,7 @@ export default function VocabularyModal({
             <button
               type="button"
               className="button button-secondary modal-icon-button"
-              onClick={() => {
-                if (!spokenText) {
-                  return;
-                }
-                onCopyList(spokenText);
-              }}
+              onClick={() => void handleCopyList()}
               disabled={!vocabulary || loading}
               aria-label="Copy list"
               title="Copy list"

@@ -31,25 +31,5 @@ export function useCopyActions({
     showToast(copied ? 'Copied page text to clipboard' : 'Unable to copy text', copied ? 'success' : 'error');
   }, [currentImage, currentText, fetchPageText, showToast]);
 
-  const handleCopyVocabulary = useCallback(async (textValue: string) => {
-    const trimmed = textValue.trim();
-    if (!trimmed) {
-      showToast('No vocabulary available to copy', 'error');
-      return;
-    }
-    const copied = await copyToClipboard(trimmed);
-    showToast(copied ? 'Copied vocabulary to clipboard' : 'Unable to copy vocabulary', copied ? 'success' : 'error');
-  }, [showToast]);
-
-  const handleCopyMemoryCard = useCallback(async (textValue: string) => {
-    const trimmed = textValue.trim();
-    if (!trimmed) {
-      showToast('No memory card available to copy', 'error');
-      return;
-    }
-    const copied = await copyToClipboard(trimmed);
-    showToast(copied ? 'Copied memory card to clipboard' : 'Unable to copy memory card', copied ? 'success' : 'error');
-  }, [showToast]);
-
-  return { handleCopyText, handleCopyVocabulary, handleCopyMemoryCard };
+  return { handleCopyText };
 }
