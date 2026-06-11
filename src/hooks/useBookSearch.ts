@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
-import type { BookSearchResponse, SearchResult } from '@/types/app';
+import {
+  appActions,
+  selectSearchWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import type { BookSearchResponse } from '@/types/app';
 
 interface UseBookSearchOptions {
   bookId: string | null;
@@ -9,14 +15,23 @@ interface UseBookSearchOptions {
 
 export function useBookSearch(options: UseBookSearchOptions) {
   const { bookId, showToast } = options;
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const {
+    query: searchQuery,
+    results: searchResults,
+    loading: searchLoading
+  } = useAppSelector(selectSearchWorkflow);
+
+  const setSearchQuery = useCallback(
+    (query: string) => {
+      dispatch(appActions.setSearchQuery(query));
+    },
+    [dispatch]
+  );
 
   useEffect(() => {
-    setSearchQuery('');
-    setSearchResults([]);
-  }, [bookId]);
+    dispatch(appActions.resetSearch());
+  }, [bookId, dispatch]);
 
   const runSearch = useCallback(
     async (query: string) => {
@@ -25,26 +40,26 @@ export function useBookSearch(options: UseBookSearchOptions) {
         return;
       }
       const trimmed = query.trim();
-      setSearchQuery(query);
+      dispatch(appActions.setSearchQuery(query));
       if (!trimmed) {
-        setSearchResults([]);
+        dispatch(appActions.setSearchResults([]));
         return;
       }
-      setSearchLoading(true);
+      dispatch(appActions.setSearchLoading(true));
       try {
         const result = await fetchJson<BookSearchResponse>(
           `/api/books/${encodeURIComponent(bookId)}/search?q=${encodeURIComponent(trimmed)}&limit=25`
         );
-        setSearchResults(Array.isArray(result.results) ? result.results : []);
+        dispatch(appActions.setSearchResults(Array.isArray(result.results) ? result.results : []));
       } catch (error) {
         console.error(error);
         showToast('Unable to search this book', 'error');
-        setSearchResults([]);
+        dispatch(appActions.setSearchResults([]));
       } finally {
-        setSearchLoading(false);
+        dispatch(appActions.setSearchLoading(false));
       }
     },
-    [bookId, showToast]
+    [bookId, dispatch, showToast]
   );
 
   return {

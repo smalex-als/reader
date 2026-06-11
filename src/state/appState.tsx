@@ -7,7 +7,7 @@ import {
   type ReactNode
 } from 'react';
 import type { MainView, ViewMode } from '@/lib/appConstants';
-import type { ImagePreviewTarget, PageTextOcrEngine } from '@/types/app';
+import type { ImagePreviewTarget, PageTextOcrEngine, SearchResult } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
@@ -129,6 +129,12 @@ export interface TocWorkflowState {
   variant: TocVariant;
 }
 
+export interface SearchWorkflowState {
+  query: string;
+  results: SearchResult[];
+  loading: boolean;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -143,6 +149,7 @@ export interface CentralAppState {
   floatingAudio: FloatingAudioState;
   printWorkflow: PrintWorkflowState;
   tocWorkflow: TocWorkflowState;
+  searchWorkflow: SearchWorkflowState;
 }
 
 export type AppAction =
@@ -189,7 +196,11 @@ export type AppAction =
   | { type: 'floatingAudio/close' }
   | { type: 'floatingAudio/setPlaybackState'; playbackState: FloatingAudioPlaybackState }
   | { type: 'printWorkflow/setSelection'; selection: string }
-  | { type: 'tocWorkflow/setVariant'; variant: TocVariant };
+  | { type: 'tocWorkflow/setVariant'; variant: TocVariant }
+  | { type: 'searchWorkflow/reset' }
+  | { type: 'searchWorkflow/setQuery'; query: string }
+  | { type: 'searchWorkflow/setResults'; results: SearchResult[] }
+  | { type: 'searchWorkflow/setLoading'; loading: boolean };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -295,6 +306,11 @@ const initialAppState: CentralAppState = {
   },
   tocWorkflow: {
     variant: 'main'
+  },
+  searchWorkflow: {
+    query: '',
+    results: [],
+    loading: false
   }
 };
 
@@ -406,6 +422,19 @@ export const appActions = {
   setTocVariant: (variant: TocVariant): AppAction => ({
     type: 'tocWorkflow/setVariant',
     variant
+  }),
+  resetSearch: (): AppAction => ({ type: 'searchWorkflow/reset' }),
+  setSearchQuery: (query: string): AppAction => ({
+    type: 'searchWorkflow/setQuery',
+    query
+  }),
+  setSearchResults: (results: SearchResult[]): AppAction => ({
+    type: 'searchWorkflow/setResults',
+    results
+  }),
+  setSearchLoading: (loading: boolean): AppAction => ({
+    type: 'searchWorkflow/setLoading',
+    loading
   })
 };
 
@@ -763,6 +792,39 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           variant: action.variant
         }
       };
+    case 'searchWorkflow/reset':
+      return {
+        ...state,
+        searchWorkflow: {
+          query: '',
+          results: [],
+          loading: false
+        }
+      };
+    case 'searchWorkflow/setQuery':
+      return {
+        ...state,
+        searchWorkflow: {
+          ...state.searchWorkflow,
+          query: action.query
+        }
+      };
+    case 'searchWorkflow/setResults':
+      return {
+        ...state,
+        searchWorkflow: {
+          ...state.searchWorkflow,
+          results: action.results
+        }
+      };
+    case 'searchWorkflow/setLoading':
+      return {
+        ...state,
+        searchWorkflow: {
+          ...state.searchWorkflow,
+          loading: action.loading
+        }
+      };
     default:
       return state;
   }
@@ -817,3 +879,4 @@ export const selectOcrEdit = (state: CentralAppState) => state.ocrEdit;
 export const selectFloatingAudio = (state: CentralAppState) => state.floatingAudio;
 export const selectPrintWorkflow = (state: CentralAppState) => state.printWorkflow;
 export const selectTocWorkflow = (state: CentralAppState) => state.tocWorkflow;
+export const selectSearchWorkflow = (state: CentralAppState) => state.searchWorkflow;
