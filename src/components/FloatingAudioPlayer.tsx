@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { emitFloatingAudioSubchapterSelect, emitFloatingAudioTime } from '@/lib/floatingAudioEvents';
+import { selectFloatingAudio, useAppSelector } from '@/state/appState';
 import type {
   FloatingAudioPlaybackState,
   FloatingAudioSubchapter,
@@ -7,7 +8,6 @@ import type {
 } from '@/types/floatingAudio';
 
 interface FloatingAudioPlayerProps {
-  track: FloatingAudioTrack | null;
   playbackRate: number;
   playbackRateOptions: readonly number[];
   onPlaybackRateChange: (rate: number) => void;
@@ -138,13 +138,13 @@ function mergeAwkwardSubtitleCues(cues: SubtitleCue[]) {
 }
 
 export default function FloatingAudioPlayer({
-  track,
   playbackRate,
   playbackRateOptions,
   onPlaybackRateChange,
   onClose,
   onPlaybackStateChange
 }: FloatingAudioPlayerProps) {
+  const { track } = useAppSelector(selectFloatingAudio);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastEmittedSubchapterKeyRef = useRef<string | null>(null);
   const lastEmittedTrackKeyRef = useRef<string | null>(null);

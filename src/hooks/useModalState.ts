@@ -5,10 +5,8 @@ import {
   selectBookCardOpen,
   selectEditorState,
   selectModalOpen,
-  selectSettingsToolbarTab,
   useAppDispatch,
   useAppSelector,
-  type AppToolbarTab,
   type ChapterEditorTextVersion,
   type SimpleModal
 } from '@/state/appState';
@@ -19,7 +17,6 @@ type NullableNumberSetter = (next: number | null | ((prev: number | null) => num
 type EditorTextVersionSetter = (
   next: ChapterEditorTextVersion | null | ((prev: ChapterEditorTextVersion | null) => ChapterEditorTextVersion | null)
 ) => void;
-type SettingsToolbarTabSetter = (next: AppToolbarTab | ((prev: AppToolbarTab) => AppToolbarTab)) => void;
 
 function resolveNext<T>(next: T | ((prev: T) => T), current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
@@ -34,7 +31,6 @@ export function useModalState() {
   const searchOpen = useAppSelector(selectModalOpen('search'));
   const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
   const settingsOpen = useAppSelector(selectModalOpen('settings'));
-  const settingsTab = useAppSelector(selectSettingsToolbarTab);
   const bookCardOpen = useAppSelector(selectBookCardOpen);
   const bookCardBookId = useAppSelector(selectBookCardBookId);
   const editorState = useAppSelector(selectEditorState);
@@ -95,10 +91,6 @@ export function useModalState() {
     (next) => setModalOpen('settings', settingsOpen, next),
     [settingsOpen, setModalOpen]
   );
-  const setSettingsTab: SettingsToolbarTabSetter = useCallback(
-    (next) => dispatch(appActions.setSettingsToolbarTab(resolveNext(next, settingsTab))),
-    [dispatch, settingsTab]
-  );
   const setBookCardOpen: BooleanSetter = useCallback(
     (next) => dispatch(appActions.setBookCardOpen(resolveNext(next, bookCardOpen))),
     [bookCardOpen, dispatch]
@@ -156,8 +148,6 @@ export function useModalState() {
     closePromptEditor,
     settingsOpen,
     setSettingsOpen,
-    settingsTab,
-    setSettingsTab,
     editorOpen,
     setEditorOpen,
     editorChapterNumber,

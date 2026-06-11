@@ -56,7 +56,6 @@ export function useFloatingAudio(options: UseFloatingAudioOptions) {
   }, [audioState.status, dispatch, floatingAudio]);
 
   return {
-    floatingAudio,
     floatingAudioPlaybackState,
     playFloatingAudio,
     closeFloatingAudio,

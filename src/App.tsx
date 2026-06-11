@@ -79,10 +79,7 @@ export default function App() {
     openBookCard,
     closeBookCard,
     openPromptEditor,
-    settingsOpen,
     setSettingsOpen,
-    settingsTab,
-    setSettingsTab,
     editorOpen,
     setEditorOpen,
     editorChapterNumber,
@@ -308,7 +305,6 @@ export default function App() {
     pauseStreamAtStart
   } = useStreamingAudio();
   const {
-    floatingAudio,
     floatingAudioPlaybackState,
     playFloatingAudio: handlePlayFloatingAudio,
     closeFloatingAudio: handleCloseFloatingAudio,
@@ -1162,7 +1158,6 @@ export default function App() {
       onStopStream: handleStopStream
     },
     floatingAudioPlayerProps: {
-      track: floatingAudio,
       playbackRate,
       playbackRateOptions: PLAYBACK_RATE_OPTIONS,
       onPlaybackRateChange: handlePlaybackRateChange,
@@ -1182,13 +1177,7 @@ export default function App() {
       <ReaderModalLayer
         {...modalProps}
         settingsModalProps={{
-          open: settingsOpen,
-          toolbarProps: {
-            ...settingsToolbarProps,
-            activeTab: settingsTab,
-            onTabChange: setSettingsTab
-          },
-          onClose: () => setSettingsOpen(false)
+          toolbarProps: settingsToolbarProps
         }}
       />
     </div>

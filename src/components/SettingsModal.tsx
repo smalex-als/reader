@@ -1,16 +1,28 @@
 import type { ComponentProps } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import Toolbar from '@/components/Toolbar';
+import {
+  appActions,
+  selectModalOpen,
+  selectSettingsToolbarTab,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 type ToolbarProps = ComponentProps<typeof Toolbar>;
 
 interface SettingsModalProps {
-  open: boolean;
-  toolbarProps: ToolbarProps;
-  onClose: () => void;
+  toolbarProps: Omit<ToolbarProps, 'activeTab' | 'layout' | 'onTabChange'>;
 }
 
-export default function SettingsModal({ open, toolbarProps, onClose }: SettingsModalProps) {
+export default function SettingsModal({ toolbarProps }: SettingsModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('settings'));
+  const activeTab = useAppSelector(selectSettingsToolbarTab);
+  const handleClose = () => {
+    dispatch(appActions.closeModal('settings'));
+  };
+
   if (!open) {
     return null;
   }
@@ -23,7 +35,7 @@ export default function SettingsModal({ open, toolbarProps, onClose }: SettingsM
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close settings"
             title="Close settings"
           >
@@ -31,7 +43,12 @@ export default function SettingsModal({ open, toolbarProps, onClose }: SettingsM
           </button>
         </header>
         <section className="modal-body modal-settings-body">
-          <Toolbar {...toolbarProps} layout="modal" />
+          <Toolbar
+            {...toolbarProps}
+            activeTab={activeTab}
+            layout="modal"
+            onTabChange={(tab) => dispatch(appActions.setSettingsToolbarTab(tab))}
+          />
         </section>
       </div>
     </div>
