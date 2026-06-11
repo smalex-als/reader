@@ -6,8 +6,6 @@ import OcrOverlay from '@/components/OcrOverlay';
 import {
   appActions,
   selectBookSessionWorkflow,
-  selectOcrEdit,
-  selectPageTextWorkflow,
   selectReaderSession,
   selectViewerWorkflow,
   useAppDispatch,
@@ -30,10 +28,7 @@ export default function Viewer() {
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
-  const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
-  const { editMode } = useAppSelector(selectOcrEdit);
   const imageUrl = manifest[currentPage] ?? null;
-  const pageText = imageUrl ? textCache[imageUrl] ?? null : null;
   const rotation = settings.rotation;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -279,13 +274,7 @@ export default function Viewer() {
                   className="viewer-image-map"
                   style={{ width: `${metrics.naturalWidth}px`, height: `${metrics.naturalHeight}px` }}
                 >
-                  <OcrOverlay
-                    imageUrl={imageUrl}
-                    pageText={pageText}
-                    editMode={editMode}
-                    dimOutsideBlocks={settings.dimOutsideBlocks}
-                    dimOutsideBlocksIntensity={settings.dimOutsideBlocksIntensity}
-                  />
+                  <OcrOverlay imageUrl={imageUrl} />
                 </div>
               ) : null}
             </div>

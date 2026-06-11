@@ -3,36 +3,42 @@ import { useImagePreview } from '@/hooks/useImagePreview';
 import { parseStreamLocator } from '@/lib/streamLocator';
 import {
   appActions,
+  selectBookSessionWorkflow,
+  selectOcrEdit,
+  selectPageTextWorkflow,
+  selectReaderSession,
   selectStreamRuntime,
   selectStreamUiControls,
+  selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { PageText } from '@/types/app';
 
 interface OcrOverlayProps {
   imageUrl: string;
-  pageText: PageText | null;
-  editMode: boolean;
-  dimOutsideBlocks: boolean;
-  dimOutsideBlocksIntensity: number;
 }
 
 const OCR_COORDINATE_SPACE = 1000;
 const NON_INTERACTIVE_BLOCK_KINDS = new Set(['image', 'table']);
 const PREVIEWABLE_BLOCK_KINDS = new Set(['image', 'image_caption']);
 
-export default function OcrOverlay({
-  imageUrl,
-  pageText,
-  editMode,
-  dimOutsideBlocks,
-  dimOutsideBlocksIntensity
-}: OcrOverlayProps) {
+export default function OcrOverlay({ imageUrl }: OcrOverlayProps) {
   const dispatch = useAppDispatch();
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { editMode: globalEditMode } = useAppSelector(selectOcrEdit);
   const streamState = useAppSelector(selectStreamRuntime);
   const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
   const { handleOpenImagePreview } = useImagePreview();
+  const pageText = textCache[imageUrl] ?? null;
+  const currentImage = manifest[currentPage] ?? null;
+  const editMode = globalEditMode && imageUrl === currentImage;
+  const {
+    dimOutsideBlocks,
+    dimOutsideBlocksIntensity
+  } = settings;
   const overlayMaskId = useId().replace(/:/g, '-');
   const streamPositionActive =
     streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';

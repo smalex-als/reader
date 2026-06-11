@@ -7,7 +7,6 @@ import { parseStreamLocator } from '@/lib/streamLocator';
 import {
   appActions,
   selectBookSessionWorkflow,
-  selectOcrEdit,
   selectPageTextWorkflow,
   selectReaderSession,
   selectStreamRuntime,
@@ -60,7 +59,6 @@ export default function ScrollViewer() {
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
-  const { editMode } = useAppSelector(selectOcrEdit);
   const streamState = useAppSelector(selectStreamRuntime);
   const { autoFollowStream: autoFollowEnabled } = useAppSelector(selectStreamUiControls);
   const currentImage = manifest[currentPage] ?? null;
@@ -69,9 +67,7 @@ export default function ScrollViewer() {
   const {
     invert,
     brightness,
-    contrast,
-    dimOutsideBlocks,
-    dimOutsideBlocksIntensity
+    contrast
   } = settings;
   const virtuosoRef = useRef<VirtuosoHandle | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -313,12 +309,6 @@ export default function ScrollViewer() {
         itemContent={(index) => {
           const imageUrl = manifest[index];
           const entry = index === currentPage ? pageText : textCache[imageUrl] ?? null;
-          const overlayProps = {
-            imageUrl,
-            pageText: entry,
-            dimOutsideBlocks,
-            dimOutsideBlocksIntensity
-          };
           return (
             <div
               className={`scroll-viewer-page ${index === currentPage ? 'scroll-viewer-page-active' : ''}`}
@@ -333,15 +323,9 @@ export default function ScrollViewer() {
                   loading="lazy"
                 />
                 {index === currentPage ? (
-                  <OcrOverlay
-                    {...overlayProps}
-                    editMode={editMode}
-                  />
+                  <OcrOverlay imageUrl={imageUrl} />
                 ) : entry ? (
-                  <OcrOverlay
-                    {...overlayProps}
-                    editMode={false}
-                  />
+                  <OcrOverlay imageUrl={imageUrl} />
                 ) : null}
               </div>
             </div>
