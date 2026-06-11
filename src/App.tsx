@@ -91,7 +91,6 @@ export default function App() {
     setFirstChapterParagraph
   } = useChapterTextContext();
   const {
-    chapterViewRefresh,
     refreshChapterView
   } = useRefreshTokens();
   const pendingAlignTopRef = useRef(false);
@@ -140,8 +139,6 @@ export default function App() {
     setViewMode,
     loading,
     setBookModalOpen,
-    uploadingChapter,
-    deletingChapter,
     handleUploadChapter,
     handleCreateChapter,
     handleUploadPdf,
@@ -183,7 +180,6 @@ export default function App() {
     setTocEntries,
     sortedTocEntries,
     sortedDetailedTocEntries,
-    tocLoading,
     handleGenerateToc,
     handleSaveToc,
     handleAddTocEntry,
@@ -198,7 +194,7 @@ export default function App() {
   useEffect(() => {
     tocEntriesRef.current = setTocEntries;
   }, [setTocEntries]);
-  const { mp3Voice, setMp3Voice } = useMp3Voice({ bookId, mp3VoiceOptions, getDefaultMp3Voice });
+  const { setMp3Voice } = useMp3Voice({ bookId, mp3VoiceOptions, getDefaultMp3Voice });
   const currentChapterIndex = useMemo(() => {
     if (isTextBook) {
       return navigationCount > 0 ? currentPage : null;
@@ -324,7 +320,6 @@ export default function App() {
     updatePageTextBlocks
   } = usePageText(currentImage);
   const {
-    chapterVersionNavigationRequest,
     requestChapterVersionNavigation,
     clearChapterVersionNavigation
   } = useChapterVersionNavigation();
@@ -417,8 +412,7 @@ export default function App() {
     activeStreamLocator,
     activeTextParagraph,
     handlePlayVisibleStream,
-    handleActiveStreamVoiceChange,
-    handleMp3VoiceChange
+    handleActiveStreamVoiceChange
   } = useStreamControls({
     bookId,
     chapterNumber,
@@ -633,7 +627,6 @@ export default function App() {
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
   const {
     refreshUnits,
-    unitCreating,
     setUnitQuizLabel,
     handleOpenUnits,
     handleCreateUnit
@@ -989,11 +982,6 @@ export default function App() {
       chapterNumber,
       chapterTitle: currentChapterEntry?.title ?? null,
       pageRange: chapterRange,
-      tocLoading,
-      allowGenerate: !isTextBook,
-      allowEdit: true,
-      chapterCreating: uploadingChapter,
-      chapterDeleting: deletingChapter,
       onEditChapter: (payload: { versionId: string; versionLabel: string | null; text: string }) => {
         setEditorChapterNumber(chapterNumber);
         setEditorTextVersion(payload);
@@ -1005,17 +993,11 @@ export default function App() {
           }
         : undefined,
       onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
-      mp3Voice,
-      mp3VoiceOptions,
-      onMp3VoiceChange: handleMp3VoiceChange,
-      refreshToken: chapterViewRefresh,
-      versionNavigationRequest: chapterVersionNavigationRequest,
       onOpenAudioView: () => {
         clearChapterVersionNavigation();
         setViewMode('audio');
       },
       onCreateUnit: handleCreateUnit,
-      unitCreating,
       onDisplayedTextChange: setDisplayedChapterText,
       onFirstParagraphReady: setFirstChapterParagraph,
       onPlayParagraph: handlePlayChapterParagraph,

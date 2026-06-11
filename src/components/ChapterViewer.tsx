@@ -9,7 +9,18 @@ import TrashIcon from '@/components/TrashIcon';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
-import { selectViewerWorkflow, useAppSelector } from '@/state/appState';
+import {
+  appActions,
+  selectBookSessionWorkflow,
+  selectChapterVersionNavigationRequest,
+  selectRefreshTokens,
+  selectTocWorkflow,
+  selectUnitWorkflow,
+  selectViewerWorkflow,
+  selectVoiceWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface ChapterViewerProps {
@@ -17,11 +28,6 @@ interface ChapterViewerProps {
   chapterNumber: number | null;
   chapterTitle: string | null;
   pageRange: { start: number; end: number } | null;
-  tocLoading: boolean;
-  allowGenerate: boolean;
-  allowEdit: boolean;
-  chapterCreating?: boolean;
-  chapterDeleting?: boolean;
   onEditChapter: (payload: {
     versionId: string;
     versionLabel: string | null;
@@ -29,11 +35,6 @@ interface ChapterViewerProps {
   }) => void;
   onCreateChapter?: () => void | Promise<void>;
   onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
-  mp3Voice: string;
-  mp3VoiceOptions: readonly { id: string; label: string }[];
-  onMp3VoiceChange: (voice: string) => void;
-  refreshToken?: number;
-  versionNavigationRequest?: { id: number; chapterNumber: number; versionId: string } | null;
   onOpenAudioView: () => void;
   onCreateUnit: (payload: {
     text: string;
@@ -41,7 +42,6 @@ interface ChapterViewerProps {
     versionLabel: string | null;
     versionId: string | null;
   }) => void;
-  unitCreating: boolean;
   onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
   onDisplayedTextChange?: (payload: {
     text: string;
@@ -187,22 +187,11 @@ export default function ChapterViewer({
   chapterNumber,
   chapterTitle,
   pageRange,
-  tocLoading,
-  allowGenerate,
-  allowEdit,
-  chapterCreating = false,
-  chapterDeleting = false,
   onEditChapter,
   onCreateChapter,
   onDeleteChapter,
-  mp3Voice,
-  mp3VoiceOptions,
-  onMp3VoiceChange,
-  refreshToken = 0,
-  versionNavigationRequest = null,
   onOpenAudioView,
   onCreateUnit,
-  unitCreating,
   onFirstParagraphReady,
   onDisplayedTextChange,
   onPlayParagraph,
@@ -210,8 +199,21 @@ export default function ChapterViewer({
   playingParagraphStart,
   playingParagraphMode
 }: ChapterViewerProps) {
+  const dispatch = useAppDispatch();
   const { settings } = useAppSelector(selectViewerWorkflow);
+  const { loading: tocLoading } = useAppSelector(selectTocWorkflow);
+  const {
+    bookType,
+    uploadingChapter: chapterCreating,
+    deletingChapter: chapterDeleting
+  } = useAppSelector(selectBookSessionWorkflow);
+  const { chapterView: refreshToken } = useAppSelector(selectRefreshTokens);
+  const versionNavigationRequest = useAppSelector(selectChapterVersionNavigationRequest);
+  const { creating: unitCreating } = useAppSelector(selectUnitWorkflow);
+  const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
   const { textFontSize } = settings;
+  const allowEdit = true;
+  const allowGenerate = bookType !== 'text';
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
@@ -280,6 +282,22 @@ export default function ChapterViewer({
   const textStyle = useMemo(
     () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
     [textFontSize]
+  );
+  const mp3VoiceOptions = useMemo(
+    () =>
+      streamVoiceOptions.filter(
+        (option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'
+      ),
+    [streamVoiceOptions]
+  );
+  const handleMp3VoiceChange = useCallback(
+    (voice: string) => {
+      if (!mp3VoiceOptions.some((option) => option.id === voice)) {
+        return;
+      }
+      dispatch(appActions.setMp3Voice(voice));
+    },
+    [dispatch, mp3VoiceOptions]
   );
   const outlineItems = useMemo(() => parseTextOutline(displayText ?? ''), [displayText]);
   const outlineByOffset = useMemo(() => new Map(outlineItems.map((item) => [item.offset, item])), [outlineItems]);
@@ -879,7 +897,7 @@ export default function ChapterViewer({
                       <span>MP3 voice</span>
                       <select
                         value={mp3Voice}
-                        onChange={(event) => onMp3VoiceChange(event.target.value)}
+                        onChange={(event) => handleMp3VoiceChange(event.target.value)}
                         disabled={isAudioJobActive || audioGenerating}
                       >
                         {mp3VoiceOptions.map((voice) => (
