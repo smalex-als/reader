@@ -190,7 +190,7 @@ export default function App() {
   const {
     floatingAudioPlaybackState,
     playFloatingAudio: handlePlayFloatingAudio
-  } = useFloatingAudio({ audioState });
+  } = useFloatingAudio();
   const isListening =
     audioState.status === 'playing' ||
     streamState.status === 'streaming' ||

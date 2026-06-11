@@ -1,21 +1,17 @@
 import { useCallback, useEffect } from 'react';
 import {
   appActions,
+  selectAudioState,
   selectFloatingAudio,
   selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { AudioState } from '@/types/app';
 import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
-interface UseFloatingAudioOptions {
-  audioState: AudioState;
-}
-
-export function useFloatingAudio(options: UseFloatingAudioOptions) {
-  const { audioState } = options;
+export function useFloatingAudio() {
   const dispatch = useAppDispatch();
+  const audioState = useAppSelector(selectAudioState);
   const { bookId } = useAppSelector(selectReaderSession);
   const { track: floatingAudio, playbackState: floatingAudioPlaybackState } = useAppSelector(selectFloatingAudio);
 
