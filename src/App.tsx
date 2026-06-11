@@ -68,8 +68,7 @@ export default function App() {
     closeBookCard,
     setSettingsOpen,
     setEditorOpen,
-    setEditorChapterNumber,
-    setEditorTextVersion
+    setEditorChapterNumber
   } = useModalState();
   const {
     displayedChapterText,
@@ -837,11 +836,6 @@ export default function App() {
       onCurrentPageChange: handleScrollCurrentPageChange
     },
     chapterViewerProps: {
-      onEditChapter: (payload: { versionId: string; versionLabel: string | null; text: string }) => {
-        setEditorChapterNumber(chapterNumber);
-        setEditorTextVersion(payload);
-        setEditorOpen(true);
-      },
       onCreateChapter: isTextBook
         ? () => {
             void handleCreateChapter({ bookName: '', chapterTitle: '' });

@@ -25,11 +25,6 @@ import {
 import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface ChapterViewerProps {
-  onEditChapter: (payload: {
-    versionId: string;
-    versionLabel: string | null;
-    text: string;
-  }) => void;
   onCreateChapter?: () => void | Promise<void>;
   onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
   onOpenAudioView: () => void;
@@ -180,7 +175,6 @@ function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
 }
 
 export default function ChapterViewer({
-  onEditChapter,
   onCreateChapter,
   onDeleteChapter,
   onOpenAudioView,
@@ -768,13 +762,15 @@ export default function ChapterViewer({
             <button
               type="button"
               className="button button-secondary"
-              onClick={() =>
-                onEditChapter({
+              onClick={() => {
+                dispatch(appActions.setEditorChapterNumber(chapterNumber));
+                dispatch(appActions.setEditorTextVersion({
                   versionId: selectedVersionId || 'base',
                   versionLabel: selectedVersion?.label ?? null,
                   text: displayText ?? ''
-                })
-              }
+                }));
+                dispatch(appActions.setEditorOpen(true));
+              }}
               disabled={!displayText?.trim() || displayLoading}
             >
               Edit
