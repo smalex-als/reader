@@ -1357,12 +1357,6 @@ export default function App() {
       onTextThemeChange: updateTextTheme
     },
     audioViewProps: {
-      bookId,
-      tocEntries: sortedTocEntries,
-      tocLoading,
-      mp3Voice,
-      mp3VoiceOptions,
-      onMp3VoiceChange: handleMp3VoiceChange,
       onOpenChapterText: (pageIndex: number, versionId?: string, targetChapterNumber?: number) => {
         if (versionId && targetChapterNumber) {
           requestChapterVersionNavigation(targetChapterNumber, versionId);

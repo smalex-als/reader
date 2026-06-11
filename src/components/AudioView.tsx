@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
-import type { ChapterTextVersion, TocEntry } from '@/types/app';
+import {
+  appActions,
+  selectReaderSession,
+  selectTocWorkflow,
+  selectVoiceWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import type { ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/types/floatingAudio';
 import TrashIcon from '@/components/TrashIcon';
 
 interface AudioViewProps {
-  bookId: string | null;
-  tocEntries: TocEntry[];
-  tocLoading: boolean;
-  mp3Voice: string;
-  mp3VoiceOptions: readonly { id: string; label: string }[];
-  onMp3VoiceChange: (voice: string) => void;
   onOpenChapterText: (pageIndex: number, versionId?: string, chapterNumber?: number) => void;
   onPlayAudio: (payload: FloatingAudioTrack) => void;
 }
@@ -61,17 +63,12 @@ async function readErrorMessage(response: Response) {
   }
 }
 
-export default function AudioView({
-  bookId,
-  tocEntries,
-  tocLoading,
-  mp3Voice,
-  mp3VoiceOptions,
-  onMp3VoiceChange,
-  onOpenChapterText,
-  onPlayAudio
-}: AudioViewProps) {
+export default function AudioView({ onOpenChapterText, onPlayAudio }: AudioViewProps) {
+  const dispatch = useAppDispatch();
   const { showToast } = useToast();
+  const { bookId } = useAppSelector(selectReaderSession);
+  const { entries: tocEntries, loading: tocLoading } = useAppSelector(selectTocWorkflow);
+  const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
   const [statusMap, setStatusMap] = useState<Record<number, ChapterStatus>>({});
   const [statusLoading, setStatusLoading] = useState(false);
   const [audioBusy, setAudioBusy] = useState<Record<number, boolean>>({});
@@ -82,6 +79,19 @@ export default function AudioView({
   const pollTimers = useRef<Map<number, number>>(new Map());
   const pollAttempts = useRef<Map<number, number>>(new Map());
   const pollAudioJobStatusRef = useRef<(chapterNumber: number) => void>();
+  const mp3VoiceOptions = useMemo(
+    () =>
+      streamVoiceOptions.filter(
+        (option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'
+      ),
+    [streamVoiceOptions]
+  );
+  const handleMp3VoiceChange = useCallback(
+    (voice: string) => {
+      dispatch(appActions.setMp3Voice(voice));
+    },
+    [dispatch]
+  );
 
   const loadAudioStatus = useCallback(async () => {
     if (!bookId) {
@@ -383,7 +393,7 @@ export default function AudioView({
             <select
               className="select"
               value={mp3Voice}
-              onChange={(event) => onMp3VoiceChange(event.target.value)}
+              onChange={(event) => handleMp3VoiceChange(event.target.value)}
             >
               {mp3VoiceOptions.map((voice) => (
                 <option key={voice.id} value={voice.id}>
