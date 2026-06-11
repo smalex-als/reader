@@ -20,7 +20,6 @@ import { useUnitsRouteState, useUnitsRouteSync } from '@/hooks/useUnitsRoute';
 import { useStreamHistoryLogger } from '@/hooks/useStreamHistoryLogger';
 import { useOcrEditMode } from '@/hooks/useOcrEditMode';
 import { useShareLink } from '@/hooks/useShareLink';
-import { useCopyActions } from '@/hooks/useCopyActions';
 import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
 import { useFloatingAudio } from '@/hooks/useFloatingAudio';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -526,12 +525,6 @@ export default function App() {
     resetQueue();
     dispatch(appActions.closeModal('ocrQueue'));
   }, [bookId, dispatch, resetQueue]);
-
-  const { handleCopyText } = useCopyActions({
-    currentImage,
-    currentText,
-    fetchPageText
-  });
 
   useShareLink();
 

@@ -1,20 +1,19 @@
 import { useCallback } from 'react';
+import { usePageText } from '@/hooks/usePageText';
 import { useToast } from '@/hooks/useToast';
 import { copyToClipboard } from '@/lib/clipboard';
-import type { PageText } from '@/types/app';
+import {
+  selectBookSessionWorkflow,
+  selectReaderSession,
+  useAppSelector
+} from '@/state/appState';
 
-interface UseCopyActionsOptions {
-  currentImage: string | null;
-  currentText: PageText | null;
-  fetchPageText: () => Promise<PageText | null>;
-}
-
-export function useCopyActions({
-  currentImage,
-  currentText,
-  fetchPageText
-}: UseCopyActionsOptions) {
+export function useCopyActions() {
   const { showToast } = useToast();
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const currentImage = manifest[currentPage] ?? null;
+  const { currentText, fetchPageText } = usePageText(currentImage);
 
   const handleCopyText = useCallback(async (overrideText?: string) => {
     if (!overrideText && !currentImage) {

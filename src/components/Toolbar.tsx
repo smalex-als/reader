@@ -58,12 +58,8 @@ export default function Toolbar() {
   const isTextBook = bookType === 'text';
   const currentImage = manifest[currentPage] ?? null;
   const navigationCount = isTextBook ? chapterCount : manifest.length;
-  const { currentText, fetchPageText, toggleTextModal } = usePageText(currentImage);
-  const { handleCopyText } = useCopyActions({
-    currentImage,
-    currentText,
-    fetchPageText
-  });
+  const { toggleTextModal } = usePageText(currentImage);
+  const { handleCopyText } = useCopyActions();
   const { shareLink } = useShareLink({ trackOpened: false });
   const manifestLength = navigationCount;
   const disableImageActions = isTextBook;
