@@ -16,7 +16,6 @@ import { useModalState } from '@/hooks/useModalState';
 import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
-import { useRefreshTokens } from '@/hooks/useRefreshTokens';
 import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useStreamControls } from '@/hooks/useStreamControls';
@@ -78,9 +77,6 @@ export default function App() {
     firstChapterParagraph,
     setFirstChapterParagraph
   } = useChapterTextContext();
-  const {
-    refreshChapterView
-  } = useRefreshTokens();
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
@@ -839,14 +835,6 @@ export default function App() {
       },
       onOpenImagePreview: handleOpenImagePreview,
       onCurrentPageChange: handleScrollCurrentPageChange
-    },
-    chapterEditorProps: {
-      onSaved: (nextToc: TocEntry[] | null) => {
-        if (nextToc) {
-          setTocEntries(nextToc);
-        }
-        refreshChapterView();
-      }
     },
     chapterViewerProps: {
       onEditChapter: (payload: { versionId: string; versionLabel: string | null; text: string }) => {

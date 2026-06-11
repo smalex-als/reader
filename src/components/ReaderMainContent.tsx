@@ -19,7 +19,6 @@ import {
 
 type ViewerProps = ComponentProps<typeof Viewer>;
 type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
-type ChapterEditorProps = ComponentProps<typeof ChapterEditor>;
 type ChapterViewerProps = ComponentProps<typeof ChapterViewer>;
 type AudioLibraryViewProps = ComponentProps<typeof AudioLibraryView>;
 type UnitsViewProps = ComponentProps<typeof UnitsView>;
@@ -33,7 +32,6 @@ interface ReaderMainContentProps {
   footerMessage: string;
   viewerProps: ViewerProps;
   scrollViewerProps: ScrollViewerProps;
-  chapterEditorProps: ChapterEditorProps;
   chapterViewerProps: ChapterViewerProps;
   audioLibraryViewProps: AudioLibraryViewProps;
   unitsViewProps: UnitsViewProps;
@@ -48,7 +46,6 @@ export default function ReaderMainContent({
   footerMessage,
   viewerProps,
   scrollViewerProps,
-  chapterEditorProps,
   chapterViewerProps,
   audioLibraryViewProps,
   unitsViewProps,
@@ -86,7 +83,7 @@ export default function ReaderMainContent({
           <ScrollViewer {...scrollViewerProps} />
         ) : viewMode === 'text' ? (
           editorOpen ? (
-            <ChapterEditor {...chapterEditorProps} />
+            <ChapterEditor />
           ) : (
             <ChapterViewer {...chapterViewerProps} />
           )

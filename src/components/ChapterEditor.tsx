@@ -10,17 +10,11 @@ import {
 } from '@/state/appState';
 import type { TocEntry } from '@/types/app';
 
-interface ChapterEditorProps {
-  onSaved: (toc: TocEntry[] | null) => void;
-}
-
 function formatChapterFilename(chapterNumber: number) {
   return `chapter${String(chapterNumber).padStart(3, '0')}.txt`;
 }
 
-export default function ChapterEditor({
-  onSaved
-}: ChapterEditorProps) {
+export default function ChapterEditor() {
   const dispatch = useAppDispatch();
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
   const { bookType, chapterCount } = useAppSelector(selectBookSessionWorkflow);
@@ -152,7 +146,10 @@ export default function ChapterEditor({
         throw new Error(`Save failed: ${response.status}`);
       }
       const payload = (await response.json()) as { toc?: TocEntry[] };
-      onSaved(Array.isArray(payload.toc) ? payload.toc : null);
+      if (Array.isArray(payload.toc)) {
+        dispatch(appActions.setTocEntries(payload.toc));
+      }
+      dispatch(appActions.refreshChapterView());
       handleClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to save chapter.';
@@ -160,7 +157,7 @@ export default function ChapterEditor({
     } finally {
       setSaving(false);
     }
-  }, [bookId, chapterNumber, draftText, draftTitle, editingTextVersion, handleClose, onSaved, saving, versionId]);
+  }, [bookId, chapterNumber, dispatch, draftText, draftTitle, editingTextVersion, handleClose, saving, versionId]);
 
   return (
     <div className="chapter-editor">
