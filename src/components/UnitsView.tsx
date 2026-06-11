@@ -18,8 +18,6 @@ import type { SelfCheckResult, StreamState, UnitItem, UnitSet } from '@/types/ap
 
 interface UnitsViewProps {
   streamState: StreamState;
-  onPlayTopicParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
-  onStopAudio: () => void;
 }
 
 async function readErrorMessage(response: Response) {
@@ -149,9 +147,7 @@ function ReadStatusIcon({ read }: { read: boolean }) {
 }
 
 export default function UnitsView({
-  streamState,
-  onPlayTopicParagraph,
-  onStopAudio
+  streamState
 }: UnitsViewProps) {
   const dispatch = useAppDispatch();
   const { selectedUnitSetId: selectedSetId, selectedUnitTopicId: selectedTopicId } =
@@ -431,11 +427,11 @@ export default function UnitsView({
       );
     };
     const playTextBlock = (textValue: string, startIndex: number) => {
-      onPlayTopicParagraph({
+      dispatch(appActions.requestStudyAudioUnitTopicParagraph({
         fullText: topicText,
         startIndex,
         key: unitStreamBaseKey
-      });
+      }));
     };
     const markdownComponents = {
       p: ({ children, node }: { children?: ReactNode; node?: any }) => {
@@ -551,14 +547,14 @@ export default function UnitsView({
               className="button button-secondary"
               onClick={() => {
                 if (topicStreamActive) {
-                  onStopAudio();
+                  dispatch(appActions.requestStudyAudioStop());
                   return;
                 }
-                onPlayTopicParagraph({
+                dispatch(appActions.requestStudyAudioUnitTopicParagraph({
                   fullText: topicSpeechText,
                   startIndex: 0,
                   key: unitStreamBaseKey
-                });
+                }));
               }}
               disabled={!topicStreamActive && !topicSpeechText.trim()}
             >

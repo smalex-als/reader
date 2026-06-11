@@ -152,6 +152,7 @@ export type StudyAudioCommandRequest = {
   | { kind: 'quizRegenerate'; modal: QuizModal }
   | { kind: 'vocabulary'; text: string; chapterNumber: number }
   | { kind: 'memoryCard'; text: string; chapterNumber: number }
+  | { kind: 'unitTopicParagraph'; fullText: string; startIndex: number; key: string }
 );
 
 export interface ReaderSessionState {
@@ -407,6 +408,7 @@ export type AppAction =
   | { type: 'studyAudioCommand/requestQuizRegenerate'; modal: QuizModal }
   | { type: 'studyAudioCommand/requestVocabulary'; text: string; chapterNumber: number }
   | { type: 'studyAudioCommand/requestMemoryCard'; text: string; chapterNumber: number }
+  | { type: 'studyAudioCommand/requestUnitTopicParagraph'; fullText: string; startIndex: number; key: string }
   | { type: 'studyAudioCommand/clearRequest' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
@@ -829,6 +831,14 @@ export const appActions = {
   }),
   requestStudyAudioMemoryCard: (payload: { text: string; chapterNumber: number }): AppAction => ({
     type: 'studyAudioCommand/requestMemoryCard',
+    ...payload
+  }),
+  requestStudyAudioUnitTopicParagraph: (payload: {
+    fullText: string;
+    startIndex: number;
+    key: string;
+  }): AppAction => ({
+    type: 'studyAudioCommand/requestUnitTopicParagraph',
     ...payload
   }),
   clearStudyAudioCommandRequest: (): AppAction => ({ type: 'studyAudioCommand/clearRequest' }),
@@ -1622,6 +1632,17 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           kind: 'memoryCard',
           text: action.text,
           chapterNumber: action.chapterNumber
+        }
+      };
+    case 'studyAudioCommand/requestUnitTopicParagraph':
+      return {
+        ...state,
+        studyAudioCommandRequest: {
+          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
+          kind: 'unitTopicParagraph',
+          fullText: action.fullText,
+          startIndex: action.startIndex,
+          key: action.key
         }
       };
     case 'studyAudioCommand/clearRequest':

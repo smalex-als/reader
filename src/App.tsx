@@ -605,16 +605,23 @@ export default function App() {
         text: studyAudioCommandRequest.text,
         pageKey: `vocabulary::chapter-${studyAudioCommandRequest.chapterNumber}`
       });
-    } else {
+    } else if (studyAudioCommandRequest.kind === 'memoryCard') {
       void handlePlaySingleStream({
         text: studyAudioCommandRequest.text,
         pageKey: `memory-card::chapter-${studyAudioCommandRequest.chapterNumber}`
+      });
+    } else {
+      void handlePlayChapterParagraph({
+        fullText: studyAudioCommandRequest.fullText,
+        startIndex: studyAudioCommandRequest.startIndex,
+        key: studyAudioCommandRequest.key
       });
     }
 
     dispatch(appActions.clearStudyAudioCommandRequest());
   }, [
     dispatch,
+    handlePlayChapterParagraph,
     handlePlaySingleStream,
     handleRegenerateQuiz,
     handleRegenerateUnitTopicQuiz,
@@ -779,9 +786,7 @@ export default function App() {
       playingParagraphMode: activeTextParagraph.mode
     },
     unitsViewProps: {
-      streamState,
-      onPlayTopicParagraph: handlePlayChapterParagraph,
-      onStopAudio: handleStopStream
+      streamState
     },
     streamBubbleProps: {
       streamState
