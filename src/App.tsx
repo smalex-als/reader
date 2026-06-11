@@ -67,7 +67,6 @@ export default function App() {
   const {
     closeOcrQueue,
     closeSearch,
-    openBookCard,
     closeBookCard,
     setSettingsOpen,
     setEditorOpen,
@@ -743,8 +742,7 @@ export default function App() {
     bookSelectModalProps: {
       onDelete: handleDeleteBook,
       onUploadChapter: handleUploadChapter,
-      onUploadPdf: handleUploadPdf,
-      onOpenEditCard: openBookCard
+      onUploadPdf: handleUploadPdf
     },
     bookmarksModalProps: {
       onSelect: handleSelectBookmark

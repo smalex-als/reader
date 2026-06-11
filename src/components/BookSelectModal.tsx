@@ -33,14 +33,12 @@ interface BookSelectModalProps {
   onDelete: (bookId: string) => void;
   onUploadChapter: (file: File, details: { bookName: string; chapterTitle: string }) => void;
   onUploadPdf: (file: File) => void;
-  onOpenEditCard: (bookId: string) => void;
 }
 
 export default function BookSelectModal({
   onDelete,
   onUploadChapter,
-  onUploadPdf,
-  onOpenEditCard
+  onUploadPdf
 }: BookSelectModalProps) {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('bookSelect'));
@@ -306,7 +304,7 @@ export default function BookSelectModal({
                         <button
                           type="button"
                           className="button button-ghost"
-                          onClick={() => onOpenEditCard(book)}
+                          onClick={() => dispatch(appActions.openBookCard(book))}
                         >
                           Edit
                         </button>
