@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import type { Bookmark } from '@/types/app';
 import { fetchJson } from '@/lib/fetchJson';
 import { useToast } from '@/hooks/useToast';
@@ -148,19 +148,12 @@ export function useBookmarks(options: UseBookmarksOptions) {
     void fetchBookmarks(bookId);
   }, [bookId, dispatch, fetchBookmarks]);
 
-  const isBookmarked = useMemo(() => bookmarks.some((entry) => entry.page === currentPage), [
-    bookmarks,
-    currentPage
-  ]);
-
   return {
     addBookmark,
-    bookmarksCount: bookmarks.length,
     closeBookmarks,
     fetchBookmarks,
     handleRemoveBookmarkFromList,
     handleSelectBookmark,
-    isBookmarked,
     removeBookmark,
     showBookmarks,
     toggleBookmark

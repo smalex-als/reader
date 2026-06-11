@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
+import {
+  appActions,
+  selectBookmarkWorkflow,
+  selectBookSessionWorkflow,
+  selectNavigationState,
+  selectReaderSession,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { StreamState } from '@/types/app';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
-type MainView = 'reader' | 'audio-library' | 'units';
 
 type StreamVoiceOption = {
   id: string;
@@ -10,20 +18,9 @@ type StreamVoiceOption = {
 };
 
 interface ReaderSidebarProps {
-  currentBook: string | null;
-  manifestLength: number;
-  currentPage: number;
-  mainView: MainView;
-  viewMode: ViewMode;
-  disablePagesMode: boolean;
-  disableScrollMode: boolean;
-  audioLibraryOpen: boolean;
-  unitsLibraryOpen: boolean;
   streamState: StreamState;
   streamVoice: string;
   streamVoiceOptions: readonly StreamVoiceOption[];
-  isBookmarked: boolean;
-  bookmarksCount: number;
   onOpenBookModal: () => void;
   onOpenAudioLibrary: () => void;
   onOpenUnits: () => void;
@@ -39,7 +36,6 @@ interface ReaderSidebarProps {
   onPlayStream: () => void;
   onStopStream: () => void;
   onOpenListeningDashboard: () => void;
-  onOpenSettings: () => void;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'scanned-reader:sidebarCollapsed';
@@ -87,20 +83,9 @@ function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'a
 }
 
 export default function ReaderSidebar({
-  currentBook,
-  manifestLength,
-  currentPage,
-  mainView,
-  viewMode,
-  disablePagesMode,
-  disableScrollMode,
-  audioLibraryOpen,
-  unitsLibraryOpen,
   streamState,
   streamVoice,
   streamVoiceOptions,
-  isBookmarked,
-  bookmarksCount,
   onOpenBookModal,
   onOpenAudioLibrary,
   onOpenUnits,
@@ -115,11 +100,23 @@ export default function ReaderSidebar({
   onStreamVoiceChange,
   onPlayStream,
   onStopStream,
-  onOpenListeningDashboard,
-  onOpenSettings
+  onOpenListeningDashboard
 }: ReaderSidebarProps) {
+  const dispatch = useAppDispatch();
+  const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { mainView } = useAppSelector(selectNavigationState);
+  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
   const [collapsed, setCollapsed] = useState(readInitialCollapsed);
   const [pageDraft, setPageDraft] = useState('');
+  const isTextBook = bookType === 'text';
+  const manifestLength = isTextBook ? chapterCount : manifest.length;
+  const disablePagesMode = isTextBook;
+  const disableScrollMode = isTextBook;
+  const audioLibraryOpen = mainView === 'audio-library';
+  const unitsLibraryOpen = mainView === 'units';
+  const isBookmarked = bookmarks.some((entry) => entry.page === currentPage);
+  const bookmarksCount = bookmarks.length;
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const streamActive =
     streamState.status === 'streaming' ||
@@ -326,7 +323,13 @@ export default function ReaderSidebar({
       </div>
 
       <div className="reader-sidebar-footer">
-        <button type="button" className="reader-sidebar-action" onClick={onOpenSettings} title="Settings" data-tooltip="Settings">
+        <button
+          type="button"
+          className="reader-sidebar-action"
+          onClick={() => dispatch(appActions.openModal('settings'))}
+          title="Settings"
+          data-tooltip="Settings"
+        >
           <SidebarIcon name="settings" />
           <span className="reader-sidebar-label">Settings</span>
         </button>

@@ -554,11 +554,9 @@ export default function App() {
   );
 
   const {
-    bookmarksCount,
     closeBookmarks,
     handleRemoveBookmarkFromList,
     handleSelectBookmark,
-    isBookmarked,
     showBookmarks,
     toggleBookmark
   } = useBookmarks({
@@ -743,15 +741,6 @@ export default function App() {
   });
 
   const sidebarProps = {
-    currentBook: bookId,
-    manifestLength: navigationCount,
-    currentPage,
-    audioLibraryOpen: mainView === 'audio-library',
-    unitsLibraryOpen: mainView === 'units',
-    viewMode,
-    disablePagesMode: isTextBook,
-    disableScrollMode: isTextBook,
-    disableImageActions: isTextBook,
     onViewModeChange: handleViewModeChange,
     onOpenAudioLibrary: handleOpenAudioLibrary,
     onOpenUnits: handleOpenUnits,
@@ -774,8 +763,6 @@ export default function App() {
       showBookmarks();
     },
     onOpenSearch: openSearch,
-    isBookmarked,
-    bookmarksCount,
     onOpenToc: () => {
       setSettingsOpen(false);
       setTocOpen(true);
@@ -1170,8 +1157,6 @@ export default function App() {
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
       <ReaderSidebar
         {...sidebarProps}
-        mainView={mainView}
-        onOpenSettings={() => setSettingsOpen(true)}
       />
       <ReaderMainContent {...mainContentProps} />
       <ReaderModalLayer
