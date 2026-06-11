@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import {
   appActions,
-  selectModalOpen,
+  selectBookSessionWorkflow,
   selectPrintWorkflow,
+  selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -13,26 +14,15 @@ interface PrintOption {
   label: string;
   detail: string;
   pages: number[];
+  disabled?: boolean;
 }
 
-interface UsePrintOptionsParams {
-  bookId: string | null;
-  manifest: string[];
-  currentPage: number;
-}
-
-export function usePrintOptions({ bookId, manifest, currentPage }: UsePrintOptionsParams) {
+export function usePrintOptions() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
-  const printModalOpen = useAppSelector(selectModalOpen('print'));
-  const { selection: printSelection, loading: printLoading } = useAppSelector(selectPrintWorkflow);
-
-  const setPrintSelection = useCallback(
-    (selection: string) => {
-      dispatch(appActions.setPrintSelection(selection));
-    },
-    [dispatch]
-  );
+  const { bookId, currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { selection: printSelection } = useAppSelector(selectPrintWorkflow);
 
   const printOptions = useMemo(() => {
     const options: PrintOption[] = [];
@@ -81,10 +71,6 @@ export function usePrintOptions({ bookId, manifest, currentPage }: UsePrintOptio
       dispatch(appActions.setPrintSelection(selectedPrintOption.id));
     }
   }, [dispatch, selectedPrintOption]);
-
-  const closePrintModal = useCallback(() => {
-    dispatch(appActions.closeModal('print'));
-  }, [dispatch]);
 
   const createPrintPdf = useCallback(async () => {
     if (!bookId || !selectedPrintOption) {
@@ -142,14 +128,8 @@ export function usePrintOptions({ bookId, manifest, currentPage }: UsePrintOptio
   }, [dispatch, printOptions, printSelection]);
 
   return {
-    closePrintModal,
     createPrintPdf,
     openPrintModal,
-    printLoading,
-    printModalOpen,
-    printOptions,
-    printSelection,
-    selectedPrintOption,
-    setPrintSelection
+    printOptions
   };
 }

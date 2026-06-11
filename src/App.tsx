@@ -542,16 +542,7 @@ export default function App() {
     retryFailed,
     togglePause
   } = useOcrQueue({ manifest, currentPage });
-  const {
-    closePrintModal,
-    createPrintPdf,
-    openPrintModal,
-    printLoading,
-    printModalOpen,
-    printOptions,
-    selectedPrintOption,
-    setPrintSelection
-  } = usePrintOptions({ bookId, manifest, currentPage });
+  const { openPrintModal } = usePrintOptions();
   useEffect(() => {
     if (
       !pendingAlignTopRef.current ||
@@ -963,15 +954,6 @@ export default function App() {
 
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null,
-    printModalProps: {
-      open: printModalOpen,
-      options: printOptions,
-      selectedId: selectedPrintOption?.id ?? null,
-      onSelect: setPrintSelection,
-      onClose: closePrintModal,
-      onConfirm: () => void createPrintPdf(),
-      loading: printLoading
-    },
     bookSelectModalProps: {
       onDelete: handleDeleteBook,
       onUploadChapter: handleUploadChapter,

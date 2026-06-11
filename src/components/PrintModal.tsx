@@ -1,31 +1,26 @@
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectModalOpen,
+  selectPrintWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import { usePrintOptions } from '@/hooks/usePrintOptions';
 
-interface PrintOption {
-  id: string;
-  label: string;
-  detail: string;
-  disabled?: boolean;
-}
+export default function PrintModal() {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('print'));
+  const { selection: selectedId, loading } = useAppSelector(selectPrintWorkflow);
+  const { createPrintPdf, printOptions: options } = usePrintOptions();
 
-interface PrintModalProps {
-  open: boolean;
-  options: PrintOption[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onClose: () => void;
-  onConfirm: () => void;
-  loading?: boolean;
-}
+  const handleClose = () => {
+    dispatch(appActions.closeModal('print'));
+  };
+  const handleSelect = (id: string) => {
+    dispatch(appActions.setPrintSelection(id));
+  };
 
-export default function PrintModal({
-  open,
-  options,
-  selectedId,
-  onSelect,
-  onClose,
-  onConfirm,
-  loading = false
-}: PrintModalProps) {
   if (!open) {
     return null;
   }
@@ -40,7 +35,7 @@ export default function PrintModal({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close print dialog"
             title="Close print dialog"
           >
@@ -64,7 +59,7 @@ export default function PrintModal({
                     value={option.id}
                     checked={selectedId === option.id}
                     disabled={option.disabled || loading}
-                    onChange={() => onSelect(option.id)}
+                    onChange={() => handleSelect(option.id)}
                   />
                   <div className="print-option-body">
                     <span className="print-option-title">{option.label}</span>
@@ -76,13 +71,13 @@ export default function PrintModal({
           ) : null}
         </section>
         <footer className="modal-footer">
-          <button type="button" className="button button-secondary" onClick={onClose} disabled={loading}>
+          <button type="button" className="button button-secondary" onClick={handleClose} disabled={loading}>
             Cancel
           </button>
           <button
             type="button"
             className="button button-primary"
-            onClick={onConfirm}
+            onClick={() => void createPrintPdf()}
             disabled={loading || !hasOptions}
           >
             {loading ? 'Creating…' : 'Create PDF'}
