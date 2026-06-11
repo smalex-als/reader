@@ -15,7 +15,7 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
 
-export function useZoom(_initialSettings: AppSettings) {
+export function useViewerTransformControls() {
   const dispatch = useAppDispatch();
   const { settings, metrics } = useAppSelector(selectViewerWorkflow);
 
@@ -112,6 +112,46 @@ export function useZoom(_initialSettings: AppSettings) {
     updateTransform({ zoom: 1, zoomMode: 'custom', rotation: 0, pan: { x: 0, y: 0 } });
   }, [updateTransform]);
 
+  const applyFilters = useCallback(
+    (
+      filters: Partial<
+        Pick<AppSettings, 'brightness' | 'contrast' | 'invert' | 'dimOutsideBlocks' | 'dimOutsideBlocksIntensity'>
+      >
+    ) => {
+      setSettings((prev) => ({
+        ...prev,
+        ...filters
+      }));
+    },
+    [setSettings]
+  );
+
+  return {
+    settings,
+    setSettings,
+    metrics,
+    applyZoomMode,
+    updateZoom,
+    updateRotation,
+    updatePan,
+    resetTransform,
+    applyFilters
+  };
+}
+
+export function useZoom() {
+  const {
+    settings,
+    setSettings,
+    metrics,
+    applyZoomMode,
+    updateZoom,
+    updateRotation,
+    updatePan,
+    resetTransform,
+    applyFilters
+  } = useViewerTransformControls();
+
   useEffect(() => {
     if (!metrics) {
       return;
@@ -130,6 +170,7 @@ export function useZoom(_initialSettings: AppSettings) {
     updateZoom,
     updateRotation,
     updatePan,
-    resetTransform
+    resetTransform,
+    applyFilters
   };
 }

@@ -31,13 +31,11 @@ import { clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
 import { makeStreamLocator } from '@/lib/streamLocator';
 import {
-  createDefaultSettings,
   getMainViewFromLocation,
   normalizeTextFontSize,
   normalizeTextTheme,
   type MainView
 } from '@/lib/appConstants';
-import type { AppSettings } from '@/types/app';
 import {
   appActions,
   selectChapterCommandRequest,
@@ -67,11 +65,8 @@ export default function App() {
     settings,
     setSettings,
     metrics,
-    applyZoomMode,
-    updateZoom,
-    updateRotation,
-    updatePan
-  } = useZoom(createDefaultSettings());
+    applyZoomMode
+  } = useZoom();
 
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const gotoInputRef = useRef<HTMLInputElement | null>(null);
@@ -174,8 +169,7 @@ export default function App() {
     fetchPageText,
     fetchPageTextByImage,
     resetTextState,
-    textLoading,
-    toggleTextModal
+    textLoading
   } = usePageText();
   useEffect(() => {
     dispatch(appActions.setDisplayedChapterText(null));
@@ -391,20 +385,6 @@ export default function App() {
     handleOpenAudioLibrary
   } = useDashboardNavigation();
 
-  const applyFilters = useCallback(
-    (
-      filters: Partial<
-        Pick<AppSettings, 'brightness' | 'contrast' | 'invert' | 'dimOutsideBlocks' | 'dimOutsideBlocksIntensity'>
-      >
-    ) => {
-      setSettings((prev) => ({
-        ...prev,
-        ...filters
-      }));
-    },
-    [setSettings]
-  );
-
   useEffect(() => {
     if (!studyModeToggleRequest) {
       return;
@@ -600,21 +580,6 @@ export default function App() {
   ]);
 
   useHotkeys({
-    updatePan,
-    updateZoom,
-    updateRotation,
-    applyFilters,
-    toggleTextModal,
-    triggerBackgroundOcr: async () => {
-      if (!currentImage || isTextBook) {
-        return;
-      }
-      showToast('Starting OCR…', 'info');
-      const pageText = await fetchPageText({ force: true, silent: true, engine: 'deepseek_ocr' });
-      if (pageText) {
-        showToast('OCR finished', 'success');
-      }
-    },
     handlePlayNextStudyBlock,
     gotoInputRef
   });

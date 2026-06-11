@@ -1,7 +1,10 @@
 import { useCallback, useEffect, type RefObject } from 'react';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
+import { usePageText } from '@/hooks/usePageText';
+import { useToast } from '@/hooks/useToast';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
+import { useViewerTransformControls } from '@/hooks/useZoom';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
 import {
   appActions,
@@ -11,19 +14,11 @@ import {
   selectNavigationState,
   selectReaderSession,
   selectStreamRuntime,
-  selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { AppSettings, ViewerPan } from '@/types/app';
 
 type HotkeysOptions = {
-  updatePan: (pan: ViewerPan) => void;
-  updateZoom: (zoom: number, mode?: AppSettings['zoomMode']) => void;
-  updateRotation: () => void;
-  applyFilters: (filters: Partial<Pick<AppSettings, 'brightness' | 'contrast' | 'invert'>>) => void;
-  toggleTextModal: () => void;
-  triggerBackgroundOcr: () => Promise<void> | void;
   handlePlayNextStudyBlock: () => Promise<void> | void;
   gotoInputRef: RefObject<HTMLInputElement>;
 };
@@ -37,20 +32,22 @@ function isTextInput(element: EventTarget | null) {
 }
 
 export function useHotkeys({
-  updatePan,
-  updateZoom,
-  updateRotation,
-  applyFilters,
-  toggleTextModal,
-  triggerBackgroundOcr,
   handlePlayNextStudyBlock,
   gotoInputRef
 }: HotkeysOptions) {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
   const { currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { manifest, bookType } = useAppSelector(selectBookSessionWorkflow);
-  const { settings } = useAppSelector(selectViewerWorkflow);
+  const {
+    settings,
+    updatePan,
+    updateZoom,
+    updateRotation,
+    applyFilters
+  } = useViewerTransformControls();
+  const { fetchPageText, toggleTextModal } = usePageText();
   const streamState = useAppSelector(selectStreamRuntime);
   const textModalOpen = useAppSelector(selectModalOpen('text'));
   const helpOpen = useAppSelector(selectModalOpen('help'));
@@ -96,6 +93,16 @@ export function useHotkeys({
     dispatch(appActions.closeModal('settings'));
     void openVocabulary();
   }, [dispatch, openVocabulary]);
+  const triggerBackgroundOcr = useCallback(async () => {
+    if (!currentImage || isTextBook) {
+      return;
+    }
+    showToast('Starting OCR...', 'info');
+    const pageText = await fetchPageText({ force: true, silent: true, engine: 'deepseek_ocr' });
+    if (pageText) {
+      showToast('OCR finished', 'success');
+    }
+  }, [currentImage, fetchPageText, isTextBook, showToast]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
