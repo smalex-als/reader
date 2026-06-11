@@ -88,8 +88,7 @@ export default function App() {
     updateZoom,
     updateRotation,
     updatePan,
-    resetTransform,
-    handleMetricsChange
+    resetTransform
   } = useZoom(createDefaultSettings());
 
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
@@ -756,9 +755,6 @@ export default function App() {
     viewerProps: {
       currentBlockId: activeStreamLocator?.imageUrl === currentImage ? activeStreamLocator.blockId : null,
       playingBlockId: playingStreamLocator?.imageUrl === currentImage ? playingStreamLocator.blockId : null,
-      onPan: updatePan,
-      onZoom: updateZoom,
-      onMetricsChange: handleMetricsChange,
       onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
         setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));
         void handlePlayPageBlock(payload);

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ZOOM_STEP } from '@/lib/hotkeys';
+import { clampPan } from '@/lib/math';
 import OcrOverlay from '@/components/OcrOverlay';
 import {
+  appActions,
   selectBookSessionWorkflow,
   selectOcrEdit,
   selectPageTextWorkflow,
   selectReaderSession,
   selectViewerWorkflow,
+  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { AppSettings, ViewerMetrics, ViewerPan } from '@/types/app';
@@ -15,9 +18,6 @@ import type { AppSettings, ViewerMetrics, ViewerPan } from '@/types/app';
 interface ViewerProps {
   currentBlockId?: string | null;
   playingBlockId?: string | null;
-  onPan: (pan: ViewerPan) => void;
-  onZoom: (zoom: number, mode?: AppSettings['zoomMode'], pan?: ViewerPan) => void;
-  onMetricsChange: (metrics: ViewerMetrics) => void;
   onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
 }
@@ -35,12 +35,10 @@ const ZOOM_MAX = 6;
 export default function Viewer({
   currentBlockId = null,
   playingBlockId = null,
-  onPan,
-  onZoom,
-  onMetricsChange,
   onPlayTextBlock,
   onToggleSpeechBlock
 }: ViewerProps) {
+  const dispatch = useAppDispatch();
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
@@ -69,13 +67,45 @@ export default function Viewer({
   const transform = useMemo(() => {
     return `translate(${settings.pan.x}px, ${settings.pan.y}px) scale(${settings.zoom}) rotate(${rotation}deg)`;
   }, [rotation, settings.pan.x, settings.pan.y, settings.zoom]);
+  const updateTransform = useCallback(
+    (partial: Partial<Pick<AppSettings, 'zoom' | 'zoomMode' | 'rotation' | 'pan'>>) => {
+      const requestedZoom = partial.zoom ?? settings.zoom;
+      const clampedZoom = Math.min(Math.max(requestedZoom, ZOOM_MIN), ZOOM_MAX);
+      const nextZoomMode = partial.zoomMode ?? settings.zoomMode;
+      const basePan = partial.pan ?? settings.pan;
+      const panMetrics = { ...metrics, scale: clampedZoom };
+      const nextPan = clampPan(basePan, panMetrics);
+      const nextRotation = partial.rotation ?? settings.rotation;
+      dispatch(appActions.setViewerSettings({
+        ...settings,
+        ...partial,
+        zoom: clampedZoom,
+        zoomMode: nextZoomMode,
+        rotation: nextRotation,
+        pan: nextPan
+      }));
+    },
+    [dispatch, metrics, settings]
+  );
+  const updatePan = useCallback(
+    (nextPan: ViewerPan) => {
+      updateTransform({ pan: nextPan });
+    },
+    [updateTransform]
+  );
+  const updateZoom = useCallback(
+    (nextZoom: number, mode: AppSettings['zoomMode'] = 'custom', pan?: ViewerPan) => {
+      updateTransform({ zoom: nextZoom, zoomMode: mode, pan });
+    },
+    [updateTransform]
+  );
   const updateMetrics = useCallback(() => {
     const container = containerRef.current;
     const image = imageRef.current;
     if (!container || !image) {
       const emptyMetrics = { ...INITIAL_METRICS, scale: settings.zoom };
       setMetrics(emptyMetrics);
-      onMetricsChange(emptyMetrics);
+      dispatch(appActions.setViewerMetrics(emptyMetrics));
       return;
     }
     const rect = container.getBoundingClientRect();
@@ -87,8 +117,8 @@ export default function Viewer({
       scale: settings.zoom
     };
     setMetrics(nextMetrics);
-    onMetricsChange(nextMetrics);
-  }, [onMetricsChange, settings.zoom]);
+    dispatch(appActions.setViewerMetrics(nextMetrics));
+  }, [dispatch, settings.zoom]);
 
   const handlePointerMove = useCallback(
       (event: PointerEvent) => {
@@ -102,9 +132,9 @@ export default function Viewer({
           x: pointerState.current.pan.x + deltaX,
           y: pointerState.current.pan.y + deltaY
         };
-        onPan(nextPan);
+        updatePan(nextPan);
       },
-      [onPan]
+      [updatePan]
   );
 
   const handlePointerUp = useCallback(
@@ -157,7 +187,7 @@ export default function Viewer({
           const nextZoom = Math.min(Math.max(rawZoom, ZOOM_MIN), ZOOM_MAX);
           const container = containerRef.current;
           if (!container || settings.zoom === nextZoom) {
-            onZoom(nextZoom);
+            updateZoom(nextZoom);
             return;
           }
           const rect = container.getBoundingClientRect();
@@ -168,16 +198,16 @@ export default function Viewer({
             x: settings.pan.x + (1 - zoomRatio) * cursorX,
             y: settings.pan.y + (1 - zoomRatio) * cursorY
           };
-          onZoom(nextZoom, 'custom', nextPan);
+          updateZoom(nextZoom, 'custom', nextPan);
           return;
         }
         const nextPan = {
           x: settings.pan.x - event.deltaX,
           y: settings.pan.y - event.deltaY
         };
-        onPan(nextPan);
+        updatePan(nextPan);
       },
-      [onPan, onZoom, settings.pan.x, settings.pan.y, settings.zoom]
+      [settings.pan.x, settings.pan.y, settings.zoom, updatePan, updateZoom]
   );
 
   useEffect(() => {
@@ -229,8 +259,8 @@ export default function Viewer({
 
   const handleImageError = useCallback(() => {
     setMetrics(INITIAL_METRICS);
-    onMetricsChange({ ...INITIAL_METRICS, scale: settings.zoom });
-  }, [onMetricsChange, settings.zoom]);
+    dispatch(appActions.setViewerMetrics({ ...INITIAL_METRICS, scale: settings.zoom }));
+  }, [dispatch, settings.zoom]);
 
   return (
       <div

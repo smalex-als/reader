@@ -119,10 +119,6 @@ export function useZoom(_initialSettings: AppSettings) {
     updateTransform({ zoom: 1, zoomMode: 'custom', rotation: 0, pan: { x: 0, y: 0 } });
   }, [updateTransform]);
 
-  const handleMetricsChange = useCallback((nextMetrics: ViewerMetrics) => {
-    dispatch(appActions.setViewerMetrics(nextMetrics));
-  }, [dispatch]);
-
   useEffect(() => {
     if (!metrics) {
       return;
@@ -142,7 +138,6 @@ export function useZoom(_initialSettings: AppSettings) {
     updateZoom,
     updateRotation,
     updatePan,
-    resetTransform,
-    handleMetricsChange
+    resetTransform
   };
 }
