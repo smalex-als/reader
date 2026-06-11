@@ -589,7 +589,6 @@ export default function App() {
 
   const {
     refreshUnits,
-    setUnitQuizLabel,
     handleCreateUnit
   } = useUnitActions({
     bookId,
@@ -846,11 +845,7 @@ export default function App() {
       streamState,
       onPlayTopicParagraph: handlePlayChapterParagraph,
       onStopAudio: handleStopStream,
-      onOpenSource: handleOpenUnitSource,
-      onOpenTopicQuiz: ({ label }: { unitSetId: string; topicId: string; label: string }) => {
-        setUnitQuizLabel(label);
-        void handleOpenUnitTopicQuiz().then(refreshUnits);
-      }
+      onOpenSource: handleOpenUnitSource
     },
     audioViewProps: {
       onOpenChapterText: (pageIndex: number, versionId?: string, targetChapterNumber?: number) => {

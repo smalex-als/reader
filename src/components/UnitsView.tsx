@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import { useToast } from '@/hooks/useToast';
+import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import {
   appActions,
   selectNavigationState,
@@ -20,7 +21,6 @@ interface UnitsViewProps {
   onPlayTopicParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   onStopAudio: () => void;
   onOpenSource: (bookId: string, chapterNumber: number) => void;
-  onOpenTopicQuiz: (payload: { unitSetId: string; topicId: string; label: string }) => void;
 }
 
 async function readErrorMessage(response: Response) {
@@ -153,8 +153,7 @@ export default function UnitsView({
   streamState,
   onPlayTopicParagraph,
   onStopAudio,
-  onOpenSource,
-  onOpenTopicQuiz
+  onOpenSource
 }: UnitsViewProps) {
   const dispatch = useAppDispatch();
   const { selectedUnitSetId: selectedSetId, selectedUnitTopicId: selectedTopicId } =
@@ -163,6 +162,10 @@ export default function UnitsView({
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
   const { showToast } = useToast();
+  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz({
+    unitSetId: selectedSetId,
+    topicId: selectedTopicId
+  });
   const [items, setItems] = useState<UnitSet[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
@@ -251,6 +254,15 @@ export default function UnitsView({
       dispatch(appActions.setSelectedUnitTopicId(topicId));
     },
     [dispatch]
+  );
+
+  const handleOpenTopicQuiz = useCallback(
+    async (label: string) => {
+      dispatch(appActions.setUnitQuizLabel(label));
+      await openUnitTopicQuiz();
+      dispatch(appActions.refreshUnits());
+    },
+    [dispatch, openUnitTopicQuiz]
   );
 
   const replaceUnitSet = useCallback((item: UnitSet) => {
@@ -531,11 +543,7 @@ export default function UnitsView({
               type="button"
               className="button button-secondary"
               onClick={() =>
-                onOpenTopicQuiz({
-                  unitSetId: selectedSet.id,
-                  topicId: selectedUnit.id,
-                  label: `${selectedUnitNumber} - ${selectedUnit.title}`
-                })
+                void handleOpenTopicQuiz(`${selectedUnitNumber} - ${selectedUnit.title}`)
               }
             >
               {labels.quiz}
