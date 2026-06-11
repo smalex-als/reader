@@ -1,14 +1,19 @@
 import { useId, useMemo } from 'react';
 import { useImagePreview } from '@/hooks/useImagePreview';
-import { appActions, useAppDispatch } from '@/state/appState';
+import { parseStreamLocator } from '@/lib/streamLocator';
+import {
+  appActions,
+  selectStreamRuntime,
+  selectStreamUiControls,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { PageText } from '@/types/app';
 
 interface OcrOverlayProps {
   imageUrl: string;
   pageText: PageText | null;
   editMode: boolean;
-  currentBlockId?: string | null;
-  playingBlockId?: string | null;
   dimOutsideBlocks: boolean;
   dimOutsideBlocksIntensity: number;
 }
@@ -21,14 +26,27 @@ export default function OcrOverlay({
   imageUrl,
   pageText,
   editMode,
-  currentBlockId = null,
-  playingBlockId = null,
   dimOutsideBlocks,
   dimOutsideBlocksIntensity
 }: OcrOverlayProps) {
   const dispatch = useAppDispatch();
+  const streamState = useAppSelector(selectStreamRuntime);
+  const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
   const { handleOpenImagePreview } = useImagePreview();
   const overlayMaskId = useId().replace(/:/g, '-');
+  const streamPositionActive =
+    streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
+  const playingStreamLocator = useMemo(
+    () => parseStreamLocator(streamPositionActive ? streamState.pageKey : null),
+    [streamPositionActive, streamState.pageKey]
+  );
+  const selectedStreamLocator = useMemo(
+    () => parseStreamLocator(selectedStreamBlockKey),
+    [selectedStreamBlockKey]
+  );
+  const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
+  const currentBlockId = activeStreamLocator?.imageUrl === imageUrl ? activeStreamLocator.blockId : null;
+  const playingBlockId = playingStreamLocator?.imageUrl === imageUrl ? playingStreamLocator.blockId : null;
 
   const coordinateBlocks = useMemo(() => {
     return (pageText?.blocks ?? []).filter((block) => {

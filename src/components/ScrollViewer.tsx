@@ -71,7 +71,7 @@ export default function ScrollViewer({
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
   const { editMode } = useAppSelector(selectOcrEdit);
   const streamState = useAppSelector(selectStreamRuntime);
-  const { autoFollowStream: autoFollowEnabled, selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
+  const { autoFollowStream: autoFollowEnabled } = useAppSelector(selectStreamUiControls);
   const currentImage = manifest[currentPage] ?? null;
   const pageText = currentImage ? textCache[currentImage] ?? null : null;
   const {
@@ -118,12 +118,6 @@ export default function ScrollViewer({
   const streamPositionActive =
     streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
   const streamPageKey = streamPositionActive ? streamState.pageKey : null;
-  const playingStreamLocator = useMemo(() => parseStreamLocator(streamPageKey), [streamPageKey]);
-  const selectedStreamLocator = useMemo(
-    () => parseStreamLocator(selectedStreamBlockKey),
-    [selectedStreamBlockKey]
-  );
-  const currentStreamLocator = playingStreamLocator ?? selectedStreamLocator;
   const setCurrentPageFromScroll = useCallback(
     (pageIndex: number) => {
       dispatch(appActions.setReaderCurrentPage(pageIndex));
@@ -327,13 +321,9 @@ export default function ScrollViewer({
         itemContent={(index) => {
           const imageUrl = manifest[index];
           const entry = index === currentPage ? pageText : textCache[imageUrl] ?? null;
-          const currentBlockId = currentStreamLocator?.imageUrl === imageUrl ? currentStreamLocator.blockId : null;
-          const playingBlockId = playingStreamLocator?.imageUrl === imageUrl ? playingStreamLocator.blockId : null;
           const overlayProps = {
             imageUrl,
             pageText: entry,
-            currentBlockId,
-            playingBlockId,
             dimOutsideBlocks,
             dimOutsideBlocksIntensity
           };
