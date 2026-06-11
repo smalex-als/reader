@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   appActions,
   selectFullscreen,
@@ -6,19 +6,9 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-function resolveNext<T>(next: SetStateAction<T>, current: T) {
-  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
-}
-
 export function useFullscreen(target: React.RefObject<HTMLElement>) {
   const dispatch = useAppDispatch();
   const isFullscreen = useAppSelector(selectFullscreen);
-  const setFullscreen: Dispatch<SetStateAction<boolean>> = useCallback(
-    (next) => {
-      dispatch(appActions.setFullscreen(resolveNext(next, isFullscreen)));
-    },
-    [dispatch, isFullscreen]
-  );
 
   useEffect(() => {
     function handleChange() {
@@ -52,5 +42,5 @@ export function useFullscreen(target: React.RefObject<HTMLElement>) {
     }
   }, [enterFullscreen, exitFullscreen, isFullscreen]);
 
-  return { isFullscreen, enterFullscreen, exitFullscreen, toggleFullscreen, setFullscreen };
+  return { isFullscreen, toggleFullscreen };
 }
