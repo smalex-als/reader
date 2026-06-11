@@ -20,21 +20,28 @@ import {
 interface ReaderMainContentProps {
   viewerShellRef: RefObject<HTMLDivElement>;
   modalHostRef: RefObject<HTMLDivElement>;
-  footerMessage: string;
 }
 
 export default function ReaderMainContent({
   viewerShellRef,
-  modalHostRef,
-  footerMessage
+  modalHostRef
 }: ReaderMainContentProps) {
   const { mainView } = useAppSelector(selectNavigationState);
-  const { viewMode } = useAppSelector(selectReaderSession);
-  const { loading } = useAppSelector(selectBookSessionWorkflow);
+  const { currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { books, loading, manifest } = useAppSelector(selectBookSessionWorkflow);
   const { open: editorOpen } = useAppSelector(selectEditorState);
   const {
     settings: { textTheme }
   } = useAppSelector(selectViewerWorkflow);
+  const currentImage = manifest[currentPage] ?? null;
+  const footerMessage =
+    viewMode === 'audio' || viewMode === 'text'
+      ? ''
+      : currentImage
+      ? currentImage
+      : books.length > 0
+      ? 'Choose a book to begin reading.'
+      : 'No books found. Add files to /data to begin.';
   const displayFooterMessage =
     mainView === 'audio-library' ? 'MP3 Library' : mainView === 'units' ? 'Units' : footerMessage;
 

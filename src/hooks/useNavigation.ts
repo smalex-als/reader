@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import { clamp } from '@/lib/math';
 import { saveLastPage } from '@/lib/storage';
 import {
@@ -21,10 +21,6 @@ interface UseNavigationParams {
   pendingAlignTopRef: MutableRefObject<boolean>;
   resetAudio: () => void;
   stopStream: () => void;
-  currentImage: string | null;
-  hasBooks: boolean;
-  chapterNumber: number | null;
-  currentChapterEntry: TocEntry | null;
 }
 
 export function useNavigation({
@@ -37,11 +33,7 @@ export function useNavigation({
   bookId,
   pendingAlignTopRef,
   resetAudio,
-  stopStream,
-  currentImage,
-  hasBooks,
-  chapterNumber,
-  currentChapterEntry
+  stopStream
 }: UseNavigationParams) {
   const dispatch = useAppDispatch();
   const pageNavigationRequest = useAppSelector(selectPageNavigationRequest);
@@ -164,21 +156,5 @@ export function useNavigation({
     dispatch(appActions.clearPageNavigation());
   }, [dispatch, handleNext, handlePrev, pageNavigationRequest, renderPage]);
 
-  const footerMessage = useMemo(() => {
-    if (viewMode === 'audio') {
-      return '';
-    }
-    if (viewMode === 'text') {
-      return '';
-    }
-    if (currentImage) {
-      return currentImage;
-    }
-    if (hasBooks) {
-      return 'Choose a book to begin reading.';
-    }
-    return 'No books found. Add files to /data to begin.';
-  }, [chapterNumber, currentChapterEntry, currentImage, hasBooks, viewMode]);
-
-  return { renderPage, handlePrev, handleNext, footerMessage };
+  return { renderPage, handlePrev, handleNext };
 }

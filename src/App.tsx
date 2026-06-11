@@ -108,7 +108,6 @@ export default function App() {
     getDefaultMp3Voice
   } = useStreamVoices();
   const {
-    books,
     bookId,
     setBookId,
     manifest,
@@ -205,7 +204,6 @@ export default function App() {
   const {
     openMemoryCard: handleOpenMemoryCard
   } = useChapterMemoryCard();
-  const hasBooks = books.length > 0;
 
   const {
     audioState,
@@ -250,7 +248,7 @@ export default function App() {
   useEffect(() => {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);
-  const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
+  const { renderPage, handlePrev, handleNext } = useNavigation({
     navigationCount,
     currentPage,
     viewMode,
@@ -260,11 +258,7 @@ export default function App() {
     bookId,
     pendingAlignTopRef,
     resetAudio,
-    stopStream,
-    currentImage,
-    hasBooks,
-    chapterNumber,
-    currentChapterEntry
+    stopStream
   });
 
   const handleStreamSequenceComplete = useCallback(
@@ -805,8 +799,7 @@ export default function App() {
 
   const mainContentProps = {
     viewerShellRef,
-    modalHostRef,
-    footerMessage
+    modalHostRef
   };
 
   return (
