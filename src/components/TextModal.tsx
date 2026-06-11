@@ -1,39 +1,48 @@
 import { useEffect, useMemo, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import type { PageText, PageTextOcrEngine } from '@/types/app';
+import {
+  appActions,
+  selectBookSessionWorkflow,
+  selectModalOpen,
+  selectPageTextWorkflow,
+  selectReaderPreferences,
+  selectReaderSession,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import type { PageTextOcrEngine } from '@/types/app';
 
 interface TextModalProps {
-  open: boolean;
-  text: PageText | null;
-  loading: boolean;
-  saving: boolean;
-  onClose: () => void;
-  title: string;
-  ocrEngine: PageTextOcrEngine;
-  onOcrEngineChange: (engine: PageTextOcrEngine) => void;
   onRegenerate: (engine: PageTextOcrEngine) => void;
-  regenerated: boolean;
   onSave: (nextText: string) => void;
   onCopyText: (textValue: string) => void;
 }
 
 export default function TextModal({
-  open,
-  text,
-  loading,
-  saving,
-  onClose,
-  title,
-  ocrEngine,
-  onOcrEngineChange,
   onRegenerate,
-  regenerated,
   onSave,
   onCopyText
 }: TextModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('text'));
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const {
+    cache: textCache,
+    loading,
+    saving,
+    regenerated
+  } = useAppSelector(selectPageTextWorkflow);
+  const { pageTextOcrEngine: ocrEngine } = useAppSelector(selectReaderPreferences);
+  const currentImage = manifest[currentPage] ?? null;
+  const title = currentImage ?? 'Page text';
+  const text = currentImage ? textCache[currentImage] ?? null : null;
   const [draftText, setDraftText] = useState('');
   const [copied, setCopied] = useState(false);
   const generatedMarker = text?.source === 'ai' || regenerated;
+  const handleClose = () => {
+    dispatch(appActions.closeModal('text'));
+  };
 
   useEffect(() => {
     if (!open) {
@@ -74,7 +83,7 @@ export default function TextModal({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close text"
             title="Close text"
           >
@@ -87,7 +96,7 @@ export default function TextModal({
               <button
                 type="button"
                 className={`segmented-item ${ocrEngine === 'deepseek_ocr' ? 'segmented-item-active' : ''}`}
-                onClick={() => onOcrEngineChange('deepseek_ocr')}
+                onClick={() => dispatch(appActions.setPageTextOcrEngine('deepseek_ocr'))}
                 aria-pressed={ocrEngine === 'deepseek_ocr'}
                 disabled={loading || saving}
               >
@@ -96,7 +105,7 @@ export default function TextModal({
               <button
                 type="button"
                 className={`segmented-item ${ocrEngine === 'openai' ? 'segmented-item-active' : ''}`}
-                onClick={() => onOcrEngineChange('openai')}
+                onClick={() => dispatch(appActions.setPageTextOcrEngine('openai'))}
                 aria-pressed={ocrEngine === 'openai'}
                 disabled={loading || saving}
               >

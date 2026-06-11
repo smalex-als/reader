@@ -24,9 +24,7 @@ export function usePageText(currentImage: string | null) {
   const textModalOpen = useAppSelector(selectModalOpen('text'));
   const {
     cache: textCache,
-    loading: textLoading,
-    saving: textSaving,
-    regenerated: regeneratedText
+    loading: textLoading
   } = useAppSelector(selectPageTextWorkflow);
 
   const setRegeneratedText = useCallback(
@@ -113,10 +111,6 @@ export function usePageText(currentImage: string | null) {
     dispatch(appActions.setModalOpen('text', !textModalOpen));
   }, [dispatch, fetchPageText, textModalOpen]);
 
-  const closeTextModal = useCallback(() => {
-    dispatch(appActions.closeModal('text'));
-  }, [dispatch]);
-
   const savePageText = useCallback(
     async (nextText: string): Promise<PageText | null> => {
       if (!currentImage) {
@@ -185,18 +179,14 @@ export function usePageText(currentImage: string | null) {
   );
 
   return {
-    closeTextModal,
     currentText,
     fetchPageText,
     fetchPageTextByImage,
-    regeneratedText,
     resetTextState,
     savePageText,
     setRegeneratedText,
     textCache,
     textLoading,
-    textModalOpen,
-    textSaving,
     toggleTextModal,
     updatePageTextBlocks
   };

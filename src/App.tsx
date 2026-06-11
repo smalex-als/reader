@@ -18,7 +18,6 @@ import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useRefreshTokens } from '@/hooks/useRefreshTokens';
-import { useReaderPreferences } from '@/hooks/useReaderPreferences';
 import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useStreamControls } from '@/hooks/useStreamControls';
@@ -335,25 +334,17 @@ export default function App() {
     floatingAudioPlaybackState === 'playing';
   useWakeLock(isListening);
   const {
-    closeTextModal,
     currentText,
     fetchPageText,
     fetchPageTextByImage,
-    regeneratedText,
     resetTextState,
     savePageText,
     setRegeneratedText,
     textCache,
     textLoading,
-    textModalOpen,
-    textSaving,
     toggleTextModal,
     updatePageTextBlocks
   } = usePageText(currentImage);
-  const {
-    pageTextOcrEngine,
-    setPageTextOcrEngine
-  } = useReaderPreferences(bookId);
   const {
     chapterVersionNavigationRequest,
     requestChapterVersionNavigation,
@@ -918,19 +909,10 @@ export default function App() {
       onRemove: handleRemoveBookmarkFromList
     },
     textModalProps: {
-      open: textModalOpen,
-      text: currentText,
-      loading: textLoading,
-      onClose: closeTextModal,
-      title: currentImage ?? 'Page text',
-      ocrEngine: pageTextOcrEngine,
-      onOcrEngineChange: setPageTextOcrEngine,
       onRegenerate: (engine: PageTextOcrEngine) => {
         setRegeneratedText(true);
         void fetchPageText({ force: true, engine });
       },
-      regenerated: regeneratedText,
-      saving: textSaving,
       onSave: (nextText: string) => {
         void savePageText(nextText);
       },
