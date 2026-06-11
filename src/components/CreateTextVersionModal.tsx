@@ -1,51 +1,38 @@
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectTextVersionModalWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 
 interface CreateTextVersionModalProps {
-  open: boolean;
   versions: ChapterTextVersion[];
-  sourceVersionId: string;
-  onSourceVersionIdChange: (value: string) => void;
-  versionModel: string;
-  onVersionModelChange: (value: string) => void;
   promptLibrary: ChapterTextPrompt[];
-  selectedPromptId: string;
-  onSelectedPromptIdChange: (value: string) => void;
-  customPrompt: string;
-  onCustomPromptChange: (value: string) => void;
-  selectedPromptTemplate: string;
-  savePromptToLibrary: boolean;
-  onSavePromptToLibraryChange: (value: boolean) => void;
-  promptName: string;
-  onPromptNameChange: (value: string) => void;
   versionSaving: boolean;
   canCreateVersion: boolean;
-  onClose: () => void;
-  onCreate: () => void;
 }
 
 export default function CreateTextVersionModal({
-  open,
   versions,
-  sourceVersionId,
-  onSourceVersionIdChange,
-  versionModel,
-  onVersionModelChange,
   promptLibrary,
-  selectedPromptId,
-  onSelectedPromptIdChange,
-  customPrompt,
-  onCustomPromptChange,
-  selectedPromptTemplate,
-  savePromptToLibrary,
-  onSavePromptToLibraryChange,
-  promptName,
-  onPromptNameChange,
   versionSaving,
-  canCreateVersion,
-  onClose,
-  onCreate
+  canCreateVersion
 }: CreateTextVersionModalProps) {
+  const dispatch = useAppDispatch();
+  const {
+    open,
+    sourceVersionId,
+    versionModel,
+    selectedPromptId,
+    customPrompt,
+    savePromptToLibrary,
+    promptName
+  } = useAppSelector(selectTextVersionModalWorkflow);
+  const selectedPromptTemplate =
+    customPrompt || promptLibrary.find((prompt) => prompt.id === selectedPromptId)?.template || '';
+
   if (!open) {
     return null;
   }
@@ -58,7 +45,7 @@ export default function CreateTextVersionModal({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={() => dispatch(appActions.closeTextVersionModal())}
             aria-label="Close version modal"
             title="Close version modal"
             disabled={versionSaving}
@@ -73,7 +60,7 @@ export default function CreateTextVersionModal({
               <select
                 className="text-viewer-select"
                 value={sourceVersionId}
-                onChange={(event) => onSourceVersionIdChange(event.target.value)}
+                onChange={(event) => dispatch(appActions.setTextVersionModalSourceVersionId(event.target.value))}
                 disabled={versionSaving}
               >
                 {versions.map((version) => (
@@ -89,7 +76,7 @@ export default function CreateTextVersionModal({
               <select
                 className="text-viewer-select"
                 value={selectedPromptId}
-                onChange={(event) => onSelectedPromptIdChange(event.target.value)}
+                onChange={(event) => dispatch(appActions.setTextVersionModalSelectedPromptId(event.target.value))}
                 disabled={versionSaving}
               >
                 {promptLibrary.map((prompt) => (
@@ -104,7 +91,7 @@ export default function CreateTextVersionModal({
               <select
                 className="text-viewer-select"
                 value={versionModel}
-                onChange={(event) => onVersionModelChange(event.target.value)}
+                onChange={(event) => dispatch(appActions.setTextVersionModalVersionModel(event.target.value))}
                 disabled={versionSaving}
               >
                 <option value="gpt-5.5">gpt-5.5</option>
@@ -123,7 +110,7 @@ export default function CreateTextVersionModal({
             <textarea
               className="modal-textarea text-viewer-prompt-textarea"
               value={customPrompt}
-              onChange={(event) => onCustomPromptChange(event.target.value)}
+              onChange={(event) => dispatch(appActions.setTextVersionModalCustomPrompt(event.target.value))}
               placeholder={selectedPromptTemplate || 'Write a prompt with placeholders like {{book_title}}'}
               disabled={versionSaving}
             />
@@ -131,7 +118,7 @@ export default function CreateTextVersionModal({
               <input
                 type="checkbox"
                 checked={savePromptToLibrary}
-                onChange={(event) => onSavePromptToLibraryChange(event.target.checked)}
+                onChange={(event) => dispatch(appActions.setTextVersionModalSavePromptToLibrary(event.target.checked))}
                 disabled={versionSaving}
               />
               <span>Save this prompt to the library</span>
@@ -143,7 +130,7 @@ export default function CreateTextVersionModal({
               <input
                 className="text-viewer-input"
                 value={promptName}
-                onChange={(event) => onPromptNameChange(event.target.value)}
+                onChange={(event) => dispatch(appActions.setTextVersionModalPromptName(event.target.value))}
                 placeholder="Prompt name"
                 disabled={versionSaving}
               />
@@ -154,7 +141,7 @@ export default function CreateTextVersionModal({
           <button
             type="button"
             className="button button-secondary"
-            onClick={onClose}
+            onClick={() => dispatch(appActions.closeTextVersionModal())}
             disabled={versionSaving}
           >
             Cancel
@@ -162,7 +149,7 @@ export default function CreateTextVersionModal({
           <button
             type="button"
             className="button"
-            onClick={onCreate}
+            onClick={() => dispatch(appActions.requestTextVersionCreate())}
             disabled={!canCreateVersion || versionSaving}
           >
             {versionSaving ? 'Creating…' : 'Create Version'}

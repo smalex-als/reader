@@ -17,6 +17,7 @@ import {
   selectChapterVersionNavigationRequest,
   selectRefreshTokens,
   selectStreamRuntime,
+  selectTextVersionModalWorkflow,
   selectTocWorkflow,
   selectViewerWorkflow,
   selectVoiceWorkflow,
@@ -163,6 +164,10 @@ export default function ChapterViewer() {
   } = useAppSelector(selectBookSessionWorkflow);
   const { chapterView: refreshToken } = useAppSelector(selectRefreshTokens);
   const versionNavigationRequest = useAppSelector(selectChapterVersionNavigationRequest);
+  const {
+    open: versionModalOpen,
+    createRequestId: textVersionCreateRequestId
+  } = useAppSelector(selectTextVersionModalWorkflow);
   const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
   const { textFontSize } = settings;
   const streamPositionActive =
@@ -200,7 +205,6 @@ export default function ChapterViewer() {
     currentChapterTitle: chapterTitle
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [urlVersionReady, setUrlVersionReady] = useState(false);
@@ -217,19 +221,6 @@ export default function ChapterViewer() {
     selectedVersion,
     selectedVersionId,
     setSelectedVersionId,
-    sourceVersionId,
-    setSourceVersionId,
-    versionModel,
-    setVersionModel,
-    selectedPromptId,
-    setSelectedPromptId,
-    customPrompt,
-    setCustomPrompt,
-    promptName,
-    setPromptName,
-    savePromptToLibrary,
-    setSavePromptToLibrary,
-    selectedPromptTemplate,
     generating,
     canGenerate,
     missingFile,
@@ -422,13 +413,28 @@ export default function ChapterViewer() {
     if (versionSaving) {
       return;
     }
-    setVersionModalOpen(false);
-  }, [versionSaving]);
+    dispatch(appActions.closeTextVersionModal());
+  }, [dispatch, versionSaving]);
 
   const openVersionModal = useCallback(() => {
-    setSourceVersionId(selectedVersionId || 'base');
-    setVersionModalOpen(true);
-  }, [selectedVersionId, setSourceVersionId]);
+    dispatch(appActions.openTextVersionModal(selectedVersionId || 'base'));
+  }, [dispatch, selectedVersionId]);
+
+  const handledTextVersionCreateRequestRef = useRef(0);
+  useEffect(() => {
+    if (
+      textVersionCreateRequestId === 0 ||
+      handledTextVersionCreateRequestRef.current === textVersionCreateRequestId
+    ) {
+      return;
+    }
+    handledTextVersionCreateRequestRef.current = textVersionCreateRequestId;
+    void handleCreateVersion().then((created) => {
+      if (created) {
+        dispatch(appActions.closeTextVersionModal());
+      }
+    });
+  }, [dispatch, handleCreateVersion, textVersionCreateRequestId]);
 
   useEffect(() => {
     if (!versionModalOpen) {
@@ -1064,30 +1070,10 @@ export default function ChapterViewer() {
         ) : null}
       </section>
       <CreateTextVersionModal
-        open={versionModalOpen}
         versions={versions}
-        sourceVersionId={sourceVersionId}
-        onSourceVersionIdChange={setSourceVersionId}
-        versionModel={versionModel}
-        onVersionModelChange={setVersionModel}
         promptLibrary={promptLibrary}
-        selectedPromptId={selectedPromptId}
-        onSelectedPromptIdChange={setSelectedPromptId}
-        customPrompt={customPrompt}
-        onCustomPromptChange={setCustomPrompt}
-        selectedPromptTemplate={selectedPromptTemplate}
-        savePromptToLibrary={savePromptToLibrary}
-        onSavePromptToLibraryChange={setSavePromptToLibrary}
-        promptName={promptName}
-        onPromptNameChange={setPromptName}
         versionSaving={versionSaving}
         canCreateVersion={canCreateVersion}
-        onClose={closeVersionModal}
-        onCreate={() => void handleCreateVersion().then((created) => {
-          if (created) {
-            setVersionModalOpen(false);
-          }
-        })}
       />
     </div>
   );

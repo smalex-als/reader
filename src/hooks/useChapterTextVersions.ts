@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
+import {
+  appActions,
+  selectTextVersionModalWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
 
@@ -43,6 +49,10 @@ async function readErrorMessage(response: Response) {
   }
 }
 
+function resolveNext<T>(next: SetStateAction<T>, current: T) {
+  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
+}
+
 export function useChapterTextVersions({
   bookId,
   chapterNumber,
@@ -50,6 +60,15 @@ export function useChapterTextVersions({
   refreshToken = 0,
   mp3Voice
 }: UseChapterTextVersionsOptions) {
+  const dispatch = useAppDispatch();
+  const {
+    sourceVersionId,
+    versionModel,
+    selectedPromptId,
+    customPrompt,
+    promptName,
+    savePromptToLibrary
+  } = useAppSelector(selectTextVersionModalWorkflow);
   const [chapterText, setChapterText] = useState('');
   const [selectedText, setSelectedText] = useState('');
   const [selectedTextVersionId, setSelectedTextVersionId] = useState<string | null>(null);
@@ -73,15 +92,32 @@ export function useChapterTextVersions({
   const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
   const [chapterAudioSubchapters, setChapterAudioSubchapters] = useState<FloatingAudioSubchapter[]>([]);
   const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
-  const [selectedPromptId, setSelectedPromptId] = useState('');
-  const [sourceVersionId, setSourceVersionId] = useState('base');
-  const [versionModel, setVersionModel] = useState('gpt-5.5');
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [promptName, setPromptName] = useState('');
-  const [savePromptToLibrary, setSavePromptToLibrary] = useState(false);
   const audioPollTimers = useRef<Map<number, number>>(new Map());
   const audioPollAttempts = useRef<Map<number, number>>(new Map());
   const audioPollRef = useRef<(chapterNumber: number) => void>();
+  const sourceVersionIdRef = useRef(sourceVersionId);
+  const selectedPromptIdRef = useRef(selectedPromptId);
+
+  useEffect(() => {
+    sourceVersionIdRef.current = sourceVersionId;
+  }, [sourceVersionId]);
+
+  useEffect(() => {
+    selectedPromptIdRef.current = selectedPromptId;
+  }, [selectedPromptId]);
+
+  const setSourceVersionId = useCallback(
+    (next: SetStateAction<string>) => {
+      dispatch(appActions.setTextVersionModalSourceVersionId(resolveNext(next, sourceVersionIdRef.current)));
+    },
+    [dispatch]
+  );
+  const setSelectedPromptId = useCallback(
+    (next: SetStateAction<string>) => {
+      dispatch(appActions.setTextVersionModalSelectedPromptId(resolveNext(next, selectedPromptIdRef.current)));
+    },
+    [dispatch]
+  );
 
   const selectedVersion = useMemo(
     () => versions.find((version) => version.id === selectedVersionId) ?? versions[0] ?? null,
@@ -125,6 +161,7 @@ export function useChapterTextVersions({
       setPromptLibrary([]);
       setSelectedVersionId('base');
       setSourceVersionId('base');
+      setSelectedPromptId('');
       setVersionError(null);
       setVersionLoading(false);
       return;
@@ -174,6 +211,7 @@ export function useChapterTextVersions({
       setPromptLibrary([]);
       setSelectedVersionId('base');
       setSourceVersionId('base');
+      setSelectedPromptId('');
       setError(null);
       setMissingFile(null);
       setLoading(false);
@@ -243,6 +281,7 @@ export function useChapterTextVersions({
       setPromptLibrary([]);
       setSelectedVersionId('base');
       setSourceVersionId('base');
+      setSelectedPromptId('');
       return;
     }
     void loadTextVersions();
@@ -391,9 +430,6 @@ export function useChapterTextVersions({
   const canCreateVersion = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
   const canGenerateAudio = Boolean(bookId && chapterNumber && displayText && !displayLoading);
   const isAudioJobActive = audioJob?.status === 'queued' || audioJob?.status === 'running';
-  const selectedPromptTemplate =
-    customPrompt || promptLibrary.find((prompt) => prompt.id === selectedPromptId)?.template || '';
-
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !chapterRange || generating) {
       return;
@@ -526,9 +562,7 @@ export function useChapterTextVersions({
       setSelectedVersionId(nextVersionId);
       setSourceVersionId(nextVersionId);
       setVersionStatus('Version saved.');
-      setCustomPrompt('');
-      setPromptName('');
-      setSavePromptToLibrary(false);
+      dispatch(appActions.resetTextVersionModalDraft());
       await loadChapterAudioStatus();
       return true;
     } catch (err) {
@@ -543,6 +577,7 @@ export function useChapterTextVersions({
     canCreateVersion,
     chapterNumber,
     customPrompt,
+    dispatch,
     loadChapterAudioStatus,
     promptName,
     savePromptToLibrary,
@@ -666,19 +701,6 @@ export function useChapterTextVersions({
     selectedVersion,
     selectedVersionId,
     setSelectedVersionId,
-    sourceVersionId,
-    setSourceVersionId,
-    versionModel,
-    setVersionModel,
-    selectedPromptId,
-    setSelectedPromptId,
-    customPrompt,
-    setCustomPrompt,
-    promptName,
-    setPromptName,
-    savePromptToLibrary,
-    setSavePromptToLibrary,
-    selectedPromptTemplate,
     generating,
     canGenerate,
     missingFile,

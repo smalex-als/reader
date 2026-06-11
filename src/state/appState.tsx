@@ -336,6 +336,17 @@ export interface VoiceWorkflowState {
   mp3Voice: StreamVoice;
 }
 
+export interface TextVersionModalWorkflowState {
+  open: boolean;
+  sourceVersionId: string;
+  versionModel: string;
+  selectedPromptId: string;
+  customPrompt: string;
+  promptName: string;
+  savePromptToLibrary: boolean;
+  createRequestId: number;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -373,6 +384,7 @@ export interface CentralAppState {
   imagePreviewWorkflow: ImagePreviewWorkflowState;
   viewerWorkflow: ViewerWorkflowState;
   voiceWorkflow: VoiceWorkflowState;
+  textVersionModalWorkflow: TextVersionModalWorkflowState;
 }
 
 export type AppAction =
@@ -510,6 +522,16 @@ export type AppAction =
   | { type: 'tocWorkflow/setGenerating'; generating: boolean }
   | { type: 'tocWorkflow/setSaving'; saving: boolean }
   | { type: 'tocWorkflow/setChapterGeneratingIndex'; index: number | null }
+  | { type: 'textVersionModal/open'; sourceVersionId: string }
+  | { type: 'textVersionModal/close' }
+  | { type: 'textVersionModal/setSourceVersionId'; sourceVersionId: string }
+  | { type: 'textVersionModal/setVersionModel'; versionModel: string }
+  | { type: 'textVersionModal/setSelectedPromptId'; selectedPromptId: string }
+  | { type: 'textVersionModal/setCustomPrompt'; customPrompt: string }
+  | { type: 'textVersionModal/setPromptName'; promptName: string }
+  | { type: 'textVersionModal/setSavePromptToLibrary'; savePromptToLibrary: boolean }
+  | { type: 'textVersionModal/requestCreate' }
+  | { type: 'textVersionModal/resetDraft' }
   | { type: 'searchWorkflow/reset' }
   | { type: 'searchWorkflow/setQuery'; query: string }
   | { type: 'searchWorkflow/setResults'; results: SearchResult[] }
@@ -613,6 +635,17 @@ const initialTocWorkflow: TocWorkflowState = {
   generating: false,
   saving: false,
   chapterGeneratingIndex: null
+};
+
+const initialTextVersionModalWorkflowState: TextVersionModalWorkflowState = {
+  open: false,
+  sourceVersionId: 'base',
+  versionModel: 'gpt-5.5',
+  selectedPromptId: '',
+  customPrompt: '',
+  promptName: '',
+  savePromptToLibrary: false,
+  createRequestId: 0
 };
 
 const initialAppState: CentralAppState = {
@@ -763,7 +796,8 @@ const initialAppState: CentralAppState = {
     defaultStreamVoice: '',
     streamVoice: '',
     mp3Voice: ''
-  }
+  },
+  textVersionModalWorkflow: initialTextVersionModalWorkflowState
 };
 
 export const appActions = {
@@ -1125,6 +1159,37 @@ export const appActions = {
     type: 'tocWorkflow/setChapterGeneratingIndex',
     index
   }),
+  openTextVersionModal: (sourceVersionId: string): AppAction => ({
+    type: 'textVersionModal/open',
+    sourceVersionId
+  }),
+  closeTextVersionModal: (): AppAction => ({ type: 'textVersionModal/close' }),
+  setTextVersionModalSourceVersionId: (sourceVersionId: string): AppAction => ({
+    type: 'textVersionModal/setSourceVersionId',
+    sourceVersionId
+  }),
+  setTextVersionModalVersionModel: (versionModel: string): AppAction => ({
+    type: 'textVersionModal/setVersionModel',
+    versionModel
+  }),
+  setTextVersionModalSelectedPromptId: (selectedPromptId: string): AppAction => ({
+    type: 'textVersionModal/setSelectedPromptId',
+    selectedPromptId
+  }),
+  setTextVersionModalCustomPrompt: (customPrompt: string): AppAction => ({
+    type: 'textVersionModal/setCustomPrompt',
+    customPrompt
+  }),
+  setTextVersionModalPromptName: (promptName: string): AppAction => ({
+    type: 'textVersionModal/setPromptName',
+    promptName
+  }),
+  setTextVersionModalSavePromptToLibrary: (savePromptToLibrary: boolean): AppAction => ({
+    type: 'textVersionModal/setSavePromptToLibrary',
+    savePromptToLibrary
+  }),
+  requestTextVersionCreate: (): AppAction => ({ type: 'textVersionModal/requestCreate' }),
+  resetTextVersionModalDraft: (): AppAction => ({ type: 'textVersionModal/resetDraft' }),
   resetSearch: (): AppAction => ({ type: 'searchWorkflow/reset' }),
   setSearchQuery: (query: string): AppAction => ({
     type: 'searchWorkflow/setQuery',
@@ -2259,6 +2324,89 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           chapterGeneratingIndex: action.index
         }
       };
+    case 'textVersionModal/open':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          open: true,
+          sourceVersionId: action.sourceVersionId
+        }
+      };
+    case 'textVersionModal/close':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          open: false
+        }
+      };
+    case 'textVersionModal/setSourceVersionId':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          sourceVersionId: action.sourceVersionId
+        }
+      };
+    case 'textVersionModal/setVersionModel':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          versionModel: action.versionModel
+        }
+      };
+    case 'textVersionModal/setSelectedPromptId':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          selectedPromptId: action.selectedPromptId
+        }
+      };
+    case 'textVersionModal/setCustomPrompt':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          customPrompt: action.customPrompt
+        }
+      };
+    case 'textVersionModal/setPromptName':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          promptName: action.promptName
+        }
+      };
+    case 'textVersionModal/setSavePromptToLibrary':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          savePromptToLibrary: action.savePromptToLibrary
+        }
+      };
+    case 'textVersionModal/requestCreate':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          createRequestId: state.textVersionModalWorkflow.createRequestId + 1
+        }
+      };
+    case 'textVersionModal/resetDraft':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          customPrompt: '',
+          promptName: '',
+          savePromptToLibrary: false
+        }
+      };
     case 'searchWorkflow/reset':
       return {
         ...state,
@@ -2638,3 +2786,4 @@ export const selectPageTextWorkflow = (state: CentralAppState) => state.pageText
 export const selectImagePreviewWorkflow = (state: CentralAppState) => state.imagePreviewWorkflow;
 export const selectViewerWorkflow = (state: CentralAppState) => state.viewerWorkflow;
 export const selectVoiceWorkflow = (state: CentralAppState) => state.voiceWorkflow;
+export const selectTextVersionModalWorkflow = (state: CentralAppState) => state.textVersionModalWorkflow;
