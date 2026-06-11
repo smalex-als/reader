@@ -1,16 +1,40 @@
-import { useEffect, useState } from 'react';
-import { getMainViewFromLocation, type MainView } from '@/lib/appConstants';
+import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
+import { type MainView } from '@/lib/appConstants';
+import {
+  appActions,
+  selectNavigationState,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+
+function resolveNext<T>(next: T | ((prev: T) => T), current: T) {
+  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
+}
 
 export function useUnitsRouteState() {
-  const [mainView, setMainView] = useState<MainView>(() => getMainViewFromLocation());
-  const [selectedUnitSetId, setSelectedUnitSetId] = useState<string | null>(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('view') === 'units' ? params.get('unit') : null;
-  });
-  const [selectedUnitTopicId, setSelectedUnitTopicId] = useState<string | null>(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('view') === 'units' ? params.get('topic') : null;
-  });
+  const dispatch = useAppDispatch();
+  const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
+
+  const setMainView = useCallback(
+    (next: MainView | ((prev: MainView) => MainView)) => {
+      dispatch(appActions.setMainView(resolveNext(next, mainView)));
+    },
+    [dispatch, mainView]
+  );
+
+  const setSelectedUnitSetId = useCallback(
+    (next: string | null | ((prev: string | null) => string | null)) => {
+      dispatch(appActions.setSelectedUnitSetId(resolveNext(next, selectedUnitSetId)));
+    },
+    [dispatch, selectedUnitSetId]
+  );
+
+  const setSelectedUnitTopicId = useCallback(
+    (next: string | null | ((prev: string | null) => string | null)) => {
+      dispatch(appActions.setSelectedUnitTopicId(resolveNext(next, selectedUnitTopicId)));
+    },
+    [dispatch, selectedUnitTopicId]
+  );
 
   return {
     mainView,
@@ -24,11 +48,11 @@ export function useUnitsRouteState() {
 
 interface UseUnitsRouteSyncOptions {
   mainView: MainView;
-  setMainView: React.Dispatch<React.SetStateAction<MainView>>;
+  setMainView: Dispatch<SetStateAction<MainView>>;
   selectedUnitSetId: string | null;
-  setSelectedUnitSetId: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedUnitSetId: Dispatch<SetStateAction<string | null>>;
   selectedUnitTopicId: string | null;
-  setSelectedUnitTopicId: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedUnitTopicId: Dispatch<SetStateAction<string | null>>;
   viewMode: 'pages' | 'scroll' | 'text' | 'audio';
 }
 

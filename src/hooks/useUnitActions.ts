@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
 import { appActions, useAppDispatch } from '@/state/appState';
-import type { MainView } from '@/lib/appConstants';
 import type { UnitSet } from '@/types/app';
 
 interface UseUnitActionsOptions {
@@ -9,19 +8,13 @@ interface UseUnitActionsOptions {
   chapterNumber: number | null;
   currentChapterTitle: string | null;
   showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
-  setMainView: (view: MainView) => void;
-  setSelectedUnitSetId: (id: string | null) => void;
-  setSelectedUnitTopicId: (id: string | null) => void;
 }
 
 export function useUnitActions({
   bookId,
   chapterNumber,
   currentChapterTitle,
-  showToast,
-  setMainView,
-  setSelectedUnitSetId,
-  setSelectedUnitTopicId
+  showToast
 }: UseUnitActionsOptions) {
   const dispatch = useAppDispatch();
   const [unitsRefreshToken, setUnitsRefreshToken] = useState(0);
@@ -34,10 +27,10 @@ export function useUnitActions({
 
   const handleOpenUnits = useCallback(() => {
     dispatch(appActions.closeModal('settings'));
-    setSelectedUnitSetId(null);
-    setSelectedUnitTopicId(null);
-    setMainView('units');
-  }, [dispatch, setMainView, setSelectedUnitSetId, setSelectedUnitTopicId]);
+    dispatch(appActions.setSelectedUnitSetId(null));
+    dispatch(appActions.setSelectedUnitTopicId(null));
+    dispatch(appActions.setMainView('units'));
+  }, [dispatch]);
 
   const handleCreateUnit = useCallback(
     async (payload: {
@@ -71,10 +64,10 @@ export function useUnitActions({
           })
         });
         setUnitsRefreshToken((prev) => prev + 1);
-        setSelectedUnitSetId(result.item.id);
-        setSelectedUnitTopicId(null);
+        dispatch(appActions.setSelectedUnitSetId(result.item.id));
+        dispatch(appActions.setSelectedUnitTopicId(null));
         dispatch(appActions.closeModal('settings'));
-        setMainView('units');
+        dispatch(appActions.setMainView('units'));
         showToast('Unit created', 'success');
       } catch (error) {
         console.error(error);
@@ -88,9 +81,6 @@ export function useUnitActions({
       chapterNumber,
       currentChapterTitle,
       dispatch,
-      setMainView,
-      setSelectedUnitSetId,
-      setSelectedUnitTopicId,
       showToast
     ]
   );

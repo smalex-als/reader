@@ -691,10 +691,7 @@ export default function App() {
     bookId,
     setBookId,
     renderPage,
-    setMainView,
-    setViewMode,
-    setSelectedUnitSetId,
-    setSelectedUnitTopicId
+    setViewMode
   });
 
   const handleSelectSearchResult = useCallback((result: SearchResult) => {
@@ -789,10 +786,7 @@ export default function App() {
     bookId,
     chapterNumber,
     currentChapterTitle: currentChapterEntry?.title ?? null,
-    showToast,
-    setMainView,
-    setSelectedUnitSetId,
-    setSelectedUnitTopicId
+    showToast
   });
   const {
     imagePreview,

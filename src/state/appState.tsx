@@ -6,6 +6,7 @@ import {
   type Dispatch,
   type ReactNode
 } from 'react';
+import type { MainView } from '@/lib/appConstants';
 import type { ImagePreviewTarget } from '@/types/app';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
@@ -44,8 +45,15 @@ export interface AppUiState {
   };
 }
 
+export interface AppNavigationState {
+  mainView: MainView;
+  selectedUnitSetId: string | null;
+  selectedUnitTopicId: string | null;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
+  navigation: AppNavigationState;
 }
 
 export type AppAction =
@@ -61,7 +69,27 @@ export type AppAction =
   | { type: 'imagePreview/setEnhancedUrl'; url: string | null }
   | { type: 'editor/setOpen'; open: boolean }
   | { type: 'editor/setChapterNumber'; chapterNumber: number | null }
-  | { type: 'settingsToolbar/setTab'; tab: AppToolbarTab };
+  | { type: 'settingsToolbar/setTab'; tab: AppToolbarTab }
+  | { type: 'navigation/setMainView'; view: MainView }
+  | { type: 'navigation/setSelectedUnitSetId'; id: string | null }
+  | { type: 'navigation/setSelectedUnitTopicId'; id: string | null };
+
+function getInitialNavigation(): AppNavigationState {
+  if (typeof window === 'undefined') {
+    return {
+      mainView: 'reader',
+      selectedUnitSetId: null,
+      selectedUnitTopicId: null
+    };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const mainView = params.get('view') === 'units' ? 'units' : 'reader';
+  return {
+    mainView,
+    selectedUnitSetId: mainView === 'units' ? params.get('unit') : null,
+    selectedUnitTopicId: mainView === 'units' ? params.get('topic') : null
+  };
+}
 
 const initialAppState: CentralAppState = {
   ui: {
@@ -94,7 +122,8 @@ const initialAppState: CentralAppState = {
     settingsToolbar: {
       activeTab: 'image'
     }
-  }
+  },
+  navigation: getInitialNavigation()
 };
 
 export const appActions = {
@@ -120,7 +149,16 @@ export const appActions = {
     type: 'editor/setChapterNumber',
     chapterNumber
   }),
-  setSettingsToolbarTab: (tab: AppToolbarTab): AppAction => ({ type: 'settingsToolbar/setTab', tab })
+  setSettingsToolbarTab: (tab: AppToolbarTab): AppAction => ({ type: 'settingsToolbar/setTab', tab }),
+  setMainView: (view: MainView): AppAction => ({ type: 'navigation/setMainView', view }),
+  setSelectedUnitSetId: (id: string | null): AppAction => ({
+    type: 'navigation/setSelectedUnitSetId',
+    id
+  }),
+  setSelectedUnitTopicId: (id: string | null): AppAction => ({
+    type: 'navigation/setSelectedUnitTopicId',
+    id
+  })
 };
 
 export function appReducer(state: CentralAppState, action: AppAction): CentralAppState {
@@ -262,6 +300,30 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           }
         }
       };
+    case 'navigation/setMainView':
+      return {
+        ...state,
+        navigation: {
+          ...state.navigation,
+          mainView: action.view
+        }
+      };
+    case 'navigation/setSelectedUnitSetId':
+      return {
+        ...state,
+        navigation: {
+          ...state.navigation,
+          selectedUnitSetId: action.id
+        }
+      };
+    case 'navigation/setSelectedUnitTopicId':
+      return {
+        ...state,
+        navigation: {
+          ...state.navigation,
+          selectedUnitTopicId: action.id
+        }
+      };
     default:
       return state;
   }
@@ -303,3 +365,4 @@ export const selectBookCardBookId = (state: CentralAppState) => state.ui.bookCar
 export const selectImagePreview = (state: CentralAppState) => state.ui.imagePreview;
 export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
+export const selectNavigationState = (state: CentralAppState) => state.navigation;

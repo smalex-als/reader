@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
 import { saveLastPage } from '@/lib/storage';
 import { appActions, useAppDispatch } from '@/state/appState';
-import type { MainView } from '@/lib/appConstants';
 import type { TocEntry } from '@/types/app';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
@@ -11,20 +10,14 @@ interface UseDashboardNavigationOptions {
   bookId: string | null;
   setBookId: (bookId: string | null) => void;
   renderPage: (page: number) => void;
-  setMainView: (view: MainView) => void;
   setViewMode: (mode: ViewMode) => void;
-  setSelectedUnitSetId: (id: string | null) => void;
-  setSelectedUnitTopicId: (id: string | null) => void;
 }
 
 export function useDashboardNavigation({
   bookId,
   setBookId,
   renderPage,
-  setMainView,
-  setViewMode,
-  setSelectedUnitSetId,
-  setSelectedUnitTopicId
+  setViewMode
 }: UseDashboardNavigationOptions) {
   const dispatch = useAppDispatch();
   const closeListeningDashboard = useCallback(() => {
@@ -91,35 +84,35 @@ export function useDashboardNavigation({
   const handleOpenDashboardUnit = useCallback(
     (unitSetId: string, topicId: string) => {
       closeListeningDashboard();
-      setMainView('units');
-      setSelectedUnitSetId(unitSetId);
-      setSelectedUnitTopicId(topicId);
+      dispatch(appActions.setMainView('units'));
+      dispatch(appActions.setSelectedUnitSetId(unitSetId));
+      dispatch(appActions.setSelectedUnitTopicId(topicId));
     },
-    [closeListeningDashboard, setMainView, setSelectedUnitSetId, setSelectedUnitTopicId]
+    [closeListeningDashboard, dispatch]
   );
 
   const handleOpenAudioLibrary = useCallback(() => {
     dispatch(appActions.closeModal('settings'));
-    setMainView('audio-library');
-  }, [dispatch, setMainView]);
+    dispatch(appActions.setMainView('audio-library'));
+  }, [dispatch]);
 
   const handleOpenLibraryBook = useCallback(
     (targetBookId: string, targetChapterNumber: number) => {
-      setMainView('reader');
+      dispatch(appActions.setMainView('reader'));
       setViewMode('audio');
       setBookId(targetBookId);
       if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
         saveLastPage(targetBookId, targetChapterNumber - 1);
       }
     },
-    [setBookId, setMainView, setViewMode]
+    [dispatch, setBookId, setViewMode]
   );
 
   const handleOpenUnitSource = useCallback(
     (targetBookId: string, targetChapterNumber: number) => {
-      setSelectedUnitSetId(null);
-      setSelectedUnitTopicId(null);
-      setMainView('reader');
+      dispatch(appActions.setSelectedUnitSetId(null));
+      dispatch(appActions.setSelectedUnitTopicId(null));
+      dispatch(appActions.setMainView('reader'));
       setViewMode('text');
       setBookId(targetBookId);
       if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
@@ -129,7 +122,7 @@ export function useDashboardNavigation({
         }
       }
     },
-    [bookId, renderPage, setBookId, setMainView, setSelectedUnitSetId, setSelectedUnitTopicId, setViewMode]
+    [bookId, dispatch, renderPage, setBookId, setViewMode]
   );
 
   return {
