@@ -67,11 +67,9 @@ export default function App() {
   } = useUnitsRouteState();
   const {
     openHelp,
-    openListeningDashboard,
     openOcrQueue,
     closeOcrQueue,
     openJobWorker,
-    openSearch,
     closeSearch,
     openBookCard,
     closeBookCard,
@@ -135,7 +133,6 @@ export default function App() {
     viewMode,
     setViewMode,
     loading,
-    setBookModalOpen,
     handleUploadChapter,
     handleCreateChapter,
     handleUploadPdf,
@@ -171,7 +168,6 @@ export default function App() {
   const currentImage = manifest[currentPage] ?? null;
   const {
     tocOpen,
-    setTocOpen,
     setTocManageOpen,
     tocEntries,
     setTocEntries,
@@ -611,11 +607,9 @@ export default function App() {
     viewMode
   });
 
-  const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
   const {
     refreshUnits,
     setUnitQuizLabel,
-    handleOpenUnits,
     handleCreateUnit
   } = useUnitActions({
     bookId,
@@ -685,12 +679,6 @@ export default function App() {
 
   const sidebarProps = {
     onViewModeChange: handleViewModeChange,
-    onOpenAudioLibrary: handleOpenAudioLibrary,
-    onOpenUnits: handleOpenUnits,
-    onOpenBookModal: () => {
-      setSettingsOpen(false);
-      openBookModal();
-    },
     onPrev: handlePrev,
     onNext: handleNext,
     onGoTo: (page: number) => renderPage(page),
@@ -702,15 +690,6 @@ export default function App() {
     onShowBookmarks: () => {
       setSettingsOpen(false);
       showBookmarks();
-    },
-    onOpenSearch: openSearch,
-    onOpenToc: () => {
-      setSettingsOpen(false);
-      setTocOpen(true);
-    },
-    onOpenListeningDashboard: () => {
-      setSettingsOpen(false);
-      openListeningDashboard();
     }
   };
 
@@ -794,8 +773,7 @@ export default function App() {
       onDelete: handleDeleteBook,
       onUploadChapter: handleUploadChapter,
       onUploadPdf: handleUploadPdf,
-      onOpenEditCard: openBookCard,
-      onOpenAudioLibrary: handleOpenAudioLibrary
+      onOpenEditCard: openBookCard
     },
     helpModalProps: { hotkeys },
     bookmarksModalProps: {

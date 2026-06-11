@@ -34,15 +34,13 @@ interface BookSelectModalProps {
   onUploadChapter: (file: File, details: { bookName: string; chapterTitle: string }) => void;
   onUploadPdf: (file: File) => void;
   onOpenEditCard: (bookId: string) => void;
-  onOpenAudioLibrary: () => void;
 }
 
 export default function BookSelectModal({
   onDelete,
   onUploadChapter,
   onUploadPdf,
-  onOpenEditCard,
-  onOpenAudioLibrary
+  onOpenEditCard
 }: BookSelectModalProps) {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('bookSelect'));
@@ -195,7 +193,8 @@ export default function BookSelectModal({
   };
   const handleOpenAudioLibrary = () => {
     dispatch(appActions.closeModal('bookSelect'));
-    onOpenAudioLibrary();
+    dispatch(appActions.closeModal('settings'));
+    dispatch(appActions.setMainView('audio-library'));
   };
 
   if (!open) {

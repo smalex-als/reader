@@ -15,21 +15,15 @@ type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
 interface ReaderSidebarProps {
   streamState: StreamState;
-  onOpenBookModal: () => void;
-  onOpenAudioLibrary: () => void;
-  onOpenUnits: () => void;
   onViewModeChange: (mode: ViewMode) => void;
   onPrev: () => void;
   onNext: () => void;
   onGoTo: (page: number) => void;
-  onOpenToc: () => void;
   onToggleBookmark: () => void;
   onShowBookmarks: () => void;
-  onOpenSearch: () => void;
   onStreamVoiceChange: (voice: string) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
-  onOpenListeningDashboard: () => void;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'scanned-reader:sidebarCollapsed';
@@ -78,21 +72,15 @@ function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'a
 
 export default function ReaderSidebar({
   streamState,
-  onOpenBookModal,
-  onOpenAudioLibrary,
-  onOpenUnits,
   onViewModeChange,
   onPrev,
   onNext,
   onGoTo,
-  onOpenToc,
   onToggleBookmark,
   onShowBookmarks,
-  onOpenSearch,
   onStreamVoiceChange,
   onPlayStream,
-  onStopStream,
-  onOpenListeningDashboard
+  onStopStream
 }: ReaderSidebarProps) {
   const dispatch = useAppDispatch();
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
@@ -139,6 +127,31 @@ export default function ReaderSidebar({
     window.localStorage.setItem(SIDEBAR_USER_COLLAPSED_KEY, 'true');
     setCollapsed((value) => !value);
   };
+  const handleOpenBookModal = () => {
+    dispatch(appActions.closeModal('settings'));
+    dispatch(appActions.openModal('bookSelect'));
+  };
+  const handleOpenAudioLibrary = () => {
+    dispatch(appActions.closeModal('settings'));
+    dispatch(appActions.setMainView('audio-library'));
+  };
+  const handleOpenUnits = () => {
+    dispatch(appActions.closeModal('settings'));
+    dispatch(appActions.setSelectedUnitSetId(null));
+    dispatch(appActions.setSelectedUnitTopicId(null));
+    dispatch(appActions.setMainView('units'));
+  };
+  const handleOpenToc = () => {
+    dispatch(appActions.closeModal('settings'));
+    dispatch(appActions.openModal('tocNav'));
+  };
+  const handleOpenSearch = () => {
+    dispatch(appActions.openModal('search'));
+  };
+  const handleOpenListeningDashboard = () => {
+    dispatch(appActions.closeModal('settings'));
+    dispatch(appActions.openModal('listeningDashboard'));
+  };
 
   return (
     <aside className={`reader-sidebar ${collapsed ? 'reader-sidebar-collapsed' : ''}`} aria-label="Reader navigation">
@@ -164,14 +177,14 @@ export default function ReaderSidebar({
       </div>
 
       <div className="reader-sidebar-section">
-        <button type="button" className="reader-sidebar-action" onClick={onOpenBookModal} title="Select book" data-tooltip={currentBook ? 'Change Book' : 'Select Book'}>
+        <button type="button" className="reader-sidebar-action" onClick={handleOpenBookModal} title="Select book" data-tooltip={currentBook ? 'Change Book' : 'Select Book'}>
           <SidebarIcon name="book" />
           <span className="reader-sidebar-label">{currentBook ? 'Change Book' : 'Select Book'}</span>
         </button>
         <button
           type="button"
           className={`reader-sidebar-action ${audioLibraryOpen ? 'reader-sidebar-action-active' : ''}`}
-          onClick={onOpenAudioLibrary}
+          onClick={handleOpenAudioLibrary}
           title="MP3 Library"
           data-tooltip="MP3 Library"
         >
@@ -181,7 +194,7 @@ export default function ReaderSidebar({
         <button
           type="button"
           className={`reader-sidebar-action ${unitsLibraryOpen ? 'reader-sidebar-action-active' : ''}`}
-          onClick={onOpenUnits}
+          onClick={handleOpenUnits}
           title="Units"
           data-tooltip="Units"
         >
@@ -251,11 +264,11 @@ export default function ReaderSidebar({
 
       {showReaderControls ? (
         <div className="reader-sidebar-section">
-          <button type="button" className="reader-sidebar-action" onClick={onOpenToc} disabled={controlsDisabled} title="Table of contents" data-tooltip="Table of contents">
+          <button type="button" className="reader-sidebar-action" onClick={handleOpenToc} disabled={controlsDisabled} title="Table of contents" data-tooltip="Table of contents">
             <SidebarIcon name="toc" />
             <span className="reader-sidebar-label">TOC</span>
           </button>
-          <button type="button" className="reader-sidebar-action" onClick={onOpenSearch} disabled={!currentBook} title="Search" data-tooltip="Search">
+          <button type="button" className="reader-sidebar-action" onClick={handleOpenSearch} disabled={!currentBook} title="Search" data-tooltip="Search">
             <SidebarIcon name="search" />
             <span className="reader-sidebar-label">Search</span>
           </button>
@@ -309,7 +322,7 @@ export default function ReaderSidebar({
             <span className="reader-sidebar-label">{streamActive ? 'Stop Stream' : 'Play Stream'}</span>
           </button>
         ) : null}
-        <button type="button" className="reader-sidebar-action" onClick={onOpenListeningDashboard} title="Listening dashboard" data-tooltip="Listening dashboard">
+        <button type="button" className="reader-sidebar-action" onClick={handleOpenListeningDashboard} title="Listening dashboard" data-tooltip="Listening dashboard">
           <SidebarIcon name="dashboard" />
           <span className="reader-sidebar-label">Dashboard</span>
         </button>
