@@ -39,6 +39,7 @@ export interface AppUiState {
   editor: {
     open: boolean;
     chapterNumber: number | null;
+    textVersion: ChapterEditorTextVersion | null;
   };
   settingsToolbar: {
     activeTab: AppToolbarTab;
@@ -49,6 +50,12 @@ export interface AppNavigationState {
   mainView: MainView;
   selectedUnitSetId: string | null;
   selectedUnitTopicId: string | null;
+}
+
+export interface ChapterEditorTextVersion {
+  versionId: string;
+  versionLabel: string | null;
+  text: string;
 }
 
 export interface CentralAppState {
@@ -69,6 +76,7 @@ export type AppAction =
   | { type: 'imagePreview/setEnhancedUrl'; url: string | null }
   | { type: 'editor/setOpen'; open: boolean }
   | { type: 'editor/setChapterNumber'; chapterNumber: number | null }
+  | { type: 'editor/setTextVersion'; textVersion: ChapterEditorTextVersion | null }
   | { type: 'settingsToolbar/setTab'; tab: AppToolbarTab }
   | { type: 'navigation/setMainView'; view: MainView }
   | { type: 'navigation/setSelectedUnitSetId'; id: string | null }
@@ -117,7 +125,8 @@ const initialAppState: CentralAppState = {
     imagePreview: null,
     editor: {
       open: false,
-      chapterNumber: null
+      chapterNumber: null,
+      textVersion: null
     },
     settingsToolbar: {
       activeTab: 'image'
@@ -148,6 +157,10 @@ export const appActions = {
   setEditorChapterNumber: (chapterNumber: number | null): AppAction => ({
     type: 'editor/setChapterNumber',
     chapterNumber
+  }),
+  setEditorTextVersion: (textVersion: ChapterEditorTextVersion | null): AppAction => ({
+    type: 'editor/setTextVersion',
+    textVersion
   }),
   setSettingsToolbarTab: (tab: AppToolbarTab): AppAction => ({ type: 'settingsToolbar/setTab', tab }),
   setMainView: (view: MainView): AppAction => ({ type: 'navigation/setMainView', view }),
@@ -287,6 +300,17 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           editor: {
             ...state.ui.editor,
             chapterNumber: action.chapterNumber
+          }
+        }
+      };
+    case 'editor/setTextVersion':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          editor: {
+            ...state.ui.editor,
+            textVersion: action.textVersion
           }
         }
       };

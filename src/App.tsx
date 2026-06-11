@@ -101,14 +101,11 @@ export default function App() {
     editorOpen,
     setEditorOpen,
     editorChapterNumber,
-    setEditorChapterNumber
+    setEditorChapterNumber,
+    editorTextVersion,
+    setEditorTextVersion
   } = useModalState();
   const [chapterViewRefresh, setChapterViewRefresh] = useState(0);
-  const [editorTextVersion, setEditorTextVersion] = useState<{
-    versionId: string;
-    versionLabel: string | null;
-    text: string;
-  } | null>(null);
   const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
     fullText: string;
     startIndex: number;

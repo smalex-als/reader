@@ -9,12 +9,16 @@ import {
   useAppDispatch,
   useAppSelector,
   type AppToolbarTab,
+  type ChapterEditorTextVersion,
   type SimpleModal
 } from '@/state/appState';
 
 type BooleanSetter = (next: boolean | ((prev: boolean) => boolean)) => void;
 type NullableStringSetter = (next: string | null | ((prev: string | null) => string | null)) => void;
 type NullableNumberSetter = (next: number | null | ((prev: number | null) => number | null)) => void;
+type EditorTextVersionSetter = (
+  next: ChapterEditorTextVersion | null | ((prev: ChapterEditorTextVersion | null) => ChapterEditorTextVersion | null)
+) => void;
 type SettingsToolbarTabSetter = (next: AppToolbarTab | ((prev: AppToolbarTab) => AppToolbarTab)) => void;
 
 function resolveNext<T>(next: T | ((prev: T) => T), current: T) {
@@ -36,6 +40,7 @@ export function useModalState() {
   const editorState = useAppSelector(selectEditorState);
   const editorOpen = editorState.open;
   const editorChapterNumber = editorState.chapterNumber;
+  const editorTextVersion = editorState.textVersion;
 
   const setModalOpen = useCallback(
     (modal: SimpleModal, currentOpen: boolean, next: boolean | ((prev: boolean) => boolean)) => {
@@ -110,6 +115,10 @@ export function useModalState() {
     (next) => dispatch(appActions.setEditorChapterNumber(resolveNext(next, editorChapterNumber))),
     [dispatch, editorChapterNumber]
   );
+  const setEditorTextVersion: EditorTextVersionSetter = useCallback(
+    (next) => dispatch(appActions.setEditorTextVersion(resolveNext(next, editorTextVersion))),
+    [dispatch, editorTextVersion]
+  );
 
   const openBookCard = useCallback((bookId: string) => dispatch(appActions.openBookCard(bookId)), [dispatch]);
   const closeBookCard = useCallback(() => dispatch(appActions.closeBookCard()), [dispatch]);
@@ -152,6 +161,8 @@ export function useModalState() {
     editorOpen,
     setEditorOpen,
     editorChapterNumber,
-    setEditorChapterNumber
+    setEditorChapterNumber,
+    editorTextVersion,
+    setEditorTextVersion
   };
 }
