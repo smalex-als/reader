@@ -1,14 +1,17 @@
-import { forwardRef, useEffect, useMemo, useRef, type HTMLAttributes } from 'react';
+import { forwardRef, useCallback, useEffect, useMemo, useRef, type HTMLAttributes } from 'react';
 import { Virtuoso, type ListRange, type VirtuosoHandle } from 'react-virtuoso';
 import OcrOverlay from '@/components/OcrOverlay';
+import { saveLastPage } from '@/lib/storage';
 import { parseStreamLocator } from '@/lib/streamLocator';
 import {
+  appActions,
   selectBookSessionWorkflow,
   selectOcrEdit,
   selectPageTextWorkflow,
   selectReaderSession,
   selectStreamUiControls,
   selectViewerWorkflow,
+  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { PageText } from '@/types/app';
@@ -31,7 +34,6 @@ interface ScrollViewerProps {
   ) => Promise<PageText | null>;
   onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
-  onCurrentPageChange: (pageIndex: number) => void;
 }
 
 const ScrollScroller = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
@@ -69,10 +71,10 @@ export default function ScrollViewer({
   streamPageKey,
   fetchPageTextByImage,
   onPlayTextBlock,
-  onToggleSpeechBlock,
-  onCurrentPageChange
+  onToggleSpeechBlock
 }: ScrollViewerProps) {
-  const { currentPage } = useAppSelector(selectReaderSession);
+  const dispatch = useAppDispatch();
+  const { bookId, currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
@@ -123,6 +125,16 @@ export default function ScrollViewer({
   }, [brightness, contrast, invert]);
   const currentStreamLocator = useMemo(() => parseStreamLocator(currentStreamBlockKey), [currentStreamBlockKey]);
   const playingStreamLocator = useMemo(() => parseStreamLocator(playingStreamBlockKey), [playingStreamBlockKey]);
+  const setCurrentPageFromScroll = useCallback(
+    (pageIndex: number) => {
+      dispatch(appActions.setReaderCurrentPage(pageIndex));
+      dispatch(appActions.setRegeneratedPageText(false));
+      if (bookId) {
+        saveLastPage(bookId, pageIndex);
+      }
+    },
+    [bookId, dispatch]
+  );
 
   const isPageSufficientlyVisible = (pageIndex: number) => {
     const scroller = scrollerRef.current;
@@ -177,7 +189,7 @@ export default function ScrollViewer({
     }
     internalPageRef.current = pageIndex;
     if (pageIndex !== currentPage) {
-      onCurrentPageChange(pageIndex);
+      setCurrentPageFromScroll(pageIndex);
     }
     const scroller = scrollerRef.current;
     if (!scroller) {
@@ -206,7 +218,7 @@ export default function ScrollViewer({
       align: 'start',
       behavior: 'smooth'
     });
-  }, [autoFollowEnabled, currentPage, manifest, onCurrentPageChange, streamPageKey]);
+  }, [autoFollowEnabled, currentPage, manifest, setCurrentPageFromScroll, streamPageKey]);
 
   const updateCurrentPageFromViewport = () => {
     const scroller = scrollerRef.current;
@@ -245,7 +257,7 @@ export default function ScrollViewer({
     }
     internalPageRef.current = nextPage;
     if (nextPage !== currentPage) {
-      onCurrentPageChange(nextPage);
+      setCurrentPageFromScroll(nextPage);
     }
   };
 

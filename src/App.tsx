@@ -35,7 +35,6 @@ import { useWakeLock } from '@/hooks/useWakeLock';
 import { useZoom } from '@/hooks/useZoom';
 import { clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
-import { saveLastPage } from '@/lib/storage';
 import { makeStreamLocator } from '@/lib/streamLocator';
 import {
   createDefaultSettings,
@@ -309,16 +308,6 @@ export default function App() {
     chapterNumber,
     currentChapterEntry
   });
-  const handleScrollCurrentPageChange = useCallback(
-    (pageIndex: number) => {
-      setCurrentPage(pageIndex);
-      setRegeneratedText(false);
-      if (bookId) {
-        saveLastPage(bookId, pageIndex);
-      }
-    },
-    [bookId, setCurrentPage, setRegeneratedText]
-  );
 
   const handleStreamSequenceComplete = useCallback(
     (source: 'page' | 'chapter') => {
@@ -790,8 +779,7 @@ export default function App() {
       },
       onToggleSpeechBlock: (blockId: string) => {
         void handleToggleSpeechBlock(blockId);
-      },
-      onCurrentPageChange: handleScrollCurrentPageChange
+      }
     },
     chapterViewerProps: {
       onCreateChapter: isTextBook
