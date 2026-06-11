@@ -111,6 +111,16 @@ export type StreamControlRequest = {
   | { kind: 'setVoice'; voice: string }
 );
 
+export type ToolbarCommandRequest = {
+  id: number;
+} & (
+  | { kind: 'fitWidth' }
+  | { kind: 'fitHeight' }
+  | { kind: 'toggleOcrEditMode' }
+  | { kind: 'toggleFullscreen' }
+  | { kind: 'createChapter' }
+);
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -268,6 +278,7 @@ export interface CentralAppState {
   pageNavigationRequest: PageNavigationRequest | null;
   dashboardNavigationRequest: DashboardNavigationRequest | null;
   streamControlRequest: StreamControlRequest | null;
+  toolbarCommandRequest: ToolbarCommandRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -335,6 +346,12 @@ export type AppAction =
   | { type: 'streamControl/requestTogglePause' }
   | { type: 'streamControl/requestSetVoice'; voice: string }
   | { type: 'streamControl/clear' }
+  | { type: 'toolbarCommand/requestFitWidth' }
+  | { type: 'toolbarCommand/requestFitHeight' }
+  | { type: 'toolbarCommand/requestToggleOcrEditMode' }
+  | { type: 'toolbarCommand/requestToggleFullscreen' }
+  | { type: 'toolbarCommand/requestCreateChapter' }
+  | { type: 'toolbarCommand/clear' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -508,6 +525,7 @@ const initialAppState: CentralAppState = {
   pageNavigationRequest: null,
   dashboardNavigationRequest: null,
   streamControlRequest: null,
+  toolbarCommandRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -700,6 +718,12 @@ export const appActions = {
     voice
   }),
   clearStreamControlRequest: (): AppAction => ({ type: 'streamControl/clear' }),
+  requestToolbarFitWidth: (): AppAction => ({ type: 'toolbarCommand/requestFitWidth' }),
+  requestToolbarFitHeight: (): AppAction => ({ type: 'toolbarCommand/requestFitHeight' }),
+  requestToolbarOcrEditToggle: (): AppAction => ({ type: 'toolbarCommand/requestToggleOcrEditMode' }),
+  requestToolbarFullscreenToggle: (): AppAction => ({ type: 'toolbarCommand/requestToggleFullscreen' }),
+  requestToolbarCreateChapter: (): AppAction => ({ type: 'toolbarCommand/requestCreateChapter' }),
+  clearToolbarCommandRequest: (): AppAction => ({ type: 'toolbarCommand/clear' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1297,6 +1321,51 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         streamControlRequest: null
+      };
+    case 'toolbarCommand/requestFitWidth':
+      return {
+        ...state,
+        toolbarCommandRequest: {
+          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
+          kind: 'fitWidth'
+        }
+      };
+    case 'toolbarCommand/requestFitHeight':
+      return {
+        ...state,
+        toolbarCommandRequest: {
+          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
+          kind: 'fitHeight'
+        }
+      };
+    case 'toolbarCommand/requestToggleOcrEditMode':
+      return {
+        ...state,
+        toolbarCommandRequest: {
+          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
+          kind: 'toggleOcrEditMode'
+        }
+      };
+    case 'toolbarCommand/requestToggleFullscreen':
+      return {
+        ...state,
+        toolbarCommandRequest: {
+          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
+          kind: 'toggleFullscreen'
+        }
+      };
+    case 'toolbarCommand/requestCreateChapter':
+      return {
+        ...state,
+        toolbarCommandRequest: {
+          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
+          kind: 'createChapter'
+        }
+      };
+    case 'toolbarCommand/clear':
+      return {
+        ...state,
+        toolbarCommandRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -2014,6 +2083,7 @@ export const selectNavigationState = (state: CentralAppState) => state.navigatio
 export const selectPageNavigationRequest = (state: CentralAppState) => state.pageNavigationRequest;
 export const selectDashboardNavigationRequest = (state: CentralAppState) => state.dashboardNavigationRequest;
 export const selectStreamControlRequest = (state: CentralAppState) => state.streamControlRequest;
+export const selectToolbarCommandRequest = (state: CentralAppState) => state.toolbarCommandRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

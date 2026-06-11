@@ -28,11 +28,6 @@ const ZOOM_MAX = 6;
 
 interface ToolbarProps {
   layout?: 'panel' | 'modal';
-  onFitWidth: () => void;
-  onFitHeight: () => void;
-  onToggleOcrEditMode: () => void;
-  onToggleFullscreen: () => void;
-  onCreateChapter: () => void;
   ocrQueueTotal: number;
   ocrQueueProcessed: number;
   ocrQueueFailed: number;
@@ -42,11 +37,6 @@ interface ToolbarProps {
 
 export default function Toolbar({
   layout = 'panel',
-  onFitWidth,
-  onFitHeight,
-  onToggleOcrEditMode,
-  onToggleFullscreen,
-  onCreateChapter,
   ocrQueueTotal,
   ocrQueueProcessed,
   ocrQueueFailed,
@@ -249,7 +239,7 @@ export default function Toolbar({
             <button
               type="button"
               className="button"
-              onClick={onFitWidth}
+              onClick={() => dispatch(appActions.requestToolbarFitWidth())}
               disabled={controlsDisabled}
               aria-label="Fit width"
             >
@@ -258,7 +248,7 @@ export default function Toolbar({
             <button
               type="button"
               className="button"
-              onClick={onFitHeight}
+              onClick={() => dispatch(appActions.requestToolbarFitHeight())}
               disabled={controlsDisabled}
               aria-label="Fit height"
             >
@@ -392,7 +382,7 @@ export default function Toolbar({
           <button
             type="button"
             className={`button ${ocrEditMode ? 'button-active' : ''}`}
-            onClick={onToggleOcrEditMode}
+            onClick={() => dispatch(appActions.requestToolbarOcrEditToggle())}
             disabled={controlsDisabled || disableImageActions || ocrEditSaving}
           >
             {ocrEditSaving ? 'Saving Blocks…' : ocrEditMode ? 'Finish Blocks' : 'Edit Blocks'}
@@ -445,7 +435,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onCreateChapter}
+            onClick={() => dispatch(appActions.requestToolbarCreateChapter())}
             disabled={controlsDisabled || !disableImageActions}
           >
             New Chapter
@@ -470,7 +460,7 @@ export default function Toolbar({
           <button type="button" className="button" onClick={handleOpenHelp}>
             Help / Hotkeys
           </button>
-          <button type="button" className="button" onClick={onToggleFullscreen}>
+          <button type="button" className="button" onClick={() => dispatch(appActions.requestToolbarFullscreenToggle())}>
             {fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           </button>
         </div>

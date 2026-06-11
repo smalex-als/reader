@@ -47,12 +47,15 @@ import type {
 } from '@/types/app';
 import {
   appActions,
+  selectToolbarCommandRequest,
   useAppDispatch,
+  useAppSelector,
   type QuizModal as QuizModalId
 } from '@/state/appState';
 
 export default function App() {
   const dispatch = useAppDispatch();
+  const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const {
     mainView,
     selectedUnitSetId,
@@ -506,6 +509,39 @@ export default function App() {
     [applyZoomMode, viewMode]
   );
 
+  useEffect(() => {
+    if (!toolbarCommandRequest) {
+      return;
+    }
+
+    if (toolbarCommandRequest.kind === 'fitWidth') {
+      applyZoomModeWithAlign('fit-width');
+    } else if (toolbarCommandRequest.kind === 'fitHeight') {
+      applyZoomModeWithAlign('fit-height');
+    } else if (toolbarCommandRequest.kind === 'toggleOcrEditMode') {
+      void handleToggleOcrEditMode();
+    } else if (toolbarCommandRequest.kind === 'toggleFullscreen') {
+      void toggleFullscreen();
+    } else if (toolbarCommandRequest.kind === 'createChapter') {
+      if (!isTextBook) {
+        showToast('Select a text book to add chapters', 'error');
+      } else {
+        void handleCreateChapter({ bookName: '', chapterTitle: '' });
+      }
+    }
+
+    dispatch(appActions.clearToolbarCommandRequest());
+  }, [
+    applyZoomModeWithAlign,
+    dispatch,
+    handleCreateChapter,
+    handleToggleOcrEditMode,
+    isTextBook,
+    showToast,
+    toggleFullscreen,
+    toolbarCommandRequest
+  ]);
+
   useHotkeys({
     viewMode,
     currentImage,
@@ -560,19 +596,6 @@ export default function App() {
   };
 
   const settingsToolbarProps = {
-    onFitWidth: () => applyZoomModeWithAlign('fit-width'),
-    onFitHeight: () => applyZoomModeWithAlign('fit-height'),
-    onToggleOcrEditMode: () => {
-      void handleToggleOcrEditMode();
-    },
-    onToggleFullscreen: () => void toggleFullscreen(),
-    onCreateChapter: () => {
-      if (!isTextBook) {
-        showToast('Select a text book to add chapters', 'error');
-        return;
-      }
-      void handleCreateChapter({ bookName: '', chapterTitle: '' });
-    },
     ocrQueueTotal: ocrQueueState.total,
     ocrQueueProcessed: ocrQueueState.processed,
     ocrQueueFailed: ocrQueueState.failed,
