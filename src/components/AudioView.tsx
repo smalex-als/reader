@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChapterTextVersion, TocEntry, ToastMessage } from '@/types/app';
-import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
+import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/types/floatingAudio';
 import TrashIcon from '@/components/TrashIcon';
 
 interface AudioViewProps {

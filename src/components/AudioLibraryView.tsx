@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import { onFloatingAudioTime } from '@/lib/floatingAudioEvents';
 import type { AppSettings, ToastMessage } from '@/types/app';
+import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/types/floatingAudio';
 
 type AudioLibraryItem = {
   id: string;

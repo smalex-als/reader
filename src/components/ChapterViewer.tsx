@@ -4,13 +4,13 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AddIcon from '@/components/AddIcon';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
-import type { FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
 import type { AppSettings } from '@/types/app';
+import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface ChapterViewerProps {
   bookId: string | null;

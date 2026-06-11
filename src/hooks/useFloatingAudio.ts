@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
-  type FloatingAudioPlaybackState,
-  type FloatingAudioTrack
-} from '@/components/FloatingAudioPlayer';
+  appActions,
+  selectFloatingAudio,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { AudioState } from '@/types/app';
+import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface UseFloatingAudioOptions {
   bookId: string | null;
@@ -14,46 +17,43 @@ interface UseFloatingAudioOptions {
 
 export function useFloatingAudio(options: UseFloatingAudioOptions) {
   const { bookId, audioState, stopAudio, syncFloatingAudioState } = options;
-  const [floatingAudio, setFloatingAudio] = useState<FloatingAudioTrack | null>(null);
-  const [floatingAudioPlaybackState, setFloatingAudioPlaybackState] = useState<
-    FloatingAudioPlaybackState | 'idle'
-  >('idle');
+  const dispatch = useAppDispatch();
+  const { track: floatingAudio, playbackState: floatingAudioPlaybackState } = useAppSelector(selectFloatingAudio);
 
-  const playFloatingAudio = useCallback((payload: FloatingAudioTrack) => {
-    setFloatingAudio(payload.kind ? payload : { ...payload, kind: 'file' });
-    setFloatingAudioPlaybackState('loading');
-  }, []);
+  const playFloatingAudio = useCallback(
+    (payload: FloatingAudioTrack) => {
+      dispatch(appActions.playFloatingAudio(payload));
+    },
+    [dispatch]
+  );
 
   const closeFloatingAudio = useCallback(() => {
     if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
       stopAudio();
     }
-    setFloatingAudio(null);
-    setFloatingAudioPlaybackState('idle');
-  }, [floatingAudio?.kind, stopAudio]);
+    dispatch(appActions.closeFloatingAudio());
+  }, [dispatch, floatingAudio?.kind, stopAudio]);
 
   const handlePlaybackStateChange = useCallback(
     (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => {
-      setFloatingAudioPlaybackState(state);
+      dispatch(appActions.setFloatingAudioPlaybackState(state));
       syncFloatingAudioState(state, track);
     },
-    [syncFloatingAudioState]
+    [dispatch, syncFloatingAudioState]
   );
 
   useEffect(() => {
-    setFloatingAudio(null);
-    setFloatingAudioPlaybackState('idle');
-  }, [bookId]);
+    dispatch(appActions.closeFloatingAudio());
+  }, [bookId, dispatch]);
 
   useEffect(() => {
     if (audioState.status !== 'idle' && audioState.status !== 'error') {
       return;
     }
     if (floatingAudio?.kind === 'page-tts' || floatingAudio?.kind === 'text-tts') {
-      setFloatingAudio(null);
-      setFloatingAudioPlaybackState('idle');
+      dispatch(appActions.closeFloatingAudio());
     }
-  }, [audioState.status, floatingAudio]);
+  }, [audioState.status, dispatch, floatingAudio]);
 
   return {
     floatingAudio,

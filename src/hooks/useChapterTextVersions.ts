@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FloatingAudioSubchapter } from '@/components/FloatingAudioPlayer';
 import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
+import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
 
 type ChapterRange = {
   start: number;

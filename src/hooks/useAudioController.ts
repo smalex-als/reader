@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/components/FloatingAudioPlayer';
 import type { AudioState } from '@/types/app';
+import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 const INITIAL_AUDIO_STATE: AudioState = {
   status: 'idle',

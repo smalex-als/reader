@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { MainView, ViewMode } from '@/lib/appConstants';
 import type { ImagePreviewTarget, PageTextOcrEngine } from '@/types/app';
+import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
 
@@ -114,6 +115,11 @@ export interface OcrEditState {
   saving: boolean;
 }
 
+export interface FloatingAudioState {
+  track: FloatingAudioTrack | null;
+  playbackState: FloatingAudioPlaybackState | 'idle';
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -125,6 +131,7 @@ export interface CentralAppState {
   streamUiControls: StreamUiControlsState;
   unitWorkflow: UnitWorkflowState;
   ocrEdit: OcrEditState;
+  floatingAudio: FloatingAudioState;
 }
 
 export type AppAction =
@@ -166,7 +173,10 @@ export type AppAction =
   | { type: 'unitWorkflow/refresh' }
   | { type: 'unitWorkflow/setQuizLabel'; label: string }
   | { type: 'ocrEdit/setMode'; enabled: boolean }
-  | { type: 'ocrEdit/setSaving'; saving: boolean };
+  | { type: 'ocrEdit/setSaving'; saving: boolean }
+  | { type: 'floatingAudio/play'; track: FloatingAudioTrack }
+  | { type: 'floatingAudio/close' }
+  | { type: 'floatingAudio/setPlaybackState'; playbackState: FloatingAudioPlaybackState };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -262,6 +272,10 @@ const initialAppState: CentralAppState = {
   ocrEdit: {
     editMode: false,
     saving: false
+  },
+  floatingAudio: {
+    track: null,
+    playbackState: 'idle'
   }
 };
 
@@ -356,6 +370,15 @@ export const appActions = {
   setOcrEditSaving: (saving: boolean): AppAction => ({
     type: 'ocrEdit/setSaving',
     saving
+  }),
+  playFloatingAudio: (track: FloatingAudioTrack): AppAction => ({
+    type: 'floatingAudio/play',
+    track
+  }),
+  closeFloatingAudio: (): AppAction => ({ type: 'floatingAudio/close' }),
+  setFloatingAudioPlaybackState: (playbackState: FloatingAudioPlaybackState): AppAction => ({
+    type: 'floatingAudio/setPlaybackState',
+    playbackState
   })
 };
 
@@ -675,6 +698,30 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           saving: action.saving
         }
       };
+    case 'floatingAudio/play':
+      return {
+        ...state,
+        floatingAudio: {
+          track: action.track.kind ? action.track : { ...action.track, kind: 'file' },
+          playbackState: 'loading'
+        }
+      };
+    case 'floatingAudio/close':
+      return {
+        ...state,
+        floatingAudio: {
+          track: null,
+          playbackState: 'idle'
+        }
+      };
+    case 'floatingAudio/setPlaybackState':
+      return {
+        ...state,
+        floatingAudio: {
+          ...state.floatingAudio,
+          playbackState: action.playbackState
+        }
+      };
     default:
       return state;
   }
@@ -726,3 +773,4 @@ export const selectReaderPreferences = (state: CentralAppState) => state.readerP
 export const selectStreamUiControls = (state: CentralAppState) => state.streamUiControls;
 export const selectUnitWorkflow = (state: CentralAppState) => state.unitWorkflow;
 export const selectOcrEdit = (state: CentralAppState) => state.ocrEdit;
+export const selectFloatingAudio = (state: CentralAppState) => state.floatingAudio;
