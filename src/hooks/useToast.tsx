@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import {
+  appActions,
+  selectToast,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { ToastMessage } from '@/types/app';
 
 const TOAST_DURATION = 3000;
 
 export function useToast() {
-  const [toast, setToast] = useState<ToastMessage | null>(null);
+  const dispatch = useAppDispatch();
+  const toast = useAppSelector(selectToast);
   const timer = useRef<number | null>(null);
 
   const clearTimer = useCallback(() => {
@@ -16,8 +23,8 @@ export function useToast() {
 
   const dismiss = useCallback(() => {
     clearTimer();
-    setToast(null);
-  }, [clearTimer]);
+    dispatch(appActions.dismissToast());
+  }, [clearTimer, dispatch]);
 
   const showToast = useCallback(
     (message: string, kind: ToastMessage['kind'] = 'info') => {
@@ -28,12 +35,12 @@ export function useToast() {
         kind,
         expiresAt: Date.now() + TOAST_DURATION
       };
-      setToast(toastMessage);
+      dispatch(appActions.showToast(toastMessage));
       timer.current = window.setTimeout(() => {
-        setToast(null);
+        dispatch(appActions.dismissToast());
       }, TOAST_DURATION);
     },
-    [clearTimer]
+    [clearTimer, dispatch]
   );
 
   useEffect(() => dismiss, [dismiss]);

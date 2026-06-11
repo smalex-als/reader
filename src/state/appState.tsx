@@ -25,6 +25,7 @@ import type {
   Quiz,
   SearchResult,
   TocEntry,
+  ToastMessage,
   ViewerMetrics
 } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
@@ -57,6 +58,7 @@ export interface AppUiState {
     bookCard: boolean;
   };
   fullscreen: boolean;
+  toast: ToastMessage | null;
   bookCardBookId: string | null;
   imagePreview: ImagePreviewTarget | null;
   editor: {
@@ -249,6 +251,8 @@ export type AppAction =
   | { type: 'bookCard/setOpen'; open: boolean }
   | { type: 'bookCard/setBookId'; bookId: string | null }
   | { type: 'fullscreen/set'; fullscreen: boolean }
+  | { type: 'toast/show'; toast: ToastMessage }
+  | { type: 'toast/dismiss' }
   | { type: 'imagePreview/open'; preview: ImagePreviewTarget }
   | { type: 'imagePreview/close' }
   | { type: 'imagePreview/setEnhancedUrl'; url: string | null }
@@ -407,6 +411,7 @@ const initialAppState: CentralAppState = {
       bookCard: false
     },
     fullscreen: false,
+    toast: null,
     bookCardBookId: null,
     imagePreview: null,
     editor: {
@@ -524,6 +529,8 @@ export const appActions = {
   setBookCardOpen: (open: boolean): AppAction => ({ type: 'bookCard/setOpen', open }),
   setBookCardBookId: (bookId: string | null): AppAction => ({ type: 'bookCard/setBookId', bookId }),
   setFullscreen: (fullscreen: boolean): AppAction => ({ type: 'fullscreen/set', fullscreen }),
+  showToast: (toast: ToastMessage): AppAction => ({ type: 'toast/show', toast }),
+  dismissToast: (): AppAction => ({ type: 'toast/dismiss' }),
   openImagePreview: (preview: ImagePreviewTarget): AppAction => ({ type: 'imagePreview/open', preview }),
   closeImagePreview: (): AppAction => ({ type: 'imagePreview/close' }),
   setImagePreviewEnhancedUrl: (url: string | null): AppAction => ({
@@ -872,6 +879,22 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ui: {
           ...state.ui,
           fullscreen: action.fullscreen
+        }
+      };
+    case 'toast/show':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          toast: action.toast
+        }
+      };
+    case 'toast/dismiss':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          toast: null
         }
       };
     case 'imagePreview/open':
@@ -1606,6 +1629,7 @@ export const selectModalOpen = (modal: SimpleModal) => (state: CentralAppState) 
 export const selectBookCardOpen = (state: CentralAppState) => state.ui.modals.bookCard;
 export const selectBookCardBookId = (state: CentralAppState) => state.ui.bookCardBookId;
 export const selectFullscreen = (state: CentralAppState) => state.ui.fullscreen;
+export const selectToast = (state: CentralAppState) => state.ui.toast;
 export const selectImagePreview = (state: CentralAppState) => state.ui.imagePreview;
 export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
