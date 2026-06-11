@@ -384,7 +384,7 @@ export default function App() {
     textSaving,
     toggleTextModal,
     updatePageTextBlocks
-  } = usePageText(currentImage, showToast);
+  } = usePageText(currentImage);
   const {
     pageTextOcrEngine,
     setPageTextOcrEngine,
@@ -643,8 +643,7 @@ export default function App() {
     bookId,
     currentImage,
     currentPage,
-    renderPage,
-    showToast
+    renderPage
   });
 
   useEffect(() => {

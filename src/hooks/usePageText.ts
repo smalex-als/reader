@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { useToast } from '@/hooks/useToast';
 import { parseOcrLayout, serializeOcrLayout } from '@/lib/ocrLayout';
 import {
   appActions,
@@ -17,11 +18,9 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return (await response.json()) as T;
 }
 
-export function usePageText(
-  currentImage: string | null,
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void
-) {
+export function usePageText(currentImage: string | null) {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const textModalOpen = useAppSelector(selectModalOpen('text'));
   const {
     cache: textCache,

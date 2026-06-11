@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import type { Bookmark } from '@/types/app';
 import { fetchJson } from '@/lib/fetchJson';
+import { useToast } from '@/hooks/useToast';
 import {
   appActions,
   selectBookmarkWorkflow,
@@ -13,12 +14,12 @@ interface UseBookmarksOptions {
   bookId: string | null;
   currentPage: number;
   currentImage: string | null;
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
   renderPage: (pageIndex: number) => void;
 }
 
 export function useBookmarks(options: UseBookmarksOptions) {
-  const { bookId, currentPage, currentImage, renderPage, showToast } = options;
+  const { bookId, currentPage, currentImage, renderPage } = options;
+  const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const bookmarksOpen = useAppSelector(selectModalOpen('bookmarks'));
   const { items: bookmarks, loading: bookmarksLoading } = useAppSelector(selectBookmarkWorkflow);
