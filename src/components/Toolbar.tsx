@@ -60,27 +60,15 @@ export default function Toolbar({
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
-  const { chapterNumber, chapterLabel, pageRange: chapterRange } = useCurrentChapterContext();
+  const { chapterNumber, chapterLabel } = useCurrentChapterContext();
   const { openPrintModal } = usePrintOptions();
-  const { openQuiz: openChapterQuiz } = useChapterQuiz({
-    bookId: currentBook,
-    chapterNumber,
-    chapterRange
-  });
+  const { openQuiz: openChapterQuiz } = useChapterQuiz();
   const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz({
     unitSetId: selectedUnitSetId,
     topicId: selectedUnitTopicId
   });
-  const { openVocabulary } = useChapterVocabulary({
-    bookId: currentBook,
-    chapterNumber,
-    chapterRange
-  });
-  const { openMemoryCard } = useChapterMemoryCard({
-    bookId: currentBook,
-    chapterNumber,
-    chapterRange
-  });
+  const { openVocabulary } = useChapterVocabulary();
+  const { openMemoryCard } = useChapterMemoryCard();
   const { settings, metrics } = useAppSelector(selectViewerWorkflow);
   const {
     invert,

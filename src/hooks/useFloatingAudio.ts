@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import {
   appActions,
   selectFloatingAudio,
+  selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -9,13 +10,13 @@ import type { AudioState } from '@/types/app';
 import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface UseFloatingAudioOptions {
-  bookId: string | null;
   audioState: AudioState;
 }
 
 export function useFloatingAudio(options: UseFloatingAudioOptions) {
-  const { bookId, audioState } = options;
+  const { audioState } = options;
   const dispatch = useAppDispatch();
+  const { bookId } = useAppSelector(selectReaderSession);
   const { track: floatingAudio, playbackState: floatingAudioPlaybackState } = useAppSelector(selectFloatingAudio);
 
   const playFloatingAudio = useCallback(

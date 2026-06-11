@@ -1,18 +1,10 @@
 import { useCallback } from 'react';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useQuiz } from '@/hooks/useQuiz';
 
-type ChapterRange = {
-  start: number;
-  end: number;
-} | null;
+export function useChapterQuiz() {
+  const { bookId, chapterNumber, pageRange: chapterRange } = useCurrentChapterContext();
 
-type UseChapterQuizOptions = {
-  bookId: string | null;
-  chapterNumber: number | null;
-  chapterRange: ChapterRange;
-};
-
-export function useChapterQuiz({ bookId, chapterNumber, chapterRange }: UseChapterQuizOptions) {
   const buildUrl = useCallback(() => {
     if (!bookId || !chapterNumber) {
       return null;

@@ -33,16 +33,10 @@ export default function VocabularyModal({
     vocabulary
   } = useAppSelector(selectVocabularyWorkflow);
   const {
-    bookId,
     chapterNumber,
-    chapterLabel,
-    pageRange: chapterRange
+    chapterLabel
   } = useCurrentChapterContext();
-  const { regenerateVocabulary } = useChapterVocabulary({
-    bookId,
-    chapterNumber,
-    chapterRange
-  });
+  const { regenerateVocabulary } = useChapterVocabulary();
   const handleClose = () => {
     dispatch(appActions.closeModal('vocabulary'));
   };

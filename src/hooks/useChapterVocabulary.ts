@@ -1,23 +1,14 @@
 import { useCallback, useEffect } from 'react';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import {
   appActions,
-  useAppDispatch,
+  useAppDispatch
 } from '@/state/appState';
 import type { ChapterVocabulary } from '@/types/app';
 
-type ChapterRange = {
-  start: number;
-  end: number;
-} | null;
-
-type UseChapterVocabularyOptions = {
-  bookId: string | null;
-  chapterNumber: number | null;
-  chapterRange: ChapterRange;
-};
-
-export function useChapterVocabulary({ bookId, chapterNumber, chapterRange }: UseChapterVocabularyOptions) {
+export function useChapterVocabulary() {
   const dispatch = useAppDispatch();
+  const { bookId, chapterNumber, pageRange: chapterRange } = useCurrentChapterContext();
 
   useEffect(() => {
     dispatch(appActions.resetVocabulary());

@@ -1,23 +1,14 @@
 import { useCallback, useEffect } from 'react';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import {
   appActions,
-  useAppDispatch,
+  useAppDispatch
 } from '@/state/appState';
 import type { ChapterMemoryCard } from '@/types/app';
 
-type ChapterRange = {
-  start: number;
-  end: number;
-} | null;
-
-type UseChapterMemoryCardOptions = {
-  bookId: string | null;
-  chapterNumber: number | null;
-  chapterRange: ChapterRange;
-};
-
-export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: UseChapterMemoryCardOptions) {
+export function useChapterMemoryCard() {
   const dispatch = useAppDispatch();
+  const { bookId, chapterNumber, pageRange: chapterRange } = useCurrentChapterContext();
 
   useEffect(() => {
     dispatch(appActions.resetMemoryCard());

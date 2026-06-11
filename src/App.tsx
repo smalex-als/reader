@@ -133,11 +133,7 @@ export default function App() {
     handleRemoveTocEntry,
     handleUpdateTocEntry,
     handleGenerateChapter
-  } = useTocManager({
-    bookId,
-    manifestLength: isTextBook ? chapterCount : manifest.length,
-    viewMode
-  });
+  } = useTocManager();
   useEffect(() => {
     tocEntriesRef.current = setTocEntries;
   }, [setTocEntries]);
@@ -180,18 +176,10 @@ export default function App() {
     return candidates.length > 0 ? candidates[candidates.length - 1] : null;
   }, [currentChapterEntry?.page, currentPage, manifest.length, nextChapterEntry?.page, sortedDetailedTocEntries]);
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
-  const chapterRange =
-    !isTextBook && currentChapterEntry
-      ? { start: currentChapterEntry.page, end: nextChapterEntry?.page ?? manifest.length }
-      : null;
   const {
     openQuiz: handleOpenQuiz,
     regenerateQuiz: handleRegenerateQuiz
-  } = useChapterQuiz({
-    bookId,
-    chapterNumber,
-    chapterRange
-  });
+  } = useChapterQuiz();
   const {
     openQuiz: handleOpenUnitTopicQuiz,
     regenerateQuiz: handleRegenerateUnitTopicQuiz
@@ -201,18 +189,10 @@ export default function App() {
   });
   const {
     openVocabulary: handleOpenVocabulary
-  } = useChapterVocabulary({
-    bookId,
-    chapterNumber,
-    chapterRange
-  });
+  } = useChapterVocabulary();
   const {
     openMemoryCard: handleOpenMemoryCard
-  } = useChapterMemoryCard({
-    bookId,
-    chapterNumber,
-    chapterRange
-  });
+  } = useChapterMemoryCard();
   const hasBooks = books.length > 0;
 
   const {
@@ -234,7 +214,7 @@ export default function App() {
   const {
     floatingAudioPlaybackState,
     playFloatingAudio: handlePlayFloatingAudio
-  } = useFloatingAudio({ bookId, audioState });
+  } = useFloatingAudio({ audioState });
   const isListening =
     audioState.status === 'playing' ||
     streamState.status === 'streaming' ||
@@ -385,7 +365,7 @@ export default function App() {
     resetQueue,
     retryFailed,
     togglePause
-  } = useOcrQueue({ manifest, currentPage });
+  } = useOcrQueue();
   useEffect(() => {
     if (
       !pendingAlignTopRef.current ||

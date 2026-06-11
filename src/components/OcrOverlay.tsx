@@ -1,6 +1,5 @@
 import { useId, useMemo } from 'react';
 import { useImagePreview } from '@/hooks/useImagePreview';
-import { selectReaderSession, useAppSelector } from '@/state/appState';
 import type { PageText } from '@/types/app';
 
 interface OcrOverlayProps {
@@ -30,8 +29,7 @@ export default function OcrOverlay({
   onPlayTextBlock,
   onToggleSpeechBlock
 }: OcrOverlayProps) {
-  const { bookId } = useAppSelector(selectReaderSession);
-  const { handleOpenImagePreview } = useImagePreview({ bookId });
+  const { handleOpenImagePreview } = useImagePreview();
   const overlayMaskId = useId().replace(/:/g, '-');
 
   const coordinateBlocks = useMemo(() => {

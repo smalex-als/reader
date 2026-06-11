@@ -35,16 +35,10 @@ export default function MemoryCardModal({
     memoryCard
   } = useAppSelector(selectMemoryCardWorkflow);
   const {
-    bookId,
     chapterNumber,
-    chapterLabel,
-    pageRange: chapterRange
+    chapterLabel
   } = useCurrentChapterContext();
-  const { regenerateMemoryCard } = useChapterMemoryCard({
-    bookId,
-    chapterNumber,
-    chapterRange
-  });
+  const { regenerateMemoryCard } = useChapterMemoryCard();
   const handleClose = () => {
     onStopAudio();
     dispatch(appActions.closeModal('memoryCard'));

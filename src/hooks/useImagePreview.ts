@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import {
   appActions,
   selectImagePreviewWorkflow,
+  selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -15,8 +16,9 @@ function makePreviewKey(
   return `${bookId}:${imageFilename}:${left}:${top}:${right}:${bottom}`;
 }
 
-export function useImagePreview({ bookId }: { bookId: string | null }) {
+export function useImagePreview() {
   const dispatch = useAppDispatch();
+  const { bookId } = useAppSelector(selectReaderSession);
   const { enhancedUrls } = useAppSelector(selectImagePreviewWorkflow);
 
   const handleOpenImagePreview = useCallback(

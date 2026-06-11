@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
+import {
+  selectBookSessionWorkflow,
+  selectReaderSession,
+  useAppSelector
+} from '@/state/appState';
 
 export type OcrJobStatus = 'pending' | 'running' | 'completed' | 'error';
 
@@ -21,11 +26,6 @@ interface OcrQueueProgress {
   pending: number;
 }
 
-interface UseOcrQueueOptions {
-  manifest: string[];
-  currentPage: number;
-}
-
 function createJobId(counter: number) {
   return `ocr-${Date.now()}-${counter}`;
 }
@@ -41,8 +41,10 @@ async function requestPageText(imageUrl: string, options: { signal?: AbortSignal
   }
 }
 
-export function useOcrQueue({ manifest, currentPage }: UseOcrQueueOptions) {
+export function useOcrQueue() {
   const { showToast } = useToast();
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const [jobs, setJobs] = useState<OcrJob[]>([]);
   const [paused, setPaused] = useState(false);
   const idCounterRef = useRef(0);

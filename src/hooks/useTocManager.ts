@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import {
   appActions,
+  selectBookSessionWorkflow,
   selectModalOpen,
+  selectReaderSession,
   selectTocWorkflow,
   useAppDispatch,
   useAppSelector,
@@ -18,19 +20,15 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return (await response.json()) as T;
 }
 
-type TocManagerOptions = {
-  bookId: string | null;
-  manifestLength: number;
-  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-};
-
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
 
-export function useTocManager({ bookId, manifestLength, viewMode }: TocManagerOptions) {
+export function useTocManager() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
+  const { bookId } = useAppSelector(selectReaderSession);
+  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const tocOpen = useAppSelector(selectModalOpen('tocNav'));
   const tocManageOpen = useAppSelector(selectModalOpen('tocManage'));
   const {
@@ -42,6 +40,7 @@ export function useTocManager({ bookId, manifestLength, viewMode }: TocManagerOp
     saving: tocSaving,
     chapterGeneratingIndex
   } = useAppSelector(selectTocWorkflow);
+  const manifestLength = bookType === 'text' ? chapterCount : manifest.length;
 
   const setTocEntries: Dispatch<SetStateAction<TocEntry[]>> = useCallback(
     (next) => {
