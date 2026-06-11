@@ -443,12 +443,7 @@ export default function App() {
   }, [bookId, closeBookmarks, dispatch, resetAudioCache, resetTextState, stopAudio, stopStream]);
 
   const {
-    handleOpenDashboardBook,
-    handleOpenDashboardChapter,
-    handleOpenDashboardUnit,
-    handleOpenAudioLibrary,
-    handleOpenLibraryBook,
-    handleOpenUnitSource
+    handleOpenAudioLibrary
   } = useDashboardNavigation({
     bookId,
     setBookId,
@@ -649,11 +644,6 @@ export default function App() {
         });
       },
       onStopAudio: handleStopStream
-    },
-    listeningDashboardModalProps: {
-      onOpenBook: handleOpenDashboardBook,
-      onOpenChapter: handleOpenDashboardChapter,
-      onOpenUnit: handleOpenDashboardUnit
     }
   };
 
@@ -697,14 +687,10 @@ export default function App() {
       playingParagraphStart: activeTextParagraph.startIndex,
       playingParagraphMode: activeTextParagraph.mode
     },
-    audioLibraryViewProps: {
-      onOpenBook: handleOpenLibraryBook
-    },
     unitsViewProps: {
       streamState,
       onPlayTopicParagraph: handlePlayChapterParagraph,
-      onStopAudio: handleStopStream,
-      onOpenSource: handleOpenUnitSource
+      onStopAudio: handleStopStream
     },
     streamBubbleProps: {
       streamState,

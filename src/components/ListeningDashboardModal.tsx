@@ -8,18 +8,6 @@ import {
 } from '@/state/appState';
 import type { ListeningDashboardData } from '@/types/app';
 
-interface ListeningDashboardModalProps {
-  onOpenBook: (bookId: string) => void;
-  onOpenChapter: (
-    bookId: string,
-    chapterNumber: number | null,
-    subchapterTitle?: string | null,
-    pageNumber?: number | null,
-    pageKeyEnd?: string | null
-  ) => void;
-  onOpenUnit: (unitSetId: string, topicId: string) => void;
-}
-
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
   if (!response.ok) {
@@ -60,11 +48,7 @@ function formatDay(value: string) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export default function ListeningDashboardModal({
-  onOpenBook,
-  onOpenChapter,
-  onOpenUnit
-}: ListeningDashboardModalProps) {
+export default function ListeningDashboardModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('listeningDashboard'));
   const [loading, setLoading] = useState(false);
@@ -226,7 +210,7 @@ export default function ListeningDashboardModal({
                         key={entry.bookId}
                         type="button"
                         className="listening-table-row listening-table-button"
-                        onClick={() => onOpenBook(entry.bookId)}
+                        onClick={() => dispatch(appActions.requestDashboardBookNavigation(entry.bookId))}
                       >
                         <div className="listening-table-main">
                           <strong>{entry.bookId}</strong>
@@ -250,13 +234,13 @@ export default function ListeningDashboardModal({
                         type="button"
                         className="listening-table-row listening-table-button"
                         onClick={() =>
-                          onOpenChapter(
+                          dispatch(appActions.requestDashboardChapterNavigation(
                             entry.bookId,
                             entry.chapterNumber,
                             entry.subchapterTitle,
                             entry.pageNumber,
                             entry.pageKeyEnd
-                          )
+                          ))
                         }
                       >
                         <div className="listening-table-main">
@@ -285,7 +269,9 @@ export default function ListeningDashboardModal({
                         key={`${entry.unitSetId}-${entry.topicId}`}
                         type="button"
                         className="listening-table-row listening-table-button"
-                        onClick={() => onOpenUnit(entry.unitSetId, entry.topicId)}
+                        onClick={() =>
+                          dispatch(appActions.requestDashboardUnitNavigation(entry.unitSetId, entry.topicId))
+                        }
                       >
                         <div className="listening-table-main">
                           <strong>{entry.topicTitle ?? entry.topicId}</strong>
@@ -311,16 +297,16 @@ export default function ListeningDashboardModal({
                       className="listening-table-row listening-table-row-multiline listening-table-button"
                       onClick={() =>
                         entry.sourceType === 'unit' && entry.unitSetId && entry.topicId
-                          ? onOpenUnit(entry.unitSetId, entry.topicId)
+                          ? dispatch(appActions.requestDashboardUnitNavigation(entry.unitSetId, entry.topicId))
                           : entry.chapterNumber !== null
-                          ? onOpenChapter(
+                          ? dispatch(appActions.requestDashboardChapterNavigation(
                               entry.bookId,
                               entry.chapterNumber,
                               entry.subchapterTitle,
                               entry.pageNumber,
                               entry.pageKeyEnd
-                            )
-                          : onOpenBook(entry.bookId)
+                            ))
+                          : dispatch(appActions.requestDashboardBookNavigation(entry.bookId))
                       }
                     >
                       <div className="listening-table-main">

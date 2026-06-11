@@ -85,6 +85,23 @@ export type PageNavigationRequest = {
   | { kind: 'next' }
 );
 
+export type DashboardNavigationRequest = {
+  id: number;
+} & (
+  | { kind: 'dashboardBook'; bookId: string }
+  | {
+      kind: 'dashboardChapter';
+      bookId: string;
+      chapterNumber: number | null;
+      subchapterTitle?: string | null;
+      pageNumber?: number | null;
+      pageKeyEnd?: string | null;
+    }
+  | { kind: 'dashboardUnit'; unitSetId: string; topicId: string }
+  | { kind: 'audioLibraryBook'; bookId: string; chapterNumber: number }
+  | { kind: 'unitSource'; bookId: string; chapterNumber: number }
+);
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -240,6 +257,7 @@ export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
   pageNavigationRequest: PageNavigationRequest | null;
+  dashboardNavigationRequest: DashboardNavigationRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -289,6 +307,19 @@ export type AppAction =
   | { type: 'pageNavigation/requestPrevious' }
   | { type: 'pageNavigation/requestNext' }
   | { type: 'pageNavigation/clear' }
+  | { type: 'dashboardNavigation/requestBook'; bookId: string }
+  | {
+      type: 'dashboardNavigation/requestChapter';
+      bookId: string;
+      chapterNumber: number | null;
+      subchapterTitle?: string | null;
+      pageNumber?: number | null;
+      pageKeyEnd?: string | null;
+    }
+  | { type: 'dashboardNavigation/requestUnit'; unitSetId: string; topicId: string }
+  | { type: 'dashboardNavigation/requestAudioLibraryBook'; bookId: string; chapterNumber: number }
+  | { type: 'dashboardNavigation/requestUnitSource'; bookId: string; chapterNumber: number }
+  | { type: 'dashboardNavigation/clear' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -460,6 +491,7 @@ const initialAppState: CentralAppState = {
   },
   navigation: getInitialNavigation(),
   pageNavigationRequest: null,
+  dashboardNavigationRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -610,6 +642,40 @@ export const appActions = {
   requestPreviousPageNavigation: (): AppAction => ({ type: 'pageNavigation/requestPrevious' }),
   requestNextPageNavigation: (): AppAction => ({ type: 'pageNavigation/requestNext' }),
   clearPageNavigation: (): AppAction => ({ type: 'pageNavigation/clear' }),
+  requestDashboardBookNavigation: (bookId: string): AppAction => ({
+    type: 'dashboardNavigation/requestBook',
+    bookId
+  }),
+  requestDashboardChapterNavigation: (
+    bookId: string,
+    chapterNumber: number | null,
+    subchapterTitle?: string | null,
+    pageNumber?: number | null,
+    pageKeyEnd?: string | null
+  ): AppAction => ({
+    type: 'dashboardNavigation/requestChapter',
+    bookId,
+    chapterNumber,
+    subchapterTitle,
+    pageNumber,
+    pageKeyEnd
+  }),
+  requestDashboardUnitNavigation: (unitSetId: string, topicId: string): AppAction => ({
+    type: 'dashboardNavigation/requestUnit',
+    unitSetId,
+    topicId
+  }),
+  requestAudioLibraryBookNavigation: (bookId: string, chapterNumber: number): AppAction => ({
+    type: 'dashboardNavigation/requestAudioLibraryBook',
+    bookId,
+    chapterNumber
+  }),
+  requestUnitSourceNavigation: (bookId: string, chapterNumber: number): AppAction => ({
+    type: 'dashboardNavigation/requestUnitSource',
+    bookId,
+    chapterNumber
+  }),
+  clearDashboardNavigation: (): AppAction => ({ type: 'dashboardNavigation/clear' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1112,6 +1178,63 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         pageNavigationRequest: null
+      };
+    case 'dashboardNavigation/requestBook':
+      return {
+        ...state,
+        dashboardNavigationRequest: {
+          id: (state.dashboardNavigationRequest?.id ?? 0) + 1,
+          kind: 'dashboardBook',
+          bookId: action.bookId
+        }
+      };
+    case 'dashboardNavigation/requestChapter':
+      return {
+        ...state,
+        dashboardNavigationRequest: {
+          id: (state.dashboardNavigationRequest?.id ?? 0) + 1,
+          kind: 'dashboardChapter',
+          bookId: action.bookId,
+          chapterNumber: action.chapterNumber,
+          subchapterTitle: action.subchapterTitle,
+          pageNumber: action.pageNumber,
+          pageKeyEnd: action.pageKeyEnd
+        }
+      };
+    case 'dashboardNavigation/requestUnit':
+      return {
+        ...state,
+        dashboardNavigationRequest: {
+          id: (state.dashboardNavigationRequest?.id ?? 0) + 1,
+          kind: 'dashboardUnit',
+          unitSetId: action.unitSetId,
+          topicId: action.topicId
+        }
+      };
+    case 'dashboardNavigation/requestAudioLibraryBook':
+      return {
+        ...state,
+        dashboardNavigationRequest: {
+          id: (state.dashboardNavigationRequest?.id ?? 0) + 1,
+          kind: 'audioLibraryBook',
+          bookId: action.bookId,
+          chapterNumber: action.chapterNumber
+        }
+      };
+    case 'dashboardNavigation/requestUnitSource':
+      return {
+        ...state,
+        dashboardNavigationRequest: {
+          id: (state.dashboardNavigationRequest?.id ?? 0) + 1,
+          kind: 'unitSource',
+          bookId: action.bookId,
+          chapterNumber: action.chapterNumber
+        }
+      };
+    case 'dashboardNavigation/clear':
+      return {
+        ...state,
+        dashboardNavigationRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -1827,6 +1950,7 @@ export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
 export const selectNavigationState = (state: CentralAppState) => state.navigation;
 export const selectPageNavigationRequest = (state: CentralAppState) => state.pageNavigationRequest;
+export const selectDashboardNavigationRequest = (state: CentralAppState) => state.dashboardNavigationRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

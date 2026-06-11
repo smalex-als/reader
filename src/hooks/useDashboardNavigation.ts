@@ -1,7 +1,12 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
 import { saveLastPage } from '@/lib/storage';
-import { appActions, useAppDispatch } from '@/state/appState';
+import {
+  appActions,
+  selectDashboardNavigationRequest,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { TocEntry } from '@/types/app';
 
 interface UseDashboardNavigationOptions {
@@ -16,6 +21,7 @@ export function useDashboardNavigation({
   renderPage
 }: UseDashboardNavigationOptions) {
   const dispatch = useAppDispatch();
+  const dashboardNavigationRequest = useAppSelector(selectDashboardNavigationRequest);
   const closeListeningDashboard = useCallback(() => {
     dispatch(appActions.closeModal('listeningDashboard'));
   }, [dispatch]);
@@ -121,12 +127,39 @@ export function useDashboardNavigation({
     [bookId, dispatch, renderPage, setBookId]
   );
 
-  return {
+  useEffect(() => {
+    if (!dashboardNavigationRequest) {
+      return;
+    }
+    if (dashboardNavigationRequest.kind === 'dashboardBook') {
+      handleOpenDashboardBook(dashboardNavigationRequest.bookId);
+    } else if (dashboardNavigationRequest.kind === 'dashboardChapter') {
+      void handleOpenDashboardChapter(
+        dashboardNavigationRequest.bookId,
+        dashboardNavigationRequest.chapterNumber,
+        dashboardNavigationRequest.subchapterTitle,
+        dashboardNavigationRequest.pageNumber,
+        dashboardNavigationRequest.pageKeyEnd
+      );
+    } else if (dashboardNavigationRequest.kind === 'dashboardUnit') {
+      handleOpenDashboardUnit(dashboardNavigationRequest.unitSetId, dashboardNavigationRequest.topicId);
+    } else if (dashboardNavigationRequest.kind === 'audioLibraryBook') {
+      handleOpenLibraryBook(dashboardNavigationRequest.bookId, dashboardNavigationRequest.chapterNumber);
+    } else {
+      handleOpenUnitSource(dashboardNavigationRequest.bookId, dashboardNavigationRequest.chapterNumber);
+    }
+    dispatch(appActions.clearDashboardNavigation());
+  }, [
+    dashboardNavigationRequest,
+    dispatch,
     handleOpenDashboardBook,
     handleOpenDashboardChapter,
     handleOpenDashboardUnit,
-    handleOpenAudioLibrary,
     handleOpenLibraryBook,
     handleOpenUnitSource
+  ]);
+
+  return {
+    handleOpenAudioLibrary
   };
 }

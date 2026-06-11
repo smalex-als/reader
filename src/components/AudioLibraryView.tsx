@@ -36,10 +36,6 @@ type SubtitleCue = {
   text: string;
 };
 
-interface AudioLibraryViewProps {
-  onOpenBook: (bookId: string, chapterNumber: number) => void;
-}
-
 async function readErrorMessage(response: Response) {
   try {
     const payload = (await response.json()) as { error?: string };
@@ -217,9 +213,7 @@ function toFloatingTrack(item: AudioLibraryItem, startSeconds?: number): Floatin
   };
 }
 
-export default function AudioLibraryView({
-  onOpenBook
-}: AudioLibraryViewProps) {
+export default function AudioLibraryView() {
   const dispatch = useAppDispatch();
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
@@ -401,7 +395,14 @@ export default function AudioLibraryView({
             <button
               type="button"
               className="button button-secondary"
-              onClick={() => onOpenBook(selectedItem.bookId, selectedItem.chapterNumber)}
+              onClick={() =>
+                dispatch(
+                  appActions.requestAudioLibraryBookNavigation(
+                    selectedItem.bookId,
+                    selectedItem.chapterNumber
+                  )
+                )
+              }
             >
               Open Book
             </button>
@@ -567,7 +568,9 @@ export default function AudioLibraryView({
                     className="button button-secondary"
                     onClick={(event) => {
                       event.stopPropagation();
-                      onOpenBook(item.bookId, item.chapterNumber);
+                      dispatch(
+                        appActions.requestAudioLibraryBookNavigation(item.bookId, item.chapterNumber)
+                      );
                     }}
                   >
                     Open Book

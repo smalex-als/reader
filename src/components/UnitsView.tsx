@@ -20,7 +20,6 @@ interface UnitsViewProps {
   streamState: StreamState;
   onPlayTopicParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   onStopAudio: () => void;
-  onOpenSource: (bookId: string, chapterNumber: number) => void;
 }
 
 async function readErrorMessage(response: Response) {
@@ -152,8 +151,7 @@ function ReadStatusIcon({ read }: { read: boolean }) {
 export default function UnitsView({
   streamState,
   onPlayTopicParagraph,
-  onStopAudio,
-  onOpenSource
+  onStopAudio
 }: UnitsViewProps) {
   const dispatch = useAppDispatch();
   const { selectedUnitSetId: selectedSetId, selectedUnitTopicId: selectedTopicId } =
@@ -740,7 +738,14 @@ export default function UnitsView({
               <button
                 type="button"
                 className="button button-secondary"
-                onClick={() => onOpenSource(selectedSet.sourceBookId!, selectedSet.sourceChapterNumber!)}
+                onClick={() =>
+                  dispatch(
+                    appActions.requestUnitSourceNavigation(
+                      selectedSet.sourceBookId!,
+                      selectedSet.sourceChapterNumber!
+                    )
+                  )
+                }
               >
                 Open Source
               </button>
@@ -866,7 +871,12 @@ export default function UnitsView({
                     className="button button-secondary"
                     onClick={(event) => {
                       event.stopPropagation();
-                      onOpenSource(item.sourceBookId!, item.sourceChapterNumber!);
+                      dispatch(
+                        appActions.requestUnitSourceNavigation(
+                          item.sourceBookId!,
+                          item.sourceChapterNumber!
+                        )
+                      );
                     }}
                   >
                     Source

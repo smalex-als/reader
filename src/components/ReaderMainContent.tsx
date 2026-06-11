@@ -20,7 +20,6 @@ import {
 type ViewerProps = ComponentProps<typeof Viewer>;
 type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
 type ChapterViewerProps = ComponentProps<typeof ChapterViewer>;
-type AudioLibraryViewProps = ComponentProps<typeof AudioLibraryView>;
 type UnitsViewProps = ComponentProps<typeof UnitsView>;
 type StreamBubbleProps = ComponentProps<typeof StreamBubble>;
 
@@ -31,7 +30,6 @@ interface ReaderMainContentProps {
   viewerProps: ViewerProps;
   scrollViewerProps: ScrollViewerProps;
   chapterViewerProps: ChapterViewerProps;
-  audioLibraryViewProps: AudioLibraryViewProps;
   unitsViewProps: UnitsViewProps;
   streamBubbleProps: StreamBubbleProps;
 }
@@ -43,7 +41,6 @@ export default function ReaderMainContent({
   viewerProps,
   scrollViewerProps,
   chapterViewerProps,
-  audioLibraryViewProps,
   unitsViewProps,
   streamBubbleProps
 }: ReaderMainContentProps) {
@@ -68,7 +65,7 @@ export default function ReaderMainContent({
         }`}
       >
         {mainView === 'audio-library' ? (
-          <AudioLibraryView {...audioLibraryViewProps} />
+          <AudioLibraryView />
         ) : mainView === 'units' ? (
           <UnitsView {...unitsViewProps} />
         ) : viewMode === 'pages' ? (

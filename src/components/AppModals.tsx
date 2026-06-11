@@ -25,7 +25,6 @@ type OcrQueueModalProps = ComponentProps<typeof OcrQueueModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
 type QuizModalProps = ComponentProps<typeof QuizModal>;
 type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
-type ListeningDashboardModalProps = ComponentProps<typeof ListeningDashboardModal>;
 type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
 
 interface AppModalsProps {
@@ -35,7 +34,6 @@ interface AppModalsProps {
   settingsModalProps: SettingsModalProps;
   quizModalProps: QuizModalProps;
   vocabularyModalProps: VocabularyModalProps;
-  listeningDashboardModalProps: ListeningDashboardModalProps;
   memoryCardModalProps: MemoryCardModalProps;
 }
 
@@ -53,7 +51,6 @@ export default function AppModals({
   settingsModalProps,
   quizModalProps,
   vocabularyModalProps,
-  listeningDashboardModalProps,
   memoryCardModalProps
 }: AppModalsProps) {
   return (
@@ -73,7 +70,7 @@ export default function AppModals({
       {renderInPortal(<VocabularyModal {...vocabularyModalProps} />, portalTarget)}
       {renderInPortal(<MemoryCardModal {...memoryCardModalProps} />, portalTarget)}
       {renderInPortal(<PromptEditorModal />, portalTarget)}
-      {renderInPortal(<ListeningDashboardModal {...listeningDashboardModalProps} />, portalTarget)}
+      {renderInPortal(<ListeningDashboardModal />, portalTarget)}
       {renderInPortal(<ImagePreviewModal />, portalTarget)}
       {renderInPortal(<JobWorkerModal />, portalTarget)}
       <OcrQueueModal {...ocrQueueModalProps} />
