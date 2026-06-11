@@ -47,6 +47,7 @@ import type {
 } from '@/types/app';
 import {
   appActions,
+  selectStudyModeToggleRequest,
   selectToolbarCommandRequest,
   useAppDispatch,
   useAppSelector,
@@ -55,6 +56,7 @@ import {
 
 export default function App() {
   const dispatch = useAppDispatch();
+  const studyModeToggleRequest = useAppSelector(selectStudyModeToggleRequest);
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const {
     mainView,
@@ -468,7 +470,11 @@ export default function App() {
     [setSettings]
   );
 
-  const toggleStudyMode = useCallback(() => {
+  useEffect(() => {
+    if (!studyModeToggleRequest) {
+      return;
+    }
+
     const enablingStudyMode = !settings.studyMode;
     setSettings((prev) => ({ ...prev, studyMode: !prev.studyMode }));
     if (
@@ -477,7 +483,15 @@ export default function App() {
     ) {
       stopAfterCurrentStream();
     }
-  }, [setSettings, settings.studyMode, stopAfterCurrentStream, streamState.status]);
+    dispatch(appActions.clearStudyModeToggleRequest());
+  }, [
+    dispatch,
+    setSettings,
+    settings.studyMode,
+    stopAfterCurrentStream,
+    streamState.status,
+    studyModeToggleRequest
+  ]);
 
   useEffect(() => {
     resetQueue();
@@ -714,8 +728,7 @@ export default function App() {
       onStopAudio: handleStopStream
     },
     streamBubbleProps: {
-      streamState,
-      onToggleStudyMode: toggleStudyMode
+      streamState
     }
   };
 

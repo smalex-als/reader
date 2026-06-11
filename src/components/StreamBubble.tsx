@@ -13,12 +13,10 @@ import {
 
 interface StreamBubbleProps {
   streamState: StreamState;
-  onToggleStudyMode?: () => void;
 }
 
 export default function StreamBubble({
-  streamState,
-  onToggleStudyMode
+  streamState
 }: StreamBubbleProps) {
   const dispatch = useAppDispatch();
   const { viewMode } = useAppSelector(selectReaderSession);
@@ -118,7 +116,7 @@ export default function StreamBubble({
         <input
           type="checkbox"
           checked={studyMode}
-          onChange={onToggleStudyMode}
+          onChange={() => dispatch(appActions.requestStudyModeToggle())}
           aria-label="Study mode"
         />
         <span>Study</span>

@@ -121,6 +121,10 @@ export type ToolbarCommandRequest = {
   | { kind: 'createChapter' }
 );
 
+export interface StudyModeToggleRequest {
+  id: number;
+}
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -279,6 +283,7 @@ export interface CentralAppState {
   dashboardNavigationRequest: DashboardNavigationRequest | null;
   streamControlRequest: StreamControlRequest | null;
   toolbarCommandRequest: ToolbarCommandRequest | null;
+  studyModeToggleRequest: StudyModeToggleRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -352,6 +357,8 @@ export type AppAction =
   | { type: 'toolbarCommand/requestToggleFullscreen' }
   | { type: 'toolbarCommand/requestCreateChapter' }
   | { type: 'toolbarCommand/clear' }
+  | { type: 'studyMode/requestToggle' }
+  | { type: 'studyMode/clearToggleRequest' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -526,6 +533,7 @@ const initialAppState: CentralAppState = {
   dashboardNavigationRequest: null,
   streamControlRequest: null,
   toolbarCommandRequest: null,
+  studyModeToggleRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -724,6 +732,8 @@ export const appActions = {
   requestToolbarFullscreenToggle: (): AppAction => ({ type: 'toolbarCommand/requestToggleFullscreen' }),
   requestToolbarCreateChapter: (): AppAction => ({ type: 'toolbarCommand/requestCreateChapter' }),
   clearToolbarCommandRequest: (): AppAction => ({ type: 'toolbarCommand/clear' }),
+  requestStudyModeToggle: (): AppAction => ({ type: 'studyMode/requestToggle' }),
+  clearStudyModeToggleRequest: (): AppAction => ({ type: 'studyMode/clearToggleRequest' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1366,6 +1376,18 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         toolbarCommandRequest: null
+      };
+    case 'studyMode/requestToggle':
+      return {
+        ...state,
+        studyModeToggleRequest: {
+          id: (state.studyModeToggleRequest?.id ?? 0) + 1
+        }
+      };
+    case 'studyMode/clearToggleRequest':
+      return {
+        ...state,
+        studyModeToggleRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -2084,6 +2106,7 @@ export const selectPageNavigationRequest = (state: CentralAppState) => state.pag
 export const selectDashboardNavigationRequest = (state: CentralAppState) => state.dashboardNavigationRequest;
 export const selectStreamControlRequest = (state: CentralAppState) => state.streamControlRequest;
 export const selectToolbarCommandRequest = (state: CentralAppState) => state.toolbarCommandRequest;
+export const selectStudyModeToggleRequest = (state: CentralAppState) => state.studyModeToggleRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;
