@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useCurrentChapterLabel } from '@/hooks/useCurrentChapterLabel';
 import {
   appActions,
   selectModalOpen,
@@ -13,7 +14,6 @@ import {
 import type { StreamState } from '@/types/app';
 
 interface QuizModalProps {
-  contextLabel: string;
   streamState: StreamState;
   onStreamQuestion: (text: string, questionIndex: number, contextKey: string) => void;
   onStreamAnswer: (text: string, questionIndex: number, contextKey: string) => void;
@@ -22,7 +22,6 @@ interface QuizModalProps {
 }
 
 export default function QuizModal({
-  contextLabel,
   streamState,
   onStreamQuestion,
   onStreamAnswer,
@@ -37,7 +36,8 @@ export default function QuizModal({
   const { loading, error, quiz } = useAppSelector(selectQuizWorkflow(activeModal));
   const { quizAutoPlayEnabled: autoPlayEnabled } = useAppSelector(selectReaderPreferences);
   const { quizLabel: unitQuizLabel } = useAppSelector(selectUnitWorkflow);
-  const modalContextLabel = activeModal === 'unitQuiz' ? unitQuizLabel : contextLabel;
+  const chapterLabel = useCurrentChapterLabel();
+  const modalContextLabel = activeModal === 'unitQuiz' ? unitQuizLabel : chapterLabel;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);

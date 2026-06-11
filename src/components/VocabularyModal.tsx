@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useCurrentChapterLabel } from '@/hooks/useCurrentChapterLabel';
 import {
   appActions,
   selectModalOpen,
@@ -10,7 +11,6 @@ import {
 import type { StreamState } from '@/types/app';
 
 interface VocabularyModalProps {
-  chapterLabel: string;
   streamState: StreamState;
   onCopyList: (text: string) => void;
   onPlayAudio: (text: string, chapterNumber: number) => void;
@@ -19,7 +19,6 @@ interface VocabularyModalProps {
 }
 
 export default function VocabularyModal({
-  chapterLabel,
   streamState,
   onCopyList,
   onPlayAudio,
@@ -33,6 +32,7 @@ export default function VocabularyModal({
     error,
     vocabulary
   } = useAppSelector(selectVocabularyWorkflow);
+  const chapterLabel = useCurrentChapterLabel();
   const handleClose = () => {
     dispatch(appActions.closeModal('vocabulary'));
   };

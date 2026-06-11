@@ -850,7 +850,6 @@ export default function App() {
       onSelect: handleSelectSearchResult
     },
     quizModalProps: {
-      contextLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
       streamState,
       onStreamQuestion: (text: string, questionIndex: number, contextKey: string) => {
         void handlePlaySingleStream({
@@ -874,7 +873,6 @@ export default function App() {
       }
     },
     vocabularyModalProps: {
-      chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
       streamState,
       onCopyList: handleCopyVocabulary,
       onPlayAudio: (text: string, chapterNumberValue: number) => {
@@ -887,7 +885,6 @@ export default function App() {
       onRegenerate: () => void handleRegenerateVocabulary()
     },
     memoryCardModalProps: {
-      chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
       streamState,
       onCopyText: handleCopyMemoryCard,
       onPlayAudio: (text: string, chapterNumberValue: number) => {

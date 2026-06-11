@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useCurrentChapterLabel } from '@/hooks/useCurrentChapterLabel';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -12,7 +13,6 @@ import {
 import type { StreamState } from '@/types/app';
 
 interface MemoryCardModalProps {
-  chapterLabel: string;
   streamState: StreamState;
   onCopyText: (text: string) => void;
   onPlayAudio: (text: string, chapterNumber: number) => void;
@@ -21,7 +21,6 @@ interface MemoryCardModalProps {
 }
 
 export default function MemoryCardModal({
-  chapterLabel,
   streamState,
   onCopyText,
   onPlayAudio,
@@ -35,6 +34,7 @@ export default function MemoryCardModal({
     error,
     memoryCard
   } = useAppSelector(selectMemoryCardWorkflow);
+  const chapterLabel = useCurrentChapterLabel();
   const handleClose = () => {
     onStopAudio();
     dispatch(appActions.closeModal('memoryCard'));
