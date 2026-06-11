@@ -35,7 +35,7 @@ import { useTocManager } from '@/hooks/useTocManager';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
-import { clamp, clampPan } from '@/lib/math';
+import { clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
 import { saveLastPage } from '@/lib/storage';
 import { makeStreamLocator } from '@/lib/streamLocator';
@@ -674,12 +674,6 @@ export default function App() {
     onFitWidth: () => applyZoomModeWithAlign('fit-width'),
     onFitHeight: () => applyZoomModeWithAlign('fit-height'),
     onRotate: updateRotation,
-    onInvert: () => applyFilters({ invert: !settings.invert }),
-    onBrightness: (value: number) => applyFilters({ brightness: value }),
-    onContrast: (value: number) => applyFilters({ contrast: value }),
-    onToggleDimOutsideBlocks: () => applyFilters({ dimOutsideBlocks: !settings.dimOutsideBlocks }),
-    onDimOutsideBlocksIntensity: (value: number) =>
-      applyFilters({ dimOutsideBlocksIntensity: clamp(value, 0, 85) }),
     onToggleTextModal: () => {
       setSettingsOpen(false);
       toggleTextModal();

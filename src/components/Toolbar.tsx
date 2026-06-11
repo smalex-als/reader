@@ -10,6 +10,7 @@ import {
 } from '@/state/appState';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
+import { clamp } from '@/lib/math';
 
 export type ToolbarTab = 'image' | 'study' | 'tools';
 
@@ -23,11 +24,6 @@ interface ToolbarProps {
   onFitWidth: () => void;
   onFitHeight: () => void;
   onRotate: () => void;
-  onInvert: () => void;
-  onBrightness: (value: number) => void;
-  onContrast: (value: number) => void;
-  onToggleDimOutsideBlocks: () => void;
-  onDimOutsideBlocksIntensity: (value: number) => void;
   onToggleTextModal: () => void;
   onToggleOcrEditMode: () => void;
   onCopyText: () => void;
@@ -54,11 +50,6 @@ export default function Toolbar({
   onFitWidth,
   onFitHeight,
   onRotate,
-  onInvert,
-  onBrightness,
-  onContrast,
-  onToggleDimOutsideBlocks,
-  onDimOutsideBlocksIntensity,
   onToggleTextModal,
   onToggleOcrEditMode,
   onCopyText,
@@ -81,17 +72,16 @@ export default function Toolbar({
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
   const { chapterNumber, chapterLabel } = useCurrentChapterContext();
   const { openPrintModal } = usePrintOptions();
+  const { settings } = useAppSelector(selectViewerWorkflow);
   const {
-    settings: {
-      invert,
-      zoom,
-      rotation,
-      brightness,
-      contrast,
-      dimOutsideBlocks,
-      dimOutsideBlocksIntensity
-    }
-  } = useAppSelector(selectViewerWorkflow);
+    invert,
+    zoom,
+    rotation,
+    brightness,
+    contrast,
+    dimOutsideBlocks,
+    dimOutsideBlocksIntensity
+  } = settings;
   const isTextBook = bookType === 'text';
   const manifestLength = isTextBook ? chapterCount : manifest.length;
   const disableImageActions = isTextBook;
@@ -119,6 +109,9 @@ export default function Toolbar({
   const showToolsTab = !isModal || activeTab === 'tools';
   const showImageControls = viewMode === 'pages' || viewMode === 'scroll';
   const closeSettings = () => dispatch(appActions.closeModal('settings'));
+  const applyViewerSettings = (nextSettings: Partial<typeof settings>) => {
+    dispatch(appActions.setViewerSettings({ ...settings, ...nextSettings }));
+  };
   const handleOpenPrint = () => {
     closeSettings();
     openPrintModal();
@@ -247,7 +240,7 @@ export default function Toolbar({
             <button
               type="button"
               className={`button ${invert ? 'button-active' : ''}`}
-              onClick={onInvert}
+              onClick={() => applyViewerSettings({ invert: !invert })}
               disabled={controlsDisabled}
             >
               Invert
@@ -261,7 +254,7 @@ export default function Toolbar({
                 max={200}
                 value={brightness}
                 disabled={controlsDisabled}
-                onChange={(event) => onBrightness(Number(event.target.value))}
+                onChange={(event) => applyViewerSettings({ brightness: Number(event.target.value) })}
               />
             </span>
             <span className="toolbar-field">
@@ -273,13 +266,13 @@ export default function Toolbar({
                 max={200}
                 value={contrast}
                 disabled={controlsDisabled}
-                onChange={(event) => onContrast(Number(event.target.value))}
+                onChange={(event) => applyViewerSettings({ contrast: Number(event.target.value) })}
               />
             </span>
             <button
               type="button"
               className={`button ${dimOutsideBlocks ? 'button-active' : ''}`}
-              onClick={onToggleDimOutsideBlocks}
+              onClick={() => applyViewerSettings({ dimOutsideBlocks: !dimOutsideBlocks })}
               disabled={controlsDisabled}
             >
               Dim Outside
@@ -293,7 +286,9 @@ export default function Toolbar({
                 max={85}
                 value={dimOutsideBlocksIntensity}
                 disabled={controlsDisabled || !dimOutsideBlocks}
-                onChange={(event) => onDimOutsideBlocksIntensity(Number(event.target.value))}
+                onChange={(event) =>
+                  applyViewerSettings({ dimOutsideBlocksIntensity: clamp(Number(event.target.value), 0, 85) })
+                }
               />
             </span>
           </div>
