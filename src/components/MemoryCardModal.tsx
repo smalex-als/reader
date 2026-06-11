@@ -17,14 +17,10 @@ import type { StreamState } from '@/types/app';
 
 interface MemoryCardModalProps {
   streamState: StreamState;
-  onPlayAudio: (text: string, chapterNumber: number) => void;
-  onStopAudio: () => void;
 }
 
 export default function MemoryCardModal({
-  streamState,
-  onPlayAudio,
-  onStopAudio
+  streamState
 }: MemoryCardModalProps) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
@@ -40,7 +36,7 @@ export default function MemoryCardModal({
   } = useCurrentChapterContext();
   const { regenerateMemoryCard } = useChapterMemoryCard();
   const handleClose = () => {
-    onStopAudio();
+    dispatch(appActions.requestStudyAudioStop());
     dispatch(appActions.closeModal('memoryCard'));
   };
   const handleCopyText = async () => {
@@ -96,10 +92,13 @@ export default function MemoryCardModal({
                   return;
                 }
                 if (isStreaming) {
-                  onStopAudio();
+                  dispatch(appActions.requestStudyAudioStop());
                   return;
                 }
-                onPlayAudio(memoryCard.text, memoryCard.chapterNumber);
+                dispatch(appActions.requestStudyAudioMemoryCard({
+                  text: memoryCard.text,
+                  chapterNumber: memoryCard.chapterNumber
+                }));
               }}
               disabled={!memoryCard || loading}
               aria-label={isStreaming ? 'Stop audio' : 'Play audio'}

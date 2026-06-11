@@ -49,17 +49,18 @@ import {
   appActions,
   selectOcrBlockCommandRequest,
   selectOcrQueueCommandRequest,
+  selectStudyAudioCommandRequest,
   selectStudyModeToggleRequest,
   selectToolbarCommandRequest,
   useAppDispatch,
-  useAppSelector,
-  type QuizModal as QuizModalId
+  useAppSelector
 } from '@/state/appState';
 
 export default function App() {
   const dispatch = useAppDispatch();
   const ocrBlockCommandRequest = useAppSelector(selectOcrBlockCommandRequest);
   const ocrQueueCommandRequest = useAppSelector(selectOcrQueueCommandRequest);
+  const studyAudioCommandRequest = useAppSelector(selectStudyAudioCommandRequest);
   const studyModeToggleRequest = useAppSelector(selectStudyModeToggleRequest);
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const {
@@ -575,6 +576,53 @@ export default function App() {
     chapterNumber,
     currentChapterTitle: currentChapterEntry?.title ?? null
   });
+
+  useEffect(() => {
+    if (!studyAudioCommandRequest) {
+      return;
+    }
+
+    if (studyAudioCommandRequest.kind === 'stop') {
+      handleStopStream();
+    } else if (studyAudioCommandRequest.kind === 'quizQuestion') {
+      void handlePlaySingleStream({
+        text: studyAudioCommandRequest.text,
+        pageKey: `${studyAudioCommandRequest.contextKey}::question-${studyAudioCommandRequest.questionIndex + 1}`
+      });
+    } else if (studyAudioCommandRequest.kind === 'quizAnswer') {
+      void handlePlaySingleStream({
+        text: studyAudioCommandRequest.text,
+        pageKey: `${studyAudioCommandRequest.contextKey}::question-${studyAudioCommandRequest.questionIndex + 1}::answer`
+      });
+    } else if (studyAudioCommandRequest.kind === 'quizRegenerate') {
+      if (studyAudioCommandRequest.modal === 'unitQuiz') {
+        void handleRegenerateUnitTopicQuiz().then(refreshUnits);
+      } else {
+        void handleRegenerateQuiz();
+      }
+    } else if (studyAudioCommandRequest.kind === 'vocabulary') {
+      void handlePlaySingleStream({
+        text: studyAudioCommandRequest.text,
+        pageKey: `vocabulary::chapter-${studyAudioCommandRequest.chapterNumber}`
+      });
+    } else {
+      void handlePlaySingleStream({
+        text: studyAudioCommandRequest.text,
+        pageKey: `memory-card::chapter-${studyAudioCommandRequest.chapterNumber}`
+      });
+    }
+
+    dispatch(appActions.clearStudyAudioCommandRequest());
+  }, [
+    dispatch,
+    handlePlaySingleStream,
+    handleRegenerateQuiz,
+    handleRegenerateUnitTopicQuiz,
+    handleStopStream,
+    refreshUnits,
+    studyAudioCommandRequest
+  ]);
+
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
       applyZoomMode(mode);
@@ -694,47 +742,13 @@ export default function App() {
       paused: ocrPaused
     },
     quizModalProps: {
-      streamState,
-      onStreamQuestion: (text: string, questionIndex: number, contextKey: string) => {
-        void handlePlaySingleStream({
-          text,
-          pageKey: `${contextKey}::question-${questionIndex + 1}`
-        });
-      },
-      onStreamAnswer: (text: string, questionIndex: number, contextKey: string) => {
-        void handlePlaySingleStream({
-          text,
-          pageKey: `${contextKey}::question-${questionIndex + 1}::answer`
-        });
-      },
-      onStopAudio: handleStopStream,
-      onRegenerate: (modal: QuizModalId) => {
-        if (modal === 'unitQuiz') {
-          void handleRegenerateUnitTopicQuiz().then(refreshUnits);
-          return;
-        }
-        void handleRegenerateQuiz();
-      }
+      streamState
     },
     vocabularyModalProps: {
-      streamState,
-      onPlayAudio: (text: string, chapterNumberValue: number) => {
-        void handlePlaySingleStream({
-          text,
-          pageKey: `vocabulary::chapter-${chapterNumberValue}`
-        });
-      },
-      onStopAudio: handleStopStream
+      streamState
     },
     memoryCardModalProps: {
-      streamState,
-      onPlayAudio: (text: string, chapterNumberValue: number) => {
-        void handlePlaySingleStream({
-          text,
-          pageKey: `memory-card::chapter-${chapterNumberValue}`
-        });
-      },
-      onStopAudio: handleStopStream
+      streamState
     }
   };
 

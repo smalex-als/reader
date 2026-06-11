@@ -15,18 +15,10 @@ import type { StreamState } from '@/types/app';
 
 interface QuizModalProps {
   streamState: StreamState;
-  onStreamQuestion: (text: string, questionIndex: number, contextKey: string) => void;
-  onStreamAnswer: (text: string, questionIndex: number, contextKey: string) => void;
-  onStopAudio: () => void;
-  onRegenerate: (modal: QuizModalId) => void;
 }
 
 export default function QuizModal({
-  streamState,
-  onStreamQuestion,
-  onStreamAnswer,
-  onStopAudio,
-  onRegenerate
+  streamState
 }: QuizModalProps) {
   const dispatch = useAppDispatch();
   const unitQuizOpen = useAppSelector(selectModalOpen('unitQuiz'));
@@ -44,7 +36,7 @@ export default function QuizModal({
   const wasOpenRef = useRef(false);
   const autoPlayQuestionKeyRef = useRef<string | null>(null);
   const handleClose = () => {
-    onStopAudio();
+    dispatch(appActions.requestStudyAudioStop());
     dispatch(appActions.closeModal(activeModal));
   };
 
@@ -109,8 +101,12 @@ export default function QuizModal({
       'Answer choices.',
       ...currentQuestion.options.map((option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`)
     ].join('\n\n');
-    onStreamQuestion(spokenText, currentIndex, quiz.contextKey);
-  }, [autoPlayEnabled, currentIndex, currentQuestion, currentQuestionAnswered, onStreamQuestion, open, quiz]);
+    dispatch(appActions.requestStudyAudioQuizQuestion({
+      text: spokenText,
+      questionIndex: currentIndex,
+      contextKey: quiz.contextKey
+    }));
+  }, [autoPlayEnabled, currentIndex, currentQuestion, currentQuestionAnswered, dispatch, open, quiz]);
 
   if (!open) {
     return null;
@@ -128,7 +124,7 @@ export default function QuizModal({
             <button
               type="button"
               className="button button-secondary"
-              onClick={() => onRegenerate(activeModal)}
+              onClick={() => dispatch(appActions.requestStudyAudioQuizRegenerate(activeModal))}
               disabled={loading}
             >
               Regenerate Quiz
@@ -174,7 +170,7 @@ export default function QuizModal({
                     }`}
                     onClick={() => {
                       if (isCurrentQuestionStreaming) {
-                        onStopAudio();
+                        dispatch(appActions.requestStudyAudioStop());
                         return;
                       }
                       const spokenText = [
@@ -194,7 +190,11 @@ export default function QuizModal({
                       ]
                         .filter(Boolean)
                         .join('\n\n');
-                      onStreamQuestion(spokenText, currentIndex, quiz.contextKey);
+                      dispatch(appActions.requestStudyAudioQuizQuestion({
+                        text: spokenText,
+                        questionIndex: currentIndex,
+                        contextKey: quiz.contextKey
+                      }));
                     }}
                     aria-label={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
                     title={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
@@ -247,7 +247,11 @@ export default function QuizModal({
                             .join('\n\n');
                           setAnswers((prev) => ({ ...prev, [currentQuestion.id]: optionIndex }));
                           if (autoPlayEnabled) {
-                            onStreamAnswer(answerFeedback, currentIndex, quiz.contextKey);
+                            dispatch(appActions.requestStudyAudioQuizAnswer({
+                              text: answerFeedback,
+                              questionIndex: currentIndex,
+                              contextKey: quiz.contextKey
+                            }));
                           }
                         }}
                         disabled={submitted || currentQuestionAnswered}

@@ -143,6 +143,17 @@ export type OcrQueueCommandRequest = {
   | { kind: 'clear' }
 );
 
+export type StudyAudioCommandRequest = {
+  id: number;
+} & (
+  | { kind: 'stop' }
+  | { kind: 'quizQuestion'; text: string; questionIndex: number; contextKey: string }
+  | { kind: 'quizAnswer'; text: string; questionIndex: number; contextKey: string }
+  | { kind: 'quizRegenerate'; modal: QuizModal }
+  | { kind: 'vocabulary'; text: string; chapterNumber: number }
+  | { kind: 'memoryCard'; text: string; chapterNumber: number }
+);
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -304,6 +315,7 @@ export interface CentralAppState {
   studyModeToggleRequest: StudyModeToggleRequest | null;
   ocrBlockCommandRequest: OcrBlockCommandRequest | null;
   ocrQueueCommandRequest: OcrQueueCommandRequest | null;
+  studyAudioCommandRequest: StudyAudioCommandRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -389,6 +401,13 @@ export type AppAction =
   | { type: 'ocrQueueCommand/requestRetryFailed' }
   | { type: 'ocrQueueCommand/requestClear' }
   | { type: 'ocrQueueCommand/clearRequest' }
+  | { type: 'studyAudioCommand/requestStop' }
+  | { type: 'studyAudioCommand/requestQuizQuestion'; text: string; questionIndex: number; contextKey: string }
+  | { type: 'studyAudioCommand/requestQuizAnswer'; text: string; questionIndex: number; contextKey: string }
+  | { type: 'studyAudioCommand/requestQuizRegenerate'; modal: QuizModal }
+  | { type: 'studyAudioCommand/requestVocabulary'; text: string; chapterNumber: number }
+  | { type: 'studyAudioCommand/requestMemoryCard'; text: string; chapterNumber: number }
+  | { type: 'studyAudioCommand/clearRequest' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -566,6 +585,7 @@ const initialAppState: CentralAppState = {
   studyModeToggleRequest: null,
   ocrBlockCommandRequest: null,
   ocrQueueCommandRequest: null,
+  studyAudioCommandRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -782,6 +802,36 @@ export const appActions = {
   requestOcrQueueRetryFailed: (): AppAction => ({ type: 'ocrQueueCommand/requestRetryFailed' }),
   requestOcrQueueClear: (): AppAction => ({ type: 'ocrQueueCommand/requestClear' }),
   clearOcrQueueCommandRequest: (): AppAction => ({ type: 'ocrQueueCommand/clearRequest' }),
+  requestStudyAudioStop: (): AppAction => ({ type: 'studyAudioCommand/requestStop' }),
+  requestStudyAudioQuizQuestion: (payload: {
+    text: string;
+    questionIndex: number;
+    contextKey: string;
+  }): AppAction => ({
+    type: 'studyAudioCommand/requestQuizQuestion',
+    ...payload
+  }),
+  requestStudyAudioQuizAnswer: (payload: {
+    text: string;
+    questionIndex: number;
+    contextKey: string;
+  }): AppAction => ({
+    type: 'studyAudioCommand/requestQuizAnswer',
+    ...payload
+  }),
+  requestStudyAudioQuizRegenerate: (modal: QuizModal): AppAction => ({
+    type: 'studyAudioCommand/requestQuizRegenerate',
+    modal
+  }),
+  requestStudyAudioVocabulary: (payload: { text: string; chapterNumber: number }): AppAction => ({
+    type: 'studyAudioCommand/requestVocabulary',
+    ...payload
+  }),
+  requestStudyAudioMemoryCard: (payload: { text: string; chapterNumber: number }): AppAction => ({
+    type: 'studyAudioCommand/requestMemoryCard',
+    ...payload
+  }),
+  clearStudyAudioCommandRequest: (): AppAction => ({ type: 'studyAudioCommand/clearRequest' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1515,6 +1565,70 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ...state,
         ocrQueueCommandRequest: null
       };
+    case 'studyAudioCommand/requestStop':
+      return {
+        ...state,
+        studyAudioCommandRequest: {
+          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
+          kind: 'stop'
+        }
+      };
+    case 'studyAudioCommand/requestQuizQuestion':
+      return {
+        ...state,
+        studyAudioCommandRequest: {
+          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
+          kind: 'quizQuestion',
+          text: action.text,
+          questionIndex: action.questionIndex,
+          contextKey: action.contextKey
+        }
+      };
+    case 'studyAudioCommand/requestQuizAnswer':
+      return {
+        ...state,
+        studyAudioCommandRequest: {
+          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
+          kind: 'quizAnswer',
+          text: action.text,
+          questionIndex: action.questionIndex,
+          contextKey: action.contextKey
+        }
+      };
+    case 'studyAudioCommand/requestQuizRegenerate':
+      return {
+        ...state,
+        studyAudioCommandRequest: {
+          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
+          kind: 'quizRegenerate',
+          modal: action.modal
+        }
+      };
+    case 'studyAudioCommand/requestVocabulary':
+      return {
+        ...state,
+        studyAudioCommandRequest: {
+          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
+          kind: 'vocabulary',
+          text: action.text,
+          chapterNumber: action.chapterNumber
+        }
+      };
+    case 'studyAudioCommand/requestMemoryCard':
+      return {
+        ...state,
+        studyAudioCommandRequest: {
+          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
+          kind: 'memoryCard',
+          text: action.text,
+          chapterNumber: action.chapterNumber
+        }
+      };
+    case 'studyAudioCommand/clearRequest':
+      return {
+        ...state,
+        studyAudioCommandRequest: null
+      };
     case 'readerSession/setBookId':
       return {
         ...state,
@@ -2235,6 +2349,7 @@ export const selectToolbarCommandRequest = (state: CentralAppState) => state.too
 export const selectStudyModeToggleRequest = (state: CentralAppState) => state.studyModeToggleRequest;
 export const selectOcrBlockCommandRequest = (state: CentralAppState) => state.ocrBlockCommandRequest;
 export const selectOcrQueueCommandRequest = (state: CentralAppState) => state.ocrQueueCommandRequest;
+export const selectStudyAudioCommandRequest = (state: CentralAppState) => state.studyAudioCommandRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

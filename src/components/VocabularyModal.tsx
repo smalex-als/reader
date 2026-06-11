@@ -15,14 +15,10 @@ import type { StreamState } from '@/types/app';
 
 interface VocabularyModalProps {
   streamState: StreamState;
-  onPlayAudio: (text: string, chapterNumber: number) => void;
-  onStopAudio: () => void;
 }
 
 export default function VocabularyModal({
-  streamState,
-  onPlayAudio,
-  onStopAudio
+  streamState
 }: VocabularyModalProps) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
@@ -103,10 +99,13 @@ export default function VocabularyModal({
                   return;
                 }
                 if (isStreaming) {
-                  onStopAudio();
+                  dispatch(appActions.requestStudyAudioStop());
                   return;
                 }
-                onPlayAudio(spokenText, vocabulary.chapterNumber);
+                dispatch(appActions.requestStudyAudioVocabulary({
+                  text: spokenText,
+                  chapterNumber: vocabulary.chapterNumber
+                }));
               }}
               disabled={!vocabulary || loading}
               aria-label={isStreaming ? 'Stop audio' : 'Play audio'}
