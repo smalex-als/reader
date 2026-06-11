@@ -145,6 +145,7 @@ export interface FloatingAudioState {
 
 export interface PrintWorkflowState {
   selection: string;
+  loading: boolean;
 }
 
 export interface TocWorkflowState {
@@ -286,6 +287,7 @@ export type AppAction =
   | { type: 'floatingAudio/close' }
   | { type: 'floatingAudio/setPlaybackState'; playbackState: FloatingAudioPlaybackState }
   | { type: 'printWorkflow/setSelection'; selection: string }
+  | { type: 'printWorkflow/setLoading'; loading: boolean }
   | { type: 'tocWorkflow/reset' }
   | { type: 'tocWorkflow/setVariant'; variant: TocVariant }
   | { type: 'tocWorkflow/setEntries'; entries: TocEntry[] }
@@ -446,7 +448,8 @@ const initialAppState: CentralAppState = {
     playbackState: 'idle'
   },
   printWorkflow: {
-    selection: 'current'
+    selection: 'current',
+    loading: false
   },
   tocWorkflow: initialTocWorkflow,
   searchWorkflow: {
@@ -622,6 +625,10 @@ export const appActions = {
   setPrintSelection: (selection: string): AppAction => ({
     type: 'printWorkflow/setSelection',
     selection
+  }),
+  setPrintLoading: (loading: boolean): AppAction => ({
+    type: 'printWorkflow/setLoading',
+    loading
   }),
   resetTocWorkflow: (): AppAction => ({ type: 'tocWorkflow/reset' }),
   setTocVariant: (variant: TocVariant): AppAction => ({
@@ -1171,7 +1178,16 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         printWorkflow: {
+          ...state.printWorkflow,
           selection: action.selection
+        }
+      };
+    case 'printWorkflow/setLoading':
+      return {
+        ...state,
+        printWorkflow: {
+          ...state.printWorkflow,
+          loading: action.loading
         }
       };
     case 'tocWorkflow/reset':

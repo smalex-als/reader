@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   appActions,
   selectModalOpen,
@@ -24,8 +24,7 @@ interface UsePrintOptionsParams {
 export function usePrintOptions({ bookId, manifest, currentPage, showToast }: UsePrintOptionsParams) {
   const dispatch = useAppDispatch();
   const printModalOpen = useAppSelector(selectModalOpen('print'));
-  const { selection: printSelection } = useAppSelector(selectPrintWorkflow);
-  const [printLoading, setPrintLoading] = useState(false);
+  const { selection: printSelection, loading: printLoading } = useAppSelector(selectPrintWorkflow);
 
   const setPrintSelection = useCallback(
     (selection: string) => {
@@ -98,7 +97,7 @@ export function usePrintOptions({ bookId, manifest, currentPage, showToast }: Us
       return;
     }
     try {
-      setPrintLoading(true);
+      dispatch(appActions.setPrintLoading(true));
       const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,7 +126,7 @@ export function usePrintOptions({ bookId, manifest, currentPage, showToast }: Us
       console.error(error);
       showToast('Unable to create PDF', 'error');
     } finally {
-      setPrintLoading(false);
+      dispatch(appActions.setPrintLoading(false));
     }
   }, [bookId, dispatch, manifest, selectedPrintOption, showToast]);
 
