@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import {
   appActions,
+  selectRefreshTokens,
   selectTextVersionModalWorkflow,
+  selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
-
-type ChapterRange = {
-  start: number;
-  end: number;
-} | null;
 
 type AudioJobStatus = {
   provider?: 'default' | 'xai' | 'yandex';
@@ -26,14 +24,6 @@ type AudioJobStatus = {
     total: number;
     label?: string | null;
   } | null;
-};
-
-type UseChapterTextVersionsOptions = {
-  bookId: string | null;
-  chapterNumber: number | null;
-  chapterRange: ChapterRange;
-  refreshToken?: number;
-  mp3Voice: string;
 };
 
 function formatChapterFilename(chapterNumber: number) {
@@ -53,14 +43,11 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
 
-export function useChapterTextVersions({
-  bookId,
-  chapterNumber,
-  chapterRange,
-  refreshToken = 0,
-  mp3Voice
-}: UseChapterTextVersionsOptions) {
+export function useChapterTextVersions() {
   const dispatch = useAppDispatch();
+  const { bookId, chapterNumber, pageRange: chapterRange } = useCurrentChapterContext();
+  const { chapterView: refreshToken } = useAppSelector(selectRefreshTokens);
+  const { mp3Voice } = useAppSelector(selectVoiceWorkflow);
   const {
     sourceVersionId,
     versionModel,

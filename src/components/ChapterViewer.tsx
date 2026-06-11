@@ -15,7 +15,6 @@ import {
   appActions,
   selectBookSessionWorkflow,
   selectChapterVersionNavigationRequest,
-  selectRefreshTokens,
   selectStreamRuntime,
   selectTextVersionModalWorkflow,
   selectTocWorkflow,
@@ -162,7 +161,6 @@ export default function ChapterViewer() {
     uploadingChapter: chapterCreating,
     deletingChapter: chapterDeleting
   } = useAppSelector(selectBookSessionWorkflow);
-  const { chapterView: refreshToken } = useAppSelector(selectRefreshTokens);
   const versionNavigationRequest = useAppSelector(selectChapterVersionNavigationRequest);
   const {
     open: versionModalOpen,
@@ -238,13 +236,7 @@ export default function ChapterViewer() {
     handleCreateVersion,
     handleDeleteVersion,
     handleCancelAudioJob
-  } = useChapterTextVersions({
-    bookId,
-    chapterNumber,
-    chapterRange: pageRange,
-    refreshToken,
-    mp3Voice
-  });
+  } = useChapterTextVersions();
   const textStyle = useMemo(
     () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
     [textFontSize]
