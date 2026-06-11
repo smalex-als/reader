@@ -27,7 +27,6 @@ import type { FloatingAudioTrack } from '@/types/floatingAudio';
 interface ChapterViewerProps {
   onCreateChapter?: () => void | Promise<void>;
   onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
-  onOpenAudioView: () => void;
   onCreateUnit: (payload: {
     text: string;
     chapterTitle: string | null;
@@ -177,7 +176,6 @@ function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
 export default function ChapterViewer({
   onCreateChapter,
   onDeleteChapter,
-  onOpenAudioView,
   onCreateUnit,
   onFirstParagraphReady,
   onDisplayedTextChange,
@@ -732,7 +730,14 @@ export default function ChapterViewer({
         <div className="text-viewer-title">
           <div className="text-viewer-title-kicker">
             <span className="text-viewer-label">{chapterLabel}</span>
-            <button type="button" className="text-viewer-audio-link" onClick={onOpenAudioView}>
+            <button
+              type="button"
+              className="text-viewer-audio-link"
+              onClick={() => {
+                dispatch(appActions.clearChapterVersionNavigation());
+                dispatch(appActions.setReaderViewMode('audio'));
+              }}
+            >
               Audio
             </button>
           </div>

@@ -842,10 +842,6 @@ export default function App() {
           }
         : undefined,
       onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
-      onOpenAudioView: () => {
-        clearChapterVersionNavigation();
-        setViewMode('audio');
-      },
       onCreateUnit: handleCreateUnit,
       onDisplayedTextChange: setDisplayedChapterText,
       onFirstParagraphReady: setFirstChapterParagraph,
