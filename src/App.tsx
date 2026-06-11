@@ -404,6 +404,14 @@ export default function App() {
   } = useOcrQueue();
 
   useEffect(() => {
+    dispatch(appActions.setOcrQueueSnapshot({
+      jobs: ocrJobs,
+      paused: ocrPaused,
+      queueState: ocrQueueState
+    }));
+  }, [dispatch, ocrJobs, ocrPaused, ocrQueueState]);
+
+  useEffect(() => {
     if (!ocrQueueCommandRequest) {
       return;
     }
@@ -791,20 +799,8 @@ export default function App() {
     }
   });
 
-  const settingsToolbarProps = {
-    ocrQueueTotal: ocrQueueState.total,
-    ocrQueueProcessed: ocrQueueState.processed,
-    ocrQueueFailed: ocrQueueState.failed,
-    ocrQueueRunning: ocrQueueState.running,
-    ocrQueuePaused: ocrQueueState.paused
-  };
-
   const modalProps = {
-    portalTarget: isFullscreen ? modalHostRef.current : null,
-    ocrQueueModalProps: {
-      jobs: ocrJobs,
-      paused: ocrPaused
-    }
+    portalTarget: isFullscreen ? modalHostRef.current : null
   };
 
   const mainContentProps = {
@@ -820,12 +816,7 @@ export default function App() {
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
       <ReaderSidebar />
       <ReaderMainContent {...mainContentProps} />
-      <ReaderModalLayer
-        {...modalProps}
-        settingsModalProps={{
-          toolbarProps: settingsToolbarProps
-        }}
-      />
+      <ReaderModalLayer {...modalProps} />
     </div>
   );
 }

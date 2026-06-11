@@ -1,4 +1,3 @@
-import type { ComponentProps } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import Toolbar from '@/components/Toolbar';
 import {
@@ -8,13 +7,7 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-type ToolbarProps = ComponentProps<typeof Toolbar>;
-
-interface SettingsModalProps {
-  toolbarProps: Omit<ToolbarProps, 'layout'>;
-}
-
-export default function SettingsModal({ toolbarProps }: SettingsModalProps) {
+export default function SettingsModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('settings'));
   const handleClose = () => {
@@ -41,10 +34,7 @@ export default function SettingsModal({ toolbarProps }: SettingsModalProps) {
           </button>
         </header>
         <section className="modal-body modal-settings-body">
-          <Toolbar
-            {...toolbarProps}
-            layout="modal"
-          />
+          <Toolbar layout="modal" />
         </section>
       </div>
     </div>

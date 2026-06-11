@@ -5,17 +5,7 @@ import {
   selectReaderSession,
   useAppSelector
 } from '@/state/appState';
-
-export type OcrJobStatus = 'pending' | 'running' | 'completed' | 'error';
-
-export interface OcrJob {
-  id: string;
-  pageIndex: number;
-  imageUrl: string;
-  status: OcrJobStatus;
-  force?: boolean;
-  error?: string;
-}
+import type { OcrJob, OcrQueueState } from '@/types/app';
 
 interface OcrQueueProgress {
   total: number;
@@ -150,7 +140,7 @@ export function useOcrQueue() {
     enqueuePages(pages);
   }, [currentPage, enqueuePages, manifest]);
 
-  const queueState = useMemo(
+  const queueState = useMemo<OcrQueueState>(
     () => ({
       total: progress.total,
       processed: progress.processed,

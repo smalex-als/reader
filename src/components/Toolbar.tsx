@@ -4,6 +4,7 @@ import {
   selectFullscreen,
   selectNavigationState,
   selectOcrEdit,
+  selectOcrQueueWorkflow,
   selectReaderSession,
   selectSettingsToolbarTab,
   selectViewerWorkflow,
@@ -28,20 +29,10 @@ const ZOOM_MAX = 6;
 
 interface ToolbarProps {
   layout?: 'panel' | 'modal';
-  ocrQueueTotal: number;
-  ocrQueueProcessed: number;
-  ocrQueueFailed: number;
-  ocrQueueRunning: boolean;
-  ocrQueuePaused: boolean;
 }
 
 export default function Toolbar({
-  layout = 'panel',
-  ocrQueueTotal,
-  ocrQueueProcessed,
-  ocrQueueFailed,
-  ocrQueueRunning,
-  ocrQueuePaused
+  layout = 'panel'
 }: ToolbarProps) {
   const dispatch = useAppDispatch();
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
@@ -50,6 +41,7 @@ export default function Toolbar({
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
+  const { queueState: ocrQueueState } = useAppSelector(selectOcrQueueWorkflow);
   const { chapterNumber, chapterLabel } = useCurrentChapterContext();
   const { openPrintModal } = usePrintOptions();
   const { openQuiz: openChapterQuiz } = useChapterQuiz();
@@ -85,21 +77,21 @@ export default function Toolbar({
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const quizDisabled = !currentBook || !chapterNumber;
   const currentChapterLabel = chapterNumber ? chapterLabel : null;
-  const showOcrStatus = ocrQueueTotal > 0;
+  const showOcrStatus = ocrQueueState.total > 0;
   const activeTab = isModal ? settingsToolbarTab : 'image';
   const ocrStatusText = (() => {
     if (!showOcrStatus) {
       return null;
     }
-    const statusLabel = ocrQueuePaused
+    const statusLabel = ocrQueueState.paused
       ? 'Paused'
-      : ocrQueueRunning
+      : ocrQueueState.running
       ? 'Running'
-      : ocrQueueProcessed < ocrQueueTotal
+      : ocrQueueState.processed < ocrQueueState.total
       ? 'Queued'
       : 'Complete';
-    const failedLabel = ocrQueueFailed > 0 ? ` · ${ocrQueueFailed} failed` : '';
-    return `${statusLabel} · ${ocrQueueProcessed}/${ocrQueueTotal}${failedLabel}`;
+    const failedLabel = ocrQueueState.failed > 0 ? ` · ${ocrQueueState.failed} failed` : '';
+    return `${statusLabel} · ${ocrQueueState.processed}/${ocrQueueState.total}${failedLabel}`;
   })();
   const showImageTab = !isModal || activeTab === 'image';
   const showStudyTab = !isModal || activeTab === 'study';
@@ -420,7 +412,7 @@ export default function Toolbar({
           </button>
           {showOcrStatus && (
             <div className="toolbar-status" role="status" aria-live="polite">
-              {ocrQueueRunning && !ocrQueuePaused && <span className="toolbar-spinner" aria-hidden />}
+              {ocrQueueState.running && !ocrQueueState.paused && <span className="toolbar-spinner" aria-hidden />}
               <span className="toolbar-status-text">{ocrStatusText}</span>
             </div>
           )}

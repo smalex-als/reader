@@ -20,6 +20,8 @@ import type {
   ChapterMemoryCard,
   ChapterVocabulary,
   ImagePreviewTarget,
+  OcrJob,
+  OcrQueueState,
   PageText,
   PageTextOcrEngine,
   Quiz,
@@ -252,6 +254,12 @@ export interface OcrEditState {
   saving: boolean;
 }
 
+export interface OcrQueueWorkflowState {
+  jobs: OcrJob[];
+  paused: boolean;
+  queueState: OcrQueueState;
+}
+
 export interface FloatingAudioState {
   track: FloatingAudioTrack | null;
   playbackState: FloatingAudioPlaybackState | 'idle';
@@ -352,6 +360,7 @@ export interface CentralAppState {
   streamRuntime: StreamRuntimeState;
   unitWorkflow: UnitWorkflowState;
   ocrEdit: OcrEditState;
+  ocrQueueWorkflow: OcrQueueWorkflowState;
   floatingAudio: FloatingAudioState;
   printWorkflow: PrintWorkflowState;
   tocWorkflow: TocWorkflowState;
@@ -427,6 +436,12 @@ export type AppAction =
   | { type: 'ocrQueueCommand/requestRetryFailed' }
   | { type: 'ocrQueueCommand/requestClear' }
   | { type: 'ocrQueueCommand/clearRequest' }
+  | {
+      type: 'ocrQueueWorkflow/setSnapshot';
+      jobs: OcrJob[];
+      paused: boolean;
+      queueState: OcrQueueState;
+    }
   | { type: 'studyAudioCommand/requestStop' }
   | { type: 'studyAudioCommand/requestQuizQuestion'; text: string; questionIndex: number; contextKey: string }
   | { type: 'studyAudioCommand/requestQuizAnswer'; text: string; questionIndex: number; contextKey: string }
@@ -578,6 +593,18 @@ const initialStreamRuntimeState: StreamRuntimeState = {
   modelSeconds: 0
 };
 
+const initialOcrQueueWorkflowState: OcrQueueWorkflowState = {
+  jobs: [],
+  paused: false,
+  queueState: {
+    total: 0,
+    processed: 0,
+    failed: 0,
+    running: false,
+    paused: false
+  }
+};
+
 const initialTocWorkflow: TocWorkflowState = {
   variant: 'main',
   entries: [],
@@ -675,6 +702,7 @@ const initialAppState: CentralAppState = {
     editMode: false,
     saving: false
   },
+  ocrQueueWorkflow: initialOcrQueueWorkflowState,
   floatingAudio: {
     track: null,
     playbackState: 'idle'
@@ -851,6 +879,14 @@ export const appActions = {
   requestOcrQueueRetryFailed: (): AppAction => ({ type: 'ocrQueueCommand/requestRetryFailed' }),
   requestOcrQueueClear: (): AppAction => ({ type: 'ocrQueueCommand/requestClear' }),
   clearOcrQueueCommandRequest: (): AppAction => ({ type: 'ocrQueueCommand/clearRequest' }),
+  setOcrQueueSnapshot: (payload: {
+    jobs: OcrJob[];
+    paused: boolean;
+    queueState: OcrQueueState;
+  }): AppAction => ({
+    type: 'ocrQueueWorkflow/setSnapshot',
+    ...payload
+  }),
   requestStudyAudioStop: (): AppAction => ({ type: 'studyAudioCommand/requestStop' }),
   requestStudyAudioQuizQuestion: (payload: {
     text: string;
@@ -1668,6 +1704,15 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         ocrQueueCommandRequest: null
+      };
+    case 'ocrQueueWorkflow/setSnapshot':
+      return {
+        ...state,
+        ocrQueueWorkflow: {
+          jobs: action.jobs,
+          paused: action.paused,
+          queueState: action.queueState
+        }
       };
     case 'studyAudioCommand/requestStop':
       return {
@@ -2580,6 +2625,7 @@ export const selectStreamUiControls = (state: CentralAppState) => state.streamUi
 export const selectStreamRuntime = (state: CentralAppState) => state.streamRuntime;
 export const selectUnitWorkflow = (state: CentralAppState) => state.unitWorkflow;
 export const selectOcrEdit = (state: CentralAppState) => state.ocrEdit;
+export const selectOcrQueueWorkflow = (state: CentralAppState) => state.ocrQueueWorkflow;
 export const selectFloatingAudio = (state: CentralAppState) => state.floatingAudio;
 export const selectPrintWorkflow = (state: CentralAppState) => state.printWorkflow;
 export const selectTocWorkflow = (state: CentralAppState) => state.tocWorkflow;

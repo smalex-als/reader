@@ -2,15 +2,11 @@ import CloseIcon from '@/components/CloseIcon';
 import {
   appActions,
   selectModalOpen,
+  selectOcrQueueWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { OcrJob } from '@/hooks/useOcrQueue';
-
-interface OcrQueueModalProps {
-  jobs: OcrJob[];
-  paused: boolean;
-}
+import type { OcrJob } from '@/types/app';
 
 function getStatusLabel(status: OcrJob['status']) {
   switch (status) {
@@ -25,12 +21,10 @@ function getStatusLabel(status: OcrJob['status']) {
   }
 }
 
-export default function OcrQueueModal({
-  jobs,
-  paused
-}: OcrQueueModalProps) {
+export default function OcrQueueModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('ocrQueue'));
+  const { jobs, paused } = useAppSelector(selectOcrQueueWorkflow);
   const handleClose = () => {
     dispatch(appActions.closeModal('ocrQueue'));
   };

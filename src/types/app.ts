@@ -18,6 +18,25 @@ export interface PageText {
   source: 'file' | 'ai';
 }
 
+export type OcrJobStatus = 'pending' | 'running' | 'completed' | 'error';
+
+export interface OcrJob {
+  id: string;
+  pageIndex: number;
+  imageUrl: string;
+  status: OcrJobStatus;
+  force?: boolean;
+  error?: string;
+}
+
+export interface OcrQueueState {
+  total: number;
+  processed: number;
+  failed: number;
+  running: boolean;
+  paused: boolean;
+}
+
 export interface Bookmark {
   page: number;
   image: string;
