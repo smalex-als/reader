@@ -28,7 +28,6 @@ type TocNavModalProps = ComponentProps<typeof TocNavModal>;
 type TocModalProps = ComponentProps<typeof TocModal>;
 type OcrQueueModalProps = ComponentProps<typeof OcrQueueModal>;
 type SearchModalProps = ComponentProps<typeof SearchModal>;
-type BookCardModalProps = ComponentProps<typeof BookCardModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
 type QuizModalProps = ComponentProps<typeof QuizModal>;
 type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
@@ -45,7 +44,6 @@ interface AppModalsProps {
   tocModalProps: TocModalProps;
   ocrQueueModalProps: OcrQueueModalProps;
   searchModalProps: SearchModalProps;
-  bookCardModalProps: BookCardModalProps;
   settingsModalProps: SettingsModalProps;
   quizModalProps: QuizModalProps;
   vocabularyModalProps: VocabularyModalProps;
@@ -70,7 +68,6 @@ export default function AppModals({
   tocModalProps,
   ocrQueueModalProps,
   searchModalProps,
-  bookCardModalProps,
   settingsModalProps,
   quizModalProps,
   vocabularyModalProps,
@@ -88,7 +85,7 @@ export default function AppModals({
       {renderInPortal(<TocNavModal {...tocNavModalProps} />, portalTarget)}
       {renderInPortal(<TocModal {...tocModalProps} />, portalTarget)}
       {renderInPortal(<SearchModal {...searchModalProps} />, portalTarget)}
-      {renderInPortal(<BookCardModal {...bookCardModalProps} />, portalTarget)}
+      {renderInPortal(<BookCardModal />, portalTarget)}
       {renderInPortal(<SettingsModal {...settingsModalProps} />, portalTarget)}
       {renderInPortal(<QuizModal {...quizModalProps} />, portalTarget)}
       {renderInPortal(<VocabularyModal {...vocabularyModalProps} />, portalTarget)}

@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectBookCardBookId,
+  selectBookCardOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { BookCard } from '@/types/app';
 
 const CATEGORY_SUGGESTIONS = [
@@ -20,14 +27,10 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return (await response.json()) as T;
 }
 
-interface BookCardModalProps {
-  open: boolean;
-  bookId: string | null;
-  onClose: () => void;
-  onSaved: (card: BookCard) => void;
-}
-
-export default function BookCardModal({ open, bookId, onClose, onSaved }: BookCardModalProps) {
+export default function BookCardModal() {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectBookCardOpen);
+  const bookId = useAppSelector(selectBookCardBookId);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [card, setCard] = useState<BookCard | null>(null);
@@ -39,6 +42,9 @@ export default function BookCardModal({ open, bookId, onClose, onSaved }: BookCa
     coverImage: '',
     defaultCoverImage: ''
   });
+  const handleClose = () => {
+    dispatch(appActions.closeBookCard());
+  };
 
   useEffect(() => {
     if (!open || !bookId) {
@@ -105,7 +111,7 @@ export default function BookCardModal({ open, bookId, onClose, onSaved }: BookCa
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close book card"
             title="Close book card"
           >
@@ -209,7 +215,7 @@ export default function BookCardModal({ open, bookId, onClose, onSaved }: BookCa
           </datalist>
         </section>
         <footer className="modal-footer modal-footer-right">
-          <button type="button" className="button button-secondary" onClick={onClose} disabled={saving}>
+          <button type="button" className="button button-secondary" onClick={handleClose} disabled={saving}>
             Cancel
           </button>
           <button
@@ -231,9 +237,9 @@ export default function BookCardModal({ open, bookId, onClose, onSaved }: BookCa
                   coverImage: draft.coverImage
                 })
               })
-                .then((saved) => {
-                  onSaved(saved);
-                  onClose();
+                .then(() => {
+                  dispatch(appActions.refreshBookCards());
+                  handleClose();
                 })
                 .catch((error) => {
                   console.error(error);

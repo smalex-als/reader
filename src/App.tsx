@@ -81,8 +81,6 @@ export default function App() {
     openJobWorker,
     openSearch,
     closeSearch,
-    bookCardOpen,
-    bookCardBookId,
     openBookCard,
     closeBookCard,
     openPromptEditor,
@@ -105,8 +103,7 @@ export default function App() {
   } = useChapterTextContext();
   const {
     chapterViewRefresh,
-    refreshChapterView,
-    refreshBookCards
+    refreshChapterView
   } = useRefreshTokens();
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
@@ -988,12 +985,6 @@ export default function App() {
     },
     searchModalProps: {
       onSelect: handleSelectSearchResult
-    },
-    bookCardModalProps: {
-      open: bookCardOpen,
-      bookId: bookCardBookId,
-      onClose: closeBookCard,
-      onSaved: refreshBookCards
     },
     quizModalProps: {
       contextLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
