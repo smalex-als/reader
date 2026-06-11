@@ -13,6 +13,7 @@ import {
   selectEditorState,
   selectNavigationState,
   selectReaderSession,
+  selectViewerWorkflow,
   useAppSelector
 } from '@/state/appState';
 
@@ -29,7 +30,6 @@ type FloatingAudioPlayerProps = ComponentProps<typeof FloatingAudioPlayer>;
 interface ReaderMainContentProps {
   viewerShellRef: RefObject<HTMLDivElement>;
   modalHostRef: RefObject<HTMLDivElement>;
-  textTheme: string;
   footerMessage: string;
   viewerProps: ViewerProps;
   scrollViewerProps: ScrollViewerProps;
@@ -45,7 +45,6 @@ interface ReaderMainContentProps {
 export default function ReaderMainContent({
   viewerShellRef,
   modalHostRef,
-  textTheme,
   footerMessage,
   viewerProps,
   scrollViewerProps,
@@ -61,6 +60,9 @@ export default function ReaderMainContent({
   const { viewMode } = useAppSelector(selectReaderSession);
   const { loading } = useAppSelector(selectBookSessionWorkflow);
   const { open: editorOpen } = useAppSelector(selectEditorState);
+  const {
+    settings: { textTheme }
+  } = useAppSelector(selectViewerWorkflow);
   const displayFooterMessage =
     mainView === 'audio-library' ? 'MP3 Library' : mainView === 'units' ? 'Units' : footerMessage;
 

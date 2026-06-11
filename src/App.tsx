@@ -897,7 +897,6 @@ export default function App() {
   const mainContentProps = {
     viewerShellRef,
     modalHostRef,
-    textTheme: settings.textTheme,
     footerMessage,
     viewerProps: {
       currentBlockId: activeStreamLocator?.imageUrl === currentImage ? activeStreamLocator.blockId : null,
