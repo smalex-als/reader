@@ -16,9 +16,6 @@ type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
 interface ReaderSidebarProps {
   streamState: StreamState;
-  onPrev: () => void;
-  onNext: () => void;
-  onGoTo: (page: number) => void;
   onStreamVoiceChange: (voice: string) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
@@ -70,9 +67,6 @@ function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'a
 
 export default function ReaderSidebar({
   streamState,
-  onPrev,
-  onNext,
-  onGoTo,
   onStreamVoiceChange,
   onPlayStream,
   onStopStream
@@ -117,7 +111,7 @@ export default function ReaderSidebar({
     if (!Number.isInteger(desired)) {
       return;
     }
-    onGoTo(desired - 1);
+    dispatch(appActions.requestPageNavigation(desired - 1));
     setPageDraft('');
   };
   const handleViewModeChange = (mode: ViewMode) => {
@@ -236,11 +230,25 @@ export default function ReaderSidebar({
         <div className="reader-sidebar-section reader-sidebar-navigation">
           {!collapsed ? <span className="reader-sidebar-section-title">Page</span> : null}
           <div className="reader-sidebar-pager">
-            <button type="button" className="reader-sidebar-small-button" onClick={onPrev} disabled={controlsDisabled} aria-label="Previous page" data-tooltip="Previous page">
+            <button
+              type="button"
+              className="reader-sidebar-small-button"
+              onClick={() => dispatch(appActions.requestPreviousPageNavigation())}
+              disabled={controlsDisabled}
+              aria-label="Previous page"
+              data-tooltip="Previous page"
+            >
               &lt;
             </button>
             <span className="reader-sidebar-page-count">{pageLabel}</span>
-            <button type="button" className="reader-sidebar-small-button" onClick={onNext} disabled={controlsDisabled} aria-label="Next page" data-tooltip="Next page">
+            <button
+              type="button"
+              className="reader-sidebar-small-button"
+              onClick={() => dispatch(appActions.requestNextPageNavigation())}
+              disabled={controlsDisabled}
+              aria-label="Next page"
+              data-tooltip="Next page"
+            >
               &gt;
             </button>
           </div>

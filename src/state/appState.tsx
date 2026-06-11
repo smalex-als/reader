@@ -77,10 +77,13 @@ export interface AppNavigationState {
   selectedUnitTopicId: string | null;
 }
 
-export interface PageNavigationRequest {
+export type PageNavigationRequest = {
   id: number;
-  pageIndex: number;
-}
+} & (
+  | { kind: 'page'; pageIndex: number }
+  | { kind: 'previous' }
+  | { kind: 'next' }
+);
 
 export interface ReaderSessionState {
   bookId: string | null;
@@ -283,6 +286,8 @@ export type AppAction =
   | { type: 'navigation/setSelectedUnitSetId'; id: string | null }
   | { type: 'navigation/setSelectedUnitTopicId'; id: string | null }
   | { type: 'pageNavigation/request'; pageIndex: number }
+  | { type: 'pageNavigation/requestPrevious' }
+  | { type: 'pageNavigation/requestNext' }
   | { type: 'pageNavigation/clear' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
@@ -602,6 +607,8 @@ export const appActions = {
     type: 'pageNavigation/request',
     pageIndex
   }),
+  requestPreviousPageNavigation: (): AppAction => ({ type: 'pageNavigation/requestPrevious' }),
+  requestNextPageNavigation: (): AppAction => ({ type: 'pageNavigation/requestNext' }),
   clearPageNavigation: (): AppAction => ({ type: 'pageNavigation/clear' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
@@ -1081,7 +1088,24 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ...state,
         pageNavigationRequest: {
           id: (state.pageNavigationRequest?.id ?? 0) + 1,
+          kind: 'page',
           pageIndex: action.pageIndex
+        }
+      };
+    case 'pageNavigation/requestPrevious':
+      return {
+        ...state,
+        pageNavigationRequest: {
+          id: (state.pageNavigationRequest?.id ?? 0) + 1,
+          kind: 'previous'
+        }
+      };
+    case 'pageNavigation/requestNext':
+      return {
+        ...state,
+        pageNavigationRequest: {
+          id: (state.pageNavigationRequest?.id ?? 0) + 1,
+          kind: 'next'
         }
       };
     case 'pageNavigation/clear':

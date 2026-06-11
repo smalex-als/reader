@@ -565,9 +565,6 @@ export default function App() {
   });
 
   const sidebarProps = {
-    onPrev: handlePrev,
-    onNext: handleNext,
-    onGoTo: (page: number) => renderPage(page),
     streamState,
     onStreamVoiceChange: handleActiveStreamVoiceChange,
     onPlayStream: () => void handlePlayVisibleStream(),

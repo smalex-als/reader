@@ -72,14 +72,6 @@ export function useNavigation({
     ]
   );
 
-  useEffect(() => {
-    if (!pageNavigationRequest) {
-      return;
-    }
-    renderPage(pageNavigationRequest.pageIndex);
-    dispatch(appActions.clearPageNavigation());
-  }, [dispatch, pageNavigationRequest, renderPage]);
-
   const goToChapterIndex = useCallback(
     (index: number) => {
       const entry = sortedTocEntries[index];
@@ -157,6 +149,20 @@ export function useNavigation({
     sortedTocEntries.length,
     viewMode
   ]);
+
+  useEffect(() => {
+    if (!pageNavigationRequest) {
+      return;
+    }
+    if (pageNavigationRequest.kind === 'previous') {
+      handlePrev();
+    } else if (pageNavigationRequest.kind === 'next') {
+      handleNext();
+    } else {
+      renderPage(pageNavigationRequest.pageIndex);
+    }
+    dispatch(appActions.clearPageNavigation());
+  }, [dispatch, handleNext, handlePrev, pageNavigationRequest, renderPage]);
 
   const footerMessage = useMemo(() => {
     if (viewMode === 'audio') {
