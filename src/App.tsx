@@ -126,7 +126,6 @@ export default function App() {
     viewMode,
     setViewMode,
     loading,
-    handleUploadChapter,
     handleCreateChapter,
     handleDeleteChapter
   } = useBookSession({
@@ -727,9 +726,6 @@ export default function App() {
 
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null,
-    bookSelectModalProps: {
-      onUploadChapter: handleUploadChapter
-    },
     bookmarksModalProps: {
       onSelect: handleSelectBookmark
     },

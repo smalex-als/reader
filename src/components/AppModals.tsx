@@ -20,7 +20,6 @@ import MemoryCardModal from '@/components/MemoryCardModal';
 import PromptEditorModal from '@/components/PromptEditorModal';
 import JobWorkerModal from '@/components/JobWorkerModal';
 
-type BookSelectModalProps = ComponentProps<typeof BookSelectModal>;
 type BookmarksModalProps = ComponentProps<typeof BookmarksModal>;
 type TocNavModalProps = ComponentProps<typeof TocNavModal>;
 type TocModalProps = ComponentProps<typeof TocModal>;
@@ -34,7 +33,6 @@ type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
-  bookSelectModalProps: BookSelectModalProps;
   bookmarksModalProps: BookmarksModalProps;
   tocNavModalProps: TocNavModalProps;
   tocModalProps: TocModalProps;
@@ -56,7 +54,6 @@ function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
 
 export default function AppModals({
   portalTarget,
-  bookSelectModalProps,
   bookmarksModalProps,
   tocNavModalProps,
   tocModalProps,
@@ -72,7 +69,7 @@ export default function AppModals({
     <>
       <Toast />
       <PrintModal />
-      <BookSelectModal {...bookSelectModalProps} />
+      <BookSelectModal />
       {renderInPortal(<HelpModal />, portalTarget)}
       <BookmarksModal {...bookmarksModalProps} />
       {renderInPortal(<TextModal />, portalTarget)}

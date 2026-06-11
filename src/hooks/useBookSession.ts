@@ -413,83 +413,6 @@ export function useBookSession<StreamVoice extends string>({
     return () => window.clearTimeout(timeout);
   }, [bookId, streamVoice]);
 
-  const handleUploadChapter = useCallback(
-    async (file: File, details: { bookName: string; chapterTitle: string }) => {
-      const bookName = details.bookName.trim();
-      const chapterTitle = details.chapterTitle.trim();
-      const targetBookId = bookName || bookId || '';
-      if (!targetBookId) {
-        showToast('Book name is required for a new text book', 'error');
-        return;
-      }
-      if (!bookName && bookId && bookType !== 'text') {
-        showToast('Select a text book or enter a new book name', 'error');
-        return;
-      }
-      const isExisting = books.includes(targetBookId);
-      setUploadingChapter(true);
-      try {
-        const formData = new FormData();
-        if (chapterTitle) {
-          formData.append('chapterTitle', chapterTitle);
-        }
-        formData.append('file', file);
-        let response: Response;
-        if (isExisting) {
-          response = await fetch(`/api/books/${encodeURIComponent(targetBookId)}/chapters`, {
-            method: 'POST',
-            body: formData
-          });
-        } else {
-          formData.append('bookName', bookName);
-          response = await fetch('/api/books/text', { method: 'POST', body: formData });
-        }
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.status}`);
-        }
-        const data = (await response.json()) as {
-          book: string;
-          bookType?: 'text';
-          chapterIndex?: number;
-          chapterCount?: number;
-          chapterFileCount?: number;
-          toc?: TocEntry[];
-        };
-        const newBookId = data.book;
-        setBooks((prev) => {
-          const next = Array.from(new Set([...prev, newBookId]));
-          next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
-          return next;
-        });
-        setBookId(newBookId);
-        setBookType('text');
-        setChapterCount(Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0);
-        setManifest([]);
-        onUpdateTocEntries(Array.isArray(data.toc) ? data.toc : []);
-        setCurrentPage(Number.isInteger(data.chapterIndex) ? (data.chapterIndex as number) : 0);
-        setViewMode('text');
-        setBookModalOpen(false);
-        showToast('Chapter uploaded', 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Failed to upload chapter', 'error');
-      } finally {
-        setUploadingChapter(false);
-      }
-    },
-    [
-      bookId,
-      bookType,
-      books,
-      onUpdateTocEntries,
-      setBookId,
-      setBookModalOpen,
-      setCurrentPage,
-      setViewMode,
-      showToast
-    ]
-  );
-
   const handleCreateChapter = useCallback(
     async (details: { bookName: string; chapterTitle: string }) => {
       const bookName = details.bookName.trim();
@@ -658,7 +581,6 @@ export function useBookSession<StreamVoice extends string>({
     uploadingChapter,
     deletingChapter,
     uploadingPdf,
-    handleUploadChapter,
     handleCreateChapter,
     handleDeleteChapter
   };
@@ -745,5 +667,86 @@ export function useUploadPdf() {
       }
     },
     [books, dispatch, showToast]
+  );
+}
+
+export function useUploadChapter() {
+  const { showToast } = useToast();
+  const dispatch = useAppDispatch();
+  const { bookId } = useAppSelector(selectReaderSession);
+  const { books, bookType } = useAppSelector(selectBookSessionWorkflow);
+
+  return useCallback(
+    async (file: File, details: { bookName: string; chapterTitle: string }) => {
+      const bookName = details.bookName.trim();
+      const chapterTitle = details.chapterTitle.trim();
+      const targetBookId = bookName || bookId || '';
+      if (!targetBookId) {
+        showToast('Book name is required for a new text book', 'error');
+        return;
+      }
+      if (!bookName && bookId && bookType !== 'text') {
+        showToast('Select a text book or enter a new book name', 'error');
+        return;
+      }
+      const isExisting = books.includes(targetBookId);
+      dispatch(appActions.setBookSessionUploadingChapter(true));
+      try {
+        const formData = new FormData();
+        if (chapterTitle) {
+          formData.append('chapterTitle', chapterTitle);
+        }
+        formData.append('file', file);
+        let response: Response;
+        if (isExisting) {
+          response = await fetch(`/api/books/${encodeURIComponent(targetBookId)}/chapters`, {
+            method: 'POST',
+            body: formData
+          });
+        } else {
+          formData.append('bookName', bookName);
+          response = await fetch('/api/books/text', { method: 'POST', body: formData });
+        }
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.status}`);
+        }
+        const data = (await response.json()) as {
+          book: string;
+          bookType?: 'text';
+          chapterIndex?: number;
+          chapterCount?: number;
+          chapterFileCount?: number;
+          toc?: TocEntry[];
+        };
+        const newBookId = data.book;
+        const nextBooks = Array.from(new Set([...books, newBookId]));
+        nextBooks.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
+
+        dispatch(appActions.setBookSessionBooks(nextBooks));
+        dispatch(appActions.setReaderBookId(newBookId));
+        dispatch(appActions.setBookSessionBookType('text'));
+        dispatch(
+          appActions.setBookSessionChapterCount(
+            Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0
+          )
+        );
+        dispatch(appActions.setBookSessionManifest([]));
+        dispatch(appActions.setTocEntries(Array.isArray(data.toc) ? data.toc : []));
+        dispatch(
+          appActions.setReaderCurrentPage(
+            Number.isInteger(data.chapterIndex) ? (data.chapterIndex as number) : 0
+          )
+        );
+        dispatch(appActions.setReaderViewMode('text'));
+        dispatch(appActions.setModalOpen('bookSelect', false));
+        showToast('Chapter uploaded', 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Failed to upload chapter', 'error');
+      } finally {
+        dispatch(appActions.setBookSessionUploadingChapter(false));
+      }
+    },
+    [bookId, bookType, books, dispatch, showToast]
   );
 }
