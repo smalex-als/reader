@@ -1,17 +1,33 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
 import { loadMp3VoiceForBook, saveMp3VoiceForBook } from '@/lib/storage';
+import {
+  appActions,
+  selectVoiceWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { StreamVoice, StreamVoiceOption } from '@/lib/appConstants';
 
 interface UseStreamVoicesOptions {
   showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
+function resolveNext<T>(next: SetStateAction<T>, current: T) {
+  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
+}
+
 export function useStreamVoices(options: UseStreamVoicesOptions) {
   const { showToast } = options;
-  const [streamVoiceOptions, setStreamVoiceOptions] = useState<StreamVoiceOption[]>([]);
-  const [defaultStreamVoice, setDefaultStreamVoice] = useState<StreamVoice>('');
-  const [streamVoice, setStreamVoice] = useState<StreamVoice>('');
+  const dispatch = useAppDispatch();
+  const { streamVoiceOptions, defaultStreamVoice, streamVoice } = useAppSelector(selectVoiceWorkflow);
+
+  const setStreamVoice: Dispatch<SetStateAction<StreamVoice>> = useCallback(
+    (next) => {
+      dispatch(appActions.setStreamVoice(resolveNext(next, streamVoice)));
+    },
+    [dispatch, streamVoice]
+  );
 
   const isStreamVoice = useCallback(
     (value: string): value is StreamVoice =>
@@ -57,9 +73,7 @@ export function useStreamVoices(options: UseStreamVoicesOptions) {
           typeof payload.defaultVoice === 'string' && voices.some((voice) => voice.id === payload.defaultVoice)
             ? payload.defaultVoice
             : voices[0]?.id ?? '';
-        setStreamVoiceOptions(voices);
-        setDefaultStreamVoice(defaultVoice);
-        setStreamVoice((previous) => (previous && voices.some((voice) => voice.id === previous) ? previous : defaultVoice));
+        dispatch(appActions.setVoiceOptions(voices, defaultVoice));
       })
       .catch((error) => {
         console.error('Unable to load streaming voices', error);
@@ -68,7 +82,7 @@ export function useStreamVoices(options: UseStreamVoicesOptions) {
     return () => {
       cancelled = true;
     };
-  }, [showToast]);
+  }, [dispatch, showToast]);
 
   return {
     streamVoiceOptions,
@@ -90,7 +104,15 @@ interface UseMp3VoiceOptions {
 
 export function useMp3Voice(options: UseMp3VoiceOptions) {
   const { bookId, mp3VoiceOptions, getDefaultMp3Voice } = options;
-  const [mp3Voice, setMp3Voice] = useState<StreamVoice>('');
+  const dispatch = useAppDispatch();
+  const { mp3Voice } = useAppSelector(selectVoiceWorkflow);
+
+  const setMp3Voice: Dispatch<SetStateAction<StreamVoice>> = useCallback(
+    (next) => {
+      dispatch(appActions.setMp3Voice(resolveNext(next, mp3Voice)));
+    },
+    [dispatch, mp3Voice]
+  );
 
   useEffect(() => {
     if (mp3VoiceOptions.length === 0) {
@@ -105,7 +127,7 @@ export function useMp3Voice(options: UseMp3VoiceOptions) {
     setMp3Voice((previous) =>
       previous && mp3VoiceOptions.some((option) => option.id === previous) && !storedVoice ? previous : nextVoice
     );
-  }, [bookId, getDefaultMp3Voice, mp3VoiceOptions]);
+  }, [bookId, getDefaultMp3Voice, mp3VoiceOptions, setMp3Voice]);
 
   useEffect(() => {
     if (!bookId || !mp3Voice || !mp3VoiceOptions.some((option) => option.id === mp3Voice)) {

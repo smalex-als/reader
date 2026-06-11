@@ -6,7 +6,13 @@ import {
   type Dispatch,
   type ReactNode
 } from 'react';
-import { createDefaultSettings, type MainView, type ViewMode } from '@/lib/appConstants';
+import {
+  createDefaultSettings,
+  type MainView,
+  type StreamVoice,
+  type StreamVoiceOption,
+  type ViewMode
+} from '@/lib/appConstants';
 import type {
   AppSettings,
   AudioState,
@@ -189,6 +195,13 @@ export interface ViewerWorkflowState {
   metrics: ViewerMetrics | null;
 }
 
+export interface VoiceWorkflowState {
+  streamVoiceOptions: StreamVoiceOption[];
+  defaultStreamVoice: StreamVoice;
+  streamVoice: StreamVoice;
+  mp3Voice: StreamVoice;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -212,6 +225,7 @@ export interface CentralAppState {
   pageTextWorkflow: PageTextWorkflowState;
   imagePreviewWorkflow: ImagePreviewWorkflowState;
   viewerWorkflow: ViewerWorkflowState;
+  voiceWorkflow: VoiceWorkflowState;
 }
 
 export type AppAction =
@@ -288,7 +302,10 @@ export type AppAction =
   | { type: 'pageTextWorkflow/setRegenerated'; regenerated: boolean }
   | { type: 'imagePreviewWorkflow/setEnhancedUrl'; key: string; url: string | null }
   | { type: 'viewerWorkflow/setSettings'; settings: AppSettings }
-  | { type: 'viewerWorkflow/setMetrics'; metrics: ViewerMetrics | null };
+  | { type: 'viewerWorkflow/setMetrics'; metrics: ViewerMetrics | null }
+  | { type: 'voiceWorkflow/setVoiceOptions'; options: StreamVoiceOption[]; defaultVoice: StreamVoice }
+  | { type: 'voiceWorkflow/setStreamVoice'; voice: StreamVoice }
+  | { type: 'voiceWorkflow/setMp3Voice'; voice: StreamVoice };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -447,6 +464,12 @@ const initialAppState: CentralAppState = {
   viewerWorkflow: {
     settings: createDefaultSettings(),
     metrics: null
+  },
+  voiceWorkflow: {
+    streamVoiceOptions: [],
+    defaultStreamVoice: '',
+    streamVoice: '',
+    mp3Voice: ''
   }
 };
 
@@ -668,6 +691,19 @@ export const appActions = {
   setViewerMetrics: (metrics: ViewerMetrics | null): AppAction => ({
     type: 'viewerWorkflow/setMetrics',
     metrics
+  }),
+  setVoiceOptions: (options: StreamVoiceOption[], defaultVoice: StreamVoice): AppAction => ({
+    type: 'voiceWorkflow/setVoiceOptions',
+    options,
+    defaultVoice
+  }),
+  setStreamVoice: (voice: StreamVoice): AppAction => ({
+    type: 'voiceWorkflow/setStreamVoice',
+    voice
+  }),
+  setMp3Voice: (voice: StreamVoice): AppAction => ({
+    type: 'voiceWorkflow/setMp3Voice',
+    voice
   })
 };
 
@@ -1314,6 +1350,37 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           metrics: action.metrics
         }
       };
+    case 'voiceWorkflow/setVoiceOptions': {
+      const streamVoice =
+        state.voiceWorkflow.streamVoice && action.options.some((voice) => voice.id === state.voiceWorkflow.streamVoice)
+          ? state.voiceWorkflow.streamVoice
+          : action.defaultVoice;
+      return {
+        ...state,
+        voiceWorkflow: {
+          ...state.voiceWorkflow,
+          streamVoiceOptions: action.options,
+          defaultStreamVoice: action.defaultVoice,
+          streamVoice
+        }
+      };
+    }
+    case 'voiceWorkflow/setStreamVoice':
+      return {
+        ...state,
+        voiceWorkflow: {
+          ...state.voiceWorkflow,
+          streamVoice: action.voice
+        }
+      };
+    case 'voiceWorkflow/setMp3Voice':
+      return {
+        ...state,
+        voiceWorkflow: {
+          ...state.voiceWorkflow,
+          mp3Voice: action.voice
+        }
+      };
     default:
       return state;
   }
@@ -1377,3 +1444,4 @@ export const selectMemoryCardWorkflow = (state: CentralAppState) => state.memory
 export const selectPageTextWorkflow = (state: CentralAppState) => state.pageTextWorkflow;
 export const selectImagePreviewWorkflow = (state: CentralAppState) => state.imagePreviewWorkflow;
 export const selectViewerWorkflow = (state: CentralAppState) => state.viewerWorkflow;
+export const selectVoiceWorkflow = (state: CentralAppState) => state.voiceWorkflow;
