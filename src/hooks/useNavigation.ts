@@ -2,6 +2,7 @@ import type { MutableRefObject } from 'react';
 import { useCallback, useMemo } from 'react';
 import { clamp } from '@/lib/math';
 import { saveLastPage } from '@/lib/storage';
+import { appActions, useAppDispatch } from '@/state/appState';
 import type { TocEntry } from '@/types/app';
 
 interface UseNavigationParams {
@@ -12,8 +13,6 @@ interface UseNavigationParams {
   currentChapterIndex: number | null;
   sortedTocEntries: TocEntry[];
   bookId: string | null;
-  setCurrentPage: (value: number) => void;
-  setRegeneratedText: (value: boolean) => void;
   pendingAlignTopRef: MutableRefObject<boolean>;
   resetAudio: () => void;
   stopStream: () => void;
@@ -31,8 +30,6 @@ export function useNavigation({
   currentChapterIndex,
   sortedTocEntries,
   bookId,
-  setCurrentPage,
-  setRegeneratedText,
   pendingAlignTopRef,
   resetAudio,
   stopStream,
@@ -41,6 +38,7 @@ export function useNavigation({
   chapterNumber,
   currentChapterEntry
 }: UseNavigationParams) {
+  const dispatch = useAppDispatch();
   const renderPage = useCallback(
     (pageIndex: number) => {
       if (navigationCount === 0) {
@@ -48,9 +46,9 @@ export function useNavigation({
       }
       const maxIndex = navigationCount - 1;
       const nextIndex = clamp(pageIndex, 0, maxIndex);
-      setCurrentPage(nextIndex);
+      dispatch(appActions.setReaderCurrentPage(nextIndex));
       pendingAlignTopRef.current = viewMode === 'pages' || viewMode === 'scroll';
-      setRegeneratedText(false);
+      dispatch(appActions.setRegeneratedPageText(false));
       if (bookId) {
         saveLastPage(bookId, nextIndex);
       }
@@ -59,11 +57,10 @@ export function useNavigation({
     },
     [
       bookId,
+      dispatch,
       navigationCount,
       pendingAlignTopRef,
       resetAudio,
-      setCurrentPage,
-      setRegeneratedText,
       stopStream,
       viewMode
     ]

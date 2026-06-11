@@ -27,13 +27,6 @@ export function usePageText(currentImage: string | null) {
     loading: textLoading
   } = useAppSelector(selectPageTextWorkflow);
 
-  const setRegeneratedText = useCallback(
-    (regenerated: boolean) => {
-      dispatch(appActions.setRegeneratedPageText(regenerated));
-    },
-    [dispatch]
-  );
-
   const fetchPageTextByImage = useCallback(
     async (
       image: string,
@@ -184,7 +177,6 @@ export function usePageText(currentImage: string | null) {
     fetchPageTextByImage,
     resetTextState,
     savePageText,
-    setRegeneratedText,
     textLoading,
     toggleTextModal,
     updatePageTextBlocks
