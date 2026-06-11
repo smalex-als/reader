@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import {
   appActions,
   selectModalOpen,
@@ -24,7 +24,7 @@ type TocManagerOptions = {
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
 };
 
-function resolveNext<T>(next: T | ((prev: T) => T), current: T) {
+function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
 
@@ -32,13 +32,29 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
   const dispatch = useAppDispatch();
   const tocOpen = useAppSelector(selectModalOpen('tocNav'));
   const tocManageOpen = useAppSelector(selectModalOpen('tocManage'));
-  const { variant: tocVariant } = useAppSelector(selectTocWorkflow);
-  const [tocEntries, setTocEntries] = useState<TocEntry[]>([]);
-  const [detailedTocEntries, setDetailedTocEntries] = useState<TocEntry[]>([]);
-  const [tocLoading, setTocLoading] = useState(false);
-  const [tocGenerating, setTocGenerating] = useState(false);
-  const [tocSaving, setTocSaving] = useState(false);
-  const [chapterGeneratingIndex, setChapterGeneratingIndex] = useState<number | null>(null);
+  const {
+    variant: tocVariant,
+    entries: tocEntries,
+    detailedEntries: detailedTocEntries,
+    loading: tocLoading,
+    generating: tocGenerating,
+    saving: tocSaving,
+    chapterGeneratingIndex
+  } = useAppSelector(selectTocWorkflow);
+
+  const setTocEntries: Dispatch<SetStateAction<TocEntry[]>> = useCallback(
+    (next) => {
+      dispatch(appActions.setTocEntries(resolveNext(next, tocEntries)));
+    },
+    [dispatch, tocEntries]
+  );
+
+  const setDetailedTocEntries: Dispatch<SetStateAction<TocEntry[]>> = useCallback(
+    (next) => {
+      dispatch(appActions.setDetailedTocEntries(resolveNext(next, detailedTocEntries)));
+    },
+    [detailedTocEntries, dispatch]
+  );
 
   const sortedTocEntries = useMemo(() => {
     return [...tocEntries]
@@ -76,7 +92,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     if (!bookId) {
       return;
     }
-    setTocLoading(true);
+    dispatch(appActions.setTocLoading(true));
     try {
       const [mainData, detailedData] = await Promise.all([
         fetchJson<{ toc: TocEntry[] }>(
@@ -86,21 +102,21 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
           `/api/books/${encodeURIComponent(bookId)}/toc?variant=detailed&includeStats=1`
         )
       ]);
-      setTocEntries(Array.isArray(mainData.toc) ? mainData.toc : []);
-      setDetailedTocEntries(Array.isArray(detailedData.toc) ? detailedData.toc : []);
+      dispatch(appActions.setTocEntries(Array.isArray(mainData.toc) ? mainData.toc : []));
+      dispatch(appActions.setDetailedTocEntries(Array.isArray(detailedData.toc) ? detailedData.toc : []));
     } catch (error) {
       console.error(error);
       showToast('Unable to load table of contents', 'error');
     } finally {
-      setTocLoading(false);
+      dispatch(appActions.setTocLoading(false));
     }
-  }, [bookId, showToast]);
+  }, [bookId, dispatch, showToast]);
 
   const handleGenerateToc = useCallback(async (variant: 'main' | 'detailed' = 'main') => {
     if (!bookId) {
       return;
     }
-    setTocGenerating(true);
+    dispatch(appActions.setTocGenerating(true));
     try {
       const response = await fetchJson<{ toc: TocEntry[] }>(
         `/api/books/${encodeURIComponent(bookId)}/toc/generate?variant=${variant}${
@@ -109,11 +125,11 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
         { method: 'POST' }
       );
       if (variant === 'detailed') {
-        setDetailedTocEntries(Array.isArray(response.toc) ? response.toc : []);
+        dispatch(appActions.setDetailedTocEntries(Array.isArray(response.toc) ? response.toc : []));
         dispatch(appActions.setTocVariant('detailed'));
         showToast('Detailed table of contents generated', 'success');
       } else {
-        setTocEntries(Array.isArray(response.toc) ? response.toc : []);
+        dispatch(appActions.setTocEntries(Array.isArray(response.toc) ? response.toc : []));
         dispatch(appActions.setTocVariant('main'));
         showToast('Table of contents generated', 'success');
       }
@@ -127,7 +143,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
         'error'
       );
     } finally {
-      setTocGenerating(false);
+      dispatch(appActions.setTocGenerating(false));
     }
   }, [bookId, dispatch, loadToc, showToast]);
 
@@ -135,7 +151,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     if (!bookId) {
       return;
     }
-    setTocSaving(true);
+    dispatch(appActions.setTocSaving(true));
     try {
       const response = await fetchJson<{ toc: TocEntry[] }>(
         `/api/books/${encodeURIComponent(bookId)}/toc${
@@ -148,10 +164,10 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
         }
       );
       if (variant === 'detailed') {
-        setDetailedTocEntries(Array.isArray(response.toc) ? response.toc : []);
+        dispatch(appActions.setDetailedTocEntries(Array.isArray(response.toc) ? response.toc : []));
         showToast('Detailed table of contents saved', 'success');
       } else {
-        setTocEntries(Array.isArray(response.toc) ? response.toc : []);
+        dispatch(appActions.setTocEntries(Array.isArray(response.toc) ? response.toc : []));
         showToast('Table of contents saved', 'success');
       }
       await loadToc();
@@ -164,9 +180,9 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
         'error'
       );
     } finally {
-      setTocSaving(false);
+      dispatch(appActions.setTocSaving(false));
     }
-  }, [bookId, detailedTocEntries, loadToc, showToast, tocEntries]);
+  }, [bookId, detailedTocEntries, dispatch, loadToc, showToast, tocEntries]);
 
   const handleAddTocEntry = useCallback((currentPage: number, variant: 'main' | 'detailed' = 'main') => {
     if (variant === 'detailed') {
@@ -174,7 +190,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
       return;
     }
     setTocEntries((prev) => [...prev, { title: '', page: currentPage }]);
-  }, []);
+  }, [setDetailedTocEntries, setTocEntries]);
 
   const handleRemoveTocEntry = useCallback((index: number, variant: 'main' | 'detailed' = 'main') => {
     if (variant === 'detailed') {
@@ -182,7 +198,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
       return;
     }
     setTocEntries((prev) => prev.filter((_, idx) => idx !== index));
-  }, []);
+  }, [setDetailedTocEntries, setTocEntries]);
 
   const handleUpdateTocEntry = useCallback((index: number, next: TocEntry, variant: 'main' | 'detailed' = 'main') => {
     if (variant === 'detailed') {
@@ -190,7 +206,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
       return;
     }
     setTocEntries((prev) => prev.map((entry, idx) => (idx === index ? next : entry)));
-  }, []);
+  }, [setDetailedTocEntries, setTocEntries]);
 
   const handleGenerateChapter = useCallback(
     async (index: number) => {
@@ -227,7 +243,7 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
         return;
       }
 
-      setChapterGeneratingIndex(index);
+      dispatch(appActions.setTocChapterGeneratingIndex(index));
       try {
         const result = await fetchJson<{ file: string }>(
           `/api/books/${encodeURIComponent(bookId)}/chapters/generate`,
@@ -246,16 +262,14 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
         console.error(error);
         showToast('Unable to generate chapter text', 'error');
       } finally {
-        setChapterGeneratingIndex(null);
+        dispatch(appActions.setTocChapterGeneratingIndex(null));
       }
     },
-    [bookId, manifestLength, showToast, tocEntries]
+    [bookId, dispatch, manifestLength, showToast, tocEntries]
   );
 
   useEffect(() => {
-    setTocEntries([]);
-    setDetailedTocEntries([]);
-    dispatch(appActions.setTocVariant('main'));
+    dispatch(appActions.resetTocWorkflow());
     dispatch(appActions.closeModal('tocNav'));
     dispatch(appActions.closeModal('tocManage'));
   }, [bookId, dispatch]);

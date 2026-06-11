@@ -24,6 +24,7 @@ import type {
   PageTextOcrEngine,
   Quiz,
   SearchResult,
+  TocEntry,
   ViewerMetrics
 } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
@@ -147,6 +148,12 @@ export interface PrintWorkflowState {
 
 export interface TocWorkflowState {
   variant: TocVariant;
+  entries: TocEntry[];
+  detailedEntries: TocEntry[];
+  loading: boolean;
+  generating: boolean;
+  saving: boolean;
+  chapterGeneratingIndex: number | null;
 }
 
 export interface SearchWorkflowState {
@@ -277,7 +284,14 @@ export type AppAction =
   | { type: 'floatingAudio/close' }
   | { type: 'floatingAudio/setPlaybackState'; playbackState: FloatingAudioPlaybackState }
   | { type: 'printWorkflow/setSelection'; selection: string }
+  | { type: 'tocWorkflow/reset' }
   | { type: 'tocWorkflow/setVariant'; variant: TocVariant }
+  | { type: 'tocWorkflow/setEntries'; entries: TocEntry[] }
+  | { type: 'tocWorkflow/setDetailedEntries'; entries: TocEntry[] }
+  | { type: 'tocWorkflow/setLoading'; loading: boolean }
+  | { type: 'tocWorkflow/setGenerating'; generating: boolean }
+  | { type: 'tocWorkflow/setSaving'; saving: boolean }
+  | { type: 'tocWorkflow/setChapterGeneratingIndex'; index: number | null }
   | { type: 'searchWorkflow/reset' }
   | { type: 'searchWorkflow/setQuery'; query: string }
   | { type: 'searchWorkflow/setResults'; results: SearchResult[] }
@@ -351,6 +365,16 @@ const initialAudioState: AudioState = {
   currentPageKey: null
 };
 
+const initialTocWorkflow: TocWorkflowState = {
+  variant: 'main',
+  entries: [],
+  detailedEntries: [],
+  loading: false,
+  generating: false,
+  saving: false,
+  chapterGeneratingIndex: null
+};
+
 const initialAppState: CentralAppState = {
   ui: {
     modals: {
@@ -421,9 +445,7 @@ const initialAppState: CentralAppState = {
   printWorkflow: {
     selection: 'current'
   },
-  tocWorkflow: {
-    variant: 'main'
-  },
+  tocWorkflow: initialTocWorkflow,
   searchWorkflow: {
     query: '',
     results: [],
@@ -594,9 +616,34 @@ export const appActions = {
     type: 'printWorkflow/setSelection',
     selection
   }),
+  resetTocWorkflow: (): AppAction => ({ type: 'tocWorkflow/reset' }),
   setTocVariant: (variant: TocVariant): AppAction => ({
     type: 'tocWorkflow/setVariant',
     variant
+  }),
+  setTocEntries: (entries: TocEntry[]): AppAction => ({
+    type: 'tocWorkflow/setEntries',
+    entries
+  }),
+  setDetailedTocEntries: (entries: TocEntry[]): AppAction => ({
+    type: 'tocWorkflow/setDetailedEntries',
+    entries
+  }),
+  setTocLoading: (loading: boolean): AppAction => ({
+    type: 'tocWorkflow/setLoading',
+    loading
+  }),
+  setTocGenerating: (generating: boolean): AppAction => ({
+    type: 'tocWorkflow/setGenerating',
+    generating
+  }),
+  setTocSaving: (saving: boolean): AppAction => ({
+    type: 'tocWorkflow/setSaving',
+    saving
+  }),
+  setTocChapterGeneratingIndex: (index: number | null): AppAction => ({
+    type: 'tocWorkflow/setChapterGeneratingIndex',
+    index
   }),
   resetSearch: (): AppAction => ({ type: 'searchWorkflow/reset' }),
   setSearchQuery: (query: string): AppAction => ({
@@ -1112,11 +1159,65 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           selection: action.selection
         }
       };
+    case 'tocWorkflow/reset':
+      return {
+        ...state,
+        tocWorkflow: initialTocWorkflow
+      };
     case 'tocWorkflow/setVariant':
       return {
         ...state,
         tocWorkflow: {
+          ...state.tocWorkflow,
           variant: action.variant
+        }
+      };
+    case 'tocWorkflow/setEntries':
+      return {
+        ...state,
+        tocWorkflow: {
+          ...state.tocWorkflow,
+          entries: action.entries
+        }
+      };
+    case 'tocWorkflow/setDetailedEntries':
+      return {
+        ...state,
+        tocWorkflow: {
+          ...state.tocWorkflow,
+          detailedEntries: action.entries
+        }
+      };
+    case 'tocWorkflow/setLoading':
+      return {
+        ...state,
+        tocWorkflow: {
+          ...state.tocWorkflow,
+          loading: action.loading
+        }
+      };
+    case 'tocWorkflow/setGenerating':
+      return {
+        ...state,
+        tocWorkflow: {
+          ...state.tocWorkflow,
+          generating: action.generating
+        }
+      };
+    case 'tocWorkflow/setSaving':
+      return {
+        ...state,
+        tocWorkflow: {
+          ...state.tocWorkflow,
+          saving: action.saving
+        }
+      };
+    case 'tocWorkflow/setChapterGeneratingIndex':
+      return {
+        ...state,
+        tocWorkflow: {
+          ...state.tocWorkflow,
+          chapterGeneratingIndex: action.index
         }
       };
     case 'searchWorkflow/reset':
