@@ -16,7 +16,6 @@ type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
 interface ReaderSidebarProps {
   streamState: StreamState;
-  onViewModeChange: (mode: ViewMode) => void;
   onPrev: () => void;
   onNext: () => void;
   onGoTo: (page: number) => void;
@@ -71,7 +70,6 @@ function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'a
 
 export default function ReaderSidebar({
   streamState,
-  onViewModeChange,
   onPrev,
   onNext,
   onGoTo,
@@ -121,6 +119,13 @@ export default function ReaderSidebar({
     }
     onGoTo(desired - 1);
     setPageDraft('');
+  };
+  const handleViewModeChange = (mode: ViewMode) => {
+    if (isTextBook && (mode === 'pages' || mode === 'scroll')) {
+      return;
+    }
+    dispatch(appActions.setMainView('reader'));
+    dispatch(appActions.setReaderViewMode(mode));
   };
   const toggleCollapsed = () => {
     window.localStorage.setItem(SIDEBAR_USER_COLLAPSED_KEY, 'true');
@@ -215,7 +220,7 @@ export default function ReaderSidebar({
               key={item.mode}
               type="button"
               className={`reader-sidebar-action ${viewMode === item.mode ? 'reader-sidebar-action-active' : ''}`}
-              onClick={() => onViewModeChange(item.mode)}
+              onClick={() => handleViewModeChange(item.mode)}
               disabled={controlsDisabled || item.disabled}
               title={item.label}
               data-tooltip={item.label}

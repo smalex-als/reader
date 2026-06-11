@@ -661,7 +661,6 @@ export default function App() {
   });
 
   const sidebarProps = {
-    onViewModeChange: handleViewModeChange,
     onPrev: handlePrev,
     onNext: handleNext,
     onGoTo: (page: number) => renderPage(page),
