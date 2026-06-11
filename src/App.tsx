@@ -47,6 +47,7 @@ import type {
 } from '@/types/app';
 import {
   appActions,
+  selectChapterCommandRequest,
   selectOcrBlockCommandRequest,
   selectOcrQueueCommandRequest,
   selectStudyAudioCommandRequest,
@@ -58,6 +59,7 @@ import {
 
 export default function App() {
   const dispatch = useAppDispatch();
+  const chapterCommandRequest = useAppSelector(selectChapterCommandRequest);
   const ocrBlockCommandRequest = useAppSelector(selectOcrBlockCommandRequest);
   const ocrQueueCommandRequest = useAppSelector(selectOcrQueueCommandRequest);
   const studyAudioCommandRequest = useAppSelector(selectStudyAudioCommandRequest);
@@ -610,6 +612,12 @@ export default function App() {
         text: studyAudioCommandRequest.text,
         pageKey: `memory-card::chapter-${studyAudioCommandRequest.chapterNumber}`
       });
+    } else if (studyAudioCommandRequest.kind === 'unitTopicParagraph') {
+      void handlePlayChapterParagraph({
+        fullText: studyAudioCommandRequest.fullText,
+        startIndex: studyAudioCommandRequest.startIndex,
+        key: studyAudioCommandRequest.key
+      });
     } else {
       void handlePlayChapterParagraph({
         fullText: studyAudioCommandRequest.fullText,
@@ -628,6 +636,33 @@ export default function App() {
     handleStopStream,
     refreshUnits,
     studyAudioCommandRequest
+  ]);
+
+  useEffect(() => {
+    if (!chapterCommandRequest) {
+      return;
+    }
+
+    if (!isTextBook) {
+      showToast('Select a text book to manage chapters', 'error');
+      dispatch(appActions.clearChapterCommandRequest());
+      return;
+    }
+
+    if (chapterCommandRequest.kind === 'create') {
+      void handleCreateChapter({ bookName: '', chapterTitle: '' });
+    } else {
+      void handleDeleteChapter(chapterCommandRequest.chapterNumber);
+    }
+
+    dispatch(appActions.clearChapterCommandRequest());
+  }, [
+    chapterCommandRequest,
+    dispatch,
+    handleCreateChapter,
+    handleDeleteChapter,
+    isTextBook,
+    showToast
   ]);
 
   const applyZoomModeWithAlign = useCallback(
@@ -775,13 +810,6 @@ export default function App() {
       fetchPageTextByImage
     },
     chapterViewerProps: {
-      onCreateChapter: isTextBook
-        ? () => {
-            void handleCreateChapter({ bookName: '', chapterTitle: '' });
-          }
-        : undefined,
-      onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
-      onPlayParagraph: handlePlayChapterParagraph,
       playingParagraphStart: activeTextParagraph.startIndex,
       playingParagraphMode: activeTextParagraph.mode
     },

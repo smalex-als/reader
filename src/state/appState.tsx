@@ -153,6 +153,14 @@ export type StudyAudioCommandRequest = {
   | { kind: 'vocabulary'; text: string; chapterNumber: number }
   | { kind: 'memoryCard'; text: string; chapterNumber: number }
   | { kind: 'unitTopicParagraph'; fullText: string; startIndex: number; key: string }
+  | { kind: 'chapterParagraph'; fullText: string; startIndex: number; key: string }
+);
+
+export type ChapterCommandRequest = {
+  id: number;
+} & (
+  | { kind: 'create' }
+  | { kind: 'delete'; chapterNumber: number }
 );
 
 export interface ReaderSessionState {
@@ -317,6 +325,7 @@ export interface CentralAppState {
   ocrBlockCommandRequest: OcrBlockCommandRequest | null;
   ocrQueueCommandRequest: OcrQueueCommandRequest | null;
   studyAudioCommandRequest: StudyAudioCommandRequest | null;
+  chapterCommandRequest: ChapterCommandRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -409,7 +418,11 @@ export type AppAction =
   | { type: 'studyAudioCommand/requestVocabulary'; text: string; chapterNumber: number }
   | { type: 'studyAudioCommand/requestMemoryCard'; text: string; chapterNumber: number }
   | { type: 'studyAudioCommand/requestUnitTopicParagraph'; fullText: string; startIndex: number; key: string }
+  | { type: 'studyAudioCommand/requestChapterParagraph'; fullText: string; startIndex: number; key: string }
   | { type: 'studyAudioCommand/clearRequest' }
+  | { type: 'chapterCommand/requestCreate' }
+  | { type: 'chapterCommand/requestDelete'; chapterNumber: number }
+  | { type: 'chapterCommand/clearRequest' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -588,6 +601,7 @@ const initialAppState: CentralAppState = {
   ocrBlockCommandRequest: null,
   ocrQueueCommandRequest: null,
   studyAudioCommandRequest: null,
+  chapterCommandRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -841,7 +855,21 @@ export const appActions = {
     type: 'studyAudioCommand/requestUnitTopicParagraph',
     ...payload
   }),
+  requestStudyAudioChapterParagraph: (payload: {
+    fullText: string;
+    startIndex: number;
+    key: string;
+  }): AppAction => ({
+    type: 'studyAudioCommand/requestChapterParagraph',
+    ...payload
+  }),
   clearStudyAudioCommandRequest: (): AppAction => ({ type: 'studyAudioCommand/clearRequest' }),
+  requestChapterCreate: (): AppAction => ({ type: 'chapterCommand/requestCreate' }),
+  requestChapterDelete: (chapterNumber: number): AppAction => ({
+    type: 'chapterCommand/requestDelete',
+    chapterNumber
+  }),
+  clearChapterCommandRequest: (): AppAction => ({ type: 'chapterCommand/clearRequest' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1645,10 +1673,43 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           key: action.key
         }
       };
+    case 'studyAudioCommand/requestChapterParagraph':
+      return {
+        ...state,
+        studyAudioCommandRequest: {
+          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
+          kind: 'chapterParagraph',
+          fullText: action.fullText,
+          startIndex: action.startIndex,
+          key: action.key
+        }
+      };
     case 'studyAudioCommand/clearRequest':
       return {
         ...state,
         studyAudioCommandRequest: null
+      };
+    case 'chapterCommand/requestCreate':
+      return {
+        ...state,
+        chapterCommandRequest: {
+          id: (state.chapterCommandRequest?.id ?? 0) + 1,
+          kind: 'create'
+        }
+      };
+    case 'chapterCommand/requestDelete':
+      return {
+        ...state,
+        chapterCommandRequest: {
+          id: (state.chapterCommandRequest?.id ?? 0) + 1,
+          kind: 'delete',
+          chapterNumber: action.chapterNumber
+        }
+      };
+    case 'chapterCommand/clearRequest':
+      return {
+        ...state,
+        chapterCommandRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -2371,6 +2432,7 @@ export const selectStudyModeToggleRequest = (state: CentralAppState) => state.st
 export const selectOcrBlockCommandRequest = (state: CentralAppState) => state.ocrBlockCommandRequest;
 export const selectOcrQueueCommandRequest = (state: CentralAppState) => state.ocrQueueCommandRequest;
 export const selectStudyAudioCommandRequest = (state: CentralAppState) => state.studyAudioCommandRequest;
+export const selectChapterCommandRequest = (state: CentralAppState) => state.chapterCommandRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

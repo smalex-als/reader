@@ -24,9 +24,6 @@ import {
 } from '@/state/appState';
 
 interface ChapterViewerProps {
-  onCreateChapter?: () => void | Promise<void>;
-  onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
-  onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   playingParagraphStart: number | null;
   playingParagraphMode: 'chapter' | 'narration' | null;
 }
@@ -159,9 +156,6 @@ function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
 }
 
 export default function ChapterViewer({
-  onCreateChapter,
-  onDeleteChapter,
-  onPlayParagraph,
   playingParagraphStart,
   playingParagraphMode
 }: ChapterViewerProps) {
@@ -200,13 +194,8 @@ export default function ChapterViewer({
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [urlVersionReady, setUrlVersionReady] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const onPlayParagraphRef = useRef(onPlayParagraph);
   const textViewerRef = useRef<HTMLDivElement | null>(null);
   const appliedVersionNavigationRequestRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    onPlayParagraphRef.current = onPlayParagraph;
-  }, [onPlayParagraph]);
 
   const {
     displayText,
@@ -586,11 +575,11 @@ export default function ChapterViewer({
     };
 
     const playTextBlock = (startIndex: number, paragraphKey: string) => {
-      onPlayParagraphRef.current({
+      dispatch(appActions.requestStudyAudioChapterParagraph({
         fullText: currentDisplayText,
         startIndex,
         key: paragraphKey
-      });
+      }));
     };
 
     const renderBlock = (Tag: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
@@ -661,7 +650,15 @@ export default function ChapterViewer({
       h5: renderBlock('h5'),
       h6: renderBlock('h6')
     };
-  }, [chapterNumber, displayText, outlineByOffset, playingParagraphMode, playingParagraphStart, selectedVersionId]);
+  }, [
+    chapterNumber,
+    dispatch,
+    displayText,
+    outlineByOffset,
+    playingParagraphMode,
+    playingParagraphStart,
+    selectedVersionId
+  ]);
 
   const renderedTextLayout = useMemo(() => {
     if (tocLoading || !chapterNumber || displayLoading || missingFile || displayError || !displayText) {
@@ -805,28 +802,26 @@ export default function ChapterViewer({
                 </div>
               </div>
             </section>
-            {onCreateChapter || (onDeleteChapter && chapterNumber) ? (
+            {bookType === 'text' ? (
               <section className="text-viewer-tools-section" aria-label="Chapter tools">
                 <h3 className="text-viewer-tools-title">Chapter</h3>
                 <div className="text-viewer-tools-body">
                   <div className="text-viewer-tools-row">
-                    {onCreateChapter ? (
+                    <button
+                      type="button"
+                      className="button button-ghost modal-icon-button"
+                      onClick={() => dispatch(appActions.requestChapterCreate())}
+                      disabled={chapterCreating}
+                      aria-label="Create chapter"
+                      title="Create chapter"
+                    >
+                      <AddIcon />
+                    </button>
+                    {chapterNumber ? (
                       <button
                         type="button"
                         className="button button-ghost modal-icon-button"
-                        onClick={() => void onCreateChapter()}
-                        disabled={chapterCreating}
-                        aria-label="Create chapter"
-                        title="Create chapter"
-                      >
-                        <AddIcon />
-                      </button>
-                    ) : null}
-                    {onDeleteChapter && chapterNumber ? (
-                      <button
-                        type="button"
-                        className="button button-ghost modal-icon-button"
-                        onClick={() => void onDeleteChapter(chapterNumber)}
+                        onClick={() => dispatch(appActions.requestChapterDelete(chapterNumber))}
                         disabled={chapterDeleting || displayLoading}
                         aria-label="Delete chapter"
                         title="Delete chapter"
