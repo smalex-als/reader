@@ -59,11 +59,8 @@ import type {
   SearchResult,
   TocEntry
 } from '@/types/app';
-import type { ToolbarTab } from '@/components/Toolbar';
 
 export default function App() {
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<ToolbarTab>('image');
   const {
     mainView,
     setMainView,
@@ -97,6 +94,10 @@ export default function App() {
     promptEditorOpen,
     openPromptEditor,
     closePromptEditor,
+    settingsOpen,
+    setSettingsOpen,
+    settingsTab,
+    setSettingsTab,
     editorOpen,
     setEditorOpen,
     editorChapterNumber,
