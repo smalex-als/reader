@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
+import { appActions, useAppDispatch } from '@/state/appState';
 import type { PageText, StreamState } from '@/types/app';
 
 type ChapterParagraph = {
@@ -41,7 +42,6 @@ type StreamSequenceOptions = {
   stopAudio: () => void;
   streamVoice: string;
   studyMode: boolean;
-  onSequenceComplete?: (source: 'page' | 'chapter') => void;
 };
 
 type StreamSource =
@@ -172,10 +172,10 @@ export function useStreamSequence({
   pauseStreamAtStart,
   stopAudio,
   streamVoice,
-  studyMode,
-  onSequenceComplete
+  studyMode
 }: StreamSequenceOptions) {
   const { showToast } = useToast();
+  const dispatch = useAppDispatch();
   const streamSequenceRef = useRef<{
     source: 'page' | 'chapter' | 'paragraph';
     baseKey: string;
@@ -225,6 +225,22 @@ export function useStreamSequence({
     streamSequenceRef.current = null;
     setStreamSequenceActive(false);
   }, [clearPendingRestartTimer]);
+
+  const handleSequenceComplete = useCallback(
+    (source: 'page' | 'chapter') => {
+      if (source === 'page' && viewMode === 'pages') {
+        const nextImage = manifest[currentPage + 1] ?? null;
+        if (nextImage) {
+          void fetchPageTextByImage(nextImage, { silent: true, updateCurrentState: false }).finally(() => {
+            dispatch(appActions.requestNextPageNavigation());
+          });
+          return;
+        }
+      }
+      dispatch(appActions.requestNextPageNavigation());
+    },
+    [currentPage, dispatch, fetchPageTextByImage, manifest, viewMode]
+  );
 
   const isStreamBusy = useCallback(
     (status: StreamState['status']) => ACTIVE_STREAM_STATUSES.has(status as ActiveStreamStatus),
@@ -890,13 +906,20 @@ export function useStreamSequence({
     if (autoAdvanceRef.current) {
       const source = lastStreamSourceRef.current;
       if (source && (source.type === 'page' || source.type === 'chapter')) {
-        onSequenceComplete?.(source.type);
+        handleSequenceComplete(source.type);
       }
       autoAdvanceRef.current = false;
       lastStreamSourceRef.current = null;
     }
     stopStreamSequence();
-  }, [onSequenceComplete, pauseStreamAtStart, stopStreamSequence, streamSequenceActive, streamState.status, studyMode]);
+  }, [
+    handleSequenceComplete,
+    pauseStreamAtStart,
+    stopStreamSequence,
+    streamSequenceActive,
+    streamState.status,
+    studyMode
+  ]);
 
   useEffect(() => {
     if (!studyMode || streamSequenceActive || streamState.status !== 'idle') {

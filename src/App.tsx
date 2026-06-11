@@ -251,23 +251,6 @@ export default function App() {
     stopStream
   });
 
-  const handleStreamSequenceComplete = useCallback(
-    (source: 'page' | 'chapter') => {
-      if (source !== 'page' || viewMode !== 'pages') {
-        handleNext();
-        return;
-      }
-      const nextImage = manifest[currentPage + 1] ?? null;
-      if (!nextImage) {
-        handleNext();
-        return;
-      }
-      void fetchPageTextByImage(nextImage, { silent: true, updateCurrentState: false }).finally(() => {
-        handleNext();
-      });
-    },
-    [currentPage, fetchPageTextByImage, handleNext, manifest, viewMode]
-  );
   const {
     startStreamSequence,
     handlePlayPageBlock,
@@ -298,8 +281,7 @@ export default function App() {
     pauseStreamAtStart,
     stopAudio,
     streamVoice,
-    studyMode: settings.studyMode,
-    onSequenceComplete: handleStreamSequenceComplete
+    studyMode: settings.studyMode
   });
   const {
     setSelectedStreamBlockKey,
