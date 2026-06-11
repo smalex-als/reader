@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import { useCurrentChapterLabel } from '@/hooks/useCurrentChapterLabel';
+import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -17,15 +18,13 @@ interface MemoryCardModalProps {
   onCopyText: (text: string) => void;
   onPlayAudio: (text: string, chapterNumber: number) => void;
   onStopAudio: () => void;
-  onRegenerate: () => void;
 }
 
 export default function MemoryCardModal({
   streamState,
   onCopyText,
   onPlayAudio,
-  onStopAudio,
-  onRegenerate
+  onStopAudio
 }: MemoryCardModalProps) {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('memoryCard'));
@@ -34,7 +33,17 @@ export default function MemoryCardModal({
     error,
     memoryCard
   } = useAppSelector(selectMemoryCardWorkflow);
-  const chapterLabel = useCurrentChapterLabel();
+  const {
+    bookId,
+    chapterNumber,
+    chapterLabel,
+    pageRange: chapterRange
+  } = useCurrentChapterContext();
+  const { regenerateMemoryCard } = useChapterMemoryCard({
+    bookId,
+    chapterNumber,
+    chapterRange
+  });
   const handleClose = () => {
     onStopAudio();
     dispatch(appActions.closeModal('memoryCard'));
@@ -123,7 +132,7 @@ export default function MemoryCardModal({
             <button
               type="button"
               className="button button-secondary modal-action-button"
-              onClick={onRegenerate}
+              onClick={() => void regenerateMemoryCard()}
               disabled={loading}
             >
               Regenerate

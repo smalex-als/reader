@@ -232,16 +232,14 @@ export default function App() {
     topicId: selectedUnitTopicId
   });
   const {
-    openVocabulary: handleOpenVocabulary,
-    regenerateVocabulary: handleRegenerateVocabulary
+    openVocabulary: handleOpenVocabulary
   } = useChapterVocabulary({
     bookId,
     chapterNumber,
     chapterRange
   });
   const {
-    openMemoryCard: handleOpenMemoryCard,
-    regenerateMemoryCard: handleRegenerateMemoryCard
+    openMemoryCard: handleOpenMemoryCard
   } = useChapterMemoryCard({
     bookId,
     chapterNumber,
@@ -746,8 +744,7 @@ export default function App() {
           pageKey: `vocabulary::chapter-${chapterNumberValue}`
         });
       },
-      onStopAudio: handleStopStream,
-      onRegenerate: () => void handleRegenerateVocabulary()
+      onStopAudio: handleStopStream
     },
     memoryCardModalProps: {
       streamState,
@@ -758,8 +755,7 @@ export default function App() {
           pageKey: `memory-card::chapter-${chapterNumberValue}`
         });
       },
-      onStopAudio: handleStopStream,
-      onRegenerate: () => void handleRegenerateMemoryCard()
+      onStopAudio: handleStopStream
     },
     listeningDashboardModalProps: {
       onOpenBook: handleOpenDashboardBook,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import { useCurrentChapterLabel } from '@/hooks/useCurrentChapterLabel';
+import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import {
   appActions,
   selectModalOpen,
@@ -15,15 +16,13 @@ interface VocabularyModalProps {
   onCopyList: (text: string) => void;
   onPlayAudio: (text: string, chapterNumber: number) => void;
   onStopAudio: () => void;
-  onRegenerate: () => void;
 }
 
 export default function VocabularyModal({
   streamState,
   onCopyList,
   onPlayAudio,
-  onStopAudio,
-  onRegenerate
+  onStopAudio
 }: VocabularyModalProps) {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('vocabulary'));
@@ -32,7 +31,17 @@ export default function VocabularyModal({
     error,
     vocabulary
   } = useAppSelector(selectVocabularyWorkflow);
-  const chapterLabel = useCurrentChapterLabel();
+  const {
+    bookId,
+    chapterNumber,
+    chapterLabel,
+    pageRange: chapterRange
+  } = useCurrentChapterContext();
+  const { regenerateVocabulary } = useChapterVocabulary({
+    bookId,
+    chapterNumber,
+    chapterRange
+  });
   const handleClose = () => {
     dispatch(appActions.closeModal('vocabulary'));
   };
@@ -130,7 +139,7 @@ export default function VocabularyModal({
             <button
               type="button"
               className="button button-secondary modal-action-button"
-              onClick={onRegenerate}
+              onClick={() => void regenerateVocabulary()}
               disabled={loading}
               aria-label="Generate vocabulary"
               title="Generate vocabulary"
