@@ -58,9 +58,16 @@ export interface ChapterEditorTextVersion {
   text: string;
 }
 
+export interface ChapterVersionNavigationRequest {
+  id: number;
+  chapterNumber: number;
+  versionId: string;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
+  chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
 }
 
 export type AppAction =
@@ -80,7 +87,13 @@ export type AppAction =
   | { type: 'settingsToolbar/setTab'; tab: AppToolbarTab }
   | { type: 'navigation/setMainView'; view: MainView }
   | { type: 'navigation/setSelectedUnitSetId'; id: string | null }
-  | { type: 'navigation/setSelectedUnitTopicId'; id: string | null };
+  | { type: 'navigation/setSelectedUnitTopicId'; id: string | null }
+  | {
+      type: 'chapterVersionNavigation/request';
+      chapterNumber: number;
+      versionId: string;
+    }
+  | { type: 'chapterVersionNavigation/clear' };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -132,7 +145,8 @@ const initialAppState: CentralAppState = {
       activeTab: 'image'
     }
   },
-  navigation: getInitialNavigation()
+  navigation: getInitialNavigation(),
+  chapterVersionNavigationRequest: null
 };
 
 export const appActions = {
@@ -171,7 +185,13 @@ export const appActions = {
   setSelectedUnitTopicId: (id: string | null): AppAction => ({
     type: 'navigation/setSelectedUnitTopicId',
     id
-  })
+  }),
+  requestChapterVersionNavigation: (chapterNumber: number, versionId: string): AppAction => ({
+    type: 'chapterVersionNavigation/request',
+    chapterNumber,
+    versionId
+  }),
+  clearChapterVersionNavigation: (): AppAction => ({ type: 'chapterVersionNavigation/clear' })
 };
 
 export function appReducer(state: CentralAppState, action: AppAction): CentralAppState {
@@ -348,6 +368,20 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           selectedUnitTopicId: action.id
         }
       };
+    case 'chapterVersionNavigation/request':
+      return {
+        ...state,
+        chapterVersionNavigationRequest: {
+          id: (state.chapterVersionNavigationRequest?.id ?? 0) + 1,
+          chapterNumber: action.chapterNumber,
+          versionId: action.versionId
+        }
+      };
+    case 'chapterVersionNavigation/clear':
+      return {
+        ...state,
+        chapterVersionNavigationRequest: null
+      };
     default:
       return state;
   }
@@ -390,3 +424,5 @@ export const selectImagePreview = (state: CentralAppState) => state.ui.imagePrev
 export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
 export const selectNavigationState = (state: CentralAppState) => state.navigation;
+export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
+  state.chapterVersionNavigationRequest;

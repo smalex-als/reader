@@ -8,6 +8,7 @@ import { useBookmarks } from '@/hooks/useBookmarks';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
+import { useChapterVersionNavigation } from '@/hooks/useChapterVersionNavigation';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { useModalState } from '@/hooks/useModalState';
@@ -389,11 +390,11 @@ export default function App() {
     versionLabel: string | null;
     versionId: string | null;
   } | null>(null);
-  const [chapterVersionNavigationRequest, setChapterVersionNavigationRequest] = useState<{
-    id: number;
-    chapterNumber: number;
-    versionId: string;
-  } | null>(null);
+  const {
+    chapterVersionNavigationRequest,
+    requestChapterVersionNavigation,
+    clearChapterVersionNavigation
+  } = useChapterVersionNavigation();
   useEffect(() => {
     setDisplayedChapterText(null);
   }, [bookId, chapterNumber]);
@@ -1338,7 +1339,7 @@ export default function App() {
       refreshToken: chapterViewRefresh,
       versionNavigationRequest: chapterVersionNavigationRequest,
       onOpenAudioView: () => {
-        setChapterVersionNavigationRequest(null);
+        clearChapterVersionNavigation();
         setViewMode('audio');
       },
       onCreateUnit: handleCreateUnit,
@@ -1392,13 +1393,9 @@ export default function App() {
       showToast,
       onOpenChapterText: (pageIndex: number, versionId?: string, targetChapterNumber?: number) => {
         if (versionId && targetChapterNumber) {
-          setChapterVersionNavigationRequest((current) => ({
-            id: (current?.id ?? 0) + 1,
-            chapterNumber: targetChapterNumber,
-            versionId
-          }));
+          requestChapterVersionNavigation(targetChapterNumber, versionId);
         } else {
-          setChapterVersionNavigationRequest(null);
+          clearChapterVersionNavigation();
         }
         setViewMode('text');
         renderPage(pageIndex);
