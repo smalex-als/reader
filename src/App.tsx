@@ -47,6 +47,7 @@ import type {
 } from '@/types/app';
 import {
   appActions,
+  selectOcrBlockCommandRequest,
   selectStudyModeToggleRequest,
   selectToolbarCommandRequest,
   useAppDispatch,
@@ -56,6 +57,7 @@ import {
 
 export default function App() {
   const dispatch = useAppDispatch();
+  const ocrBlockCommandRequest = useAppSelector(selectOcrBlockCommandRequest);
   const studyModeToggleRequest = useAppSelector(selectStudyModeToggleRequest);
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const {
@@ -347,6 +349,32 @@ export default function App() {
     savePageText,
     updatePageTextBlocks
   });
+
+  useEffect(() => {
+    if (!ocrBlockCommandRequest) {
+      return;
+    }
+
+    if (ocrBlockCommandRequest.kind === 'playBlock') {
+      const payload = {
+        imageUrl: ocrBlockCommandRequest.imageUrl,
+        startIndex: ocrBlockCommandRequest.startIndex,
+        blockId: ocrBlockCommandRequest.blockId
+      };
+      setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));
+      void handlePlayPageBlock(payload);
+    } else {
+      void handleToggleSpeechBlock(ocrBlockCommandRequest.blockId);
+    }
+
+    dispatch(appActions.clearOcrBlockCommandRequest());
+  }, [
+    dispatch,
+    handlePlayPageBlock,
+    handleToggleSpeechBlock,
+    ocrBlockCommandRequest,
+    setSelectedStreamBlockKey
+  ]);
 
   useEffect(() => {
     if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage || currentText) {
@@ -688,28 +716,14 @@ export default function App() {
     footerMessage,
     viewerProps: {
       currentBlockId: activeStreamLocator?.imageUrl === currentImage ? activeStreamLocator.blockId : null,
-      playingBlockId: playingStreamLocator?.imageUrl === currentImage ? playingStreamLocator.blockId : null,
-      onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
-        setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));
-        void handlePlayPageBlock(payload);
-      },
-      onToggleSpeechBlock: (blockId: string) => {
-        void handleToggleSpeechBlock(blockId);
-      }
+      playingBlockId: playingStreamLocator?.imageUrl === currentImage ? playingStreamLocator.blockId : null
     },
     scrollViewerProps: {
       currentStreamBlockKey:
         activeStreamLocator ? makeStreamLocator(activeStreamLocator.imageUrl, activeStreamLocator.blockId) : null,
       playingStreamBlockKey: streamPositionActive ? streamState.pageKey : null,
       streamPageKey: streamPositionActive ? streamState.pageKey : null,
-      fetchPageTextByImage,
-      onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
-        setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));
-        void handlePlayPageBlock(payload);
-      },
-      onToggleSpeechBlock: (blockId: string) => {
-        void handleToggleSpeechBlock(blockId);
-      }
+      fetchPageTextByImage
     },
     chapterViewerProps: {
       onCreateChapter: isTextBook

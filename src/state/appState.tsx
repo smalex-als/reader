@@ -125,6 +125,13 @@ export interface StudyModeToggleRequest {
   id: number;
 }
 
+export type OcrBlockCommandRequest = {
+  id: number;
+} & (
+  | { kind: 'playBlock'; imageUrl: string; startIndex: number; blockId: string }
+  | { kind: 'toggleSpeechBlock'; blockId: string }
+);
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -284,6 +291,7 @@ export interface CentralAppState {
   streamControlRequest: StreamControlRequest | null;
   toolbarCommandRequest: ToolbarCommandRequest | null;
   studyModeToggleRequest: StudyModeToggleRequest | null;
+  ocrBlockCommandRequest: OcrBlockCommandRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -359,6 +367,9 @@ export type AppAction =
   | { type: 'toolbarCommand/clear' }
   | { type: 'studyMode/requestToggle' }
   | { type: 'studyMode/clearToggleRequest' }
+  | { type: 'ocrBlockCommand/requestPlayBlock'; imageUrl: string; startIndex: number; blockId: string }
+  | { type: 'ocrBlockCommand/requestToggleSpeechBlock'; blockId: string }
+  | { type: 'ocrBlockCommand/clear' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -534,6 +545,7 @@ const initialAppState: CentralAppState = {
   streamControlRequest: null,
   toolbarCommandRequest: null,
   studyModeToggleRequest: null,
+  ocrBlockCommandRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -734,6 +746,15 @@ export const appActions = {
   clearToolbarCommandRequest: (): AppAction => ({ type: 'toolbarCommand/clear' }),
   requestStudyModeToggle: (): AppAction => ({ type: 'studyMode/requestToggle' }),
   clearStudyModeToggleRequest: (): AppAction => ({ type: 'studyMode/clearToggleRequest' }),
+  requestOcrBlockPlay: (payload: { imageUrl: string; startIndex: number; blockId: string }): AppAction => ({
+    type: 'ocrBlockCommand/requestPlayBlock',
+    ...payload
+  }),
+  requestOcrBlockSpeechToggle: (blockId: string): AppAction => ({
+    type: 'ocrBlockCommand/requestToggleSpeechBlock',
+    blockId
+  }),
+  clearOcrBlockCommandRequest: (): AppAction => ({ type: 'ocrBlockCommand/clear' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1388,6 +1409,31 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         studyModeToggleRequest: null
+      };
+    case 'ocrBlockCommand/requestPlayBlock':
+      return {
+        ...state,
+        ocrBlockCommandRequest: {
+          id: (state.ocrBlockCommandRequest?.id ?? 0) + 1,
+          kind: 'playBlock',
+          imageUrl: action.imageUrl,
+          startIndex: action.startIndex,
+          blockId: action.blockId
+        }
+      };
+    case 'ocrBlockCommand/requestToggleSpeechBlock':
+      return {
+        ...state,
+        ocrBlockCommandRequest: {
+          id: (state.ocrBlockCommandRequest?.id ?? 0) + 1,
+          kind: 'toggleSpeechBlock',
+          blockId: action.blockId
+        }
+      };
+    case 'ocrBlockCommand/clear':
+      return {
+        ...state,
+        ocrBlockCommandRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -2107,6 +2153,7 @@ export const selectDashboardNavigationRequest = (state: CentralAppState) => stat
 export const selectStreamControlRequest = (state: CentralAppState) => state.streamControlRequest;
 export const selectToolbarCommandRequest = (state: CentralAppState) => state.toolbarCommandRequest;
 export const selectStudyModeToggleRequest = (state: CentralAppState) => state.studyModeToggleRequest;
+export const selectOcrBlockCommandRequest = (state: CentralAppState) => state.ocrBlockCommandRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

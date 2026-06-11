@@ -18,8 +18,6 @@ import type { AppSettings, ViewerMetrics, ViewerPan } from '@/types/app';
 interface ViewerProps {
   currentBlockId?: string | null;
   playingBlockId?: string | null;
-  onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
-  onToggleSpeechBlock: (blockId: string) => void;
 }
 
 const INITIAL_METRICS: ViewerMetrics = {
@@ -34,9 +32,7 @@ const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
 export default function Viewer({
   currentBlockId = null,
-  playingBlockId = null,
-  onPlayTextBlock,
-  onToggleSpeechBlock
+  playingBlockId = null
 }: ViewerProps) {
   const dispatch = useAppDispatch();
   const { currentPage } = useAppSelector(selectReaderSession);
@@ -299,8 +295,6 @@ export default function Viewer({
                     playingBlockId={playingBlockId}
                     dimOutsideBlocks={settings.dimOutsideBlocks}
                     dimOutsideBlocksIntensity={settings.dimOutsideBlocksIntensity}
-                    onPlayTextBlock={onPlayTextBlock}
-                    onToggleSpeechBlock={onToggleSpeechBlock}
                   />
                 </div>
               ) : null}

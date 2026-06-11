@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react';
 import { useImagePreview } from '@/hooks/useImagePreview';
+import { appActions, useAppDispatch } from '@/state/appState';
 import type { PageText } from '@/types/app';
 
 interface OcrOverlayProps {
@@ -10,8 +11,6 @@ interface OcrOverlayProps {
   playingBlockId?: string | null;
   dimOutsideBlocks: boolean;
   dimOutsideBlocksIntensity: number;
-  onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
-  onToggleSpeechBlock: (blockId: string) => void;
 }
 
 const OCR_COORDINATE_SPACE = 1000;
@@ -25,10 +24,9 @@ export default function OcrOverlay({
   currentBlockId = null,
   playingBlockId = null,
   dimOutsideBlocks,
-  dimOutsideBlocksIntensity,
-  onPlayTextBlock,
-  onToggleSpeechBlock
+  dimOutsideBlocksIntensity
 }: OcrOverlayProps) {
+  const dispatch = useAppDispatch();
   const { handleOpenImagePreview } = useImagePreview();
   const overlayMaskId = useId().replace(/:/g, '-');
 
@@ -250,11 +248,15 @@ export default function OcrOverlay({
             onClick={(event) => {
               event.stopPropagation();
               if (editMode) {
-                onToggleSpeechBlock(block.id);
+                dispatch(appActions.requestOcrBlockSpeechToggle(block.id));
                 return;
               }
               if (block.streamStartIndex !== null) {
-                onPlayTextBlock({ imageUrl, startIndex: block.streamStartIndex, blockId: block.id });
+                dispatch(appActions.requestOcrBlockPlay({
+                  imageUrl,
+                  startIndex: block.streamStartIndex,
+                  blockId: block.id
+                }));
               }
             }}
           />
