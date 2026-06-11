@@ -605,9 +605,7 @@ export default function App() {
   );
 
   const {
-    bookmarks,
-    bookmarksLoading,
-    bookmarksOpen,
+    bookmarksCount,
     closeBookmarks,
     handleRemoveBookmarkFromList,
     handleSelectBookmark,
@@ -834,7 +832,7 @@ export default function App() {
     },
     onOpenSearch: openSearch,
     isBookmarked,
-    bookmarksCount: bookmarks.length,
+    bookmarksCount,
     onOpenToc: () => {
       setSettingsOpen(false);
       setTocOpen(true);
@@ -946,12 +944,6 @@ export default function App() {
     },
     helpModalProps: { hotkeys },
     bookmarksModalProps: {
-      open: bookmarksOpen,
-      bookmarks,
-      loading: bookmarksLoading,
-      currentBook: bookId,
-      currentPage,
-      onClose: closeBookmarks,
       onSelect: handleSelectBookmark,
       onRemove: handleRemoveBookmarkFromList
     },

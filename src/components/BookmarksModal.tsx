@@ -1,27 +1,31 @@
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectBookmarkWorkflow,
+  selectModalOpen,
+  selectReaderSession,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { Bookmark } from '@/types/app';
 
 interface BookmarksModalProps {
-  open: boolean;
-  bookmarks: Bookmark[];
-  loading?: boolean;
-  currentBook: string | null;
-  currentPage: number;
-  onClose: () => void;
   onSelect: (bookmark: Bookmark) => void;
   onRemove: (bookmark: Bookmark) => void;
 }
 
 export default function BookmarksModal({
-  open,
-  bookmarks,
-  loading = false,
-  currentBook,
-  currentPage,
-  onClose,
   onSelect,
   onRemove
 }: BookmarksModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('bookmarks'));
+  const { bookId: currentBook, currentPage } = useAppSelector(selectReaderSession);
+  const { items: bookmarks, loading } = useAppSelector(selectBookmarkWorkflow);
+  const handleClose = () => {
+    dispatch(appActions.closeModal('bookmarks'));
+  };
+
   if (!open) {
     return null;
   }
@@ -39,7 +43,7 @@ export default function BookmarksModal({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close bookmarks"
             title="Close bookmarks"
           >

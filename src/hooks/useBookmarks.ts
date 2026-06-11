@@ -5,7 +5,6 @@ import { useToast } from '@/hooks/useToast';
 import {
   appActions,
   selectBookmarkWorkflow,
-  selectModalOpen,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -21,8 +20,7 @@ export function useBookmarks(options: UseBookmarksOptions) {
   const { bookId, currentPage, currentImage, renderPage } = options;
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
-  const bookmarksOpen = useAppSelector(selectModalOpen('bookmarks'));
-  const { items: bookmarks, loading: bookmarksLoading } = useAppSelector(selectBookmarkWorkflow);
+  const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
 
   const fetchBookmarks = useCallback(
     async (targetBookId: string | null = bookId) => {
@@ -157,9 +155,7 @@ export function useBookmarks(options: UseBookmarksOptions) {
 
   return {
     addBookmark,
-    bookmarks,
-    bookmarksLoading,
-    bookmarksOpen,
+    bookmarksCount: bookmarks.length,
     closeBookmarks,
     fetchBookmarks,
     handleRemoveBookmarkFromList,
