@@ -430,6 +430,16 @@ export function useChapterTextVersions({
   const canCreateVersion = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
   const canGenerateAudio = Boolean(bookId && chapterNumber && displayText && !displayLoading);
   const isAudioJobActive = audioJob?.status === 'queued' || audioJob?.status === 'running';
+
+  useEffect(() => {
+    dispatch(appActions.setTextVersionModalResources({
+      versions,
+      promptLibrary,
+      versionSaving,
+      canCreateVersion
+    }));
+  }, [canCreateVersion, dispatch, promptLibrary, versionSaving, versions]);
+
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !chapterRange || generating) {
       return;
@@ -697,7 +707,6 @@ export function useChapterTextVersions({
     displayLoading,
     displayError,
     versions,
-    promptLibrary,
     selectedVersion,
     selectedVersionId,
     setSelectedVersionId,

@@ -217,7 +217,6 @@ export default function ChapterViewer() {
     displayLoading,
     displayError,
     versions,
-    promptLibrary,
     selectedVersion,
     selectedVersionId,
     setSelectedVersionId,
@@ -1069,12 +1068,7 @@ export default function ChapterViewer() {
           <p className="text-viewer-status">Existing MP3 belongs to another text version. Generate audio to update it.</p>
         ) : null}
       </section>
-      <CreateTextVersionModal
-        versions={versions}
-        promptLibrary={promptLibrary}
-        versionSaving={versionSaving}
-        canCreateVersion={canCreateVersion}
-      />
+      <CreateTextVersionModal />
     </div>
   );
 }

@@ -5,30 +5,21 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 
-interface CreateTextVersionModalProps {
-  versions: ChapterTextVersion[];
-  promptLibrary: ChapterTextPrompt[];
-  versionSaving: boolean;
-  canCreateVersion: boolean;
-}
-
-export default function CreateTextVersionModal({
-  versions,
-  promptLibrary,
-  versionSaving,
-  canCreateVersion
-}: CreateTextVersionModalProps) {
+export default function CreateTextVersionModal() {
   const dispatch = useAppDispatch();
   const {
     open,
+    versions,
+    promptLibrary,
     sourceVersionId,
     versionModel,
     selectedPromptId,
     customPrompt,
     savePromptToLibrary,
-    promptName
+    promptName,
+    versionSaving,
+    canCreateVersion
   } = useAppSelector(selectTextVersionModalWorkflow);
   const selectedPromptTemplate =
     customPrompt || promptLibrary.find((prompt) => prompt.id === selectedPromptId)?.template || '';

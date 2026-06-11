@@ -18,6 +18,8 @@ import type {
   AudioState,
   Bookmark,
   ChapterMemoryCard,
+  ChapterTextPrompt,
+  ChapterTextVersion,
   ChapterVocabulary,
   ImagePreviewTarget,
   OcrJob,
@@ -338,12 +340,16 @@ export interface VoiceWorkflowState {
 
 export interface TextVersionModalWorkflowState {
   open: boolean;
+  versions: ChapterTextVersion[];
+  promptLibrary: ChapterTextPrompt[];
   sourceVersionId: string;
   versionModel: string;
   selectedPromptId: string;
   customPrompt: string;
   promptName: string;
   savePromptToLibrary: boolean;
+  versionSaving: boolean;
+  canCreateVersion: boolean;
   createRequestId: number;
 }
 
@@ -530,6 +536,13 @@ export type AppAction =
   | { type: 'textVersionModal/setCustomPrompt'; customPrompt: string }
   | { type: 'textVersionModal/setPromptName'; promptName: string }
   | { type: 'textVersionModal/setSavePromptToLibrary'; savePromptToLibrary: boolean }
+  | {
+      type: 'textVersionModal/setResources';
+      versions: ChapterTextVersion[];
+      promptLibrary: ChapterTextPrompt[];
+      versionSaving: boolean;
+      canCreateVersion: boolean;
+    }
   | { type: 'textVersionModal/requestCreate' }
   | { type: 'textVersionModal/resetDraft' }
   | { type: 'searchWorkflow/reset' }
@@ -639,12 +652,16 @@ const initialTocWorkflow: TocWorkflowState = {
 
 const initialTextVersionModalWorkflowState: TextVersionModalWorkflowState = {
   open: false,
+  versions: [],
+  promptLibrary: [],
   sourceVersionId: 'base',
   versionModel: 'gpt-5.5',
   selectedPromptId: '',
   customPrompt: '',
   promptName: '',
   savePromptToLibrary: false,
+  versionSaving: false,
+  canCreateVersion: false,
   createRequestId: 0
 };
 
@@ -1187,6 +1204,15 @@ export const appActions = {
   setTextVersionModalSavePromptToLibrary: (savePromptToLibrary: boolean): AppAction => ({
     type: 'textVersionModal/setSavePromptToLibrary',
     savePromptToLibrary
+  }),
+  setTextVersionModalResources: (payload: {
+    versions: ChapterTextVersion[];
+    promptLibrary: ChapterTextPrompt[];
+    versionSaving: boolean;
+    canCreateVersion: boolean;
+  }): AppAction => ({
+    type: 'textVersionModal/setResources',
+    ...payload
   }),
   requestTextVersionCreate: (): AppAction => ({ type: 'textVersionModal/requestCreate' }),
   resetTextVersionModalDraft: (): AppAction => ({ type: 'textVersionModal/resetDraft' }),
@@ -2387,6 +2413,17 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         textVersionModalWorkflow: {
           ...state.textVersionModalWorkflow,
           savePromptToLibrary: action.savePromptToLibrary
+        }
+      };
+    case 'textVersionModal/setResources':
+      return {
+        ...state,
+        textVersionModalWorkflow: {
+          ...state.textVersionModalWorkflow,
+          versions: action.versions,
+          promptLibrary: action.promptLibrary,
+          versionSaving: action.versionSaving,
+          canCreateVersion: action.canCreateVersion
         }
       };
     case 'textVersionModal/requestCreate':
