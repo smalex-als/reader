@@ -466,7 +466,6 @@ export default function App() {
     currentText,
     fetchPageText,
     fetchPageTextByImage,
-    showToast,
     streamState,
     startStream,
     enqueueStream,

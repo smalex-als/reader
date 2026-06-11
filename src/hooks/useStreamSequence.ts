@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useToast } from '@/hooks/useToast';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
-import type { PageText, StreamState, ToastMessage } from '@/types/app';
+import type { PageText, StreamState } from '@/types/app';
 
 type ChapterParagraph = {
   fullText: string;
@@ -24,7 +25,6 @@ type StreamSequenceOptions = {
     image: string,
     options?: { force?: boolean; silent?: boolean; updateCurrentState?: boolean }
   ) => Promise<PageText | null>;
-  showToast: (message: string, kind?: ToastMessage['kind']) => void;
   streamState: StreamState;
   startStream: (payload: {
     text: string;
@@ -163,7 +163,6 @@ export function useStreamSequence({
   currentText,
   fetchPageText,
   fetchPageTextByImage,
-  showToast,
   streamState,
   startStream,
   enqueueStream,
@@ -176,6 +175,7 @@ export function useStreamSequence({
   studyMode,
   onSequenceComplete
 }: StreamSequenceOptions) {
+  const { showToast } = useToast();
   const streamSequenceRef = useRef<{
     source: 'page' | 'chapter' | 'paragraph';
     baseKey: string;
