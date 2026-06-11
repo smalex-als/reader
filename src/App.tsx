@@ -202,13 +202,6 @@ export default function App() {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);
   const { handlePrev, handleNext } = useNavigation({
-    navigationCount,
-    currentPage,
-    viewMode,
-    isTextBook,
-    currentChapterIndex,
-    sortedTocEntries,
-    bookId,
     pendingAlignTopRef,
     resetAudio,
     stopStream

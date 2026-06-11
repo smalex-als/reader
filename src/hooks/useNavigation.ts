@@ -1,42 +1,53 @@
 import type { MutableRefObject } from 'react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { clamp } from '@/lib/math';
 import { saveLastPage } from '@/lib/storage';
 import {
   appActions,
+  selectBookSessionWorkflow,
   selectPageNavigationRequest,
+  selectReaderSession,
+  selectTocWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { TocEntry } from '@/types/app';
 
 interface UseNavigationParams {
-  navigationCount: number;
-  currentPage: number;
-  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-  isTextBook: boolean;
-  currentChapterIndex: number | null;
-  sortedTocEntries: TocEntry[];
-  bookId: string | null;
   pendingAlignTopRef: MutableRefObject<boolean>;
   resetAudio: () => void;
   stopStream: () => void;
 }
 
 export function useNavigation({
-  navigationCount,
-  currentPage,
-  viewMode,
-  isTextBook,
-  currentChapterIndex,
-  sortedTocEntries,
-  bookId,
   pendingAlignTopRef,
   resetAudio,
   stopStream
 }: UseNavigationParams) {
   const dispatch = useAppDispatch();
   const pageNavigationRequest = useAppSelector(selectPageNavigationRequest);
+  const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
+  const isTextBook = bookType === 'text';
+  const navigationCount = isTextBook ? chapterCount : manifest.length;
+  const sortedTocEntries = useMemo(() => {
+    return [...tocEntries]
+      .filter((entry) => Number.isInteger(entry.page))
+      .sort((a, b) => a.page - b.page);
+  }, [tocEntries]);
+  const currentChapterIndex = useMemo(() => {
+    if (isTextBook) {
+      return navigationCount > 0 ? currentPage : null;
+    }
+    if (sortedTocEntries.length === 0) {
+      return null;
+    }
+    const nextIndex = sortedTocEntries.findIndex((entry) => entry.page > currentPage);
+    if (nextIndex === -1) {
+      return sortedTocEntries.length - 1;
+    }
+    return Math.max(0, nextIndex - 1);
+  }, [currentPage, isTextBook, navigationCount, sortedTocEntries]);
   const renderPage = useCallback(
     (pageIndex: number) => {
       if (navigationCount === 0) {
