@@ -58,11 +58,8 @@ export default function App() {
   const dispatch = useAppDispatch();
   const {
     mainView,
-    setMainView,
     selectedUnitSetId,
-    setSelectedUnitSetId,
-    selectedUnitTopicId,
-    setSelectedUnitTopicId
+    selectedUnitTopicId
   } = useUnitsRouteState();
   const {
     closeOcrQueue,
@@ -132,15 +129,7 @@ export default function App() {
     createDefaultSettings
   });
 
-  useUnitsRouteSync({
-    mainView,
-    setMainView,
-    selectedUnitSetId,
-    setSelectedUnitSetId,
-    selectedUnitTopicId,
-    setSelectedUnitTopicId,
-    viewMode
-  });
+  useUnitsRouteSync();
 
   const isTextBook = bookType === 'text';
   const navigationCount = isTextBook ? chapterCount : manifest.length;
@@ -474,10 +463,10 @@ export default function App() {
       if (isTextBook && (mode === 'pages' || mode === 'scroll')) {
         return;
       }
-      setMainView('reader');
+      dispatch(appActions.setMainView('reader'));
       setViewMode(mode);
     },
-    [isTextBook, setViewMode]
+    [dispatch, isTextBook, setViewMode]
   );
 
   const {

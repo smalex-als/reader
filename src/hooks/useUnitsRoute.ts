@@ -1,71 +1,26 @@
-import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
-import { type MainView } from '@/lib/appConstants';
+import { useEffect } from 'react';
 import {
   appActions,
   selectNavigationState,
+  selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 
-function resolveNext<T>(next: T | ((prev: T) => T), current: T) {
-  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
-}
-
 export function useUnitsRouteState() {
-  const dispatch = useAppDispatch();
   const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
-
-  const setMainView = useCallback(
-    (next: MainView | ((prev: MainView) => MainView)) => {
-      dispatch(appActions.setMainView(resolveNext(next, mainView)));
-    },
-    [dispatch, mainView]
-  );
-
-  const setSelectedUnitSetId = useCallback(
-    (next: string | null | ((prev: string | null) => string | null)) => {
-      dispatch(appActions.setSelectedUnitSetId(resolveNext(next, selectedUnitSetId)));
-    },
-    [dispatch, selectedUnitSetId]
-  );
-
-  const setSelectedUnitTopicId = useCallback(
-    (next: string | null | ((prev: string | null) => string | null)) => {
-      dispatch(appActions.setSelectedUnitTopicId(resolveNext(next, selectedUnitTopicId)));
-    },
-    [dispatch, selectedUnitTopicId]
-  );
 
   return {
     mainView,
-    setMainView,
     selectedUnitSetId,
-    setSelectedUnitSetId,
-    selectedUnitTopicId,
-    setSelectedUnitTopicId
+    selectedUnitTopicId
   };
 }
 
-interface UseUnitsRouteSyncOptions {
-  mainView: MainView;
-  setMainView: Dispatch<SetStateAction<MainView>>;
-  selectedUnitSetId: string | null;
-  setSelectedUnitSetId: Dispatch<SetStateAction<string | null>>;
-  selectedUnitTopicId: string | null;
-  setSelectedUnitTopicId: Dispatch<SetStateAction<string | null>>;
-  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-}
-
-export function useUnitsRouteSync(options: UseUnitsRouteSyncOptions) {
-  const {
-    mainView,
-    setMainView,
-    selectedUnitSetId,
-    setSelectedUnitSetId,
-    selectedUnitTopicId,
-    setSelectedUnitTopicId,
-    viewMode
-  } = options;
+export function useUnitsRouteSync() {
+  const dispatch = useAppDispatch();
+  const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
+  const { viewMode } = useAppSelector(selectReaderSession);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -101,12 +56,14 @@ export function useUnitsRouteSync(options: UseUnitsRouteSyncOptions) {
     const handleUnitsLocationChange = () => {
       const params = new URLSearchParams(window.location.search);
       if (params.get('view') !== 'units') {
-        setMainView((current) => (current === 'units' ? 'reader' : current));
+        if (mainView === 'units') {
+          dispatch(appActions.setMainView('reader'));
+        }
         return;
       }
-      setMainView('units');
-      setSelectedUnitSetId(params.get('unit'));
-      setSelectedUnitTopicId(params.get('topic'));
+      dispatch(appActions.setMainView('units'));
+      dispatch(appActions.setSelectedUnitSetId(params.get('unit')));
+      dispatch(appActions.setSelectedUnitTopicId(params.get('topic')));
     };
     window.addEventListener('popstate', handleUnitsLocationChange);
     window.addEventListener('hashchange', handleUnitsLocationChange);
@@ -114,5 +71,5 @@ export function useUnitsRouteSync(options: UseUnitsRouteSyncOptions) {
       window.removeEventListener('popstate', handleUnitsLocationChange);
       window.removeEventListener('hashchange', handleUnitsLocationChange);
     };
-  }, [setMainView, setSelectedUnitSetId, setSelectedUnitTopicId]);
+  }, [dispatch, mainView]);
 }
