@@ -31,11 +31,6 @@ interface ScrollViewerProps {
   ) => Promise<PageText | null>;
   onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
-  onOpenImagePreview: (payload: {
-    imageUrl: string;
-    bounds: [number, number, number, number];
-    caption?: string | null;
-  }) => void;
   onCurrentPageChange: (pageIndex: number) => void;
 }
 
@@ -75,7 +70,6 @@ export default function ScrollViewer({
   fetchPageTextByImage,
   onPlayTextBlock,
   onToggleSpeechBlock,
-  onOpenImagePreview,
   onCurrentPageChange
 }: ScrollViewerProps) {
   const { currentPage } = useAppSelector(selectReaderSession);
@@ -332,8 +326,7 @@ export default function ScrollViewer({
             dimOutsideBlocks,
             dimOutsideBlocksIntensity,
             onPlayTextBlock,
-            onToggleSpeechBlock,
-            onOpenImagePreview
+            onToggleSpeechBlock
           };
           return (
             <div

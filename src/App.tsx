@@ -27,7 +27,6 @@ import { useShareLink } from '@/hooks/useShareLink';
 import { useCopyActions } from '@/hooks/useCopyActions';
 import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
 import { useFloatingAudio } from '@/hooks/useFloatingAudio';
-import { useImagePreview } from '@/hooks/useImagePreview';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToast } from '@/hooks/useToast';
@@ -591,7 +590,6 @@ export default function App() {
     chapterNumber,
     currentChapterTitle: currentChapterEntry?.title ?? null
   });
-  const { handleOpenImagePreview } = useImagePreview({ bookId });
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
       applyZoomMode(mode);
@@ -778,8 +776,7 @@ export default function App() {
       },
       onToggleSpeechBlock: (blockId: string) => {
         void handleToggleSpeechBlock(blockId);
-      },
-      onOpenImagePreview: handleOpenImagePreview
+      }
     },
     scrollViewerProps: {
       currentStreamBlockKey:
@@ -794,7 +791,6 @@ export default function App() {
       onToggleSpeechBlock: (blockId: string) => {
         void handleToggleSpeechBlock(blockId);
       },
-      onOpenImagePreview: handleOpenImagePreview,
       onCurrentPageChange: handleScrollCurrentPageChange
     },
     chapterViewerProps: {

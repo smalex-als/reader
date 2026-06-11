@@ -20,11 +20,6 @@ interface ViewerProps {
   onMetricsChange: (metrics: ViewerMetrics) => void;
   onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
-  onOpenImagePreview: (payload: {
-    imageUrl: string;
-    bounds: [number, number, number, number];
-    caption?: string | null;
-  }) => void;
 }
 
 const INITIAL_METRICS: ViewerMetrics = {
@@ -44,8 +39,7 @@ export default function Viewer({
   onZoom,
   onMetricsChange,
   onPlayTextBlock,
-  onToggleSpeechBlock,
-  onOpenImagePreview
+  onToggleSpeechBlock
 }: ViewerProps) {
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
@@ -277,7 +271,6 @@ export default function Viewer({
                     dimOutsideBlocksIntensity={settings.dimOutsideBlocksIntensity}
                     onPlayTextBlock={onPlayTextBlock}
                     onToggleSpeechBlock={onToggleSpeechBlock}
-                    onOpenImagePreview={onOpenImagePreview}
                   />
                 </div>
               ) : null}

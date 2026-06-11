@@ -1,4 +1,6 @@
 import { useId, useMemo } from 'react';
+import { useImagePreview } from '@/hooks/useImagePreview';
+import { selectReaderSession, useAppSelector } from '@/state/appState';
 import type { PageText } from '@/types/app';
 
 interface OcrOverlayProps {
@@ -11,11 +13,6 @@ interface OcrOverlayProps {
   dimOutsideBlocksIntensity: number;
   onPlayTextBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   onToggleSpeechBlock: (blockId: string) => void;
-  onOpenImagePreview: (payload: {
-    imageUrl: string;
-    bounds: [number, number, number, number];
-    caption?: string | null;
-  }) => void;
 }
 
 const OCR_COORDINATE_SPACE = 1000;
@@ -31,9 +28,10 @@ export default function OcrOverlay({
   dimOutsideBlocks,
   dimOutsideBlocksIntensity,
   onPlayTextBlock,
-  onToggleSpeechBlock,
-  onOpenImagePreview
+  onToggleSpeechBlock
 }: OcrOverlayProps) {
+  const { bookId } = useAppSelector(selectReaderSession);
+  const { handleOpenImagePreview } = useImagePreview({ bookId });
   const overlayMaskId = useId().replace(/:/g, '-');
 
   const coordinateBlocks = useMemo(() => {
@@ -291,7 +289,7 @@ export default function OcrOverlay({
               if (!preview) {
                 return;
               }
-              onOpenImagePreview({
+              handleOpenImagePreview({
                 imageUrl,
                 bounds: preview.bounds,
                 caption: preview.caption
