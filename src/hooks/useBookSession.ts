@@ -8,6 +8,7 @@ import {
   selectModalOpen,
   selectReaderSession,
   selectViewerWorkflow,
+  selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -29,11 +30,7 @@ const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 
 type BookSessionOptions<StreamVoice extends string> = {
   urlSyncPaused?: boolean;
-  setEditorOpen: (open: boolean) => void;
-  setEditorChapterNumber: React.Dispatch<React.SetStateAction<number | null>>;
   onUpdateTocEntries: (entries: TocEntry[]) => void;
-  streamVoice: StreamVoice;
-  setStreamVoice: React.Dispatch<React.SetStateAction<StreamVoice>>;
   isStreamVoice: (value: string) => value is StreamVoice;
   getDefaultStreamVoice: () => StreamVoice;
   createDefaultSettings: () => AppSettings;
@@ -89,11 +86,7 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
 
 export function useBookSession<StreamVoice extends string>({
   urlSyncPaused = false,
-  setEditorOpen,
-  setEditorChapterNumber,
   onUpdateTocEntries,
-  streamVoice,
-  setStreamVoice,
   isStreamVoice,
   getDefaultStreamVoice,
   createDefaultSettings
@@ -103,6 +96,7 @@ export function useBookSession<StreamVoice extends string>({
   const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { settings } = useAppSelector(selectViewerWorkflow);
+  const { streamVoice } = useAppSelector(selectVoiceWorkflow);
   const {
     books,
     manifest,
@@ -297,7 +291,7 @@ export function useBookSession<StreamVoice extends string>({
       setManifest([]);
       setBookType('image');
       setChapterCount(0);
-      setStreamVoice(getDefaultStreamVoice());
+      dispatch(appActions.setStreamVoice(getDefaultStreamVoice()));
       return;
     }
     const baseSettings = createDefaultSettings();
@@ -312,9 +306,9 @@ export function useBookSession<StreamVoice extends string>({
     dispatch(appActions.setViewerSettings(nextSettings));
     const storedVoice = loadStreamVoiceForBook(bookId);
     if (storedVoice && isStreamVoice(storedVoice)) {
-      setStreamVoice(storedVoice);
+      dispatch(appActions.setStreamVoice(storedVoice));
     } else {
-      setStreamVoice(getDefaultStreamVoice());
+      dispatch(appActions.setStreamVoice(getDefaultStreamVoice()));
     }
     pendingPageRef.current = loadLastPage(bookId);
     setLoading(true);
@@ -383,7 +377,6 @@ export function useBookSession<StreamVoice extends string>({
     libraryStateReady,
     dispatch,
     setCurrentPage,
-    setStreamVoice,
     setViewMode,
     showToast,
   ]);
@@ -464,8 +457,8 @@ export function useBookSession<StreamVoice extends string>({
           ? (data.chapterIndex as number)
           : null;
         setCurrentPage(nextChapterIndex ?? 0);
-        setEditorChapterNumber(nextChapterIndex !== null ? nextChapterIndex + 1 : null);
-        setEditorOpen(true);
+        dispatch(appActions.setEditorChapterNumber(nextChapterIndex !== null ? nextChapterIndex + 1 : null));
+        dispatch(appActions.setEditorOpen(true));
         setViewMode('text');
         setBookModalOpen(false);
         showToast('Chapter created', 'success');
@@ -481,11 +474,10 @@ export function useBookSession<StreamVoice extends string>({
       bookType,
       books,
       onUpdateTocEntries,
+      dispatch,
       setBookId,
       setBookModalOpen,
       setCurrentPage,
-      setEditorChapterNumber,
-      setEditorOpen,
       setViewMode,
       showToast
     ]
@@ -538,8 +530,8 @@ export function useBookSession<StreamVoice extends string>({
           setCurrentPage(nextExistingPage);
           saveLastPage(bookId, nextExistingPage);
         }
-        setEditorOpen(false);
-        setEditorChapterNumber(null);
+        dispatch(appActions.setEditorOpen(false));
+        dispatch(appActions.setEditorChapterNumber(null));
         showToast(`Deleted chapter ${data.chapterNumber}`, 'success');
       } catch (error) {
         console.error(error);
@@ -551,10 +543,9 @@ export function useBookSession<StreamVoice extends string>({
     [
       bookId,
       bookType,
+      dispatch,
       onUpdateTocEntries,
       setCurrentPage,
-      setEditorChapterNumber,
-      setEditorOpen,
       showToast
     ]
   );

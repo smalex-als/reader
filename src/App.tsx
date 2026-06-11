@@ -65,9 +65,7 @@ export default function App() {
     closeOcrQueue,
     closeSearch,
     closeBookCard,
-    setSettingsOpen,
-    setEditorOpen,
-    setEditorChapterNumber
+    setSettingsOpen
   } = useModalState();
   const {
     displayedChapterText,
@@ -119,11 +117,7 @@ export default function App() {
     handleDeleteChapter
   } = useBookSession({
     urlSyncPaused: mainView === 'units',
-    setEditorOpen,
-    setEditorChapterNumber,
     onUpdateTocEntries: (entries) => tocEntriesRef.current?.(entries),
-    streamVoice,
-    setStreamVoice,
     isStreamVoice,
     getDefaultStreamVoice,
     createDefaultSettings
