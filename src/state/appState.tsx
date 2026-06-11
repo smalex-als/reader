@@ -92,6 +92,12 @@ export interface ReaderPreferencesState {
   quizAutoPlayEnabled: boolean;
 }
 
+export interface StreamUiControlsState {
+  autoFollowStream: boolean;
+  selectedStreamBlockKey: string | null;
+  playbackRate: number;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -99,6 +105,7 @@ export interface CentralAppState {
   chapterTextContext: ChapterTextContextState;
   refreshTokens: AppRefreshTokens;
   readerPreferences: ReaderPreferencesState;
+  streamUiControls: StreamUiControlsState;
 }
 
 export type AppAction =
@@ -130,7 +137,10 @@ export type AppAction =
   | { type: 'refresh/chapterView' }
   | { type: 'refresh/bookCards' }
   | { type: 'preferences/setPageTextOcrEngine'; engine: PageTextOcrEngine }
-  | { type: 'preferences/setQuizAutoPlayEnabled'; enabled: boolean };
+  | { type: 'preferences/setQuizAutoPlayEnabled'; enabled: boolean }
+  | { type: 'streamUi/toggleAutoFollow' }
+  | { type: 'streamUi/setSelectedBlockKey'; key: string | null }
+  | { type: 'streamUi/setPlaybackRate'; rate: number };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -195,6 +205,11 @@ const initialAppState: CentralAppState = {
   readerPreferences: {
     pageTextOcrEngine: 'deepseek_ocr',
     quizAutoPlayEnabled: true
+  },
+  streamUiControls: {
+    autoFollowStream: true,
+    selectedStreamBlockKey: null,
+    playbackRate: 1
   }
 };
 
@@ -258,7 +273,13 @@ export const appActions = {
   setQuizAutoPlayEnabled: (enabled: boolean): AppAction => ({
     type: 'preferences/setQuizAutoPlayEnabled',
     enabled
-  })
+  }),
+  toggleAutoFollowStream: (): AppAction => ({ type: 'streamUi/toggleAutoFollow' }),
+  setSelectedStreamBlockKey: (key: string | null): AppAction => ({
+    type: 'streamUi/setSelectedBlockKey',
+    key
+  }),
+  setPlaybackRate: (rate: number): AppAction => ({ type: 'streamUi/setPlaybackRate', rate })
 };
 
 export function appReducer(state: CentralAppState, action: AppAction): CentralAppState {
@@ -497,6 +518,30 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           quizAutoPlayEnabled: action.enabled
         }
       };
+    case 'streamUi/toggleAutoFollow':
+      return {
+        ...state,
+        streamUiControls: {
+          ...state.streamUiControls,
+          autoFollowStream: !state.streamUiControls.autoFollowStream
+        }
+      };
+    case 'streamUi/setSelectedBlockKey':
+      return {
+        ...state,
+        streamUiControls: {
+          ...state.streamUiControls,
+          selectedStreamBlockKey: action.key
+        }
+      };
+    case 'streamUi/setPlaybackRate':
+      return {
+        ...state,
+        streamUiControls: {
+          ...state.streamUiControls,
+          playbackRate: action.rate
+        }
+      };
     default:
       return state;
   }
@@ -544,3 +589,4 @@ export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
 export const selectChapterTextContext = (state: CentralAppState) => state.chapterTextContext;
 export const selectRefreshTokens = (state: CentralAppState) => state.refreshTokens;
 export const selectReaderPreferences = (state: CentralAppState) => state.readerPreferences;
+export const selectStreamUiControls = (state: CentralAppState) => state.streamUiControls;

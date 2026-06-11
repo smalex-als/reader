@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { normalizePlaybackRate } from '@/lib/appConstants';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
+import {
+  appActions,
+  selectStreamUiControls,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { StreamState } from '@/types/app';
 
 interface DisplayedChapterText {
@@ -45,13 +51,19 @@ export function useStreamControls({
   setMp3Voice,
   showToast
 }: UseStreamControlsOptions) {
-  const [autoFollowStream, setAutoFollowStream] = useState(true);
-  const [selectedStreamBlockKey, setSelectedStreamBlockKey] = useState<string | null>(null);
-  const [playbackRate, setPlaybackRate] = useState(1);
+  const dispatch = useAppDispatch();
+  const { autoFollowStream, selectedStreamBlockKey, playbackRate } = useAppSelector(selectStreamUiControls);
+
+  const setSelectedStreamBlockKey = useCallback(
+    (key: string | null) => {
+      dispatch(appActions.setSelectedStreamBlockKey(key));
+    },
+    [dispatch]
+  );
 
   useEffect(() => {
-    setSelectedStreamBlockKey(null);
-  }, [bookId]);
+    dispatch(appActions.setSelectedStreamBlockKey(null));
+  }, [bookId, dispatch]);
 
   useEffect(() => {
     if (selectedStreamBlockKey || streamState.status === 'idle' || !streamState.pageKey) {
@@ -59,9 +71,9 @@ export function useStreamControls({
     }
     const locator = parseStreamLocator(streamState.pageKey);
     if (locator?.blockId) {
-      setSelectedStreamBlockKey(makeStreamLocator(locator.imageUrl, locator.blockId));
+      dispatch(appActions.setSelectedStreamBlockKey(makeStreamLocator(locator.imageUrl, locator.blockId)));
     }
-  }, [selectedStreamBlockKey, streamState.pageKey, streamState.status]);
+  }, [dispatch, selectedStreamBlockKey, streamState.pageKey, streamState.status]);
 
   const selectedStreamLocator = useMemo(
     () => parseStreamLocator(selectedStreamBlockKey),
@@ -146,12 +158,12 @@ export function useStreamControls({
   );
 
   const handlePlaybackRateChange = useCallback((rate: number) => {
-    setPlaybackRate(normalizePlaybackRate(rate));
-  }, []);
+    dispatch(appActions.setPlaybackRate(normalizePlaybackRate(rate)));
+  }, [dispatch]);
 
   const toggleAutoFollowStream = useCallback(() => {
-    setAutoFollowStream((prev) => !prev);
-  }, []);
+    dispatch(appActions.toggleAutoFollowStream());
+  }, [dispatch]);
 
   return {
     autoFollowStream,
