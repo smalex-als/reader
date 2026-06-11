@@ -516,8 +516,7 @@ export default function App() {
   } = useDashboardNavigation({
     bookId,
     setBookId,
-    renderPage,
-    setViewMode
+    renderPage
   });
 
   const handleSelectSearchResult = useCallback((result: SearchResult) => {
@@ -608,7 +607,6 @@ export default function App() {
       }
     },
     toggleOcrEditMode: handleToggleOcrEditMode,
-    setViewMode: handleViewModeChange,
     handlePrev,
     handleNext,
     streamStatus: streamState.status,

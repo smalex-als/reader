@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from 'react';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
 import {
   appActions,
+  selectBookSessionWorkflow,
   selectBookCardOpen,
   selectModalOpen,
   useAppDispatch,
@@ -24,7 +25,6 @@ type HotkeysOptions = {
   toggleTextModal: () => void;
   triggerBackgroundOcr: () => Promise<void> | void;
   toggleOcrEditMode: () => Promise<void> | void;
-  setViewMode: (mode: ViewMode) => void;
   handlePrev: () => void;
   handleNext: () => void;
   streamStatus: StreamState['status'];
@@ -60,7 +60,6 @@ export function useHotkeys({
   toggleTextModal,
   triggerBackgroundOcr,
   toggleOcrEditMode,
-  setViewMode,
   handlePrev,
   handleNext,
   streamStatus,
@@ -93,6 +92,8 @@ export function useHotkeys({
   const listeningDashboardOpen = useAppSelector(selectModalOpen('listeningDashboard'));
   const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
   const bookCardOpen = useAppSelector(selectBookCardOpen);
+  const { bookType } = useAppSelector(selectBookSessionWorkflow);
+  const isTextBook = bookType === 'text';
   const quizOpen = chapterQuizOpen || unitQuizOpen;
 
   useEffect(() => {
@@ -224,16 +225,25 @@ export function useHotkeys({
           applyFilters({ invert: !settings.invert });
           break;
         case '1':
+          if (isTextBook) {
+            return;
+          }
           event.preventDefault();
-          setViewMode('pages');
+          dispatch(appActions.setMainView('reader'));
+          dispatch(appActions.setReaderViewMode('pages'));
           break;
         case '2':
+          if (isTextBook) {
+            return;
+          }
           event.preventDefault();
-          setViewMode('scroll');
+          dispatch(appActions.setMainView('reader'));
+          dispatch(appActions.setReaderViewMode('scroll'));
           break;
         case '3':
           event.preventDefault();
-          setViewMode('text');
+          dispatch(appActions.setMainView('reader'));
+          dispatch(appActions.setReaderViewMode('text'));
           break;
         case '7':
           event.preventDefault();
@@ -382,7 +392,6 @@ export function useHotkeys({
     toggleFullscreen,
     handleNext,
     handlePrev,
-    setViewMode,
     bookModalOpen,
     helpOpen,
     printModalOpen,
@@ -404,6 +413,7 @@ export function useHotkeys({
     memoryCardOpen,
     listeningDashboardOpen,
     promptEditorOpen,
+    isTextBook,
     toggleTextModal,
     triggerBackgroundOcr,
     toggleOcrEditMode,

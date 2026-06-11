@@ -4,20 +4,16 @@ import { saveLastPage } from '@/lib/storage';
 import { appActions, useAppDispatch } from '@/state/appState';
 import type { TocEntry } from '@/types/app';
 
-type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
-
 interface UseDashboardNavigationOptions {
   bookId: string | null;
   setBookId: (bookId: string | null) => void;
   renderPage: (page: number) => void;
-  setViewMode: (mode: ViewMode) => void;
 }
 
 export function useDashboardNavigation({
   bookId,
   setBookId,
-  renderPage,
-  setViewMode
+  renderPage
 }: UseDashboardNavigationOptions) {
   const dispatch = useAppDispatch();
   const closeListeningDashboard = useCallback(() => {
@@ -99,13 +95,13 @@ export function useDashboardNavigation({
   const handleOpenLibraryBook = useCallback(
     (targetBookId: string, targetChapterNumber: number) => {
       dispatch(appActions.setMainView('reader'));
-      setViewMode('audio');
+      dispatch(appActions.setReaderViewMode('audio'));
       setBookId(targetBookId);
       if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
         saveLastPage(targetBookId, targetChapterNumber - 1);
       }
     },
-    [dispatch, setBookId, setViewMode]
+    [dispatch, setBookId]
   );
 
   const handleOpenUnitSource = useCallback(
@@ -113,7 +109,7 @@ export function useDashboardNavigation({
       dispatch(appActions.setSelectedUnitSetId(null));
       dispatch(appActions.setSelectedUnitTopicId(null));
       dispatch(appActions.setMainView('reader'));
-      setViewMode('text');
+      dispatch(appActions.setReaderViewMode('text'));
       setBookId(targetBookId);
       if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
         saveLastPage(targetBookId, targetChapterNumber - 1);
@@ -122,7 +118,7 @@ export function useDashboardNavigation({
         }
       }
     },
-    [bookId, dispatch, renderPage, setBookId, setViewMode]
+    [bookId, dispatch, renderPage, setBookId]
   );
 
   return {
