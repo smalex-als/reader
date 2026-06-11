@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
+import { useCallback, useEffect } from 'react';
+import {
+  appActions,
+  selectMemoryCardWorkflow,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { ChapterMemoryCard } from '@/types/app';
 
 type ChapterRange = {
@@ -16,26 +22,27 @@ type UseChapterMemoryCardOptions = {
 export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: UseChapterMemoryCardOptions) {
   const dispatch = useAppDispatch();
   const memoryCardOpen = useAppSelector(selectModalOpen('memoryCard'));
-  const [memoryCardLoading, setMemoryCardLoading] = useState(false);
-  const [memoryCardError, setMemoryCardError] = useState<string | null>(null);
-  const [memoryCard, setMemoryCard] = useState<ChapterMemoryCard | null>(null);
+  const {
+    loading: memoryCardLoading,
+    error: memoryCardError,
+    memoryCard
+  } = useAppSelector(selectMemoryCardWorkflow);
 
   useEffect(() => {
-    setMemoryCard(null);
-    setMemoryCardError(null);
-  }, [bookId, chapterNumber]);
+    dispatch(appActions.resetMemoryCard());
+  }, [bookId, chapterNumber, dispatch]);
 
   const loadMemoryCard = useCallback(async (force = false) => {
     if (!bookId || !chapterNumber) {
-      setMemoryCardError('Move to a page inside a known chapter to open a memory card.');
-      setMemoryCard(null);
+      dispatch(appActions.setMemoryCardError('Move to a page inside a known chapter to open a memory card.'));
+      dispatch(appActions.setMemoryCard(null));
       dispatch(appActions.openModal('memoryCard'));
       return;
     }
 
     dispatch(appActions.openModal('memoryCard'));
-    setMemoryCardLoading(true);
-    setMemoryCardError(null);
+    dispatch(appActions.setMemoryCardLoading(true));
+    dispatch(appActions.setMemoryCardError(null));
 
     try {
       const baseUrl = `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/memory-card`;
@@ -67,19 +74,19 @@ export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: Us
         file?: string;
       };
 
-      setMemoryCard({
+      dispatch(appActions.setMemoryCard({
         chapterNumber: payload.chapterNumber,
         title: payload.title,
         text: payload.text,
         source: payload.source,
         file: payload.file
-      });
+      }));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load memory card.';
-      setMemoryCardError(message);
-      setMemoryCard(null);
+      dispatch(appActions.setMemoryCardError(message));
+      dispatch(appActions.setMemoryCard(null));
     } finally {
-      setMemoryCardLoading(false);
+      dispatch(appActions.setMemoryCardLoading(false));
     }
   }, [bookId, chapterNumber, chapterRange, dispatch]);
 

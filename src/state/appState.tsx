@@ -10,6 +10,7 @@ import type { MainView, ViewMode } from '@/lib/appConstants';
 import type {
   AudioState,
   Bookmark,
+  ChapterMemoryCard,
   ChapterVocabulary,
   ImagePreviewTarget,
   PageTextOcrEngine,
@@ -163,6 +164,12 @@ export interface VocabularyWorkflowState {
   vocabulary: ChapterVocabulary | null;
 }
 
+export interface MemoryCardWorkflowState {
+  loading: boolean;
+  error: string | null;
+  memoryCard: ChapterMemoryCard | null;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -182,6 +189,7 @@ export interface CentralAppState {
   bookmarkWorkflow: BookmarkWorkflowState;
   quizWorkflow: QuizWorkflowState;
   vocabularyWorkflow: VocabularyWorkflowState;
+  memoryCardWorkflow: MemoryCardWorkflowState;
 }
 
 export type AppAction =
@@ -246,7 +254,11 @@ export type AppAction =
   | { type: 'vocabularyWorkflow/reset' }
   | { type: 'vocabularyWorkflow/setLoading'; loading: boolean }
   | { type: 'vocabularyWorkflow/setError'; error: string | null }
-  | { type: 'vocabularyWorkflow/setVocabulary'; vocabulary: ChapterVocabulary | null };
+  | { type: 'vocabularyWorkflow/setVocabulary'; vocabulary: ChapterVocabulary | null }
+  | { type: 'memoryCardWorkflow/reset' }
+  | { type: 'memoryCardWorkflow/setLoading'; loading: boolean }
+  | { type: 'memoryCardWorkflow/setError'; error: string | null }
+  | { type: 'memoryCardWorkflow/setMemoryCard'; memoryCard: ChapterMemoryCard | null };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -387,6 +399,11 @@ const initialAppState: CentralAppState = {
     loading: false,
     error: null,
     vocabulary: null
+  },
+  memoryCardWorkflow: {
+    loading: false,
+    error: null,
+    memoryCard: null
   }
 };
 
@@ -564,6 +581,19 @@ export const appActions = {
   setVocabulary: (vocabulary: ChapterVocabulary | null): AppAction => ({
     type: 'vocabularyWorkflow/setVocabulary',
     vocabulary
+  }),
+  resetMemoryCard: (): AppAction => ({ type: 'memoryCardWorkflow/reset' }),
+  setMemoryCardLoading: (loading: boolean): AppAction => ({
+    type: 'memoryCardWorkflow/setLoading',
+    loading
+  }),
+  setMemoryCardError: (error: string | null): AppAction => ({
+    type: 'memoryCardWorkflow/setError',
+    error
+  }),
+  setMemoryCard: (memoryCard: ChapterMemoryCard | null): AppAction => ({
+    type: 'memoryCardWorkflow/setMemoryCard',
+    memoryCard
   })
 };
 
@@ -1102,6 +1132,39 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           vocabulary: action.vocabulary
         }
       };
+    case 'memoryCardWorkflow/reset':
+      return {
+        ...state,
+        memoryCardWorkflow: {
+          loading: false,
+          error: null,
+          memoryCard: null
+        }
+      };
+    case 'memoryCardWorkflow/setLoading':
+      return {
+        ...state,
+        memoryCardWorkflow: {
+          ...state.memoryCardWorkflow,
+          loading: action.loading
+        }
+      };
+    case 'memoryCardWorkflow/setError':
+      return {
+        ...state,
+        memoryCardWorkflow: {
+          ...state.memoryCardWorkflow,
+          error: action.error
+        }
+      };
+    case 'memoryCardWorkflow/setMemoryCard':
+      return {
+        ...state,
+        memoryCardWorkflow: {
+          ...state.memoryCardWorkflow,
+          memoryCard: action.memoryCard
+        }
+      };
     default:
       return state;
   }
@@ -1161,3 +1224,4 @@ export const selectSearchWorkflow = (state: CentralAppState) => state.searchWork
 export const selectBookmarkWorkflow = (state: CentralAppState) => state.bookmarkWorkflow;
 export const selectQuizWorkflow = (modal: QuizModal) => (state: CentralAppState) => state.quizWorkflow[modal];
 export const selectVocabularyWorkflow = (state: CentralAppState) => state.vocabularyWorkflow;
+export const selectMemoryCardWorkflow = (state: CentralAppState) => state.memoryCardWorkflow;
