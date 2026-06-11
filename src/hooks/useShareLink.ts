@@ -8,10 +8,11 @@ interface UseShareLinkOptions {
   currentPage: number;
   navigationCount: number;
   viewMode: 'pages' | 'scroll' | 'text' | 'audio';
+  trackOpened?: boolean;
 }
 
 export function useShareLink(options: UseShareLinkOptions) {
-  const { bookId, currentPage, navigationCount, viewMode } = options;
+  const { bookId, currentPage, navigationCount, viewMode, trackOpened = true } = options;
   const { showToast } = useToast();
   const shareOpenedTrackedRef = useRef(false);
 
@@ -52,6 +53,9 @@ export function useShareLink(options: UseShareLinkOptions) {
   }, [bookId, currentPage, navigationCount, showToast, viewMode]);
 
   useEffect(() => {
+    if (!trackOpened) {
+      return;
+    }
     if (shareOpenedTrackedRef.current || !bookId || navigationCount === 0) {
       return;
     }
@@ -66,7 +70,7 @@ export function useShareLink(options: UseShareLinkOptions) {
       view: viewMode,
       source: 'share'
     });
-  }, [bookId, currentPage, navigationCount, viewMode]);
+  }, [bookId, currentPage, navigationCount, trackOpened, viewMode]);
 
   return { shareLink };
 }

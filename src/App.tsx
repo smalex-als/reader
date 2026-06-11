@@ -580,7 +580,7 @@ export default function App() {
     fetchPageText
   });
 
-  const { shareLink: handleShareLink } = useShareLink({
+  useShareLink({
     bookId,
     currentPage,
     navigationCount,
@@ -684,7 +684,6 @@ export default function App() {
       }
       void handleCreateChapter({ bookName: '', chapterTitle: '' });
     },
-    onShareLink: () => void handleShareLink(),
     ocrQueueTotal: ocrQueueState.total,
     ocrQueueProcessed: ocrQueueState.processed,
     ocrQueueFailed: ocrQueueState.failed,

@@ -16,6 +16,7 @@ import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useCopyActions } from '@/hooks/useCopyActions';
 import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
+import { useShareLink } from '@/hooks/useShareLink';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { clamp } from '@/lib/math';
 
@@ -34,7 +35,6 @@ interface ToolbarProps {
   onToggleOcrEditMode: () => void;
   onToggleFullscreen: () => void;
   onCreateChapter: () => void;
-  onShareLink: () => void;
   ocrQueueTotal: number;
   ocrQueueProcessed: number;
   ocrQueueFailed: number;
@@ -55,7 +55,6 @@ export default function Toolbar({
   onToggleOcrEditMode,
   onToggleFullscreen,
   onCreateChapter,
-  onShareLink,
   ocrQueueTotal,
   ocrQueueProcessed,
   ocrQueueFailed,
@@ -101,13 +100,21 @@ export default function Toolbar({
   } = settings;
   const isTextBook = bookType === 'text';
   const currentImage = manifest[currentPage] ?? null;
+  const navigationCount = isTextBook ? chapterCount : manifest.length;
   const { currentText, fetchPageText, toggleTextModal } = usePageText(currentImage);
   const { handleCopyText } = useCopyActions({
     currentImage,
     currentText,
     fetchPageText
   });
-  const manifestLength = isTextBook ? chapterCount : manifest.length;
+  const { shareLink } = useShareLink({
+    bookId: currentBook,
+    currentPage,
+    navigationCount,
+    viewMode,
+    trackOpened: false
+  });
+  const manifestLength = navigationCount;
   const disableImageActions = isTextBook;
   const isModal = layout === 'modal';
   const controlsDisabled = manifestLength === 0 || !currentBook;
@@ -461,7 +468,7 @@ export default function Toolbar({
         {showToolsTab ? (
         <div className="toolbar-group">
           <span className="toolbar-group-title">System</span>
-          <button type="button" className="button" onClick={onShareLink} disabled={controlsDisabled}>
+          <button type="button" className="button" onClick={() => void shareLink()} disabled={controlsDisabled}>
             Share Link
           </button>
           <button type="button" className="button" onClick={handleOpenHelp}>
