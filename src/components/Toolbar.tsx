@@ -5,6 +5,7 @@ import {
   selectNavigationState,
   selectOcrEdit,
   selectReaderSession,
+  selectSettingsToolbarTab,
   selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
@@ -20,12 +21,8 @@ import { useShareLink } from '@/hooks/useShareLink';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { clamp } from '@/lib/math';
 
-export type ToolbarTab = 'image' | 'study' | 'tools';
-
 interface ToolbarProps {
   layout?: 'panel' | 'modal';
-  activeTab?: ToolbarTab;
-  onTabChange?: (tab: ToolbarTab) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
@@ -44,8 +41,6 @@ interface ToolbarProps {
 
 export default function Toolbar({
   layout = 'panel',
-  activeTab = 'image',
-  onTabChange,
   onZoomIn,
   onZoomOut,
   onResetZoom,
@@ -64,6 +59,7 @@ export default function Toolbar({
   const dispatch = useAppDispatch();
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
+  const settingsToolbarTab = useAppSelector(selectSettingsToolbarTab);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
@@ -121,6 +117,7 @@ export default function Toolbar({
   const quizDisabled = !currentBook || !chapterNumber;
   const currentChapterLabel = chapterNumber ? chapterLabel : null;
   const showOcrStatus = ocrQueueTotal > 0;
+  const activeTab = isModal ? settingsToolbarTab : 'image';
   const ocrStatusText = (() => {
     if (!showOcrStatus) {
       return null;
@@ -194,7 +191,7 @@ export default function Toolbar({
           <button
             type="button"
             className={`segmented-item ${activeTab === 'image' ? 'segmented-item-active' : ''}`}
-            onClick={() => onTabChange?.('image')}
+            onClick={() => dispatch(appActions.setSettingsToolbarTab('image'))}
             role="tab"
             aria-selected={activeTab === 'image'}
           >
@@ -203,7 +200,7 @@ export default function Toolbar({
           <button
             type="button"
             className={`segmented-item ${activeTab === 'study' ? 'segmented-item-active' : ''}`}
-            onClick={() => onTabChange?.('study')}
+            onClick={() => dispatch(appActions.setSettingsToolbarTab('study'))}
             role="tab"
             aria-selected={activeTab === 'study'}
           >
@@ -212,7 +209,7 @@ export default function Toolbar({
           <button
             type="button"
             className={`segmented-item ${activeTab === 'tools' ? 'segmented-item-active' : ''}`}
-            onClick={() => onTabChange?.('tools')}
+            onClick={() => dispatch(appActions.setSettingsToolbarTab('tools'))}
             role="tab"
             aria-selected={activeTab === 'tools'}
           >

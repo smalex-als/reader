@@ -4,7 +4,6 @@ import Toolbar from '@/components/Toolbar';
 import {
   appActions,
   selectModalOpen,
-  selectSettingsToolbarTab,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -12,13 +11,12 @@ import {
 type ToolbarProps = ComponentProps<typeof Toolbar>;
 
 interface SettingsModalProps {
-  toolbarProps: Omit<ToolbarProps, 'activeTab' | 'layout' | 'onTabChange'>;
+  toolbarProps: Omit<ToolbarProps, 'layout'>;
 }
 
 export default function SettingsModal({ toolbarProps }: SettingsModalProps) {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('settings'));
-  const activeTab = useAppSelector(selectSettingsToolbarTab);
   const handleClose = () => {
     dispatch(appActions.closeModal('settings'));
   };
@@ -45,9 +43,7 @@ export default function SettingsModal({ toolbarProps }: SettingsModalProps) {
         <section className="modal-body modal-settings-body">
           <Toolbar
             {...toolbarProps}
-            activeTab={activeTab}
             layout="modal"
-            onTabChange={(tab) => dispatch(appActions.setSettingsToolbarTab(tab))}
           />
         </section>
       </div>
