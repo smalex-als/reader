@@ -1,7 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import type { Bookmark } from '@/types/app';
 import { fetchJson } from '@/lib/fetchJson';
-import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
+import {
+  appActions,
+  selectBookmarkWorkflow,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 interface UseBookmarksOptions {
   bookId: string | null;
@@ -14,31 +20,30 @@ interface UseBookmarksOptions {
 export function useBookmarks(options: UseBookmarksOptions) {
   const { bookId, currentPage, currentImage, renderPage, showToast } = options;
   const dispatch = useAppDispatch();
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const bookmarksOpen = useAppSelector(selectModalOpen('bookmarks'));
-  const [bookmarksLoading, setBookmarksLoading] = useState(false);
+  const { items: bookmarks, loading: bookmarksLoading } = useAppSelector(selectBookmarkWorkflow);
 
   const fetchBookmarks = useCallback(
     async (targetBookId: string | null = bookId) => {
       if (!targetBookId) {
-        setBookmarks([]);
+        dispatch(appActions.resetBookmarks());
         return;
       }
-      setBookmarksLoading(true);
+      dispatch(appActions.setBookmarksLoading(true));
       try {
         const data = await fetchJson<{ book: string; bookmarks: Bookmark[] }>(
           `/api/books/${encodeURIComponent(targetBookId)}/bookmarks`
         );
-        setBookmarks(data.bookmarks ?? []);
+        dispatch(appActions.setBookmarks(data.bookmarks ?? []));
       } catch (error) {
         console.error(error);
-        setBookmarks([]);
+        dispatch(appActions.setBookmarks([]));
         showToast('Unable to load bookmarks', 'error');
       } finally {
-        setBookmarksLoading(false);
+        dispatch(appActions.setBookmarksLoading(false));
       }
     },
-    [bookId, showToast]
+    [bookId, dispatch, showToast]
   );
 
   const addBookmark = useCallback(async () => {
@@ -46,7 +51,7 @@ export function useBookmarks(options: UseBookmarksOptions) {
       return;
     }
     try {
-      setBookmarksLoading(true);
+      dispatch(appActions.setBookmarksLoading(true));
       const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/bookmarks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,15 +64,15 @@ export function useBookmarks(options: UseBookmarksOptions) {
         throw new Error('Failed to save bookmark');
       }
       const data = (await response.json()) as { bookmarks: Bookmark[] };
-      setBookmarks(data.bookmarks ?? []);
+      dispatch(appActions.setBookmarks(data.bookmarks ?? []));
       showToast('Bookmark saved', 'success');
     } catch (error) {
       console.error(error);
       showToast('Unable to save bookmark', 'error');
     } finally {
-      setBookmarksLoading(false);
+      dispatch(appActions.setBookmarksLoading(false));
     }
-  }, [bookId, currentImage, currentPage, showToast]);
+  }, [bookId, currentImage, currentPage, dispatch, showToast]);
 
   const removeBookmark = useCallback(
     async (pageIndex?: number) => {
@@ -79,7 +84,7 @@ export function useBookmarks(options: UseBookmarksOptions) {
         return;
       }
       try {
-        setBookmarksLoading(true);
+        dispatch(appActions.setBookmarksLoading(true));
         const response = await fetch(
           `/api/books/${encodeURIComponent(bookId)}/bookmarks?page=${encodeURIComponent(targetPage)}`,
           { method: 'DELETE' }
@@ -88,16 +93,16 @@ export function useBookmarks(options: UseBookmarksOptions) {
           throw new Error('Failed to remove bookmark');
         }
         const data = (await response.json()) as { bookmarks: Bookmark[] };
-        setBookmarks(data.bookmarks ?? []);
+        dispatch(appActions.setBookmarks(data.bookmarks ?? []));
         showToast('Bookmark removed', 'success');
       } catch (error) {
         console.error(error);
         showToast('Unable to remove bookmark', 'error');
       } finally {
-        setBookmarksLoading(false);
+        dispatch(appActions.setBookmarksLoading(false));
       }
     },
-    [bookId, currentPage, showToast]
+    [bookId, currentPage, dispatch, showToast]
   );
 
   const toggleBookmark = useCallback(() => {
@@ -137,7 +142,7 @@ export function useBookmarks(options: UseBookmarksOptions) {
 
   useEffect(() => {
     if (!bookId) {
-      setBookmarks([]);
+      dispatch(appActions.resetBookmarks());
       dispatch(appActions.closeModal('bookmarks'));
       return;
     }

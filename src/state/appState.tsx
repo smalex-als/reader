@@ -7,7 +7,7 @@ import {
   type ReactNode
 } from 'react';
 import type { MainView, ViewMode } from '@/lib/appConstants';
-import type { ImagePreviewTarget, PageTextOcrEngine, SearchResult } from '@/types/app';
+import type { Bookmark, ImagePreviewTarget, PageTextOcrEngine, SearchResult } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
@@ -135,6 +135,11 @@ export interface SearchWorkflowState {
   loading: boolean;
 }
 
+export interface BookmarkWorkflowState {
+  items: Bookmark[];
+  loading: boolean;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -150,6 +155,7 @@ export interface CentralAppState {
   printWorkflow: PrintWorkflowState;
   tocWorkflow: TocWorkflowState;
   searchWorkflow: SearchWorkflowState;
+  bookmarkWorkflow: BookmarkWorkflowState;
 }
 
 export type AppAction =
@@ -200,7 +206,10 @@ export type AppAction =
   | { type: 'searchWorkflow/reset' }
   | { type: 'searchWorkflow/setQuery'; query: string }
   | { type: 'searchWorkflow/setResults'; results: SearchResult[] }
-  | { type: 'searchWorkflow/setLoading'; loading: boolean };
+  | { type: 'searchWorkflow/setLoading'; loading: boolean }
+  | { type: 'bookmarkWorkflow/reset' }
+  | { type: 'bookmarkWorkflow/setItems'; items: Bookmark[] }
+  | { type: 'bookmarkWorkflow/setLoading'; loading: boolean };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -310,6 +319,10 @@ const initialAppState: CentralAppState = {
   searchWorkflow: {
     query: '',
     results: [],
+    loading: false
+  },
+  bookmarkWorkflow: {
+    items: [],
     loading: false
   }
 };
@@ -434,6 +447,15 @@ export const appActions = {
   }),
   setSearchLoading: (loading: boolean): AppAction => ({
     type: 'searchWorkflow/setLoading',
+    loading
+  }),
+  resetBookmarks: (): AppAction => ({ type: 'bookmarkWorkflow/reset' }),
+  setBookmarks: (items: Bookmark[]): AppAction => ({
+    type: 'bookmarkWorkflow/setItems',
+    items
+  }),
+  setBookmarksLoading: (loading: boolean): AppAction => ({
+    type: 'bookmarkWorkflow/setLoading',
     loading
   })
 };
@@ -825,6 +847,30 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           loading: action.loading
         }
       };
+    case 'bookmarkWorkflow/reset':
+      return {
+        ...state,
+        bookmarkWorkflow: {
+          items: [],
+          loading: false
+        }
+      };
+    case 'bookmarkWorkflow/setItems':
+      return {
+        ...state,
+        bookmarkWorkflow: {
+          ...state.bookmarkWorkflow,
+          items: action.items
+        }
+      };
+    case 'bookmarkWorkflow/setLoading':
+      return {
+        ...state,
+        bookmarkWorkflow: {
+          ...state.bookmarkWorkflow,
+          loading: action.loading
+        }
+      };
     default:
       return state;
   }
@@ -880,3 +926,4 @@ export const selectFloatingAudio = (state: CentralAppState) => state.floatingAud
 export const selectPrintWorkflow = (state: CentralAppState) => state.printWorkflow;
 export const selectTocWorkflow = (state: CentralAppState) => state.tocWorkflow;
 export const selectSearchWorkflow = (state: CentralAppState) => state.searchWorkflow;
+export const selectBookmarkWorkflow = (state: CentralAppState) => state.bookmarkWorkflow;
