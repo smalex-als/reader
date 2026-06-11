@@ -2,16 +2,16 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/useToast';
 import {
   appActions,
+  selectBookSessionWorkflow,
   selectOcrEdit,
+  selectPageTextWorkflow,
+  selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { PageText, PageTextOcrEngine } from '@/types/app';
 
 interface UseOcrEditModeOptions {
-  currentImage: string | null;
-  currentText: PageText | null;
-  isTextBook: boolean;
   fetchPageText: (options?: {
     force?: boolean;
     silent?: boolean;
@@ -25,9 +25,6 @@ interface UseOcrEditModeOptions {
 
 export function useOcrEditMode(options: UseOcrEditModeOptions) {
   const {
-    currentImage,
-    currentText,
-    isTextBook,
     fetchPageText,
     savePageText,
     updatePageTextBlocks
@@ -35,7 +32,13 @@ export function useOcrEditMode(options: UseOcrEditModeOptions) {
 
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
-  const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { bookType, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
+  const { editMode: ocrEditMode } = useAppSelector(selectOcrEdit);
+  const currentImage = manifest[currentPage] ?? null;
+  const currentText = currentImage ? textCache[currentImage] ?? null : null;
+  const isTextBook = bookType === 'text';
   const ocrEditBaselineRef = useRef<string | null>(null);
   const ocrEditImageRef = useRef<string | null>(null);
 

@@ -250,9 +250,6 @@ export default function App() {
     toggleOcrEditMode: handleToggleOcrEditMode,
     toggleSpeechBlock: handleToggleSpeechBlock
   } = useOcrEditMode({
-    currentImage,
-    currentText,
-    isTextBook,
     fetchPageText,
     savePageText,
     updatePageTextBlocks
