@@ -13,6 +13,7 @@ import type {
   ChapterMemoryCard,
   ChapterVocabulary,
   ImagePreviewTarget,
+  PageText,
   PageTextOcrEngine,
   Quiz,
   SearchResult
@@ -170,6 +171,13 @@ export interface MemoryCardWorkflowState {
   memoryCard: ChapterMemoryCard | null;
 }
 
+export interface PageTextWorkflowState {
+  cache: Record<string, PageText>;
+  loading: boolean;
+  saving: boolean;
+  regenerated: boolean;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -190,6 +198,7 @@ export interface CentralAppState {
   quizWorkflow: QuizWorkflowState;
   vocabularyWorkflow: VocabularyWorkflowState;
   memoryCardWorkflow: MemoryCardWorkflowState;
+  pageTextWorkflow: PageTextWorkflowState;
 }
 
 export type AppAction =
@@ -258,7 +267,12 @@ export type AppAction =
   | { type: 'memoryCardWorkflow/reset' }
   | { type: 'memoryCardWorkflow/setLoading'; loading: boolean }
   | { type: 'memoryCardWorkflow/setError'; error: string | null }
-  | { type: 'memoryCardWorkflow/setMemoryCard'; memoryCard: ChapterMemoryCard | null };
+  | { type: 'memoryCardWorkflow/setMemoryCard'; memoryCard: ChapterMemoryCard | null }
+  | { type: 'pageTextWorkflow/reset' }
+  | { type: 'pageTextWorkflow/setEntry'; image: string; entry: PageText }
+  | { type: 'pageTextWorkflow/setLoading'; loading: boolean }
+  | { type: 'pageTextWorkflow/setSaving'; saving: boolean }
+  | { type: 'pageTextWorkflow/setRegenerated'; regenerated: boolean };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -404,6 +418,12 @@ const initialAppState: CentralAppState = {
     loading: false,
     error: null,
     memoryCard: null
+  },
+  pageTextWorkflow: {
+    cache: {},
+    loading: false,
+    saving: false,
+    regenerated: false
   }
 };
 
@@ -594,6 +614,24 @@ export const appActions = {
   setMemoryCard: (memoryCard: ChapterMemoryCard | null): AppAction => ({
     type: 'memoryCardWorkflow/setMemoryCard',
     memoryCard
+  }),
+  resetPageText: (): AppAction => ({ type: 'pageTextWorkflow/reset' }),
+  setPageTextEntry: (image: string, entry: PageText): AppAction => ({
+    type: 'pageTextWorkflow/setEntry',
+    image,
+    entry
+  }),
+  setPageTextLoading: (loading: boolean): AppAction => ({
+    type: 'pageTextWorkflow/setLoading',
+    loading
+  }),
+  setPageTextSaving: (saving: boolean): AppAction => ({
+    type: 'pageTextWorkflow/setSaving',
+    saving
+  }),
+  setRegeneratedPageText: (regenerated: boolean): AppAction => ({
+    type: 'pageTextWorkflow/setRegenerated',
+    regenerated
   })
 };
 
@@ -1165,6 +1203,51 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           memoryCard: action.memoryCard
         }
       };
+    case 'pageTextWorkflow/reset':
+      return {
+        ...state,
+        pageTextWorkflow: {
+          cache: {},
+          loading: false,
+          saving: false,
+          regenerated: false
+        }
+      };
+    case 'pageTextWorkflow/setEntry':
+      return {
+        ...state,
+        pageTextWorkflow: {
+          ...state.pageTextWorkflow,
+          cache: {
+            ...state.pageTextWorkflow.cache,
+            [action.image]: action.entry
+          }
+        }
+      };
+    case 'pageTextWorkflow/setLoading':
+      return {
+        ...state,
+        pageTextWorkflow: {
+          ...state.pageTextWorkflow,
+          loading: action.loading
+        }
+      };
+    case 'pageTextWorkflow/setSaving':
+      return {
+        ...state,
+        pageTextWorkflow: {
+          ...state.pageTextWorkflow,
+          saving: action.saving
+        }
+      };
+    case 'pageTextWorkflow/setRegenerated':
+      return {
+        ...state,
+        pageTextWorkflow: {
+          ...state.pageTextWorkflow,
+          regenerated: action.regenerated
+        }
+      };
     default:
       return state;
   }
@@ -1225,3 +1308,4 @@ export const selectBookmarkWorkflow = (state: CentralAppState) => state.bookmark
 export const selectQuizWorkflow = (modal: QuizModal) => (state: CentralAppState) => state.quizWorkflow[modal];
 export const selectVocabularyWorkflow = (state: CentralAppState) => state.vocabularyWorkflow;
 export const selectMemoryCardWorkflow = (state: CentralAppState) => state.memoryCardWorkflow;
+export const selectPageTextWorkflow = (state: CentralAppState) => state.pageTextWorkflow;

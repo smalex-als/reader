@@ -1,6 +1,12 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { parseOcrLayout, serializeOcrLayout } from '@/lib/ocrLayout';
-import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
+import {
+  appActions,
+  selectModalOpen,
+  selectPageTextWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { PageText, PageTextOcrEngine } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -17,10 +23,19 @@ export function usePageText(
 ) {
   const dispatch = useAppDispatch();
   const textModalOpen = useAppSelector(selectModalOpen('text'));
-  const [textCache, setTextCache] = useState<Record<string, PageText>>({});
-  const [textLoading, setTextLoading] = useState(false);
-  const [textSaving, setTextSaving] = useState(false);
-  const [regeneratedText, setRegeneratedText] = useState(false);
+  const {
+    cache: textCache,
+    loading: textLoading,
+    saving: textSaving,
+    regenerated: regeneratedText
+  } = useAppSelector(selectPageTextWorkflow);
+
+  const setRegeneratedText = useCallback(
+    (regenerated: boolean) => {
+      dispatch(appActions.setRegeneratedPageText(regenerated));
+    },
+    [dispatch]
+  );
 
   const fetchPageTextByImage = useCallback(
     async (
@@ -34,7 +49,7 @@ export function usePageText(
       }
 
       if (updateCurrentState) {
-        setTextLoading(true);
+        dispatch(appActions.setPageTextLoading(true));
       }
       try {
         const params = new URLSearchParams({ image });
@@ -54,9 +69,9 @@ export function usePageText(
           blocks: parsed.blocks,
           source: data.source
         };
-        setTextCache((prev) => ({ ...prev, [image]: entry }));
+        dispatch(appActions.setPageTextEntry(image, entry));
         if (updateCurrentState) {
-          setRegeneratedText(data.source === 'ai' || force);
+          dispatch(appActions.setRegeneratedPageText(data.source === 'ai' || force));
         }
         if (!silent && updateCurrentState) {
           const action = data.source === 'ai' ? 'generated' : 'loaded';
@@ -75,11 +90,11 @@ export function usePageText(
         return null;
       } finally {
         if (updateCurrentState) {
-          setTextLoading(false);
+          dispatch(appActions.setPageTextLoading(false));
         }
       }
     },
-    [currentImage, showToast, textCache]
+    [currentImage, dispatch, showToast, textCache]
   );
 
   const fetchPageText = useCallback(
@@ -108,7 +123,7 @@ export function usePageText(
       if (!currentImage) {
         return null;
       }
-      setTextSaving(true);
+      dispatch(appActions.setPageTextSaving(true));
       try {
         const data = await fetchJson<{ source: 'file' | 'ai'; text: string }>(`/api/page-text`, {
           method: 'POST',
@@ -122,8 +137,8 @@ export function usePageText(
           blocks: parsed.blocks,
           source: data.source
         };
-        setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
-        setRegeneratedText(false);
+        dispatch(appActions.setPageTextEntry(currentImage, entry));
+        dispatch(appActions.setRegeneratedPageText(false));
         showToast('Page text saved', 'success');
         return entry;
       } catch (error) {
@@ -131,18 +146,15 @@ export function usePageText(
         showToast('Unable to save page text', 'error');
         return null;
       } finally {
-        setTextSaving(false);
+        dispatch(appActions.setPageTextSaving(false));
       }
     },
-    [currentImage, showToast]
+    [currentImage, dispatch, showToast]
   );
 
   const resetTextState = useCallback(() => {
-    setTextCache({});
+    dispatch(appActions.resetPageText());
     dispatch(appActions.closeModal('text'));
-    setTextLoading(false);
-    setTextSaving(false);
-    setRegeneratedText(false);
   }, [dispatch]);
 
   const currentText = useMemo(() => {
@@ -167,10 +179,10 @@ export function usePageText(
         blocks: parsed.blocks,
         source: current.source
       };
-      setTextCache((prev) => ({ ...prev, [currentImage]: entry }));
+      dispatch(appActions.setPageTextEntry(currentImage, entry));
       return entry;
     },
-    [currentImage, textCache]
+    [currentImage, dispatch, textCache]
   );
 
   return {
