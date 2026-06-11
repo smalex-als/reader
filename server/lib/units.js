@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { CHAPTER_UNITS_PROMPT, DATA_DIR } from '../config.js';
 import { createHttpError } from './errors.js';
-import { ensureDataDir } from './fs.js';
+import { ensureDataDir, writeFileAtomic } from './fs.js';
 import { getOpenAI } from './openai.js';
 
 const UNITS_DIR = path.join(DATA_DIR, '.units');
@@ -295,7 +295,7 @@ async function writeUnitSet(unitSet) {
     }
     usedFilenames.add(contentFile);
     const storedUnit = { ...unit, order: index + 1, contentFile };
-    await fs.writeFile(
+    await writeFileAtomic(
       path.join(setDirectory, contentFile),
       JSON.stringify(
         {
@@ -310,17 +310,15 @@ async function writeUnitSet(unitSet) {
         },
         null,
         2
-      ),
-      'utf8'
+      )
     );
     units.push(storedUnit);
   }
 
   const stored = { ...unitSet, id: setDirectoryName, units };
-  await fs.writeFile(
+  await writeFileAtomic(
     path.join(setDirectory, UNIT_SET_MANIFEST_FILENAME),
-    JSON.stringify(buildManifestForStorage(stored), null, 2),
-    'utf8'
+    JSON.stringify(buildManifestForStorage(stored), null, 2)
   );
   return stored;
 }
@@ -642,7 +640,7 @@ export async function updateUnitTopicRead({ unitSetId, topicId, read }) {
 
   const progress = await readUnitSetProgress(setDirectory);
   const updatedAt = new Date().toISOString();
-  await fs.writeFile(
+  await writeFileAtomic(
     path.join(setDirectory, UNIT_SET_PROGRESS_FILENAME),
     JSON.stringify(
       {
@@ -658,8 +656,7 @@ export async function updateUnitTopicRead({ unitSetId, topicId, read }) {
       },
       null,
       2
-    ),
-    'utf8'
+    )
   );
 
   const item = await readUnitSetFromDirectory(setDirectoryName);

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { assertBookDirectory, loadBookCard } from './books.js';
 import { loadToc } from './toc.js';
 import { createHttpError } from './errors.js';
-import { safeStat } from './fs.js';
+import { safeStat, writeFileAtomic } from './fs.js';
 import { createStats } from './tocStats.js';
 import { CHAPTER_NARRATION_PROMPT, CHAPTER_REVIEW_EXTRACT_PROMPT, DATA_DIR } from '../config.js';
 import { getOpenAI } from './openai.js';
@@ -126,7 +126,7 @@ async function readJsonFile(filePath, fallback) {
 }
 
 async function writeJsonFile(filePath, value) {
-  await fs.writeFile(filePath, JSON.stringify(value, null, 2), 'utf8');
+  await writeFileAtomic(filePath, JSON.stringify(value, null, 2));
 }
 
 async function ensurePromptLibrary() {

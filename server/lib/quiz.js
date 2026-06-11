@@ -3,7 +3,7 @@ import path from 'node:path';
 import { assertBookDirectory } from './books.js';
 import { generateChapterText } from './chapters.js';
 import { createHttpError } from './errors.js';
-import { safeStat } from './fs.js';
+import { safeStat, writeFileAtomic } from './fs.js';
 import { loadUnitTopic } from './units.js';
 import { CHAPTER_QUIZ_PROMPT } from '../config.js';
 import { getOpenAI } from './openai.js';
@@ -184,7 +184,7 @@ export async function generateChapterQuiz({ bookId, chapterNumber, force = false
     generatedAt: new Date().toISOString(),
     source: 'openai'
   };
-  await fs.writeFile(quizPath, JSON.stringify(payload, null, 2), 'utf8');
+  await writeFileAtomic(quizPath, JSON.stringify(payload, null, 2));
 
   return {
     chapterNumber,
@@ -252,7 +252,7 @@ export async function generateUnitTopicQuiz({ unitSetId, topicId, force = false 
     generatedAt: new Date().toISOString(),
     source: 'openai'
   };
-  await fs.writeFile(quizPath, JSON.stringify(payload, null, 2), 'utf8');
+  await writeFileAtomic(quizPath, JSON.stringify(payload, null, 2));
 
   return {
     unitSetId: topic.unitSetId,

@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { DATA_DIR, IMAGE_EXTENSIONS } from '../config.js';
 import { createHttpError } from './errors.js';
-import { ensureDataDir, safeStat } from './fs.js';
+import { ensureDataDir, safeStat, writeFileAtomic } from './fs.js';
 
 const collator = new Intl.Collator('en', {
   sensitivity: 'base',
@@ -70,7 +70,7 @@ export async function loadBookMeta(bookId) {
 export async function saveBookMeta(bookId, meta) {
   const directory = await assertBookDirectory(bookId);
   const metaPath = path.join(directory, BOOK_META_FILENAME);
-  await fs.writeFile(metaPath, JSON.stringify(meta ?? {}, null, 2), 'utf8');
+  await writeFileAtomic(metaPath, JSON.stringify(meta ?? {}, null, 2));
   return meta ?? {};
 }
 

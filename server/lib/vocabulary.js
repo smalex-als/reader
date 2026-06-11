@@ -3,7 +3,7 @@ import path from 'node:path';
 import { assertBookDirectory } from './books.js';
 import { generateChapterText } from './chapters.js';
 import { createHttpError } from './errors.js';
-import { safeStat } from './fs.js';
+import { safeStat, writeFileAtomic } from './fs.js';
 import { CHAPTER_VOCAB_PROMPT } from '../config.js';
 import { getOpenAI } from './openai.js';
 
@@ -155,7 +155,7 @@ export async function generateChapterVocabulary({ bookId, chapterNumber, force =
     generatedAt: new Date().toISOString(),
     source: 'openai'
   };
-  await fs.writeFile(vocabularyPath, JSON.stringify(payload, null, 2), 'utf8');
+  await writeFileAtomic(vocabularyPath, JSON.stringify(payload, null, 2));
 
   return {
     chapterNumber,

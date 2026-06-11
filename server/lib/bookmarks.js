@@ -2,7 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { BOOKMARKS_FILENAME, DATA_DIR } from '../config.js';
 import { assertBookDirectory } from './books.js';
-import { safeStat } from './fs.js';
+import { safeStat, writeFileAtomic } from './fs.js';
 import { extractPlainTextFromOcrLayout } from './ocrLayout.js';
 import { resolveDataUrl } from './paths.js';
 
@@ -65,7 +65,7 @@ export async function saveBookmarks(bookId, bookmarks) {
     .filter(Boolean)
     .sort((a, b) => a.page - b.page);
   await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(normalized, null, 2), 'utf8');
+  await writeFileAtomic(filePath, JSON.stringify(normalized, null, 2));
   return normalized;
 }
 

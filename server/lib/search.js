@@ -3,7 +3,7 @@ import path from 'node:path';
 import { SEARCH_INDEX_FILENAME } from '../config.js';
 import { assertBookDirectory, getBookType, loadManifest } from './books.js';
 import { createHttpError } from './errors.js';
-import { safeStat } from './fs.js';
+import { safeStat, writeFileAtomic } from './fs.js';
 import { extractPlainTextFromOcrLayout } from './ocrLayout.js';
 import { deriveTextPathsFromImageUrl, resolveDataUrl } from './paths.js';
 import { loadToc } from './toc.js';
@@ -215,7 +215,7 @@ export async function buildBookSearchIndex(bookId) {
     terms
   };
 
-  await fs.writeFile(path.join(directory, SEARCH_INDEX_FILENAME), JSON.stringify(index, null, 2), 'utf8');
+  await writeFileAtomic(path.join(directory, SEARCH_INDEX_FILENAME), JSON.stringify(index, null, 2));
   return index;
 }
 

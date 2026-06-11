@@ -3,7 +3,7 @@ import path from 'node:path';
 import { DETAILED_TOC_FILENAME, TOC_FILENAME, TOC_PROMPT } from '../config.js';
 import { assertBookDirectory, getBookType, loadManifest } from './books.js';
 import { createHttpError } from './errors.js';
-import { safeStat } from './fs.js';
+import { safeStat, writeFileAtomic } from './fs.js';
 import { deriveTextPathsFromImageUrl } from './paths.js';
 import { getOpenAI } from './openai.js';
 import { getTextChapterNavigationCount } from './textBooks.js';
@@ -86,7 +86,7 @@ export async function saveToc(bookId, toc, options = {}) {
     .sort((a, b) => a.page - b.page);
   const filePath = path.join(directory, getTocFilename(variant));
   await fs.mkdir(directory, { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(normalized, null, 2), 'utf8');
+  await writeFileAtomic(filePath, JSON.stringify(normalized, null, 2));
   return normalized;
 }
 

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { DETAILED_TOC_FILENAME, TOC_FILENAME } from '../config.js';
 import { createHttpError } from './errors.js';
-import { ensureDataDir, safeStat } from './fs.js';
+import { ensureDataDir, safeStat, writeFileAtomic } from './fs.js';
 import {
   assertBookDirectory,
   getBookDirectory,
@@ -86,7 +86,7 @@ async function loadRawTocFile(bookId, filename) {
 async function saveRawToc(bookId, entries, filename = TOC_FILENAME) {
   const directory = await assertBookDirectory(bookId);
   const tocPath = path.join(directory, filename);
-  await fs.writeFile(tocPath, JSON.stringify(entries, null, 2), 'utf8');
+  await writeFileAtomic(tocPath, JSON.stringify(entries, null, 2));
   return entries;
 }
 

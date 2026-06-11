@@ -1,6 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { DATA_DIR } from '../config.js';
+import { writeFileAtomic } from './fs.js';
 
 const LIBRARY_STATE_PATH = path.join(DATA_DIR, '.library-state.json');
 const DEFAULT_LIBRARY_STATE = {
@@ -63,7 +64,7 @@ function normalizeLibraryState(value) {
 
 async function writeLibraryState(state) {
   await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(LIBRARY_STATE_PATH, JSON.stringify(state, null, 2));
+  await writeFileAtomic(LIBRARY_STATE_PATH, JSON.stringify(state, null, 2));
 }
 
 export async function loadLibraryState() {
