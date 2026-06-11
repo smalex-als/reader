@@ -20,11 +20,8 @@ import MemoryCardModal from '@/components/MemoryCardModal';
 import PromptEditorModal from '@/components/PromptEditorModal';
 import JobWorkerModal from '@/components/JobWorkerModal';
 
-type BookmarksModalProps = ComponentProps<typeof BookmarksModal>;
-type TocNavModalProps = ComponentProps<typeof TocNavModal>;
 type TocModalProps = ComponentProps<typeof TocModal>;
 type OcrQueueModalProps = ComponentProps<typeof OcrQueueModal>;
-type SearchModalProps = ComponentProps<typeof SearchModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
 type QuizModalProps = ComponentProps<typeof QuizModal>;
 type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
@@ -33,11 +30,8 @@ type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
-  bookmarksModalProps: BookmarksModalProps;
-  tocNavModalProps: TocNavModalProps;
   tocModalProps: TocModalProps;
   ocrQueueModalProps: OcrQueueModalProps;
-  searchModalProps: SearchModalProps;
   settingsModalProps: SettingsModalProps;
   quizModalProps: QuizModalProps;
   vocabularyModalProps: VocabularyModalProps;
@@ -54,11 +48,8 @@ function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
 
 export default function AppModals({
   portalTarget,
-  bookmarksModalProps,
-  tocNavModalProps,
   tocModalProps,
   ocrQueueModalProps,
-  searchModalProps,
   settingsModalProps,
   quizModalProps,
   vocabularyModalProps,
@@ -71,11 +62,11 @@ export default function AppModals({
       <PrintModal />
       <BookSelectModal />
       {renderInPortal(<HelpModal />, portalTarget)}
-      <BookmarksModal {...bookmarksModalProps} />
+      <BookmarksModal />
       {renderInPortal(<TextModal />, portalTarget)}
-      {renderInPortal(<TocNavModal {...tocNavModalProps} />, portalTarget)}
+      {renderInPortal(<TocNavModal />, portalTarget)}
       {renderInPortal(<TocModal {...tocModalProps} />, portalTarget)}
-      {renderInPortal(<SearchModal {...searchModalProps} />, portalTarget)}
+      {renderInPortal(<SearchModal />, portalTarget)}
       {renderInPortal(<BookCardModal />, portalTarget)}
       {renderInPortal(<SettingsModal {...settingsModalProps} />, portalTarget)}
       {renderInPortal(<QuizModal {...quizModalProps} />, portalTarget)}

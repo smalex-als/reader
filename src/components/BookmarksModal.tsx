@@ -8,15 +8,8 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { Bookmark } from '@/types/app';
 
-interface BookmarksModalProps {
-  onSelect: (bookmark: Bookmark) => void;
-}
-
-export default function BookmarksModal({
-  onSelect
-}: BookmarksModalProps) {
+export default function BookmarksModal() {
   const dispatch = useAppDispatch();
   const removeBookmark = useRemoveBookmark();
   const open = useAppSelector(selectModalOpen('bookmarks'));
@@ -76,7 +69,10 @@ export default function BookmarksModal({
                       <button
                         type="button"
                         className="button button-secondary"
-                        onClick={() => onSelect(bookmark)}
+                        onClick={() => {
+                          dispatch(appActions.closeModal('bookmarks'));
+                          dispatch(appActions.requestPageNavigation(bookmark.page));
+                        }}
                       >
                         Go to page
                       </button>

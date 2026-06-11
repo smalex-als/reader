@@ -11,14 +11,9 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-interface UseBookmarksOptions {
-  bookId: string | null;
-  renderPage: (pageIndex: number) => void;
-}
-
-export function useBookmarks(options: UseBookmarksOptions) {
-  const { bookId, renderPage } = options;
+export function useBookmarks() {
   const dispatch = useAppDispatch();
+  const { bookId } = useAppSelector(selectReaderSession);
   const fetchBookmarks = useFetchBookmarks();
   const addBookmark = useAddBookmark();
   const removeBookmark = useRemoveBookmark();
@@ -26,14 +21,6 @@ export function useBookmarks(options: UseBookmarksOptions) {
   const closeBookmarks = useCallback(() => {
     dispatch(appActions.closeModal('bookmarks'));
   }, [dispatch]);
-
-  const handleSelectBookmark = useCallback(
-    (bookmark: Bookmark) => {
-      dispatch(appActions.closeModal('bookmarks'));
-      renderPage(bookmark.page);
-    },
-    [dispatch, renderPage]
-  );
 
   useEffect(() => {
     if (!bookId) {
@@ -48,7 +35,6 @@ export function useBookmarks(options: UseBookmarksOptions) {
     addBookmark,
     closeBookmarks,
     fetchBookmarks,
-    handleSelectBookmark,
     removeBookmark
   };
 }

@@ -1,8 +1,13 @@
 import type { MutableRefObject } from 'react';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { clamp } from '@/lib/math';
 import { saveLastPage } from '@/lib/storage';
-import { appActions, useAppDispatch } from '@/state/appState';
+import {
+  appActions,
+  selectPageNavigationRequest,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { TocEntry } from '@/types/app';
 
 interface UseNavigationParams {
@@ -39,6 +44,7 @@ export function useNavigation({
   currentChapterEntry
 }: UseNavigationParams) {
   const dispatch = useAppDispatch();
+  const pageNavigationRequest = useAppSelector(selectPageNavigationRequest);
   const renderPage = useCallback(
     (pageIndex: number) => {
       if (navigationCount === 0) {
@@ -65,6 +71,14 @@ export function useNavigation({
       viewMode
     ]
   );
+
+  useEffect(() => {
+    if (!pageNavigationRequest) {
+      return;
+    }
+    renderPage(pageNavigationRequest.pageIndex);
+    dispatch(appActions.clearPageNavigation());
+  }, [dispatch, pageNavigationRequest, renderPage]);
 
   const goToChapterIndex = useCallback(
     (index: number) => {

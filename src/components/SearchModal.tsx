@@ -3,21 +3,18 @@ import CloseIcon from '@/components/CloseIcon';
 import { useBookSearch } from '@/hooks/useBookSearch';
 import {
   appActions,
+  selectBookSessionWorkflow,
   selectModalOpen,
   selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { SearchResult } from '@/types/app';
 
-interface SearchModalProps {
-  onSelect: (result: SearchResult) => void;
-}
-
-export default function SearchModal({ onSelect }: SearchModalProps) {
+export default function SearchModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('search'));
-  const { bookId: currentBook, currentPage } = useAppSelector(selectReaderSession);
+  const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { bookType } = useAppSelector(selectBookSessionWorkflow);
   const {
     searchQuery: query,
     setSearchQuery,
@@ -29,6 +26,15 @@ export default function SearchModal({ onSelect }: SearchModalProps) {
   const [draftQuery, setDraftQuery] = useState(query);
   const handleClose = () => {
     dispatch(appActions.closeModal('search'));
+  };
+  const handleSelectResult = (page: number) => {
+    dispatch(appActions.closeModal('search'));
+    dispatch(
+      appActions.setReaderViewMode(
+        bookType === 'text' ? 'text' : viewMode === 'scroll' ? 'scroll' : 'pages'
+      )
+    );
+    dispatch(appActions.requestPageNavigation(page));
   };
 
   useEffect(() => {
@@ -129,7 +135,7 @@ export default function SearchModal({ onSelect }: SearchModalProps) {
                       <button
                         type="button"
                         className="button button-secondary"
-                        onClick={() => onSelect(result)}
+                        onClick={() => handleSelectResult(result.page)}
                       >
                         Open
                       </button>

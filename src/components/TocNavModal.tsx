@@ -11,11 +11,7 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-interface TocNavModalProps {
-  onGoToPage: (pageIndex: number) => void;
-}
-
-export default function TocNavModal({ onGoToPage }: TocNavModalProps) {
+export default function TocNavModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('tocNav'));
   const { currentPage } = useAppSelector(selectReaderSession);
@@ -38,7 +34,7 @@ export default function TocNavModal({ onGoToPage }: TocNavModalProps) {
   };
   const handleGoToPage = (pageIndex: number) => {
     dispatch(appActions.closeModal('tocNav'));
-    onGoToPage(pageIndex);
+    dispatch(appActions.requestPageNavigation(pageIndex));
   };
 
   useEffect(() => {

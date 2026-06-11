@@ -77,6 +77,11 @@ export interface AppNavigationState {
   selectedUnitTopicId: string | null;
 }
 
+export interface PageNavigationRequest {
+  id: number;
+  pageIndex: number;
+}
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -231,6 +236,7 @@ export interface VoiceWorkflowState {
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
+  pageNavigationRequest: PageNavigationRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -276,6 +282,8 @@ export type AppAction =
   | { type: 'navigation/setMainView'; view: MainView }
   | { type: 'navigation/setSelectedUnitSetId'; id: string | null }
   | { type: 'navigation/setSelectedUnitTopicId'; id: string | null }
+  | { type: 'pageNavigation/request'; pageIndex: number }
+  | { type: 'pageNavigation/clear' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -446,6 +454,7 @@ const initialAppState: CentralAppState = {
     }
   },
   navigation: getInitialNavigation(),
+  pageNavigationRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -589,6 +598,11 @@ export const appActions = {
     type: 'navigation/setSelectedUnitTopicId',
     id
   }),
+  requestPageNavigation: (pageIndex: number): AppAction => ({
+    type: 'pageNavigation/request',
+    pageIndex
+  }),
+  clearPageNavigation: (): AppAction => ({ type: 'pageNavigation/clear' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1061,6 +1075,19 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           ...state.navigation,
           selectedUnitTopicId: action.id
         }
+      };
+    case 'pageNavigation/request':
+      return {
+        ...state,
+        pageNavigationRequest: {
+          id: (state.pageNavigationRequest?.id ?? 0) + 1,
+          pageIndex: action.pageIndex
+        }
+      };
+    case 'pageNavigation/clear':
+      return {
+        ...state,
+        pageNavigationRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -1775,6 +1802,7 @@ export const selectImagePreview = (state: CentralAppState) => state.ui.imagePrev
 export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
 export const selectNavigationState = (state: CentralAppState) => state.navigation;
+export const selectPageNavigationRequest = (state: CentralAppState) => state.pageNavigationRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

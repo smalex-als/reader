@@ -44,7 +44,6 @@ import {
 } from '@/lib/appConstants';
 import type {
   AppSettings,
-  SearchResult,
   TocEntry
 } from '@/types/app';
 import {
@@ -436,13 +435,7 @@ export default function App() {
     [dispatch, isTextBook, setViewMode]
   );
 
-  const {
-    closeBookmarks,
-    handleSelectBookmark
-  } = useBookmarks({
-    bookId,
-    renderPage
-  });
+  const { closeBookmarks } = useBookmarks();
 
   useEffect(() => {
     closeBookmarks();
@@ -466,12 +459,6 @@ export default function App() {
     setBookId,
     renderPage
   });
-
-  const handleSelectSearchResult = useCallback((result: SearchResult) => {
-    dispatch(appActions.closeModal('search'));
-    renderPage(result.page);
-    setViewMode(isTextBook ? 'text' : viewMode === 'scroll' ? 'scroll' : 'pages');
-  }, [dispatch, isTextBook, renderPage, setViewMode, viewMode]);
 
   const applyFilters = useCallback(
     (
@@ -610,12 +597,6 @@ export default function App() {
 
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null,
-    bookmarksModalProps: {
-      onSelect: handleSelectBookmark
-    },
-    tocNavModalProps: {
-      onGoToPage: (pageIndex: number) => renderPage(pageIndex)
-    },
     tocModalProps: {
       onGenerate: handleGenerateToc,
       onSave: handleSaveToc,
@@ -633,9 +614,6 @@ export default function App() {
       onQueueRemaining: queueRemainingPages,
       onRetryFailed: retryFailed,
       onClearQueue: clearQueue
-    },
-    searchModalProps: {
-      onSelect: handleSelectSearchResult
     },
     quizModalProps: {
       streamState,
