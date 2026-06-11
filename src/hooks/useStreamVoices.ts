@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/useToast';
 import { loadMp3VoiceForBook, saveMp3VoiceForBook } from '@/lib/storage';
 import {
   appActions,
+  selectReaderSession,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
@@ -42,11 +43,6 @@ export function useStreamVoices() {
       ),
     [streamVoiceOptions]
   );
-  const getDefaultMp3Voice = useCallback(
-    () => mp3VoiceOptions.find((option) => option.provider === 'streaming')?.id || mp3VoiceOptions[0]?.id || '',
-    [mp3VoiceOptions]
-  );
-
   useEffect(() => {
     let cancelled = false;
     void fetchJson<{ defaultVoice?: string; voices?: StreamVoiceOption[] }>('/api/stream-audio/voices')
@@ -88,21 +84,25 @@ export function useStreamVoices() {
     setStreamVoice,
     isStreamVoice,
     getDefaultStreamVoice,
-    mp3VoiceOptions,
-    getDefaultMp3Voice
+    mp3VoiceOptions
   };
 }
 
-interface UseMp3VoiceOptions {
-  bookId: string | null;
-  mp3VoiceOptions: StreamVoiceOption[];
-  getDefaultMp3Voice: () => string;
-}
-
-export function useMp3Voice(options: UseMp3VoiceOptions) {
-  const { bookId, mp3VoiceOptions, getDefaultMp3Voice } = options;
+export function useMp3Voice() {
   const dispatch = useAppDispatch();
-  const { mp3Voice } = useAppSelector(selectVoiceWorkflow);
+  const { bookId } = useAppSelector(selectReaderSession);
+  const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
+  const mp3VoiceOptions = useMemo(
+    () =>
+      streamVoiceOptions.filter(
+        (option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'
+      ),
+    [streamVoiceOptions]
+  );
+  const getDefaultMp3Voice = useCallback(
+    () => mp3VoiceOptions.find((option) => option.provider === 'streaming')?.id || mp3VoiceOptions[0]?.id || '',
+    [mp3VoiceOptions]
+  );
 
   const setMp3Voice: Dispatch<SetStateAction<StreamVoice>> = useCallback(
     (next) => {

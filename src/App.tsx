@@ -93,8 +93,7 @@ export default function App() {
     setStreamVoice,
     isStreamVoice,
     getDefaultStreamVoice,
-    mp3VoiceOptions,
-    getDefaultMp3Voice
+    mp3VoiceOptions
   } = useStreamVoices();
   const {
     bookId,
@@ -131,7 +130,7 @@ export default function App() {
     handleUpdateTocEntry,
     handleGenerateChapter
   } = useTocManager();
-  const { setMp3Voice } = useMp3Voice({ bookId, mp3VoiceOptions, getDefaultMp3Voice });
+  const { setMp3Voice } = useMp3Voice();
   const currentChapterIndex = useMemo(() => {
     if (isTextBook) {
       return navigationCount > 0 ? currentPage : null;
