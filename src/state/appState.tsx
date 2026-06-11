@@ -7,7 +7,7 @@ import {
   type ReactNode
 } from 'react';
 import type { MainView } from '@/lib/appConstants';
-import type { ImagePreviewTarget } from '@/types/app';
+import type { ImagePreviewTarget, PageTextOcrEngine } from '@/types/app';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
 
@@ -87,12 +87,18 @@ export interface AppRefreshTokens {
   bookCards: number;
 }
 
+export interface ReaderPreferencesState {
+  pageTextOcrEngine: PageTextOcrEngine;
+  quizAutoPlayEnabled: boolean;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
   chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
   chapterTextContext: ChapterTextContextState;
   refreshTokens: AppRefreshTokens;
+  readerPreferences: ReaderPreferencesState;
 }
 
 export type AppAction =
@@ -122,7 +128,9 @@ export type AppAction =
   | { type: 'chapterText/setDisplayed'; displayedChapterText: DisplayedChapterText | null }
   | { type: 'chapterText/setFirstParagraph'; firstChapterParagraph: ChapterParagraph | null }
   | { type: 'refresh/chapterView' }
-  | { type: 'refresh/bookCards' };
+  | { type: 'refresh/bookCards' }
+  | { type: 'preferences/setPageTextOcrEngine'; engine: PageTextOcrEngine }
+  | { type: 'preferences/setQuizAutoPlayEnabled'; enabled: boolean };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -183,6 +191,10 @@ const initialAppState: CentralAppState = {
   refreshTokens: {
     chapterView: 0,
     bookCards: 0
+  },
+  readerPreferences: {
+    pageTextOcrEngine: 'deepseek_ocr',
+    quizAutoPlayEnabled: true
   }
 };
 
@@ -238,7 +250,15 @@ export const appActions = {
     firstChapterParagraph
   }),
   refreshChapterView: (): AppAction => ({ type: 'refresh/chapterView' }),
-  refreshBookCards: (): AppAction => ({ type: 'refresh/bookCards' })
+  refreshBookCards: (): AppAction => ({ type: 'refresh/bookCards' }),
+  setPageTextOcrEngine: (engine: PageTextOcrEngine): AppAction => ({
+    type: 'preferences/setPageTextOcrEngine',
+    engine
+  }),
+  setQuizAutoPlayEnabled: (enabled: boolean): AppAction => ({
+    type: 'preferences/setQuizAutoPlayEnabled',
+    enabled
+  })
 };
 
 export function appReducer(state: CentralAppState, action: AppAction): CentralAppState {
@@ -461,6 +481,22 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           bookCards: state.refreshTokens.bookCards + 1
         }
       };
+    case 'preferences/setPageTextOcrEngine':
+      return {
+        ...state,
+        readerPreferences: {
+          ...state.readerPreferences,
+          pageTextOcrEngine: action.engine
+        }
+      };
+    case 'preferences/setQuizAutoPlayEnabled':
+      return {
+        ...state,
+        readerPreferences: {
+          ...state.readerPreferences,
+          quizAutoPlayEnabled: action.enabled
+        }
+      };
     default:
       return state;
   }
@@ -507,3 +543,4 @@ export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
   state.chapterVersionNavigationRequest;
 export const selectChapterTextContext = (state: CentralAppState) => state.chapterTextContext;
 export const selectRefreshTokens = (state: CentralAppState) => state.refreshTokens;
+export const selectReaderPreferences = (state: CentralAppState) => state.readerPreferences;

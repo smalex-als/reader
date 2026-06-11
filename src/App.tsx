@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
 import ReaderSidebar from '@/components/ReaderSidebar';
@@ -18,6 +18,7 @@ import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useRefreshTokens } from '@/hooks/useRefreshTokens';
+import { useReaderPreferences } from '@/hooks/useReaderPreferences';
 import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useStreamControls } from '@/hooks/useStreamControls';
@@ -40,11 +41,7 @@ import { useZoom } from '@/hooks/useZoom';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clamp, clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
-import {
-  loadQuizAutoplayForBook,
-  saveLastPage,
-  saveQuizAutoplayForBook
-} from '@/lib/storage';
+import { saveLastPage } from '@/lib/storage';
 import { makeStreamLocator } from '@/lib/streamLocator';
 import {
   PLAYBACK_RATE_OPTIONS,
@@ -114,7 +111,6 @@ export default function App() {
     firstChapterParagraph,
     setFirstChapterParagraph
   } = useChapterTextContext();
-  const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
   const {
     chapterViewRefresh,
     bookCardRefreshToken,
@@ -390,7 +386,12 @@ export default function App() {
     toggleTextModal,
     updatePageTextBlocks
   } = usePageText(currentImage, showToast);
-  const [pageTextOcrEngine, setPageTextOcrEngine] = useState<PageTextOcrEngine>('deepseek_ocr');
+  const {
+    pageTextOcrEngine,
+    setPageTextOcrEngine,
+    quizAutoPlayEnabled,
+    setQuizAutoPlayEnabled
+  } = useReaderPreferences(bookId);
   const {
     chapterVersionNavigationRequest,
     requestChapterVersionNavigation,
@@ -399,19 +400,6 @@ export default function App() {
   useEffect(() => {
     setDisplayedChapterText(null);
   }, [bookId, chapterNumber]);
-  useEffect(() => {
-    if (!bookId) {
-      setQuizAutoPlayEnabled(true);
-      return;
-    }
-    setQuizAutoPlayEnabled(loadQuizAutoplayForBook(bookId) ?? true);
-  }, [bookId]);
-  useEffect(() => {
-    if (!bookId) {
-      return;
-    }
-    saveQuizAutoplayForBook(bookId, quizAutoPlayEnabled);
-  }, [bookId, quizAutoPlayEnabled]);
   const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
     navigationCount,
     currentPage,
