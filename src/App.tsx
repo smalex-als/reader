@@ -177,7 +177,6 @@ export default function App() {
     setSettings,
     setMetrics,
     urlSyncPaused: mainView === 'units',
-    showToast,
     setEditorOpen,
     setEditorChapterNumber,
     onUpdateTocEntries: (entries) => tocEntriesRef.current?.(entries),

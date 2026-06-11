@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ViewMode } from '@/lib/appConstants';
+import { useToast } from '@/hooks/useToast';
 import { clamp } from '@/lib/math';
 import {
   appActions,
@@ -20,7 +21,7 @@ import {
   saveSettingsForBook,
   saveStreamVoiceForBook
 } from '@/lib/storage';
-import type { AppSettings, TocEntry, ToastMessage, ViewerMetrics } from '@/types/app';
+import type { AppSettings, TocEntry, ViewerMetrics } from '@/types/app';
 
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 
@@ -29,7 +30,6 @@ type BookSessionOptions<StreamVoice extends string> = {
   setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
   setMetrics: React.Dispatch<React.SetStateAction<ViewerMetrics | null>>;
   urlSyncPaused?: boolean;
-  showToast: (message: string, kind?: ToastMessage['kind']) => void;
   setEditorOpen: (open: boolean) => void;
   setEditorChapterNumber: React.Dispatch<React.SetStateAction<number | null>>;
   onUpdateTocEntries: (entries: TocEntry[]) => void;
@@ -89,7 +89,6 @@ export function useBookSession<StreamVoice extends string>({
   setSettings,
   setMetrics,
   urlSyncPaused = false,
-  showToast,
   setEditorOpen,
   setEditorChapterNumber,
   onUpdateTocEntries,
@@ -99,6 +98,7 @@ export function useBookSession<StreamVoice extends string>({
   getDefaultStreamVoice,
   createDefaultSettings
 }: BookSessionOptions<StreamVoice>) {
+  const { showToast } = useToast();
   const [books, setBooks] = useState<string[]>([]);
   const [manifest, setManifest] = useState<string[]>([]);
   const [bookType, setBookType] = useState<'image' | 'text'>('image');
