@@ -8,6 +8,7 @@ import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useUnitActions } from '@/hooks/useUnitActions';
 import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
 import {
@@ -16,7 +17,6 @@ import {
   selectChapterVersionNavigationRequest,
   selectRefreshTokens,
   selectTocWorkflow,
-  selectUnitWorkflow,
   selectViewerWorkflow,
   selectVoiceWorkflow,
   useAppDispatch,
@@ -26,12 +26,6 @@ import {
 interface ChapterViewerProps {
   onCreateChapter?: () => void | Promise<void>;
   onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
-  onCreateUnit: (payload: {
-    text: string;
-    chapterTitle: string | null;
-    versionLabel: string | null;
-    versionId: string | null;
-  }) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   playingParagraphStart: number | null;
   playingParagraphMode: 'chapter' | 'narration' | null;
@@ -167,7 +161,6 @@ function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
 export default function ChapterViewer({
   onCreateChapter,
   onDeleteChapter,
-  onCreateUnit,
   onPlayParagraph,
   playingParagraphStart,
   playingParagraphMode
@@ -182,7 +175,6 @@ export default function ChapterViewer({
   } = useAppSelector(selectBookSessionWorkflow);
   const { chapterView: refreshToken } = useAppSelector(selectRefreshTokens);
   const versionNavigationRequest = useAppSelector(selectChapterVersionNavigationRequest);
-  const { creating: unitCreating } = useAppSelector(selectUnitWorkflow);
   const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
   const { textFontSize } = settings;
   const allowEdit = true;
@@ -194,6 +186,14 @@ export default function ChapterViewer({
     chapterLabel,
     pageRange
   } = useCurrentChapterContext();
+  const {
+    unitCreating,
+    handleCreateUnit
+  } = useUnitActions({
+    bookId,
+    chapterNumber,
+    currentChapterTitle: chapterTitle
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
@@ -983,7 +983,7 @@ export default function ChapterViewer({
                     type="button"
                     className="button button-primary"
                     onClick={() =>
-                      onCreateUnit({
+                      void handleCreateUnit({
                         text: displayText ?? '',
                         chapterTitle,
                         versionLabel: selectedVersion?.label ?? null,

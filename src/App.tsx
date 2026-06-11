@@ -588,8 +588,7 @@ export default function App() {
   });
 
   const {
-    refreshUnits,
-    handleCreateUnit
+    refreshUnits
   } = useUnitActions({
     bookId,
     chapterNumber,
@@ -816,7 +815,6 @@ export default function App() {
           }
         : undefined,
       onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
-      onCreateUnit: handleCreateUnit,
       onPlayParagraph: handlePlayChapterParagraph,
       playingParagraphStart: activeTextParagraph.startIndex,
       playingParagraphMode: activeTextParagraph.mode
