@@ -774,10 +774,6 @@ export default function App() {
   };
 
   const settingsToolbarProps = {
-    currentBook: bookId,
-    manifestLength: navigationCount,
-    viewMode,
-    disableImageActions: isTextBook,
     onZoomIn: () => updateZoom(settings.zoom + ZOOM_STEP),
     onZoomOut: () => updateZoom(settings.zoom - ZOOM_STEP),
     onResetZoom: resetTransform,
@@ -804,11 +800,8 @@ export default function App() {
     onToggleOcrEditMode: () => {
       void handleToggleOcrEditMode();
     },
-    ocrEditMode,
-    ocrEditSaving,
     onCopyText: handleCopyText,
     onToggleFullscreen: () => void toggleFullscreen(),
-    fullscreen: isFullscreen,
     onCreateChapter: () => {
       if (!isTextBook) {
         showToast('Select a text book to add chapters', 'error');

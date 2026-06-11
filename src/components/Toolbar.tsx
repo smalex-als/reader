@@ -1,13 +1,17 @@
+import {
+  selectBookSessionWorkflow,
+  selectFullscreen,
+  selectOcrEdit,
+  selectReaderSession,
+  useAppSelector
+} from '@/state/appState';
+
 export type ToolbarTab = 'image' | 'study' | 'tools';
 
 interface ToolbarProps {
   layout?: 'panel' | 'modal';
   activeTab?: ToolbarTab;
   onTabChange?: (tab: ToolbarTab) => void;
-  currentBook: string | null;
-  manifestLength: number;
-  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-  disableImageActions: boolean;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
@@ -28,11 +32,8 @@ interface ToolbarProps {
   onDimOutsideBlocksIntensity: (value: number) => void;
   onToggleTextModal: () => void;
   onToggleOcrEditMode: () => void;
-  ocrEditMode: boolean;
-  ocrEditSaving: boolean;
   onCopyText: () => void;
   onToggleFullscreen: () => void;
-  fullscreen: boolean;
   onCreateChapter: () => void;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
@@ -57,10 +58,6 @@ export default function Toolbar({
   layout = 'panel',
   activeTab = 'image',
   onTabChange,
-  currentBook,
-  manifestLength,
-  viewMode,
-  disableImageActions,
   onZoomIn,
   onZoomOut,
   onResetZoom,
@@ -81,11 +78,8 @@ export default function Toolbar({
   onDimOutsideBlocksIntensity,
   onToggleTextModal,
   onToggleOcrEditMode,
-  ocrEditMode,
-  ocrEditSaving,
   onCopyText,
   onToggleFullscreen,
-  fullscreen,
   onCreateChapter,
   onOpenQuiz,
   onOpenVocabulary,
@@ -105,6 +99,13 @@ export default function Toolbar({
   ocrQueueRunning,
   ocrQueuePaused
 }: ToolbarProps) {
+  const { bookId: currentBook, viewMode } = useAppSelector(selectReaderSession);
+  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const fullscreen = useAppSelector(selectFullscreen);
+  const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
+  const isTextBook = bookType === 'text';
+  const manifestLength = isTextBook ? chapterCount : manifest.length;
+  const disableImageActions = isTextBook;
   const isModal = layout === 'modal';
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const showOcrStatus = ocrQueueTotal > 0;
