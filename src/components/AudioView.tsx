@@ -12,10 +12,6 @@ import type { ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
 import TrashIcon from '@/components/TrashIcon';
 
-interface AudioViewProps {
-  onOpenChapterText: (pageIndex: number, versionId?: string, chapterNumber?: number) => void;
-}
-
 type ChapterStatus = {
   audioReady: boolean;
   latestVersionId: string;
@@ -62,7 +58,7 @@ async function readErrorMessage(response: Response) {
   }
 }
 
-export default function AudioView({ onOpenChapterText }: AudioViewProps) {
+export default function AudioView() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { bookId } = useAppSelector(selectReaderSession);
@@ -88,6 +84,18 @@ export default function AudioView({ onOpenChapterText }: AudioViewProps) {
   const handleMp3VoiceChange = useCallback(
     (voice: string) => {
       dispatch(appActions.setMp3Voice(voice));
+    },
+    [dispatch]
+  );
+  const handleOpenChapterText = useCallback(
+    (pageIndex: number, versionId?: string, chapterNumber?: number) => {
+      if (versionId && chapterNumber) {
+        dispatch(appActions.requestChapterVersionNavigation(chapterNumber, versionId));
+      } else {
+        dispatch(appActions.clearChapterVersionNavigation());
+      }
+      dispatch(appActions.setReaderViewMode('text'));
+      dispatch(appActions.requestPageNavigation(pageIndex));
     },
     [dispatch]
   );
@@ -452,7 +460,7 @@ export default function AudioView({ onOpenChapterText }: AudioViewProps) {
                       <button
                         type="button"
                         className="audio-row-title-link audio-row-link"
-                        onClick={() => onOpenChapterText(entry.page)}
+                        onClick={() => handleOpenChapterText(entry.page)}
                       >
                         {entry.title}
                       </button>
@@ -467,7 +475,7 @@ export default function AudioView({ onOpenChapterText }: AudioViewProps) {
                               key={version.id}
                               type="button"
                               className={`audio-version-chip ${isLatest ? 'audio-version-chip-active' : ''}`}
-                              onClick={() => onOpenChapterText(entry.page, version.id, entry.chapterNumber)}
+                              onClick={() => handleOpenChapterText(entry.page, version.id, entry.chapterNumber)}
                               title={version.promptName ? `${version.label} · ${version.promptName}` : version.label}
                             >
                               <span>{version.label}</span>

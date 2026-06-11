@@ -22,7 +22,6 @@ type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
 type ChapterViewerProps = ComponentProps<typeof ChapterViewer>;
 type AudioLibraryViewProps = ComponentProps<typeof AudioLibraryView>;
 type UnitsViewProps = ComponentProps<typeof UnitsView>;
-type AudioViewProps = ComponentProps<typeof AudioView>;
 type StreamBubbleProps = ComponentProps<typeof StreamBubble>;
 
 interface ReaderMainContentProps {
@@ -34,7 +33,6 @@ interface ReaderMainContentProps {
   chapterViewerProps: ChapterViewerProps;
   audioLibraryViewProps: AudioLibraryViewProps;
   unitsViewProps: UnitsViewProps;
-  audioViewProps: AudioViewProps;
   streamBubbleProps: StreamBubbleProps;
 }
 
@@ -47,7 +45,6 @@ export default function ReaderMainContent({
   chapterViewerProps,
   audioLibraryViewProps,
   unitsViewProps,
-  audioViewProps,
   streamBubbleProps
 }: ReaderMainContentProps) {
   const { mainView } = useAppSelector(selectNavigationState);
@@ -85,7 +82,7 @@ export default function ReaderMainContent({
             <ChapterViewer {...chapterViewerProps} />
           )
         ) : (
-          <AudioView {...audioViewProps} />
+          <AudioView />
         )}
         {loading && <div className="viewer-status">Loading...</div>}
         <StreamBubble {...streamBubbleProps} />

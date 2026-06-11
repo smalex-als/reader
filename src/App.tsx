@@ -9,7 +9,6 @@ import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useChapterTextContext } from '@/hooks/useChapterTextContext';
-import { useChapterVersionNavigation } from '@/hooks/useChapterVersionNavigation';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { useNavigation } from '@/hooks/useNavigation';
@@ -229,10 +228,6 @@ export default function App() {
     toggleTextModal,
     updatePageTextBlocks
   } = usePageText(currentImage);
-  const {
-    requestChapterVersionNavigation,
-    clearChapterVersionNavigation
-  } = useChapterVersionNavigation();
   useEffect(() => {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);
@@ -710,17 +705,6 @@ export default function App() {
       onPlayTopicParagraph: handlePlayChapterParagraph,
       onStopAudio: handleStopStream,
       onOpenSource: handleOpenUnitSource
-    },
-    audioViewProps: {
-      onOpenChapterText: (pageIndex: number, versionId?: string, targetChapterNumber?: number) => {
-        if (versionId && targetChapterNumber) {
-          requestChapterVersionNavigation(targetChapterNumber, versionId);
-        } else {
-          clearChapterVersionNavigation();
-        }
-        setViewMode('text');
-        renderPage(pageIndex);
-      }
     },
     streamBubbleProps: {
       streamState,
