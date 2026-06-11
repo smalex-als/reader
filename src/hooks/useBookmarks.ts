@@ -22,29 +22,7 @@ export function useBookmarks(options: UseBookmarksOptions) {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
-
-  const fetchBookmarks = useCallback(
-    async (targetBookId: string | null = bookId) => {
-      if (!targetBookId) {
-        dispatch(appActions.resetBookmarks());
-        return;
-      }
-      dispatch(appActions.setBookmarksLoading(true));
-      try {
-        const data = await fetchJson<{ book: string; bookmarks: Bookmark[] }>(
-          `/api/books/${encodeURIComponent(targetBookId)}/bookmarks`
-        );
-        dispatch(appActions.setBookmarks(data.bookmarks ?? []));
-      } catch (error) {
-        console.error(error);
-        dispatch(appActions.setBookmarks([]));
-        showToast('Unable to load bookmarks', 'error');
-      } finally {
-        dispatch(appActions.setBookmarksLoading(false));
-      }
-    },
-    [bookId, dispatch, showToast]
-  );
+  const fetchBookmarks = useFetchBookmarks();
 
   const addBookmark = useCallback(async () => {
     if (!bookId || !currentImage) {
@@ -85,13 +63,6 @@ export function useBookmarks(options: UseBookmarksOptions) {
     }
   }, [addBookmark, bookmarks, currentPage, removeBookmark]);
 
-  const showBookmarks = useCallback(() => {
-    dispatch(appActions.openModal('bookmarks'));
-    if (bookmarks.length === 0) {
-      void fetchBookmarks();
-    }
-  }, [bookmarks.length, dispatch, fetchBookmarks]);
-
   const closeBookmarks = useCallback(() => {
     dispatch(appActions.closeModal('bookmarks'));
   }, [dispatch]);
@@ -119,9 +90,51 @@ export function useBookmarks(options: UseBookmarksOptions) {
     fetchBookmarks,
     handleSelectBookmark,
     removeBookmark,
-    showBookmarks,
     toggleBookmark
   };
+}
+
+export function useFetchBookmarks() {
+  const { bookId } = useAppSelector(selectReaderSession);
+  const { showToast } = useToast();
+  const dispatch = useAppDispatch();
+
+  return useCallback(
+    async (targetBookId: string | null = bookId) => {
+      if (!targetBookId) {
+        dispatch(appActions.resetBookmarks());
+        return;
+      }
+      dispatch(appActions.setBookmarksLoading(true));
+      try {
+        const data = await fetchJson<{ book: string; bookmarks: Bookmark[] }>(
+          `/api/books/${encodeURIComponent(targetBookId)}/bookmarks`
+        );
+        dispatch(appActions.setBookmarks(data.bookmarks ?? []));
+      } catch (error) {
+        console.error(error);
+        dispatch(appActions.setBookmarks([]));
+        showToast('Unable to load bookmarks', 'error');
+      } finally {
+        dispatch(appActions.setBookmarksLoading(false));
+      }
+    },
+    [bookId, dispatch, showToast]
+  );
+}
+
+export function useShowBookmarks() {
+  const dispatch = useAppDispatch();
+  const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
+  const fetchBookmarks = useFetchBookmarks();
+
+  return useCallback(() => {
+    dispatch(appActions.closeModal('settings'));
+    dispatch(appActions.openModal('bookmarks'));
+    if (bookmarks.length === 0) {
+      void fetchBookmarks();
+    }
+  }, [bookmarks.length, dispatch, fetchBookmarks]);
 }
 
 export function useRemoveBookmark() {

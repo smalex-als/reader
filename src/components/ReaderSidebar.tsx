@@ -9,6 +9,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useShowBookmarks } from '@/hooks/useBookmarks';
 import type { StreamState } from '@/types/app';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
@@ -20,7 +21,6 @@ interface ReaderSidebarProps {
   onNext: () => void;
   onGoTo: (page: number) => void;
   onToggleBookmark: () => void;
-  onShowBookmarks: () => void;
   onStreamVoiceChange: (voice: string) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
@@ -77,12 +77,12 @@ export default function ReaderSidebar({
   onNext,
   onGoTo,
   onToggleBookmark,
-  onShowBookmarks,
   onStreamVoiceChange,
   onPlayStream,
   onStopStream
 }: ReaderSidebarProps) {
   const dispatch = useAppDispatch();
+  const showBookmarks = useShowBookmarks();
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { mainView } = useAppSelector(selectNavigationState);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
@@ -283,7 +283,7 @@ export default function ReaderSidebar({
             <SidebarIcon name="bookmark" />
             <span className="reader-sidebar-label">{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
           </button>
-          <button type="button" className="reader-sidebar-action" onClick={onShowBookmarks} disabled={!currentBook} title="Bookmarks" data-tooltip="Bookmarks">
+          <button type="button" className="reader-sidebar-action" onClick={showBookmarks} disabled={!currentBook} title="Bookmarks" data-tooltip="Bookmarks">
             <SidebarIcon name="bookmark" />
             <span className="reader-sidebar-label">Bookmarks</span>
             {!collapsed ? <span className="reader-sidebar-count">{bookmarksCount}</span> : null}

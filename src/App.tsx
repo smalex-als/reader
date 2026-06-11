@@ -515,7 +515,6 @@ export default function App() {
   const {
     closeBookmarks,
     handleSelectBookmark,
-    showBookmarks,
     toggleBookmark
   } = useBookmarks({
     bookId,
@@ -676,11 +675,7 @@ export default function App() {
     onStreamVoiceChange: handleActiveStreamVoiceChange,
     onPlayStream: () => void handlePlayVisibleStream(),
     onStopStream: handleStopStream,
-    onToggleBookmark: toggleBookmark,
-    onShowBookmarks: () => {
-      setSettingsOpen(false);
-      showBookmarks();
-    }
+    onToggleBookmark: toggleBookmark
   };
 
   const settingsToolbarProps = {
