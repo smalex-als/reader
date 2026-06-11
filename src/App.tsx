@@ -16,7 +16,6 @@ import { useModalState } from '@/hooks/useModalState';
 import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
-import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useRefreshTokens } from '@/hooks/useRefreshTokens';
 import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
@@ -66,14 +65,10 @@ export default function App() {
     setSelectedUnitTopicId
   } = useUnitsRouteState();
   const {
-    openHelp,
-    openOcrQueue,
     closeOcrQueue,
-    openJobWorker,
     closeSearch,
     openBookCard,
     closeBookCard,
-    openPromptEditor,
     setSettingsOpen,
     setEditorOpen,
     setEditorChapterNumber,
@@ -168,7 +163,6 @@ export default function App() {
   const currentImage = manifest[currentPage] ?? null;
   const {
     tocOpen,
-    setTocManageOpen,
     tocEntries,
     setTocEntries,
     sortedTocEntries,
@@ -450,7 +444,6 @@ export default function App() {
     retryFailed,
     togglePause
   } = useOcrQueue({ manifest, currentPage });
-  const { openPrintModal } = usePrintOptions();
   useEffect(() => {
     if (
       !pendingAlignTopRef.current ||
@@ -738,28 +731,7 @@ export default function App() {
       setSettingsOpen(false);
       void handleOpenMemoryCard();
     },
-    onOpenPrint: () => {
-      setSettingsOpen(false);
-      openPrintModal();
-    },
     onShareLink: () => void handleShareLink(),
-    onOpenHelp: () => {
-      setSettingsOpen(false);
-      openHelp();
-    },
-    onOpenPromptEditor: () => {
-      setSettingsOpen(false);
-      openPromptEditor();
-    },
-    onOpenOcrQueue: openOcrQueue,
-    onOpenJobWorker: () => {
-      setSettingsOpen(false);
-      openJobWorker();
-    },
-    onOpenTocManage: () => {
-      setSettingsOpen(false);
-      setTocManageOpen(true);
-    },
     ocrQueueTotal: ocrQueueState.total,
     ocrQueueProcessed: ocrQueueState.processed,
     ocrQueueFailed: ocrQueueState.failed,

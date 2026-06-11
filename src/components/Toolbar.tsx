@@ -1,12 +1,15 @@
 import {
+  appActions,
   selectBookSessionWorkflow,
   selectFullscreen,
   selectOcrEdit,
   selectReaderSession,
   selectViewerWorkflow,
+  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { usePrintOptions } from '@/hooks/usePrintOptions';
 
 export type ToolbarTab = 'image' | 'study' | 'tools';
 
@@ -33,13 +36,7 @@ interface ToolbarProps {
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
   onOpenMemoryCard: () => void;
-  onOpenPrint: () => void;
   onShareLink: () => void;
-  onOpenHelp: () => void;
-  onOpenPromptEditor: () => void;
-  onOpenOcrQueue: () => void;
-  onOpenJobWorker: () => void;
-  onOpenTocManage: () => void;
   ocrQueueTotal: number;
   ocrQueueProcessed: number;
   ocrQueueFailed: number;
@@ -70,24 +67,20 @@ export default function Toolbar({
   onOpenQuiz,
   onOpenVocabulary,
   onOpenMemoryCard,
-  onOpenPrint,
   onShareLink,
-  onOpenHelp,
-  onOpenPromptEditor,
-  onOpenOcrQueue,
-  onOpenJobWorker,
-  onOpenTocManage,
   ocrQueueTotal,
   ocrQueueProcessed,
   ocrQueueFailed,
   ocrQueueRunning,
   ocrQueuePaused
 }: ToolbarProps) {
+  const dispatch = useAppDispatch();
   const { bookId: currentBook, viewMode } = useAppSelector(selectReaderSession);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
   const { chapterNumber, chapterLabel } = useCurrentChapterContext();
+  const { openPrintModal } = usePrintOptions();
   const {
     settings: {
       invert,
@@ -125,6 +118,30 @@ export default function Toolbar({
   const showStudyTab = !isModal || activeTab === 'study';
   const showToolsTab = !isModal || activeTab === 'tools';
   const showImageControls = viewMode === 'pages' || viewMode === 'scroll';
+  const closeSettings = () => dispatch(appActions.closeModal('settings'));
+  const handleOpenPrint = () => {
+    closeSettings();
+    openPrintModal();
+  };
+  const handleOpenHelp = () => {
+    closeSettings();
+    dispatch(appActions.openModal('help'));
+  };
+  const handleOpenPromptEditor = () => {
+    closeSettings();
+    dispatch(appActions.openModal('promptEditor'));
+  };
+  const handleOpenOcrQueue = () => {
+    dispatch(appActions.openModal('ocrQueue'));
+  };
+  const handleOpenJobWorker = () => {
+    closeSettings();
+    dispatch(appActions.openModal('jobWorker'));
+  };
+  const handleOpenTocManage = () => {
+    closeSettings();
+    dispatch(appActions.openModal('tocManage'));
+  };
 
   return (
     <div className={`toolbar ${isModal ? 'toolbar-modal' : ''}`}>
@@ -350,7 +367,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onOpenOcrQueue}
+            onClick={handleOpenOcrQueue}
             disabled={controlsDisabled || disableImageActions}
           >
             Batch OCR
@@ -358,14 +375,14 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onOpenPromptEditor}
+            onClick={handleOpenPromptEditor}
           >
             Prompts
           </button>
           <button
             type="button"
             className="button"
-            onClick={onOpenJobWorker}
+            onClick={handleOpenJobWorker}
           >
             Jobs
           </button>
@@ -378,7 +395,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button button-secondary"
-            onClick={onOpenTocManage}
+            onClick={handleOpenTocManage}
             disabled={controlsDisabled}
           >
             Edit TOC
@@ -394,7 +411,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onOpenPrint}
+            onClick={handleOpenPrint}
             disabled={controlsDisabled || disableImageActions}
           >
             Print PDF
@@ -408,7 +425,7 @@ export default function Toolbar({
           <button type="button" className="button" onClick={onShareLink} disabled={controlsDisabled}>
             Share Link
           </button>
-          <button type="button" className="button" onClick={onOpenHelp}>
+          <button type="button" className="button" onClick={handleOpenHelp}>
             Help / Hotkeys
           </button>
           <button type="button" className="button" onClick={onToggleFullscreen}>
