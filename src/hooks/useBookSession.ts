@@ -7,6 +7,7 @@ import {
   selectBookSessionWorkflow,
   selectModalOpen,
   selectReaderSession,
+  selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -22,14 +23,11 @@ import {
   saveSettingsForBook,
   saveStreamVoiceForBook
 } from '@/lib/storage';
-import type { AppSettings, TocEntry, ViewerMetrics } from '@/types/app';
+import type { AppSettings, TocEntry } from '@/types/app';
 
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 
 type BookSessionOptions<StreamVoice extends string> = {
-  settings: AppSettings;
-  setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
-  setMetrics: React.Dispatch<React.SetStateAction<ViewerMetrics | null>>;
   urlSyncPaused?: boolean;
   setEditorOpen: (open: boolean) => void;
   setEditorChapterNumber: React.Dispatch<React.SetStateAction<number | null>>;
@@ -90,9 +88,6 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
 }
 
 export function useBookSession<StreamVoice extends string>({
-  settings,
-  setSettings,
-  setMetrics,
   urlSyncPaused = false,
   setEditorOpen,
   setEditorChapterNumber,
@@ -107,6 +102,7 @@ export function useBookSession<StreamVoice extends string>({
   const dispatch = useAppDispatch();
   const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { settings } = useAppSelector(selectViewerWorkflow);
   const {
     books,
     manifest,
@@ -313,7 +309,7 @@ export function useBookSession<StreamVoice extends string>({
           pan: { ...baseSettings.pan, ...storedSettings.pan }
         }
       : baseSettings;
-    setSettings(nextSettings);
+    dispatch(appActions.setViewerSettings(nextSettings));
     const storedVoice = loadStreamVoiceForBook(bookId);
     if (storedVoice && isStreamVoice(storedVoice)) {
       setStreamVoice(storedVoice);
@@ -322,7 +318,7 @@ export function useBookSession<StreamVoice extends string>({
     }
     pendingPageRef.current = loadLastPage(bookId);
     setLoading(true);
-    setMetrics(null);
+    dispatch(appActions.setViewerMetrics(null));
     setManifest([]);
     setCurrentPage(0);
 
@@ -385,8 +381,7 @@ export function useBookSession<StreamVoice extends string>({
     getDefaultStreamVoice,
     isStreamVoice,
     libraryStateReady,
-    setMetrics,
-    setSettings,
+    dispatch,
     setCurrentPage,
     setStreamVoice,
     setViewMode,

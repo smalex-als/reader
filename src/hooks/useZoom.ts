@@ -26,13 +26,6 @@ export function useZoom(_initialSettings: AppSettings) {
     [dispatch, settings]
   );
 
-  const setMetrics: Dispatch<SetStateAction<ViewerMetrics | null>> = useCallback(
-    (next) => {
-      dispatch(appActions.setViewerMetrics(resolveNext(next, metrics)));
-    },
-    [dispatch, metrics]
-  );
-
   const updateTransform = useCallback(
     (partial: Partial<Pick<AppSettings, 'zoom' | 'zoomMode' | 'rotation' | 'pan'>>) => {
       setSettings((prev) => {
@@ -133,7 +126,6 @@ export function useZoom(_initialSettings: AppSettings) {
     settings,
     setSettings,
     metrics,
-    setMetrics,
     applyZoomMode,
     updateZoom,
     updateRotation,

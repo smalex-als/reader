@@ -83,7 +83,6 @@ export default function App() {
     settings,
     setSettings,
     metrics,
-    setMetrics,
     applyZoomMode,
     updateZoom,
     updateRotation,
@@ -123,9 +122,6 @@ export default function App() {
     handleCreateChapter,
     handleDeleteChapter
   } = useBookSession({
-    settings,
-    setSettings,
-    setMetrics,
     urlSyncPaused: mainView === 'units',
     setEditorOpen,
     setEditorChapterNumber,
