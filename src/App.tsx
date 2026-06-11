@@ -304,8 +304,7 @@ export default function App() {
     playingStreamLocator,
     activeStreamLocator,
     activeTextParagraph,
-    handlePlayVisibleStream,
-    handleActiveStreamVoiceChange
+    handlePlayVisibleStream
   } = useStreamControls({
     bookId,
     chapterNumber,
@@ -315,6 +314,8 @@ export default function App() {
     startStreamSequence,
     handlePlayChapterParagraph,
     restartStreamFromPageKey,
+    handleStopStream,
+    handleToggleStreamPause,
     isStreamVoice,
     setStreamVoice,
     mp3VoiceOptions,
@@ -555,10 +556,7 @@ export default function App() {
   });
 
   const sidebarProps = {
-    streamState,
-    onStreamVoiceChange: handleActiveStreamVoiceChange,
-    onPlayStream: () => void handlePlayVisibleStream(),
-    onStopStream: handleStopStream
+    streamState
   };
 
   const settingsToolbarProps = {
@@ -694,10 +692,7 @@ export default function App() {
     },
     streamBubbleProps: {
       streamState,
-      onStreamVoiceChange: handleActiveStreamVoiceChange,
-      onToggleStudyMode: toggleStudyMode,
-      onTogglePause: () => void handleToggleStreamPause(),
-      onStopStream: handleStopStream
+      onToggleStudyMode: toggleStudyMode
     }
   };
 

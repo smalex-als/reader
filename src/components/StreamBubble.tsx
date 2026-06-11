@@ -13,18 +13,12 @@ import {
 
 interface StreamBubbleProps {
   streamState: StreamState;
-  onStreamVoiceChange: (voice: string) => void;
   onToggleStudyMode?: () => void;
-  onTogglePause: () => void;
-  onStopStream: () => void;
 }
 
 export default function StreamBubble({
   streamState,
-  onStreamVoiceChange,
-  onToggleStudyMode,
-  onTogglePause,
-  onStopStream
+  onToggleStudyMode
 }: StreamBubbleProps) {
   const dispatch = useAppDispatch();
   const { viewMode } = useAppSelector(selectReaderSession);
@@ -67,7 +61,7 @@ export default function StreamBubble({
       <button
         type="button"
         className="stream-bubble-main"
-        onClick={onTogglePause}
+        onClick={() => dispatch(appActions.requestToggleStreamPause())}
         disabled={isDisabled}
         aria-label={ariaLabel}
         title={title}
@@ -94,7 +88,7 @@ export default function StreamBubble({
         <select
           className="select stream-bubble-voice-select"
           value={streamVoice}
-          onChange={(event) => onStreamVoiceChange(event.target.value)}
+          onChange={(event) => dispatch(appActions.requestStreamVoiceChange(event.target.value))}
           aria-label="Streaming voice"
           title="Streaming voice"
         >
@@ -133,7 +127,7 @@ export default function StreamBubble({
       <button
         type="button"
         className="stream-bubble-stop"
-        onClick={onStopStream}
+        onClick={() => dispatch(appActions.requestStopStream())}
         aria-label="Stop stream audio"
         title="Stop stream"
       >

@@ -102,6 +102,15 @@ export type DashboardNavigationRequest = {
   | { kind: 'unitSource'; bookId: string; chapterNumber: number }
 );
 
+export type StreamControlRequest = {
+  id: number;
+} & (
+  | { kind: 'playVisible' }
+  | { kind: 'stop' }
+  | { kind: 'togglePause' }
+  | { kind: 'setVoice'; voice: string }
+);
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -258,6 +267,7 @@ export interface CentralAppState {
   navigation: AppNavigationState;
   pageNavigationRequest: PageNavigationRequest | null;
   dashboardNavigationRequest: DashboardNavigationRequest | null;
+  streamControlRequest: StreamControlRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -320,6 +330,11 @@ export type AppAction =
   | { type: 'dashboardNavigation/requestAudioLibraryBook'; bookId: string; chapterNumber: number }
   | { type: 'dashboardNavigation/requestUnitSource'; bookId: string; chapterNumber: number }
   | { type: 'dashboardNavigation/clear' }
+  | { type: 'streamControl/requestPlayVisible' }
+  | { type: 'streamControl/requestStop' }
+  | { type: 'streamControl/requestTogglePause' }
+  | { type: 'streamControl/requestSetVoice'; voice: string }
+  | { type: 'streamControl/clear' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -492,6 +507,7 @@ const initialAppState: CentralAppState = {
   navigation: getInitialNavigation(),
   pageNavigationRequest: null,
   dashboardNavigationRequest: null,
+  streamControlRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -676,6 +692,14 @@ export const appActions = {
     chapterNumber
   }),
   clearDashboardNavigation: (): AppAction => ({ type: 'dashboardNavigation/clear' }),
+  requestPlayVisibleStream: (): AppAction => ({ type: 'streamControl/requestPlayVisible' }),
+  requestStopStream: (): AppAction => ({ type: 'streamControl/requestStop' }),
+  requestToggleStreamPause: (): AppAction => ({ type: 'streamControl/requestTogglePause' }),
+  requestStreamVoiceChange: (voice: string): AppAction => ({
+    type: 'streamControl/requestSetVoice',
+    voice
+  }),
+  clearStreamControlRequest: (): AppAction => ({ type: 'streamControl/clear' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1235,6 +1259,44 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         dashboardNavigationRequest: null
+      };
+    case 'streamControl/requestPlayVisible':
+      return {
+        ...state,
+        streamControlRequest: {
+          id: (state.streamControlRequest?.id ?? 0) + 1,
+          kind: 'playVisible'
+        }
+      };
+    case 'streamControl/requestStop':
+      return {
+        ...state,
+        streamControlRequest: {
+          id: (state.streamControlRequest?.id ?? 0) + 1,
+          kind: 'stop'
+        }
+      };
+    case 'streamControl/requestTogglePause':
+      return {
+        ...state,
+        streamControlRequest: {
+          id: (state.streamControlRequest?.id ?? 0) + 1,
+          kind: 'togglePause'
+        }
+      };
+    case 'streamControl/requestSetVoice':
+      return {
+        ...state,
+        streamControlRequest: {
+          id: (state.streamControlRequest?.id ?? 0) + 1,
+          kind: 'setVoice',
+          voice: action.voice
+        }
+      };
+    case 'streamControl/clear':
+      return {
+        ...state,
+        streamControlRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -1951,6 +2013,7 @@ export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.set
 export const selectNavigationState = (state: CentralAppState) => state.navigation;
 export const selectPageNavigationRequest = (state: CentralAppState) => state.pageNavigationRequest;
 export const selectDashboardNavigationRequest = (state: CentralAppState) => state.dashboardNavigationRequest;
+export const selectStreamControlRequest = (state: CentralAppState) => state.streamControlRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

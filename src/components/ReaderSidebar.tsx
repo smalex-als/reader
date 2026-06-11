@@ -16,9 +16,6 @@ type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
 interface ReaderSidebarProps {
   streamState: StreamState;
-  onStreamVoiceChange: (voice: string) => void;
-  onPlayStream: () => void;
-  onStopStream: () => void;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'scanned-reader:sidebarCollapsed';
@@ -65,12 +62,7 @@ function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'a
   );
 }
 
-export default function ReaderSidebar({
-  streamState,
-  onStreamVoiceChange,
-  onPlayStream,
-  onStopStream
-}: ReaderSidebarProps) {
+export default function ReaderSidebar({ streamState }: ReaderSidebarProps) {
   const dispatch = useAppDispatch();
   const showBookmarks = useShowBookmarks();
   const toggleBookmark = useToggleBookmark();
@@ -311,7 +303,7 @@ export default function ReaderSidebar({
             <select
               value={streamVoice}
               disabled={controlsDisabled}
-              onChange={(event) => onStreamVoiceChange(event.currentTarget.value)}
+              onChange={(event) => dispatch(appActions.requestStreamVoiceChange(event.currentTarget.value))}
             >
               {streamVoiceOptions.map((voice) => (
                 <option key={voice.id} value={voice.id}>
@@ -325,7 +317,9 @@ export default function ReaderSidebar({
           <button
             type="button"
             className={`reader-sidebar-action ${streamActive ? 'reader-sidebar-action-active' : ''}`}
-            onClick={streamActive ? onStopStream : onPlayStream}
+            onClick={() =>
+              dispatch(streamActive ? appActions.requestStopStream() : appActions.requestPlayVisibleStream())
+            }
             disabled={controlsDisabled}
             title={streamActive ? 'Stop stream' : 'Play stream'}
             data-tooltip={streamActive ? 'Stop stream' : 'Play stream'}

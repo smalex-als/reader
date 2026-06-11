@@ -3,6 +3,7 @@ import { useToast } from '@/hooks/useToast';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import {
   appActions,
+  selectStreamControlRequest,
   selectStreamUiControls,
   useAppDispatch,
   useAppSelector
@@ -29,6 +30,8 @@ interface UseStreamControlsOptions {
     key: string;
   }) => Promise<void>;
   restartStreamFromPageKey: (pageKey: string, voice: string) => Promise<void>;
+  handleStopStream: () => void;
+  handleToggleStreamPause: () => Promise<void> | void;
   isStreamVoice: (voice: string) => boolean;
   setStreamVoice: (voice: string) => void;
   mp3VoiceOptions: ReadonlyArray<{ id: string }>;
@@ -44,6 +47,8 @@ export function useStreamControls({
   startStreamSequence,
   handlePlayChapterParagraph,
   restartStreamFromPageKey,
+  handleStopStream,
+  handleToggleStreamPause,
   isStreamVoice,
   setStreamVoice,
   mp3VoiceOptions,
@@ -52,6 +57,7 @@ export function useStreamControls({
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
+  const streamControlRequest = useAppSelector(selectStreamControlRequest);
 
   const setSelectedStreamBlockKey = useCallback(
     (key: string | null) => {
@@ -156,6 +162,29 @@ export function useStreamControls({
     [mp3VoiceOptions, setMp3Voice]
   );
 
+  useEffect(() => {
+    if (!streamControlRequest) {
+      return;
+    }
+    if (streamControlRequest.kind === 'playVisible') {
+      void handlePlayVisibleStream();
+    } else if (streamControlRequest.kind === 'stop') {
+      handleStopStream();
+    } else if (streamControlRequest.kind === 'togglePause') {
+      void handleToggleStreamPause();
+    } else {
+      handleActiveStreamVoiceChange(streamControlRequest.voice);
+    }
+    dispatch(appActions.clearStreamControlRequest());
+  }, [
+    dispatch,
+    handleActiveStreamVoiceChange,
+    handlePlayVisibleStream,
+    handleStopStream,
+    handleToggleStreamPause,
+    streamControlRequest
+  ]);
+
   return {
     selectedStreamBlockKey,
     setSelectedStreamBlockKey,
@@ -165,8 +194,6 @@ export function useStreamControls({
     activeStreamLocator,
     activeTextParagraph,
     handlePlayVisibleStream,
-    restartActiveStream,
-    handleActiveStreamVoiceChange,
     handleMp3VoiceChange
   };
 }
