@@ -19,7 +19,6 @@ import {
 } from '@/state/appState';
 
 type HotkeysOptions = {
-  handlePlayNextStudyBlock: () => Promise<void> | void;
   gotoInputRef: RefObject<HTMLInputElement>;
 };
 
@@ -32,7 +31,6 @@ function isTextInput(element: EventTarget | null) {
 }
 
 export function useHotkeys({
-  handlePlayNextStudyBlock,
   gotoInputRef
 }: HotkeysOptions) {
   const dispatch = useAppDispatch();
@@ -281,7 +279,7 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          void handlePlayNextStudyBlock();
+          dispatch(appActions.requestPlayNextStudyBlock());
           break;
         case 'g':
           event.preventDefault();
@@ -388,7 +386,6 @@ export function useHotkeys({
     settings.pan.x,
     settings.pan.y,
     settings.zoom,
-    handlePlayNextStudyBlock,
     textModalOpen,
     updateRotation,
     updateZoom,

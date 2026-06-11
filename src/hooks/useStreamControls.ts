@@ -24,6 +24,7 @@ interface UseStreamControlsOptions {
   restartStreamFromPageKey: (pageKey: string, voice: string) => Promise<void>;
   handleStopStream: () => void;
   handleToggleStreamPause: () => Promise<void> | void;
+  handlePlayNextStudyBlock: () => Promise<void> | void;
 }
 
 export function useStreamControls({
@@ -31,7 +32,8 @@ export function useStreamControls({
   handlePlayChapterParagraph,
   restartStreamFromPageKey,
   handleStopStream,
-  handleToggleStreamPause
+  handleToggleStreamPause,
+  handlePlayNextStudyBlock
 }: UseStreamControlsOptions) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
@@ -163,6 +165,8 @@ export function useStreamControls({
     }
     if (streamControlRequest.kind === 'playVisible') {
       void handlePlayVisibleStream();
+    } else if (streamControlRequest.kind === 'playNextStudyBlock') {
+      void handlePlayNextStudyBlock();
     } else if (streamControlRequest.kind === 'stop') {
       handleStopStream();
     } else if (streamControlRequest.kind === 'togglePause') {
@@ -174,6 +178,7 @@ export function useStreamControls({
   }, [
     dispatch,
     handleActiveStreamVoiceChange,
+    handlePlayNextStudyBlock,
     handlePlayVisibleStream,
     handleStopStream,
     handleToggleStreamPause,

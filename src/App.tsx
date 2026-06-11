@@ -200,7 +200,8 @@ export default function App() {
     handlePlayChapterParagraph,
     restartStreamFromPageKey,
     handleStopStream,
-    handleToggleStreamPause
+    handleToggleStreamPause,
+    handlePlayNextStudyBlock
   });
 
   useStreamHistoryLogger();
@@ -575,7 +576,6 @@ export default function App() {
   ]);
 
   useHotkeys({
-    handlePlayNextStudyBlock,
     gotoInputRef
   });
 
