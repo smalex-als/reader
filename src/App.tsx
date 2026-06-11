@@ -58,6 +58,7 @@ import type {
   SearchResult,
   TocEntry
 } from '@/types/app';
+import type { QuizModal as QuizModalId } from '@/state/appState';
 
 export default function App() {
   const {
@@ -275,26 +276,16 @@ export default function App() {
       ? { start: currentChapterEntry.page, end: nextChapterEntry?.page ?? manifest.length }
       : null;
   const {
-    quizOpen,
-    quizLoading,
-    quizError,
-    quiz,
     openQuiz: handleOpenQuiz,
-    regenerateQuiz: handleRegenerateQuiz,
-    closeQuiz: handleCloseQuiz
+    regenerateQuiz: handleRegenerateQuiz
   } = useChapterQuiz({
     bookId,
     chapterNumber,
     chapterRange
   });
   const {
-    quizOpen: unitQuizOpen,
-    quizLoading: unitQuizLoading,
-    quizError: unitQuizError,
-    quiz: unitQuiz,
     openQuiz: handleOpenUnitTopicQuiz,
-    regenerateQuiz: handleRegenerateUnitTopicQuiz,
-    closeQuiz: handleCloseUnitTopicQuiz
+    regenerateQuiz: handleRegenerateUnitTopicQuiz
   } = useUnitTopicQuiz({
     unitSetId: selectedUnitSetId,
     topicId: selectedUnitTopicId
@@ -364,9 +355,7 @@ export default function App() {
   } = usePageText(currentImage);
   const {
     pageTextOcrEngine,
-    setPageTextOcrEngine,
-    quizAutoPlayEnabled,
-    setQuizAutoPlayEnabled
+    setPageTextOcrEngine
   } = useReaderPreferences(bookId);
   const {
     chapterVersionNavigationRequest,
@@ -714,7 +703,6 @@ export default function App() {
     unitsRefreshToken,
     refreshUnits,
     unitCreating,
-    unitQuizLabel,
     setUnitQuizLabel,
     handleOpenUnits,
     handleCreateUnit
@@ -1008,45 +996,27 @@ export default function App() {
       onSaved: refreshBookCards
     },
     quizModalProps: {
-      open: quizOpen || unitQuizOpen,
-      loading: unitQuizOpen ? unitQuizLoading : quizLoading,
-      error: unitQuizOpen ? unitQuizError : quizError,
-      contextLabel: unitQuizOpen
-        ? unitQuizLabel
-        : currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
-      quiz: unitQuizOpen ? unitQuiz : quiz,
+      contextLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
       streamState,
-      autoPlayEnabled: quizAutoPlayEnabled,
-      onStreamQuestion: (text: string, questionIndex: number) => {
-        const contextKey = (unitQuizOpen ? unitQuiz : quiz)?.contextKey ?? `quiz::chapter-${chapterNumber ?? 'unknown'}`;
+      onStreamQuestion: (text: string, questionIndex: number, contextKey: string) => {
         void handlePlaySingleStream({
           text,
           pageKey: `${contextKey}::question-${questionIndex + 1}`
         });
       },
-      onStreamAnswer: (text: string, questionIndex: number) => {
-        const contextKey = (unitQuizOpen ? unitQuiz : quiz)?.contextKey ?? `quiz::chapter-${chapterNumber ?? 'unknown'}`;
+      onStreamAnswer: (text: string, questionIndex: number, contextKey: string) => {
         void handlePlaySingleStream({
           text,
           pageKey: `${contextKey}::question-${questionIndex + 1}::answer`
         });
       },
       onStopAudio: handleStopStream,
-      onAutoPlayEnabledChange: setQuizAutoPlayEnabled,
-      onRegenerate: () => {
-        if (unitQuizOpen) {
+      onRegenerate: (modal: QuizModalId) => {
+        if (modal === 'unitQuiz') {
           void handleRegenerateUnitTopicQuiz().then(refreshUnits);
           return;
         }
         void handleRegenerateQuiz();
-      },
-      onClose: () => {
-        handleStopStream();
-        if (unitQuizOpen) {
-          handleCloseUnitTopicQuiz();
-          return;
-        }
-        handleCloseQuiz();
       }
     },
     vocabularyModalProps: {

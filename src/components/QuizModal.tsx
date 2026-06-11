@@ -1,43 +1,52 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import type { Quiz, StreamState } from '@/types/app';
+import {
+  appActions,
+  selectModalOpen,
+  selectQuizWorkflow,
+  selectReaderPreferences,
+  selectUnitWorkflow,
+  useAppDispatch,
+  useAppSelector,
+  type QuizModal as QuizModalId
+} from '@/state/appState';
+import type { StreamState } from '@/types/app';
 
 interface QuizModalProps {
-  open: boolean;
-  loading: boolean;
-  error: string | null;
   contextLabel: string;
-  quiz: Quiz | null;
   streamState: StreamState;
-  autoPlayEnabled: boolean;
-  onStreamQuestion: (text: string, questionIndex: number) => void;
-  onStreamAnswer: (text: string, questionIndex: number) => void;
+  onStreamQuestion: (text: string, questionIndex: number, contextKey: string) => void;
+  onStreamAnswer: (text: string, questionIndex: number, contextKey: string) => void;
   onStopAudio: () => void;
-  onAutoPlayEnabledChange: (enabled: boolean) => void;
-  onRegenerate: () => void;
-  onClose: () => void;
+  onRegenerate: (modal: QuizModalId) => void;
 }
 
 export default function QuizModal({
-  open,
-  loading,
-  error,
   contextLabel,
-  quiz,
   streamState,
-  autoPlayEnabled,
   onStreamQuestion,
   onStreamAnswer,
   onStopAudio,
-  onAutoPlayEnabledChange,
-  onRegenerate,
-  onClose
+  onRegenerate
 }: QuizModalProps) {
+  const dispatch = useAppDispatch();
+  const unitQuizOpen = useAppSelector(selectModalOpen('unitQuiz'));
+  const chapterQuizOpen = useAppSelector(selectModalOpen('chapterQuiz'));
+  const activeModal: QuizModalId = unitQuizOpen ? 'unitQuiz' : 'chapterQuiz';
+  const open = unitQuizOpen || chapterQuizOpen;
+  const { loading, error, quiz } = useAppSelector(selectQuizWorkflow(activeModal));
+  const { quizAutoPlayEnabled: autoPlayEnabled } = useAppSelector(selectReaderPreferences);
+  const { quizLabel: unitQuizLabel } = useAppSelector(selectUnitWorkflow);
+  const modalContextLabel = activeModal === 'unitQuiz' ? unitQuizLabel : contextLabel;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const wasOpenRef = useRef(false);
   const autoPlayQuestionKeyRef = useRef<string | null>(null);
+  const handleClose = () => {
+    onStopAudio();
+    dispatch(appActions.closeModal(activeModal));
+  };
 
   useEffect(() => {
     if (!open) {
@@ -100,7 +109,7 @@ export default function QuizModal({
       'Answer choices.',
       ...currentQuestion.options.map((option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`)
     ].join('\n\n');
-    onStreamQuestion(spokenText, currentIndex);
+    onStreamQuestion(spokenText, currentIndex, quiz.contextKey);
   }, [autoPlayEnabled, currentIndex, currentQuestion, currentQuestionAnswered, onStreamQuestion, open, quiz]);
 
   if (!open) {
@@ -113,13 +122,13 @@ export default function QuizModal({
         <header className="modal-header">
           <h2 className="modal-title">
             Quiz
-            <span className="modal-marker">• {contextLabel}</span>
+            <span className="modal-marker">• {modalContextLabel}</span>
           </h2>
           <div className="modal-actions">
             <button
               type="button"
               className="button button-secondary"
-              onClick={onRegenerate}
+              onClick={() => onRegenerate(activeModal)}
               disabled={loading}
             >
               Regenerate Quiz
@@ -127,7 +136,7 @@ export default function QuizModal({
             <button
               type="button"
               className="button button-ghost modal-icon-button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Close quiz"
               title="Close quiz"
             >
@@ -185,7 +194,7 @@ export default function QuizModal({
                       ]
                         .filter(Boolean)
                         .join('\n\n');
-                      onStreamQuestion(spokenText, currentIndex);
+                      onStreamQuestion(spokenText, currentIndex, quiz.contextKey);
                     }}
                     aria-label={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
                     title={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
@@ -205,7 +214,7 @@ export default function QuizModal({
                   <input
                     type="checkbox"
                     checked={autoPlayEnabled}
-                    onChange={(event) => onAutoPlayEnabledChange(event.target.checked)}
+                    onChange={(event) => dispatch(appActions.setQuizAutoPlayEnabled(event.target.checked))}
                   />
                   <span>Quiz audio</span>
                 </label>
@@ -238,7 +247,7 @@ export default function QuizModal({
                             .join('\n\n');
                           setAnswers((prev) => ({ ...prev, [currentQuestion.id]: optionIndex }));
                           if (autoPlayEnabled) {
-                            onStreamAnswer(answerFeedback, currentIndex);
+                            onStreamAnswer(answerFeedback, currentIndex, quiz.contextKey);
                           }
                         }}
                         disabled={submitted || currentQuestionAnswered}

@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import {
   appActions,
-  selectModalOpen,
-  selectQuizWorkflow,
   useAppDispatch,
-  useAppSelector,
   type QuizModal
 } from '@/state/appState';
 import type { Quiz } from '@/types/app';
@@ -19,8 +16,6 @@ type UseQuizOptions = {
 
 export function useQuiz({ targetKey, modal, unavailableMessage, buildUrl, buildPostBody }: UseQuizOptions) {
   const dispatch = useAppDispatch();
-  const quizOpen = useAppSelector(selectModalOpen(modal));
-  const { loading: quizLoading, error: quizError, quiz } = useAppSelector(selectQuizWorkflow(modal));
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -94,17 +89,8 @@ export function useQuiz({ targetKey, modal, unavailableMessage, buildUrl, buildP
     await loadQuiz(true);
   }, [loadQuiz]);
 
-  const closeQuiz = useCallback(() => {
-    dispatch(appActions.closeModal(modal));
-  }, [dispatch, modal]);
-
   return {
-    quizOpen,
-    quizLoading,
-    quizError,
-    quiz,
     openQuiz,
-    regenerateQuiz,
-    closeQuiz
+    regenerateQuiz
   };
 }
