@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import { useDeleteBook } from '@/hooks/useBookSession';
+import { useDeleteBook, useUploadPdf } from '@/hooks/useBookSession';
 import {
   appActions,
   selectBookSessionWorkflow,
@@ -32,15 +32,14 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 
 interface BookSelectModalProps {
   onUploadChapter: (file: File, details: { bookName: string; chapterTitle: string }) => void;
-  onUploadPdf: (file: File) => void;
 }
 
 export default function BookSelectModal({
-  onUploadChapter,
-  onUploadPdf
+  onUploadChapter
 }: BookSelectModalProps) {
   const dispatch = useAppDispatch();
   const deleteBook = useDeleteBook();
+  const uploadPdf = useUploadPdf();
   const open = useAppSelector(selectModalOpen('bookSelect'));
   const { bookId: currentBook } = useAppSelector(selectReaderSession);
   const { books, uploadingChapter, uploadingPdf } = useAppSelector(selectBookSessionWorkflow);
@@ -174,7 +173,7 @@ export default function BookSelectModal({
     if (!file) {
       return;
     }
-    onUploadPdf(file);
+    void uploadPdf(file);
   };
 
   const handleTriggerPdfUpload = () => {

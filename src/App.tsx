@@ -128,7 +128,6 @@ export default function App() {
     loading,
     handleUploadChapter,
     handleCreateChapter,
-    handleUploadPdf,
     handleDeleteChapter
   } = useBookSession({
     settings,
@@ -729,8 +728,7 @@ export default function App() {
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null,
     bookSelectModalProps: {
-      onUploadChapter: handleUploadChapter,
-      onUploadPdf: handleUploadPdf
+      onUploadChapter: handleUploadChapter
     },
     bookmarksModalProps: {
       onSelect: handleSelectBookmark

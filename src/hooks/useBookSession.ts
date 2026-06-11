@@ -573,42 +573,6 @@ export function useBookSession<StreamVoice extends string>({
     ]
   );
 
-  const handleUploadPdf = useCallback(
-    async (file: File) => {
-      setUploadingPdf(true);
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/upload/pdf', { method: 'POST', body: formData });
-        if (!response.ok) {
-          throw new Error(`Upload failed: ${response.status}`);
-        }
-        const data = (await response.json()) as { book: string; manifest?: string[] };
-        const newBookId = data.book;
-        setBooks((prev) => {
-          const next = Array.from(new Set([...prev, newBookId]));
-          next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
-          return next;
-        });
-        setBookId(newBookId);
-        setBookType('image');
-        setChapterCount(0);
-        setManifest(Array.isArray(data.manifest) ? data.manifest : []);
-        onUpdateTocEntries([]);
-        setCurrentPage(0);
-        setViewMode('pages');
-        setBookModalOpen(false);
-        showToast('Book created from PDF', 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Failed to upload PDF', 'error');
-      } finally {
-        setUploadingPdf(false);
-      }
-    },
-    [onUpdateTocEntries, setBookId, setBookModalOpen, setCurrentPage, setViewMode, showToast]
-  );
-
   const handleDeleteChapter = useCallback(
     async (chapterNumber: number) => {
       if (!bookId || bookType !== 'text') {
@@ -696,7 +660,6 @@ export function useBookSession<StreamVoice extends string>({
     uploadingPdf,
     handleUploadChapter,
     handleCreateChapter,
-    handleUploadPdf,
     handleDeleteChapter
   };
 }
@@ -740,5 +703,47 @@ export function useDeleteBook() {
       }
     },
     [bookId, dispatch, showToast]
+  );
+}
+
+export function useUploadPdf() {
+  const { showToast } = useToast();
+  const dispatch = useAppDispatch();
+  const { books } = useAppSelector(selectBookSessionWorkflow);
+
+  return useCallback(
+    async (file: File) => {
+      dispatch(appActions.setBookSessionUploadingPdf(true));
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch('/api/upload/pdf', { method: 'POST', body: formData });
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.status}`);
+        }
+        const data = (await response.json()) as { book: string; manifest?: string[] };
+        const newBookId = data.book;
+        const nextBooks = Array.from(new Set([...books, newBookId]));
+        nextBooks.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
+
+        dispatch(appActions.setBookSessionBooks(nextBooks));
+        dispatch(appActions.setReaderBookId(newBookId));
+        dispatch(appActions.setBookSessionBookType('image'));
+        dispatch(appActions.setBookSessionChapterCount(0));
+        dispatch(appActions.setBookSessionManifest(Array.isArray(data.manifest) ? data.manifest : []));
+        dispatch(appActions.setTocEntries([]));
+        dispatch(appActions.setDetailedTocEntries([]));
+        dispatch(appActions.setReaderCurrentPage(0));
+        dispatch(appActions.setReaderViewMode('pages'));
+        dispatch(appActions.setModalOpen('bookSelect', false));
+        showToast('Book created from PDF', 'success');
+      } catch (error) {
+        console.error(error);
+        showToast('Failed to upload PDF', 'error');
+      } finally {
+        dispatch(appActions.setBookSessionUploadingPdf(false));
+      }
+    },
+    [books, dispatch, showToast]
   );
 }
