@@ -6,9 +6,9 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-export function useCurrentChapterLabel() {
-  const { currentPage } = useAppSelector(selectReaderSession);
-  const { bookType, chapterCount } = useAppSelector(selectBookSessionWorkflow);
+export function useCurrentChapterContext() {
+  const { bookId, currentPage } = useAppSelector(selectReaderSession);
+  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
   const sortedTocEntries = useMemo(
     () =>
@@ -36,7 +36,27 @@ export function useCurrentChapterLabel() {
     }
     return currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
   }, [bookType, currentChapterIndex, currentPage, sortedTocEntries]);
+  const nextChapterEntry =
+    bookType !== 'text' && currentChapterIndex !== null
+      ? sortedTocEntries[currentChapterIndex + 1]
+      : null;
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
+  const pageRange =
+    bookType !== 'text' && currentChapterEntry
+      ? { start: currentChapterEntry.page, end: nextChapterEntry?.page ?? manifest.length }
+      : null;
+  const chapterTitle = currentChapterEntry?.title ?? null;
+  const chapterLabel = chapterTitle ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter');
 
-  return currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter');
+  return {
+    bookId,
+    chapterNumber,
+    chapterTitle,
+    chapterLabel,
+    pageRange
+  };
+}
+
+export function useCurrentChapterLabel() {
+  return useCurrentChapterContext().chapterLabel;
 }

@@ -948,10 +948,6 @@ export default function App() {
       }
     },
     chapterViewerProps: {
-      bookId,
-      chapterNumber,
-      chapterTitle: currentChapterEntry?.title ?? null,
-      pageRange: chapterRange,
       onEditChapter: (payload: { versionId: string; versionLabel: string | null; text: string }) => {
         setEditorChapterNumber(chapterNumber);
         setEditorTextVersion(payload);

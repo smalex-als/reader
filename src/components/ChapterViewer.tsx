@@ -7,6 +7,7 @@ import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
 import {
@@ -24,10 +25,6 @@ import {
 import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface ChapterViewerProps {
-  bookId: string | null;
-  chapterNumber: number | null;
-  chapterTitle: string | null;
-  pageRange: { start: number; end: number } | null;
   onEditChapter: (payload: {
     versionId: string;
     versionLabel: string | null;
@@ -183,10 +180,6 @@ function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
 }
 
 export default function ChapterViewer({
-  bookId,
-  chapterNumber,
-  chapterTitle,
-  pageRange,
   onEditChapter,
   onCreateChapter,
   onDeleteChapter,
@@ -214,6 +207,13 @@ export default function ChapterViewer({
   const { textFontSize } = settings;
   const allowEdit = true;
   const allowGenerate = bookType !== 'text';
+  const {
+    bookId,
+    chapterNumber,
+    chapterTitle,
+    chapterLabel,
+    pageRange
+  } = useCurrentChapterContext();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
@@ -313,13 +313,6 @@ export default function ChapterViewer({
     }
     setOutlineOpen(true);
   }, [outlineItems.length]);
-
-  const chapterLabel = useMemo(() => {
-    if (!chapterNumber) {
-      return 'Chapter';
-    }
-    return `Chapter ${chapterNumber}`;
-  }, [chapterNumber]);
 
   const handleVersionChange = useCallback(
     (nextVersionId: string) => {
