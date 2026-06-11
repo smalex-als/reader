@@ -695,8 +695,6 @@ export default function App() {
     onNext: handleNext,
     onGoTo: (page: number) => renderPage(page),
     streamState,
-    streamVoice,
-    streamVoiceOptions,
     onStreamVoiceChange: handleActiveStreamVoiceChange,
     onPlayStream: () => void handlePlayVisibleStream(),
     onStopStream: handleStopStream,

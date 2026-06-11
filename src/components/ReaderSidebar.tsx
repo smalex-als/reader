@@ -5,6 +5,7 @@ import {
   selectBookSessionWorkflow,
   selectNavigationState,
   selectReaderSession,
+  selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -12,15 +13,8 @@ import type { StreamState } from '@/types/app';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
 
-type StreamVoiceOption = {
-  id: string;
-  label: string;
-};
-
 interface ReaderSidebarProps {
   streamState: StreamState;
-  streamVoice: string;
-  streamVoiceOptions: readonly StreamVoiceOption[];
   onOpenBookModal: () => void;
   onOpenAudioLibrary: () => void;
   onOpenUnits: () => void;
@@ -84,8 +78,6 @@ function SidebarIcon({ name }: { name: 'book' | 'pages' | 'scroll' | 'text' | 'a
 
 export default function ReaderSidebar({
   streamState,
-  streamVoice,
-  streamVoiceOptions,
   onOpenBookModal,
   onOpenAudioLibrary,
   onOpenUnits,
@@ -107,6 +99,7 @@ export default function ReaderSidebar({
   const { mainView } = useAppSelector(selectNavigationState);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
+  const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const [collapsed, setCollapsed] = useState(readInitialCollapsed);
   const [pageDraft, setPageDraft] = useState('');
   const isTextBook = bookType === 'text';
