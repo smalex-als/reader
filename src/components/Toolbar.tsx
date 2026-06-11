@@ -100,13 +100,7 @@ export default function Toolbar({
     currentText,
     fetchPageText
   });
-  const { shareLink } = useShareLink({
-    bookId: currentBook,
-    currentPage,
-    navigationCount,
-    viewMode,
-    trackOpened: false
-  });
+  const { shareLink } = useShareLink({ trackOpened: false });
   const manifestLength = navigationCount;
   const disableImageActions = isTextBook;
   const isModal = layout === 'modal';

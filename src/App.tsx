@@ -529,12 +529,7 @@ export default function App() {
     fetchPageText
   });
 
-  useShareLink({
-    bookId,
-    currentPage,
-    navigationCount,
-    viewMode
-  });
+  useShareLink();
 
   const {
     refreshUnits

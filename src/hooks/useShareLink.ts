@@ -2,19 +2,23 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { trackEvent } from '@/lib/analytics';
 import { copyToClipboard } from '@/lib/clipboard';
+import {
+  selectBookSessionWorkflow,
+  selectReaderSession,
+  useAppSelector
+} from '@/state/appState';
 
 interface UseShareLinkOptions {
-  bookId: string | null;
-  currentPage: number;
-  navigationCount: number;
-  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
   trackOpened?: boolean;
 }
 
-export function useShareLink(options: UseShareLinkOptions) {
-  const { bookId, currentPage, navigationCount, viewMode, trackOpened = true } = options;
+export function useShareLink(options: UseShareLinkOptions = {}) {
+  const { trackOpened = true } = options;
+  const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const { showToast } = useToast();
   const shareOpenedTrackedRef = useRef(false);
+  const navigationCount = bookType === 'text' ? chapterCount : manifest.length;
 
   const shareLink = useCallback(async () => {
     if (!bookId || navigationCount === 0) {
