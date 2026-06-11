@@ -27,7 +27,6 @@ import { useUnitsRouteState, useUnitsRouteSync } from '@/hooks/useUnitsRoute';
 import { useStreamHistoryLogger } from '@/hooks/useStreamHistoryLogger';
 import { useOcrEditMode } from '@/hooks/useOcrEditMode';
 import { useShareLink } from '@/hooks/useShareLink';
-import { useBookSearch } from '@/hooks/useBookSearch';
 import { useCopyActions } from '@/hooks/useCopyActions';
 import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
 import { useFloatingAudio } from '@/hooks/useFloatingAudio';
@@ -79,8 +78,6 @@ export default function App() {
     openOcrQueue,
     closeOcrQueue,
     openJobWorker,
-    searchOpen,
-    setSearchOpen,
     openSearch,
     closeSearch,
     bookCardOpen,
@@ -635,14 +632,6 @@ export default function App() {
   }, [bookId, closeBookmarks, closeBookCard, closeSearch, resetAudioCache, resetTextState, stopAudio, stopStream]);
 
   const {
-    searchQuery,
-    setSearchQuery,
-    searchResults,
-    searchLoading,
-    runSearch: handleSearch
-  } = useBookSearch({ bookId });
-
-  const {
     handleOpenDashboardBook,
     handleOpenDashboardChapter,
     handleOpenDashboardUnit,
@@ -1033,17 +1022,6 @@ export default function App() {
       onClearQueue: clearQueue
     },
     searchModalProps: {
-      open: searchOpen,
-      currentBook: bookId,
-      currentPage,
-      loading: searchLoading,
-      query: searchQuery,
-      results: searchResults,
-      onClose: closeSearch,
-      onSearch: (query: string) => {
-        void handleSearch(query);
-      },
-      onQueryChange: setSearchQuery,
       onSelect: handleSelectSearchResult
     },
     bookCardModalProps: {

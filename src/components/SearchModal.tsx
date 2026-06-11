@@ -1,34 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useBookSearch } from '@/hooks/useBookSearch';
+import {
+  appActions,
+  selectModalOpen,
+  selectReaderSession,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { SearchResult } from '@/types/app';
 
 interface SearchModalProps {
-  open: boolean;
-  currentBook: string | null;
-  currentPage: number;
-  loading: boolean;
-  query: string;
-  results: SearchResult[];
-  onClose: () => void;
-  onSearch: (query: string) => void;
-  onQueryChange: (query: string) => void;
   onSelect: (result: SearchResult) => void;
 }
 
-export default function SearchModal({
-  open,
-  currentBook,
-  currentPage,
-  loading,
-  query,
-  results,
-  onClose,
-  onSearch,
-  onQueryChange,
-  onSelect
-}: SearchModalProps) {
+export default function SearchModal({ onSelect }: SearchModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('search'));
+  const { bookId: currentBook, currentPage } = useAppSelector(selectReaderSession);
+  const {
+    searchQuery: query,
+    setSearchQuery,
+    searchResults: results,
+    searchLoading: loading,
+    runSearch
+  } = useBookSearch();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [draftQuery, setDraftQuery] = useState(query);
+  const handleClose = () => {
+    dispatch(appActions.closeModal('search'));
+  };
 
   useEffect(() => {
     setDraftQuery(query);
@@ -62,7 +63,7 @@ export default function SearchModal({
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close search"
             title="Close search"
           >
@@ -74,7 +75,7 @@ export default function SearchModal({
             className="search-form"
             onSubmit={(event) => {
               event.preventDefault();
-              onSearch(draftQuery);
+              void runSearch(draftQuery);
             }}
           >
             <input
@@ -86,7 +87,7 @@ export default function SearchModal({
               onChange={(event) => {
                 const nextValue = event.currentTarget.value;
                 setDraftQuery(nextValue);
-                onQueryChange(nextValue);
+                setSearchQuery(nextValue);
               }}
             />
             <button type="submit" className="button" disabled={!currentBook || loading || !draftQuery.trim()}>

@@ -3,20 +3,17 @@ import { fetchJson } from '@/lib/fetchJson';
 import { useToast } from '@/hooks/useToast';
 import {
   appActions,
+  selectReaderSession,
   selectSearchWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { BookSearchResponse } from '@/types/app';
 
-interface UseBookSearchOptions {
-  bookId: string | null;
-}
-
-export function useBookSearch(options: UseBookSearchOptions) {
-  const { bookId } = options;
+export function useBookSearch() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
+  const { bookId } = useAppSelector(selectReaderSession);
   const {
     query: searchQuery,
     results: searchResults,
