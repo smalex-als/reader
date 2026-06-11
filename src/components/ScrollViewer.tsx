@@ -63,7 +63,7 @@ export default function ScrollViewer() {
   const { autoFollowStream: autoFollowEnabled } = useAppSelector(selectStreamUiControls);
   const currentImage = manifest[currentPage] ?? null;
   const pageText = currentImage ? textCache[currentImage] ?? null : null;
-  const { fetchPageTextByImage } = usePageText(currentImage);
+  const { fetchPageTextByImage } = usePageText();
   const {
     invert,
     brightness,

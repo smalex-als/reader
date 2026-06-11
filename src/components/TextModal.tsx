@@ -28,7 +28,7 @@ export default function TextModal() {
   } = useAppSelector(selectPageTextWorkflow);
   const { pageTextOcrEngine: ocrEngine } = useAppSelector(selectReaderPreferences);
   const currentImage = manifest[currentPage] ?? null;
-  const { fetchPageText, savePageText } = usePageText(currentImage);
+  const { fetchPageText, savePageText } = usePageText();
   const title = currentImage ?? 'Page text';
   const text = currentImage ? textCache[currentImage] ?? null : null;
   const [draftText, setDraftText] = useState('');

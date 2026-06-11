@@ -174,11 +174,9 @@ export default function App() {
     fetchPageText,
     fetchPageTextByImage,
     resetTextState,
-    savePageText,
     textLoading,
-    toggleTextModal,
-    updatePageTextBlocks
-  } = usePageText(currentImage);
+    toggleTextModal
+  } = usePageText();
   useEffect(() => {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);
@@ -221,11 +219,7 @@ export default function App() {
   const {
     toggleOcrEditMode: handleToggleOcrEditMode,
     toggleSpeechBlock: handleToggleSpeechBlock
-  } = useOcrEditMode({
-    fetchPageText,
-    savePageText,
-    updatePageTextBlocks
-  });
+  } = useOcrEditMode();
 
   useEffect(() => {
     if (!ocrBlockCommandRequest) {

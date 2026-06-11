@@ -3,8 +3,10 @@ import { useToast } from '@/hooks/useToast';
 import { parseOcrLayout, serializeOcrLayout } from '@/lib/ocrLayout';
 import {
   appActions,
+  selectBookSessionWorkflow,
   selectModalOpen,
   selectPageTextWorkflow,
+  selectReaderSession,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -18,14 +20,18 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
   return (await response.json()) as T;
 }
 
-export function usePageText(currentImage: string | null) {
+export function usePageText(imageOverride?: string | null) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const textModalOpen = useAppSelector(selectModalOpen('text'));
   const {
     cache: textCache,
     loading: textLoading
   } = useAppSelector(selectPageTextWorkflow);
+  const selectedImage = manifest[currentPage] ?? null;
+  const currentImage = imageOverride === undefined ? selectedImage : imageOverride;
 
   const fetchPageTextByImage = useCallback(
     async (

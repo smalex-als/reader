@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { usePageText } from '@/hooks/usePageText';
 import { useToast } from '@/hooks/useToast';
 import {
   appActions,
@@ -9,29 +10,10 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { PageText, PageTextOcrEngine } from '@/types/app';
-
-interface UseOcrEditModeOptions {
-  fetchPageText: (options?: {
-    force?: boolean;
-    silent?: boolean;
-    engine?: PageTextOcrEngine;
-  }) => Promise<PageText | null>;
-  savePageText: (nextText: string) => Promise<PageText | null>;
-  updatePageTextBlocks: (
-    updater: (blocks: PageText['blocks']) => PageText['blocks']
-  ) => PageText | null;
-}
-
-export function useOcrEditMode(options: UseOcrEditModeOptions) {
-  const {
-    fetchPageText,
-    savePageText,
-    updatePageTextBlocks
-  } = options;
-
+export function useOcrEditMode() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
+  const { fetchPageText, savePageText, updatePageTextBlocks } = usePageText();
   const { currentPage } = useAppSelector(selectReaderSession);
   const { bookType, manifest } = useAppSelector(selectBookSessionWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);

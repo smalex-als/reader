@@ -13,7 +13,7 @@ export function useCopyActions() {
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const currentImage = manifest[currentPage] ?? null;
-  const { currentText, fetchPageText } = usePageText(currentImage);
+  const { currentText, fetchPageText } = usePageText();
 
   const handleCopyText = useCallback(async (overrideText?: string) => {
     if (!overrideText && !currentImage) {
