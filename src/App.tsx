@@ -308,13 +308,8 @@ export default function App() {
     chapterRange
   });
   const {
-    memoryCardOpen,
-    memoryCard,
-    memoryCardLoading,
-    memoryCardError,
     openMemoryCard: handleOpenMemoryCard,
-    regenerateMemoryCard: handleRegenerateMemoryCard,
-    closeMemoryCard: handleCloseMemoryCard
+    regenerateMemoryCard: handleRegenerateMemoryCard
   } = useChapterMemoryCard({
     bookId,
     chapterNumber,
@@ -1068,11 +1063,7 @@ export default function App() {
       onRegenerate: () => void handleRegenerateVocabulary()
     },
     memoryCardModalProps: {
-      open: memoryCardOpen,
-      loading: memoryCardLoading,
-      error: memoryCardError,
       chapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter'),
-      memoryCard,
       streamState,
       onCopyText: handleCopyMemoryCard,
       onPlayAudio: (text: string, chapterNumberValue: number) => {
@@ -1082,11 +1073,7 @@ export default function App() {
         });
       },
       onStopAudio: handleStopStream,
-      onRegenerate: () => void handleRegenerateMemoryCard(),
-      onClose: () => {
-        handleStopStream();
-        handleCloseMemoryCard();
-      }
+      onRegenerate: () => void handleRegenerateMemoryCard()
     },
     listeningDashboardModalProps: {
       open: listeningDashboardOpen,

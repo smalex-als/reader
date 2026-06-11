@@ -2,35 +2,44 @@ import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { ChapterMemoryCard, StreamState } from '@/types/app';
+import {
+  appActions,
+  selectMemoryCardWorkflow,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import type { StreamState } from '@/types/app';
 
 interface MemoryCardModalProps {
-  open: boolean;
-  loading: boolean;
-  error: string | null;
   chapterLabel: string;
-  memoryCard: ChapterMemoryCard | null;
   streamState: StreamState;
   onCopyText: (text: string) => void;
   onPlayAudio: (text: string, chapterNumber: number) => void;
   onStopAudio: () => void;
   onRegenerate: () => void;
-  onClose: () => void;
 }
 
 export default function MemoryCardModal({
-  open,
-  loading,
-  error,
   chapterLabel,
-  memoryCard,
   streamState,
   onCopyText,
   onPlayAudio,
   onStopAudio,
-  onRegenerate,
-  onClose
+  onRegenerate
 }: MemoryCardModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('memoryCard'));
+  const {
+    loading,
+    error,
+    memoryCard
+  } = useAppSelector(selectMemoryCardWorkflow);
+  const handleClose = () => {
+    onStopAudio();
+    dispatch(appActions.closeModal('memoryCard'));
+  };
+
   useEffect(() => {
     if (!open) {
       return;
@@ -40,11 +49,11 @@ export default function MemoryCardModal({
         return;
       }
       event.preventDefault();
-      onClose();
+      handleClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, open]);
+  }, [open]);
 
   const streamPrefix = memoryCard ? `memory-card::chapter-${memoryCard.chapterNumber}` : null;
   const isStreaming =
@@ -122,7 +131,7 @@ export default function MemoryCardModal({
             <button
               type="button"
               className="button button-ghost modal-icon-button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Close memory card"
               title="Close memory card"
             >

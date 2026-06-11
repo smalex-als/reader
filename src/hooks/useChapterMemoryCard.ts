@@ -1,10 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import {
   appActions,
-  selectMemoryCardWorkflow,
-  selectModalOpen,
   useAppDispatch,
-  useAppSelector
 } from '@/state/appState';
 import type { ChapterMemoryCard } from '@/types/app';
 
@@ -21,12 +18,6 @@ type UseChapterMemoryCardOptions = {
 
 export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: UseChapterMemoryCardOptions) {
   const dispatch = useAppDispatch();
-  const memoryCardOpen = useAppSelector(selectModalOpen('memoryCard'));
-  const {
-    loading: memoryCardLoading,
-    error: memoryCardError,
-    memoryCard
-  } = useAppSelector(selectMemoryCardWorkflow);
 
   useEffect(() => {
     dispatch(appActions.resetMemoryCard());
@@ -98,17 +89,8 @@ export function useChapterMemoryCard({ bookId, chapterNumber, chapterRange }: Us
     await loadMemoryCard(true);
   }, [loadMemoryCard]);
 
-  const closeMemoryCard = useCallback(() => {
-    dispatch(appActions.closeModal('memoryCard'));
-  }, [dispatch]);
-
   return {
-    memoryCardOpen,
-    memoryCardLoading,
-    memoryCardError,
-    memoryCard,
     openMemoryCard,
-    regenerateMemoryCard,
-    closeMemoryCard
+    regenerateMemoryCard
   };
 }
