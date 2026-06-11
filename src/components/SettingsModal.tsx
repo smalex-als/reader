@@ -34,7 +34,7 @@ export default function SettingsModal() {
           </button>
         </header>
         <section className="modal-body modal-settings-body">
-          <Toolbar layout="modal" />
+          <Toolbar />
         </section>
       </div>
     </div>

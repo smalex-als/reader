@@ -27,13 +27,7 @@ import type { AppSettings } from '@/types/app';
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
 
-interface ToolbarProps {
-  layout?: 'panel' | 'modal';
-}
-
-export default function Toolbar({
-  layout = 'panel'
-}: ToolbarProps) {
+export default function Toolbar() {
   const dispatch = useAppDispatch();
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
@@ -73,7 +67,7 @@ export default function Toolbar({
   const { shareLink } = useShareLink({ trackOpened: false });
   const manifestLength = navigationCount;
   const disableImageActions = isTextBook;
-  const isModal = layout === 'modal';
+  const isModal = true;
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const quizDisabled = !currentBook || !chapterNumber;
   const currentChapterLabel = chapterNumber ? chapterLabel : null;
