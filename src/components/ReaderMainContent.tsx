@@ -8,6 +8,13 @@ import StreamBubble from '@/components/StreamBubble';
 import ScrollViewer from '@/components/ScrollViewer';
 import UnitsView from '@/components/UnitsView';
 import Viewer from '@/components/Viewer';
+import {
+  selectBookSessionWorkflow,
+  selectEditorState,
+  selectNavigationState,
+  selectReaderSession,
+  useAppSelector
+} from '@/state/appState';
 
 type ViewerProps = ComponentProps<typeof Viewer>;
 type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
@@ -22,12 +29,7 @@ type FloatingAudioPlayerProps = ComponentProps<typeof FloatingAudioPlayer>;
 interface ReaderMainContentProps {
   viewerShellRef: RefObject<HTMLDivElement>;
   modalHostRef: RefObject<HTMLDivElement>;
-  isFullscreen: boolean;
-  loading: boolean;
-  mainView: 'reader' | 'audio-library' | 'units';
-  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
   textTheme: string;
-  editorOpen: boolean;
   footerMessage: string;
   viewerProps: ViewerProps;
   scrollViewerProps: ScrollViewerProps;
@@ -43,12 +45,7 @@ interface ReaderMainContentProps {
 export default function ReaderMainContent({
   viewerShellRef,
   modalHostRef,
-  isFullscreen,
-  loading,
-  mainView,
-  viewMode,
   textTheme,
-  editorOpen,
   footerMessage,
   viewerProps,
   scrollViewerProps,
@@ -60,6 +57,13 @@ export default function ReaderMainContent({
   streamBubbleProps,
   floatingAudioPlayerProps
 }: ReaderMainContentProps) {
+  const { mainView } = useAppSelector(selectNavigationState);
+  const { viewMode } = useAppSelector(selectReaderSession);
+  const { loading } = useAppSelector(selectBookSessionWorkflow);
+  const { open: editorOpen } = useAppSelector(selectEditorState);
+  const displayFooterMessage =
+    mainView === 'audio-library' ? 'MP3 Library' : mainView === 'units' ? 'Units' : footerMessage;
+
   return (
     <main className="main">
       <div
@@ -93,7 +97,7 @@ export default function ReaderMainContent({
         <div ref={modalHostRef} className="modal-portal" />
       </div>
       <div className="page-footer">
-        <span className="page-path">{footerMessage}</span>
+        <span className="page-path">{displayFooterMessage}</span>
       </div>
     </main>
   );

@@ -42,7 +42,6 @@ import { trackEvent } from '@/lib/analytics';
 import { saveLastPage } from '@/lib/storage';
 import { makeStreamLocator } from '@/lib/streamLocator';
 import {
-  PLAYBACK_RATE_OPTIONS,
   TEXT_FONT_SIZE_MIN,
   TEXT_FONT_SIZE_MAX,
   createDefaultSettings,
@@ -421,8 +420,6 @@ export default function App() {
     playingStreamLocator,
     activeStreamLocator,
     activeTextParagraph,
-    playbackRate,
-    handlePlaybackRateChange,
     handlePlayVisibleStream,
     handleActiveStreamVoiceChange,
     handleMp3VoiceChange
@@ -966,13 +963,8 @@ export default function App() {
   const mainContentProps = {
     viewerShellRef,
     modalHostRef,
-    isFullscreen,
-    loading,
-    mainView,
-    viewMode,
     textTheme: settings.textTheme,
-    editorOpen,
-    footerMessage: mainView === 'audio-library' ? 'MP3 Library' : mainView === 'units' ? 'Units' : footerMessage,
+    footerMessage,
     viewerProps: {
       imageUrl: currentImage,
       pageText: currentText,
@@ -1138,9 +1130,6 @@ export default function App() {
       onStopStream: handleStopStream
     },
     floatingAudioPlayerProps: {
-      playbackRate,
-      playbackRateOptions: PLAYBACK_RATE_OPTIONS,
-      onPlaybackRateChange: handlePlaybackRateChange,
       onClose: handleCloseFloatingAudio,
       onPlaybackStateChange: handleFloatingAudioPlaybackStateChange
     }

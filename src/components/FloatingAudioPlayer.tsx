@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PLAYBACK_RATE_OPTIONS, normalizePlaybackRate } from '@/lib/appConstants';
 import { emitFloatingAudioSubchapterSelect, emitFloatingAudioTime } from '@/lib/floatingAudioEvents';
-import { selectFloatingAudio, useAppSelector } from '@/state/appState';
+import {
+  appActions,
+  selectFloatingAudio,
+  selectStreamUiControls,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type {
   FloatingAudioPlaybackState,
   FloatingAudioSubchapter,
@@ -8,9 +15,6 @@ import type {
 } from '@/types/floatingAudio';
 
 interface FloatingAudioPlayerProps {
-  playbackRate: number;
-  playbackRateOptions: readonly number[];
-  onPlaybackRateChange: (rate: number) => void;
   onClose: () => void;
   onPlaybackStateChange?: (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => void;
 }
@@ -138,13 +142,12 @@ function mergeAwkwardSubtitleCues(cues: SubtitleCue[]) {
 }
 
 export default function FloatingAudioPlayer({
-  playbackRate,
-  playbackRateOptions,
-  onPlaybackRateChange,
   onClose,
   onPlaybackStateChange
 }: FloatingAudioPlayerProps) {
+  const dispatch = useAppDispatch();
   const { track } = useAppSelector(selectFloatingAudio);
+  const { playbackRate } = useAppSelector(selectStreamUiControls);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastEmittedSubchapterKeyRef = useRef<string | null>(null);
   const lastEmittedTrackKeyRef = useRef<string | null>(null);
@@ -417,11 +420,13 @@ export default function FloatingAudioPlayer({
           <select
             className="select floating-audio-speed"
             value={playbackRate}
-            onChange={(event) => onPlaybackRateChange(Number(event.target.value))}
+            onChange={(event) =>
+              dispatch(appActions.setPlaybackRate(normalizePlaybackRate(Number(event.target.value))))
+            }
             aria-label="Playback speed"
             title="Playback speed"
           >
-            {playbackRateOptions.map((rate) => (
+            {PLAYBACK_RATE_OPTIONS.map((rate) => (
               <option key={rate} value={rate}>
                 {rate}x
               </option>

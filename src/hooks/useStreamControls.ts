@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/hooks/useToast';
-import { normalizePlaybackRate } from '@/lib/appConstants';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import {
   appActions,
@@ -52,7 +51,7 @@ export function useStreamControls({
 }: UseStreamControlsOptions) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
-  const { autoFollowStream, selectedStreamBlockKey, playbackRate } = useAppSelector(selectStreamUiControls);
+  const { autoFollowStream, selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
 
   const setSelectedStreamBlockKey = useCallback(
     (key: string | null) => {
@@ -157,10 +156,6 @@ export function useStreamControls({
     [mp3VoiceOptions, setMp3Voice]
   );
 
-  const handlePlaybackRateChange = useCallback((rate: number) => {
-    dispatch(appActions.setPlaybackRate(normalizePlaybackRate(rate)));
-  }, [dispatch]);
-
   const toggleAutoFollowStream = useCallback(() => {
     dispatch(appActions.toggleAutoFollowStream());
   }, [dispatch]);
@@ -175,8 +170,6 @@ export function useStreamControls({
     playingStreamLocator,
     activeStreamLocator,
     activeTextParagraph,
-    playbackRate,
-    handlePlaybackRateChange,
     handlePlayVisibleStream,
     restartActiveStream,
     handleActiveStreamVoiceChange,
