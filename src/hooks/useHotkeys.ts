@@ -34,7 +34,6 @@ type HotkeysOptions = {
   handlePlayNextStudyBlock: () => Promise<void> | void;
   gotoInputRef: RefObject<HTMLInputElement>;
   toggleFullscreen: () => Promise<void> | void;
-  imagePreviewOpen: boolean;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
   onOpenMemoryCard: () => void;
@@ -71,7 +70,6 @@ export function useHotkeys({
   handlePlayNextStudyBlock,
   gotoInputRef,
   toggleFullscreen,
-  imagePreviewOpen,
   onOpenQuiz,
   onOpenVocabulary,
   onOpenMemoryCard
@@ -91,6 +89,7 @@ export function useHotkeys({
   const vocabularyOpen = useAppSelector(selectModalOpen('vocabulary'));
   const memoryCardOpen = useAppSelector(selectModalOpen('memoryCard'));
   const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
+  const imagePreviewOpen = useAppSelector((state) => state.ui.imagePreview !== null);
   const listeningDashboardOpen = useAppSelector(selectModalOpen('listeningDashboard'));
   const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
   const bookCardOpen = useAppSelector(selectBookCardOpen);

@@ -6,6 +6,7 @@ import {
   type Dispatch,
   type ReactNode
 } from 'react';
+import type { ImagePreviewTarget } from '@/types/app';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
 
@@ -33,6 +34,7 @@ export interface AppUiState {
     bookCard: boolean;
   };
   bookCardBookId: string | null;
+  imagePreview: ImagePreviewTarget | null;
   editor: {
     open: boolean;
     chapterNumber: number | null;
@@ -54,6 +56,9 @@ export type AppAction =
   | { type: 'bookCard/close' }
   | { type: 'bookCard/setOpen'; open: boolean }
   | { type: 'bookCard/setBookId'; bookId: string | null }
+  | { type: 'imagePreview/open'; preview: ImagePreviewTarget }
+  | { type: 'imagePreview/close' }
+  | { type: 'imagePreview/setEnhancedUrl'; url: string | null }
   | { type: 'editor/setOpen'; open: boolean }
   | { type: 'editor/setChapterNumber'; chapterNumber: number | null }
   | { type: 'settingsToolbar/setTab'; tab: AppToolbarTab };
@@ -81,6 +86,7 @@ const initialAppState: CentralAppState = {
       bookCard: false
     },
     bookCardBookId: null,
+    imagePreview: null,
     editor: {
       open: false,
       chapterNumber: null
@@ -103,6 +109,12 @@ export const appActions = {
   closeBookCard: (): AppAction => ({ type: 'bookCard/close' }),
   setBookCardOpen: (open: boolean): AppAction => ({ type: 'bookCard/setOpen', open }),
   setBookCardBookId: (bookId: string | null): AppAction => ({ type: 'bookCard/setBookId', bookId }),
+  openImagePreview: (preview: ImagePreviewTarget): AppAction => ({ type: 'imagePreview/open', preview }),
+  closeImagePreview: (): AppAction => ({ type: 'imagePreview/close' }),
+  setImagePreviewEnhancedUrl: (url: string | null): AppAction => ({
+    type: 'imagePreview/setEnhancedUrl',
+    url
+  }),
   setEditorOpen: (open: boolean): AppAction => ({ type: 'editor/setOpen', open }),
   setEditorChapterNumber: (chapterNumber: number | null): AppAction => ({
     type: 'editor/setChapterNumber',
@@ -189,6 +201,35 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           bookCardBookId: action.bookId
         }
       };
+    case 'imagePreview/open':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          imagePreview: action.preview
+        }
+      };
+    case 'imagePreview/close':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          imagePreview: null
+        }
+      };
+    case 'imagePreview/setEnhancedUrl':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          imagePreview: state.ui.imagePreview
+            ? {
+                ...state.ui.imagePreview,
+                enhancedUrl: action.url
+              }
+            : null
+        }
+      };
     case 'editor/setOpen':
       return {
         ...state,
@@ -259,5 +300,6 @@ export function useAppSelector<T>(selector: (state: CentralAppState) => T): T {
 export const selectModalOpen = (modal: SimpleModal) => (state: CentralAppState) => state.ui.modals[modal];
 export const selectBookCardOpen = (state: CentralAppState) => state.ui.modals.bookCard;
 export const selectBookCardBookId = (state: CentralAppState) => state.ui.bookCardBookId;
+export const selectImagePreview = (state: CentralAppState) => state.ui.imagePreview;
 export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;

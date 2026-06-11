@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { appActions, selectImagePreview, useAppDispatch, useAppSelector } from '@/state/appState';
 import type { ImagePreviewTarget } from '@/types/app';
 
 function makePreviewKey(
@@ -11,7 +12,8 @@ function makePreviewKey(
 }
 
 export function useImagePreview({ bookId }: { bookId: string | null }) {
-  const [imagePreview, setImagePreview] = useState<ImagePreviewTarget | null>(null);
+  const dispatch = useAppDispatch();
+  const imagePreview = useAppSelector(selectImagePreview);
   const [enhancedImagePreviewUrls, setEnhancedImagePreviewUrls] = useState<Record<string, string>>({});
 
   const handleOpenImagePreview = useCallback(
@@ -32,7 +34,7 @@ export function useImagePreview({ bookId }: { bookId: string | null }) {
         bottom: String(bottom)
       });
       const previewKey = makePreviewKey(bookId, imageFilename, payload.bounds);
-      setImagePreview({
+      dispatch(appActions.openImagePreview({
         bookId,
         imageFilename,
         imageUrl: payload.imageUrl,
@@ -40,9 +42,9 @@ export function useImagePreview({ bookId }: { bookId: string | null }) {
         caption: payload.caption ?? null,
         cropUrl: `/api/books/${encodeURIComponent(bookId)}/image-preview?${params.toString()}`,
         enhancedUrl: enhancedImagePreviewUrls[previewKey] ?? null
-      });
+      }));
     },
-    [bookId, enhancedImagePreviewUrls]
+    [bookId, dispatch, enhancedImagePreviewUrls]
   );
 
   const handleImagePreviewEnhanced = useCallback(
@@ -59,19 +61,14 @@ export function useImagePreview({ bookId }: { bookId: string | null }) {
         }
         return { ...prev, [previewKey]: url };
       });
-      setImagePreview((current) =>
-        current
-          ? {
-              ...current,
-              enhancedUrl: url || null
-            }
-          : current
-      );
+      dispatch(appActions.setImagePreviewEnhancedUrl(url || null));
     },
-    [imagePreview]
+    [dispatch, imagePreview]
   );
 
-  const closeImagePreview = useCallback(() => setImagePreview(null), []);
+  const closeImagePreview = useCallback(() => {
+    dispatch(appActions.closeImagePreview());
+  }, [dispatch]);
 
   return {
     imagePreview,

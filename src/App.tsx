@@ -842,7 +842,6 @@ export default function App() {
     handlePlayNextStudyBlock,
     gotoInputRef,
     toggleFullscreen,
-    imagePreviewOpen: imagePreview !== null,
     onOpenQuiz: () => {
       setSettingsOpen(false);
       if (mainView === 'units' && selectedUnitSetId && selectedUnitTopicId) {
