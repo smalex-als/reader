@@ -504,8 +504,7 @@ export default function App() {
     isStreamVoice,
     setStreamVoice,
     mp3VoiceOptions,
-    setMp3Voice,
-    showToast
+    setMp3Voice
   });
 
   useStreamHistoryLogger({
