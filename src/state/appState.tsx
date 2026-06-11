@@ -178,6 +178,10 @@ export interface PageTextWorkflowState {
   regenerated: boolean;
 }
 
+export interface ImagePreviewWorkflowState {
+  enhancedUrls: Record<string, string>;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -199,6 +203,7 @@ export interface CentralAppState {
   vocabularyWorkflow: VocabularyWorkflowState;
   memoryCardWorkflow: MemoryCardWorkflowState;
   pageTextWorkflow: PageTextWorkflowState;
+  imagePreviewWorkflow: ImagePreviewWorkflowState;
 }
 
 export type AppAction =
@@ -272,7 +277,8 @@ export type AppAction =
   | { type: 'pageTextWorkflow/setEntry'; image: string; entry: PageText }
   | { type: 'pageTextWorkflow/setLoading'; loading: boolean }
   | { type: 'pageTextWorkflow/setSaving'; saving: boolean }
-  | { type: 'pageTextWorkflow/setRegenerated'; regenerated: boolean };
+  | { type: 'pageTextWorkflow/setRegenerated'; regenerated: boolean }
+  | { type: 'imagePreviewWorkflow/setEnhancedUrl'; key: string; url: string | null };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -424,6 +430,9 @@ const initialAppState: CentralAppState = {
     loading: false,
     saving: false,
     regenerated: false
+  },
+  imagePreviewWorkflow: {
+    enhancedUrls: {}
   }
 };
 
@@ -632,6 +641,11 @@ export const appActions = {
   setRegeneratedPageText: (regenerated: boolean): AppAction => ({
     type: 'pageTextWorkflow/setRegenerated',
     regenerated
+  }),
+  setImagePreviewCachedEnhancedUrl: (key: string, url: string | null): AppAction => ({
+    type: 'imagePreviewWorkflow/setEnhancedUrl',
+    key,
+    url
   })
 };
 
@@ -1248,6 +1262,20 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           regenerated: action.regenerated
         }
       };
+    case 'imagePreviewWorkflow/setEnhancedUrl': {
+      const nextEnhancedUrls = { ...state.imagePreviewWorkflow.enhancedUrls };
+      if (action.url) {
+        nextEnhancedUrls[action.key] = action.url;
+      } else {
+        delete nextEnhancedUrls[action.key];
+      }
+      return {
+        ...state,
+        imagePreviewWorkflow: {
+          enhancedUrls: nextEnhancedUrls
+        }
+      };
+    }
     default:
       return state;
   }
@@ -1309,3 +1337,4 @@ export const selectQuizWorkflow = (modal: QuizModal) => (state: CentralAppState)
 export const selectVocabularyWorkflow = (state: CentralAppState) => state.vocabularyWorkflow;
 export const selectMemoryCardWorkflow = (state: CentralAppState) => state.memoryCardWorkflow;
 export const selectPageTextWorkflow = (state: CentralAppState) => state.pageTextWorkflow;
+export const selectImagePreviewWorkflow = (state: CentralAppState) => state.imagePreviewWorkflow;

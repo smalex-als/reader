@@ -1,6 +1,11 @@
-import { useCallback, useState } from 'react';
-import { appActions, selectImagePreview, useAppDispatch, useAppSelector } from '@/state/appState';
-import type { ImagePreviewTarget } from '@/types/app';
+import { useCallback } from 'react';
+import {
+  appActions,
+  selectImagePreview,
+  selectImagePreviewWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 function makePreviewKey(
   bookId: string,
@@ -14,7 +19,7 @@ function makePreviewKey(
 export function useImagePreview({ bookId }: { bookId: string | null }) {
   const dispatch = useAppDispatch();
   const imagePreview = useAppSelector(selectImagePreview);
-  const [enhancedImagePreviewUrls, setEnhancedImagePreviewUrls] = useState<Record<string, string>>({});
+  const { enhancedUrls } = useAppSelector(selectImagePreviewWorkflow);
 
   const handleOpenImagePreview = useCallback(
     (payload: { imageUrl: string; bounds: [number, number, number, number]; caption?: string | null }) => {
@@ -41,10 +46,10 @@ export function useImagePreview({ bookId }: { bookId: string | null }) {
         bounds: payload.bounds,
         caption: payload.caption ?? null,
         cropUrl: `/api/books/${encodeURIComponent(bookId)}/image-preview?${params.toString()}`,
-        enhancedUrl: enhancedImagePreviewUrls[previewKey] ?? null
+        enhancedUrl: enhancedUrls[previewKey] ?? null
       }));
     },
-    [bookId, dispatch, enhancedImagePreviewUrls]
+    [bookId, dispatch, enhancedUrls]
   );
 
   const handleImagePreviewEnhanced = useCallback(
@@ -53,14 +58,7 @@ export function useImagePreview({ bookId }: { bookId: string | null }) {
         return;
       }
       const previewKey = makePreviewKey(imagePreview.bookId, imagePreview.imageFilename, imagePreview.bounds);
-      setEnhancedImagePreviewUrls((prev) => {
-        if (!url) {
-          const next = { ...prev };
-          delete next[previewKey];
-          return next;
-        }
-        return { ...prev, [previewKey]: url };
-      });
+      dispatch(appActions.setImagePreviewCachedEnhancedUrl(previewKey, url || null));
       dispatch(appActions.setImagePreviewEnhancedUrl(url || null));
     },
     [dispatch, imagePreview]
