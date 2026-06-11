@@ -9,35 +9,23 @@ import {
   selectBookCardOpen,
   selectModalOpen,
   selectNavigationState,
+  selectReaderSession,
+  selectStreamRuntime,
+  selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { AppSettings, StreamState, ViewerPan } from '@/types/app';
-
-type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
+import type { AppSettings, ViewerPan } from '@/types/app';
 
 type HotkeysOptions = {
-  viewMode: ViewMode;
-  currentImage: string | null;
-  settings: AppSettings;
   updatePan: (pan: ViewerPan) => void;
   updateZoom: (zoom: number, mode?: AppSettings['zoomMode']) => void;
-  resetTransform: () => void;
-  applyZoomModeWithAlign: (mode: 'fit-width' | 'fit-height') => void;
   updateRotation: () => void;
   applyFilters: (filters: Partial<Pick<AppSettings, 'brightness' | 'contrast' | 'invert'>>) => void;
   toggleTextModal: () => void;
   triggerBackgroundOcr: () => Promise<void> | void;
-  toggleOcrEditMode: () => Promise<void> | void;
-  handlePrev: () => void;
-  handleNext: () => void;
-  streamStatus: StreamState['status'];
-  handleStopStream: () => void;
-  handlePlayStream: () => Promise<void> | void;
-  handleToggleStreamPause: () => Promise<void> | void;
   handlePlayNextStudyBlock: () => Promise<void> | void;
   gotoInputRef: RefObject<HTMLInputElement>;
-  toggleFullscreen: () => Promise<void> | void;
 };
 
 function isTextInput(element: EventTarget | null) {
@@ -49,30 +37,21 @@ function isTextInput(element: EventTarget | null) {
 }
 
 export function useHotkeys({
-  viewMode,
-  currentImage,
-  settings,
   updatePan,
   updateZoom,
-  resetTransform,
-  applyZoomModeWithAlign,
   updateRotation,
   applyFilters,
   toggleTextModal,
   triggerBackgroundOcr,
-  toggleOcrEditMode,
-  handlePrev,
-  handleNext,
-  streamStatus,
-  handleStopStream,
-  handlePlayStream,
-  handleToggleStreamPause,
   handlePlayNextStudyBlock,
-  gotoInputRef,
-  toggleFullscreen
+  gotoInputRef
 }: HotkeysOptions) {
   const dispatch = useAppDispatch();
   const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
+  const { currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { manifest, bookType } = useAppSelector(selectBookSessionWorkflow);
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const streamState = useAppSelector(selectStreamRuntime);
   const textModalOpen = useAppSelector(selectModalOpen('text'));
   const helpOpen = useAppSelector(selectModalOpen('help'));
   const printModalOpen = useAppSelector(selectModalOpen('print'));
@@ -91,11 +70,12 @@ export function useHotkeys({
   const listeningDashboardOpen = useAppSelector(selectModalOpen('listeningDashboard'));
   const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
   const bookCardOpen = useAppSelector(selectBookCardOpen);
-  const { bookType } = useAppSelector(selectBookSessionWorkflow);
   const { openQuiz: openChapterQuiz } = useChapterQuiz();
   const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz();
   const { openVocabulary } = useChapterVocabulary();
   const isTextBook = bookType === 'text';
+  const currentImage = manifest[currentPage] ?? null;
+  const streamStatus = streamState.status;
   const quizOpen = chapterQuizOpen || unitQuizOpen;
   const openQuiz = useCallback(() => {
     dispatch(appActions.closeModal('settings'));
@@ -192,12 +172,12 @@ export function useHotkeys({
         case 'pageup':
         case 'k':
           event.preventDefault();
-          handlePrev();
+          dispatch(appActions.requestPreviousPageNavigation());
           break;
         case 'pagedown':
         case 'j':
           event.preventDefault();
-          handleNext();
+          dispatch(appActions.requestNextPageNavigation());
           break;
         case ' ':
           if (viewMode !== 'pages' || !currentImage) {
@@ -228,14 +208,14 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          applyZoomModeWithAlign('fit-width');
+          dispatch(appActions.requestToolbarFitWidth());
           break;
         case 'h':
           if (viewMode !== 'pages' || !currentImage) {
             return;
           }
           event.preventDefault();
-          applyZoomModeWithAlign('fit-height');
+          dispatch(appActions.requestToolbarFitHeight());
           break;
         case 'r':
           event.preventDefault();
@@ -277,9 +257,9 @@ export function useHotkeys({
         case 's':
           event.preventDefault();
           if (streamStatus === 'streaming' || streamStatus === 'connecting' || streamStatus === 'paused') {
-            handleStopStream();
+            dispatch(appActions.requestStopStream());
           } else {
-            void handlePlayStream();
+            dispatch(appActions.requestPlayVisibleStream());
           }
           break;
         case 'p':
@@ -287,7 +267,7 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          void handleToggleStreamPause();
+          dispatch(appActions.requestToggleStreamPause());
           break;
         case 'n':
           if (!settings.studyMode) {
@@ -319,7 +299,7 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          void toggleOcrEditMode();
+          dispatch(appActions.requestToolbarOcrEditToggle());
           break;
         case 'c':
           if (event.metaKey || event.ctrlKey) {
@@ -348,7 +328,7 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          void toggleFullscreen();
+          dispatch(appActions.requestToolbarFullscreenToggle());
           break;
         case 'escape':
           if (textModalOpen) {
@@ -396,23 +376,15 @@ export function useHotkeys({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     applyFilters,
-    applyZoomModeWithAlign,
-    resetTransform,
     updatePan,
     settings.invert,
     settings.pan.x,
     settings.pan.y,
     settings.zoom,
-    handleStopStream,
-    handlePlayStream,
-    handleToggleStreamPause,
     handlePlayNextStudyBlock,
     textModalOpen,
     updateRotation,
     updateZoom,
-    toggleFullscreen,
-    handleNext,
-    handlePrev,
     bookModalOpen,
     helpOpen,
     printModalOpen,
@@ -439,7 +411,6 @@ export function useHotkeys({
     openVocabularyModal,
     toggleTextModal,
     triggerBackgroundOcr,
-    toggleOcrEditMode,
     gotoInputRef
   ]);
 

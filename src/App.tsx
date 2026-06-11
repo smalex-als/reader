@@ -71,8 +71,7 @@ export default function App() {
     applyZoomMode,
     updateZoom,
     updateRotation,
-    updatePan,
-    resetTransform
+    updatePan
   } = useZoom(createDefaultSettings());
 
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
@@ -192,7 +191,7 @@ export default function App() {
   useEffect(() => {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);
-  const { handlePrev, handleNext } = useNavigation({
+  useNavigation({
     pendingAlignTopRef,
     resetAudio,
     stopStream
@@ -218,10 +217,7 @@ export default function App() {
     pauseStreamAtStart,
     stopAudio
   });
-  const {
-    setSelectedStreamBlockKey,
-    handlePlayVisibleStream
-  } = useStreamControls({
+  const { setSelectedStreamBlockKey } = useStreamControls({
     startStreamSequence,
     handlePlayChapterParagraph,
     restartStreamFromPageKey,
@@ -619,13 +615,8 @@ export default function App() {
   ]);
 
   useHotkeys({
-    viewMode,
-    currentImage,
-    settings,
     updatePan,
     updateZoom,
-    resetTransform,
-    applyZoomModeWithAlign,
     updateRotation,
     applyFilters,
     toggleTextModal,
@@ -639,16 +630,8 @@ export default function App() {
         showToast('OCR finished', 'success');
       }
     },
-    toggleOcrEditMode: handleToggleOcrEditMode,
-    handlePrev,
-    handleNext,
-    streamStatus: streamState.status,
-    handleStopStream,
-    handlePlayStream: handlePlayVisibleStream,
-    handleToggleStreamPause,
     handlePlayNextStudyBlock,
-    gotoInputRef,
-    toggleFullscreen
+    gotoInputRef
   });
 
   const modalProps = {
