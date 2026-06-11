@@ -5,6 +5,7 @@ import {
   appActions,
   selectReaderSession,
   selectStreamUiControls,
+  selectViewerWorkflow,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
@@ -13,7 +14,6 @@ import {
 interface StreamBubbleProps {
   streamState: StreamState;
   onStreamVoiceChange: (voice: string) => void;
-  studyMode?: boolean;
   onToggleStudyMode?: () => void;
   onTogglePause: () => void;
   onStopStream: () => void;
@@ -22,7 +22,6 @@ interface StreamBubbleProps {
 export default function StreamBubble({
   streamState,
   onStreamVoiceChange,
-  studyMode = false,
   onToggleStudyMode,
   onTogglePause,
   onStopStream
@@ -30,7 +29,9 @@ export default function StreamBubble({
   const dispatch = useAppDispatch();
   const { viewMode } = useAppSelector(selectReaderSession);
   const { autoFollowStream } = useAppSelector(selectStreamUiControls);
+  const { settings } = useAppSelector(selectViewerWorkflow);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
+  const { studyMode } = settings;
   const { isVisible, status, isDisabled, ariaLabel, title } = useStreamUi(streamState);
   const [renderVisible, setRenderVisible] = useState(isVisible);
   const [displayStatus, setDisplayStatus] = useState(status);

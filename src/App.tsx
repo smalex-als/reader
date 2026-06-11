@@ -632,7 +632,6 @@ export default function App() {
 
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
   const {
-    unitsRefreshToken,
     refreshUnits,
     unitCreating,
     setUnitQuizLabel,
@@ -1029,14 +1028,6 @@ export default function App() {
       onOpenBook: handleOpenLibraryBook
     },
     unitsViewProps: {
-      refreshToken: unitsRefreshToken,
-      selectedSetId: selectedUnitSetId,
-      selectedTopicId: selectedUnitTopicId,
-      onSelectSet: (unitSetId: string | null) => {
-        setSelectedUnitSetId(unitSetId);
-        setSelectedUnitTopicId(null);
-      },
-      onSelectTopic: setSelectedUnitTopicId,
       streamState,
       onPlayTopicParagraph: handlePlayChapterParagraph,
       onStopAudio: handleStopStream,
@@ -1061,7 +1052,6 @@ export default function App() {
     streamBubbleProps: {
       streamState,
       onStreamVoiceChange: handleActiveStreamVoiceChange,
-      studyMode: settings.studyMode,
       onToggleStudyMode: toggleStudyMode,
       onTogglePause: () => void handleToggleStreamPause(),
       onStopStream: handleStopStream

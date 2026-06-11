@@ -5,15 +5,17 @@ import remarkGfm from 'remark-gfm';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import { useToast } from '@/hooks/useToast';
-import { selectViewerWorkflow, useAppSelector } from '@/state/appState';
+import {
+  appActions,
+  selectNavigationState,
+  selectUnitWorkflow,
+  selectViewerWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { SelfCheckResult, StreamState, UnitItem, UnitSet } from '@/types/app';
 
 interface UnitsViewProps {
-  refreshToken: number;
-  selectedSetId: string | null;
-  selectedTopicId: string | null;
-  onSelectSet: (unitSetId: string | null) => void;
-  onSelectTopic: (topicId: string | null) => void;
   streamState: StreamState;
   onPlayTopicParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   onStopAudio: () => void;
@@ -148,17 +150,16 @@ function ReadStatusIcon({ read }: { read: boolean }) {
 }
 
 export default function UnitsView({
-  refreshToken,
-  selectedSetId,
-  selectedTopicId,
-  onSelectSet,
-  onSelectTopic,
   streamState,
   onPlayTopicParagraph,
   onStopAudio,
   onOpenSource,
   onOpenTopicQuiz
 }: UnitsViewProps) {
+  const dispatch = useAppDispatch();
+  const { selectedUnitSetId: selectedSetId, selectedUnitTopicId: selectedTopicId } =
+    useAppSelector(selectNavigationState);
+  const { refreshToken } = useAppSelector(selectUnitWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
   const { showToast } = useToast();
@@ -230,9 +231,27 @@ export default function UnitsView({
     return selectedSet.units.find((unit) => unit.id === selectedTopicId) ?? null;
   }, [selectedSet, selectedTopicId]);
 
-  const handleSelectSet = useCallback((item: UnitSet) => {
-    onSelectSet(item.id);
-  }, [onSelectSet]);
+  const handleSelectSet = useCallback(
+    (unitSetId: string | null) => {
+      dispatch(appActions.setSelectedUnitSetId(unitSetId));
+      dispatch(appActions.setSelectedUnitTopicId(null));
+    },
+    [dispatch]
+  );
+
+  const handleOpenSet = useCallback(
+    (item: UnitSet) => {
+      handleSelectSet(item.id);
+    },
+    [handleSelectSet]
+  );
+
+  const handleSelectTopic = useCallback(
+    (topicId: string | null) => {
+      dispatch(appActions.setSelectedUnitTopicId(topicId));
+    },
+    [dispatch]
+  );
 
   const replaceUnitSet = useCallback((item: UnitSet) => {
     setItems((current) => current.map((unitSet) => (unitSet.id === item.id ? item : unitSet)));
@@ -476,7 +495,7 @@ export default function UnitsView({
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => onSelectTopic(null)}
+            onClick={() => handleSelectTopic(null)}
           >
             {labels.back}
           </button>
@@ -701,7 +720,7 @@ export default function UnitsView({
     return (
       <div className="audio-library unit-library unit-library-detail">
         <header className="audio-library-detail-header">
-          <button type="button" className="button button-secondary" onClick={() => onSelectSet(null)}>
+          <button type="button" className="button button-secondary" onClick={() => handleSelectSet(null)}>
             Back
           </button>
           <div className="audio-viewer-title">
@@ -742,7 +761,7 @@ export default function UnitsView({
                 <button
                   type="button"
                   className="unit-library-topic-title"
-                  onClick={() => onSelectTopic(unit.id)}
+                  onClick={() => handleSelectTopic(unit.id)}
                 >
                   {index + 1} - {unit.title}
                 </button>
@@ -801,11 +820,11 @@ export default function UnitsView({
               className="audio-library-row"
               role="button"
               tabIndex={0}
-              onClick={() => handleSelectSet(item)}
+              onClick={() => handleOpenSet(item)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
-                  handleSelectSet(item);
+                  handleOpenSet(item);
                 }
               }}
             >
@@ -828,7 +847,7 @@ export default function UnitsView({
                   className="button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    handleSelectSet(item);
+                    handleOpenSet(item);
                   }}
                 >
                   Open
