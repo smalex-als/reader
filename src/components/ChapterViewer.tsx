@@ -33,13 +33,6 @@ interface ChapterViewerProps {
     versionLabel: string | null;
     versionId: string | null;
   }) => void;
-  onFirstParagraphReady: (payload: { fullText: string; startIndex: number; key: string } | null) => void;
-  onDisplayedTextChange?: (payload: {
-    text: string;
-    chapterTitle: string | null;
-    versionLabel: string | null;
-    versionId: string | null;
-  } | null) => void;
   onPlayParagraph: (payload: { fullText: string; startIndex: number; key: string }) => void;
   onPlayAudio: (payload: FloatingAudioTrack) => void;
   playingParagraphStart: number | null;
@@ -177,8 +170,6 @@ export default function ChapterViewer({
   onCreateChapter,
   onDeleteChapter,
   onCreateUnit,
-  onFirstParagraphReady,
-  onDisplayedTextChange,
   onPlayParagraph,
   onPlayAudio,
   playingParagraphStart,
@@ -311,11 +302,11 @@ export default function ChapterViewer({
       if (nextVersionId === selectedVersionId) {
         return;
       }
-      onFirstParagraphReady(null);
-      onDisplayedTextChange?.(null);
+      dispatch(appActions.setFirstChapterParagraph(null));
+      dispatch(appActions.setDisplayedChapterText(null));
       setSelectedVersionId(nextVersionId);
     },
-    [onDisplayedTextChange, onFirstParagraphReady, selectedVersionId, setSelectedVersionId]
+    [dispatch, selectedVersionId, setSelectedVersionId]
   );
 
   const handleToolsToggle = useCallback(() => {
@@ -397,7 +388,7 @@ export default function ChapterViewer({
 
   useEffect(() => {
     if (!displayText || !chapterNumber) {
-      onFirstParagraphReady(null);
+      dispatch(appActions.setFirstChapterParagraph(null));
       return;
     }
     const paragraphs = displayText
@@ -405,33 +396,30 @@ export default function ChapterViewer({
       .map((value) => value.trim())
       .filter(Boolean);
     if (paragraphs.length === 0) {
-      onFirstParagraphReady(null);
+      dispatch(appActions.setFirstChapterParagraph(null));
       return;
     }
     const firstParagraph = paragraphs[0];
     const startIndex = displayText.indexOf(firstParagraph);
-    onFirstParagraphReady({
+    dispatch(appActions.setFirstChapterParagraph({
       fullText: displayText,
       startIndex: Math.max(0, startIndex),
       key: `chapter-${chapterNumber}-${selectedVersionId}-${hashText(firstParagraph)}-${startIndex}`
-    });
-  }, [chapterNumber, displayText, onFirstParagraphReady, selectedVersionId]);
+    }));
+  }, [chapterNumber, dispatch, displayText, selectedVersionId]);
 
   useEffect(() => {
-    if (!onDisplayedTextChange) {
-      return;
-    }
     if (!displayText || !chapterNumber) {
-      onDisplayedTextChange(null);
+      dispatch(appActions.setDisplayedChapterText(null));
       return;
     }
-    onDisplayedTextChange({
+    dispatch(appActions.setDisplayedChapterText({
       text: displayText,
       chapterTitle,
       versionLabel: selectedVersion?.label ?? null,
       versionId: selectedVersionId
-    });
-  }, [chapterNumber, chapterTitle, displayText, onDisplayedTextChange, selectedVersion?.label, selectedVersionId]);
+    }));
+  }, [chapterNumber, chapterTitle, dispatch, displayText, selectedVersion?.label, selectedVersionId]);
 
   const closeVersionModal = useCallback(() => {
     if (versionSaving) {

@@ -51,9 +51,14 @@ import type {
   SearchResult,
   TocEntry
 } from '@/types/app';
-import type { QuizModal as QuizModalId } from '@/state/appState';
+import {
+  appActions,
+  useAppDispatch,
+  type QuizModal as QuizModalId
+} from '@/state/appState';
 
 export default function App() {
+  const dispatch = useAppDispatch();
   const {
     mainView,
     setMainView,
@@ -72,9 +77,7 @@ export default function App() {
   } = useModalState();
   const {
     displayedChapterText,
-    setDisplayedChapterText,
-    firstChapterParagraph,
-    setFirstChapterParagraph
+    firstChapterParagraph
   } = useChapterTextContext();
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
@@ -290,8 +293,8 @@ export default function App() {
     clearChapterVersionNavigation
   } = useChapterVersionNavigation();
   useEffect(() => {
-    setDisplayedChapterText(null);
-  }, [bookId, chapterNumber]);
+    dispatch(appActions.setDisplayedChapterText(null));
+  }, [bookId, chapterNumber, dispatch]);
   const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
     navigationCount,
     currentPage,
@@ -843,8 +846,6 @@ export default function App() {
         : undefined,
       onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
       onCreateUnit: handleCreateUnit,
-      onDisplayedTextChange: setDisplayedChapterText,
-      onFirstParagraphReady: setFirstChapterParagraph,
       onPlayParagraph: handlePlayChapterParagraph,
       onPlayAudio: handlePlayFloatingAudio,
       playingParagraphStart: activeTextParagraph.startIndex,
