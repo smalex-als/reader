@@ -53,6 +53,7 @@ import {
   selectStudyAudioCommandRequest,
   selectStudyModeToggleRequest,
   selectToolbarCommandRequest,
+  selectTocCommandRequest,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -65,6 +66,7 @@ export default function App() {
   const studyAudioCommandRequest = useAppSelector(selectStudyAudioCommandRequest);
   const studyModeToggleRequest = useAppSelector(selectStudyModeToggleRequest);
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
+  const tocCommandRequest = useAppSelector(selectTocCommandRequest);
   const {
     mainView,
     selectedUnitSetId,
@@ -665,6 +667,37 @@ export default function App() {
     showToast
   ]);
 
+  useEffect(() => {
+    if (!tocCommandRequest) {
+      return;
+    }
+
+    if (tocCommandRequest.kind === 'generate') {
+      void handleGenerateToc(tocCommandRequest.variant);
+    } else if (tocCommandRequest.kind === 'save') {
+      void handleSaveToc(tocCommandRequest.variant);
+    } else if (tocCommandRequest.kind === 'addEntry') {
+      handleAddTocEntry(tocCommandRequest.pageIndex, tocCommandRequest.variant);
+    } else if (tocCommandRequest.kind === 'removeEntry') {
+      handleRemoveTocEntry(tocCommandRequest.index, tocCommandRequest.variant);
+    } else if (tocCommandRequest.kind === 'updateEntry') {
+      handleUpdateTocEntry(tocCommandRequest.index, tocCommandRequest.entry, tocCommandRequest.variant);
+    } else {
+      void handleGenerateChapter(tocCommandRequest.index);
+    }
+
+    dispatch(appActions.clearTocCommandRequest());
+  }, [
+    dispatch,
+    handleAddTocEntry,
+    handleGenerateChapter,
+    handleGenerateToc,
+    handleRemoveTocEntry,
+    handleSaveToc,
+    handleUpdateTocEntry,
+    tocCommandRequest
+  ]);
+
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
       applyZoomMode(mode);
@@ -771,14 +804,6 @@ export default function App() {
 
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null,
-    tocModalProps: {
-      onGenerate: handleGenerateToc,
-      onSave: handleSaveToc,
-      onAddEntry: handleAddTocEntry,
-      onRemoveEntry: handleRemoveTocEntry,
-      onUpdateEntry: handleUpdateTocEntry,
-      onGenerateChapter: handleGenerateChapter
-    },
     ocrQueueModalProps: {
       jobs: ocrJobs,
       paused: ocrPaused

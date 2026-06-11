@@ -163,6 +163,17 @@ export type ChapterCommandRequest = {
   | { kind: 'delete'; chapterNumber: number }
 );
 
+export type TocCommandRequest = {
+  id: number;
+} & (
+  | { kind: 'generate'; variant: TocVariant }
+  | { kind: 'save'; variant: TocVariant }
+  | { kind: 'addEntry'; pageIndex: number; variant: TocVariant }
+  | { kind: 'removeEntry'; index: number; variant: TocVariant }
+  | { kind: 'updateEntry'; index: number; entry: TocEntry; variant: TocVariant }
+  | { kind: 'generateChapter'; index: number }
+);
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -326,6 +337,7 @@ export interface CentralAppState {
   ocrQueueCommandRequest: OcrQueueCommandRequest | null;
   studyAudioCommandRequest: StudyAudioCommandRequest | null;
   chapterCommandRequest: ChapterCommandRequest | null;
+  tocCommandRequest: TocCommandRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -423,6 +435,13 @@ export type AppAction =
   | { type: 'chapterCommand/requestCreate' }
   | { type: 'chapterCommand/requestDelete'; chapterNumber: number }
   | { type: 'chapterCommand/clearRequest' }
+  | { type: 'tocCommand/requestGenerate'; variant: TocVariant }
+  | { type: 'tocCommand/requestSave'; variant: TocVariant }
+  | { type: 'tocCommand/requestAddEntry'; pageIndex: number; variant: TocVariant }
+  | { type: 'tocCommand/requestRemoveEntry'; index: number; variant: TocVariant }
+  | { type: 'tocCommand/requestUpdateEntry'; index: number; entry: TocEntry; variant: TocVariant }
+  | { type: 'tocCommand/requestGenerateChapter'; index: number }
+  | { type: 'tocCommand/clearRequest' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -602,6 +621,7 @@ const initialAppState: CentralAppState = {
   ocrQueueCommandRequest: null,
   studyAudioCommandRequest: null,
   chapterCommandRequest: null,
+  tocCommandRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -870,6 +890,35 @@ export const appActions = {
     chapterNumber
   }),
   clearChapterCommandRequest: (): AppAction => ({ type: 'chapterCommand/clearRequest' }),
+  requestTocGenerate: (variant: TocVariant): AppAction => ({
+    type: 'tocCommand/requestGenerate',
+    variant
+  }),
+  requestTocSave: (variant: TocVariant): AppAction => ({
+    type: 'tocCommand/requestSave',
+    variant
+  }),
+  requestTocAddEntry: (pageIndex: number, variant: TocVariant): AppAction => ({
+    type: 'tocCommand/requestAddEntry',
+    pageIndex,
+    variant
+  }),
+  requestTocRemoveEntry: (index: number, variant: TocVariant): AppAction => ({
+    type: 'tocCommand/requestRemoveEntry',
+    index,
+    variant
+  }),
+  requestTocUpdateEntry: (index: number, entry: TocEntry, variant: TocVariant): AppAction => ({
+    type: 'tocCommand/requestUpdateEntry',
+    index,
+    entry,
+    variant
+  }),
+  requestTocGenerateChapter: (index: number): AppAction => ({
+    type: 'tocCommand/requestGenerateChapter',
+    index
+  }),
+  clearTocCommandRequest: (): AppAction => ({ type: 'tocCommand/clearRequest' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1711,6 +1760,69 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ...state,
         chapterCommandRequest: null
       };
+    case 'tocCommand/requestGenerate':
+      return {
+        ...state,
+        tocCommandRequest: {
+          id: (state.tocCommandRequest?.id ?? 0) + 1,
+          kind: 'generate',
+          variant: action.variant
+        }
+      };
+    case 'tocCommand/requestSave':
+      return {
+        ...state,
+        tocCommandRequest: {
+          id: (state.tocCommandRequest?.id ?? 0) + 1,
+          kind: 'save',
+          variant: action.variant
+        }
+      };
+    case 'tocCommand/requestAddEntry':
+      return {
+        ...state,
+        tocCommandRequest: {
+          id: (state.tocCommandRequest?.id ?? 0) + 1,
+          kind: 'addEntry',
+          pageIndex: action.pageIndex,
+          variant: action.variant
+        }
+      };
+    case 'tocCommand/requestRemoveEntry':
+      return {
+        ...state,
+        tocCommandRequest: {
+          id: (state.tocCommandRequest?.id ?? 0) + 1,
+          kind: 'removeEntry',
+          index: action.index,
+          variant: action.variant
+        }
+      };
+    case 'tocCommand/requestUpdateEntry':
+      return {
+        ...state,
+        tocCommandRequest: {
+          id: (state.tocCommandRequest?.id ?? 0) + 1,
+          kind: 'updateEntry',
+          index: action.index,
+          entry: action.entry,
+          variant: action.variant
+        }
+      };
+    case 'tocCommand/requestGenerateChapter':
+      return {
+        ...state,
+        tocCommandRequest: {
+          id: (state.tocCommandRequest?.id ?? 0) + 1,
+          kind: 'generateChapter',
+          index: action.index
+        }
+      };
+    case 'tocCommand/clearRequest':
+      return {
+        ...state,
+        tocCommandRequest: null
+      };
     case 'readerSession/setBookId':
       return {
         ...state,
@@ -2433,6 +2545,7 @@ export const selectOcrBlockCommandRequest = (state: CentralAppState) => state.oc
 export const selectOcrQueueCommandRequest = (state: CentralAppState) => state.ocrQueueCommandRequest;
 export const selectStudyAudioCommandRequest = (state: CentralAppState) => state.studyAudioCommandRequest;
 export const selectChapterCommandRequest = (state: CentralAppState) => state.chapterCommandRequest;
+export const selectTocCommandRequest = (state: CentralAppState) => state.tocCommandRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

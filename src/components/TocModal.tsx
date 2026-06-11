@@ -1,5 +1,4 @@
 import CloseIcon from '@/components/CloseIcon';
-import type { TocEntry } from '@/types/app';
 import { getDetailedTocLevel } from '@/lib/toc';
 import {
   appActions,
@@ -8,27 +7,10 @@ import {
   selectReaderSession,
   selectTocWorkflow,
   useAppDispatch,
-  useAppSelector,
-  type TocVariant
+  useAppSelector
 } from '@/state/appState';
 
-interface TocModalProps {
-  onGenerate: (variant: TocVariant) => void;
-  onSave: (variant: TocVariant) => void;
-  onAddEntry: (pageIndex: number, variant: TocVariant) => void;
-  onRemoveEntry: (index: number, variant: TocVariant) => void;
-  onUpdateEntry: (index: number, next: TocEntry, variant: TocVariant) => void;
-  onGenerateChapter: (index: number) => void;
-}
-
-export default function TocModal({
-  onGenerate,
-  onSave,
-  onAddEntry,
-  onRemoveEntry,
-  onUpdateEntry,
-  onGenerateChapter
-}: TocModalProps) {
+export default function TocModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('tocManage'));
   const { currentPage } = useAppSelector(selectReaderSession);
@@ -99,13 +81,18 @@ export default function TocModal({
             </button>
           </div>
           <div className="modal-toolbar">
-            <button type="button" className="button" onClick={() => onAddEntry(currentPage, variant)} disabled={busy}>
+            <button
+              type="button"
+              className="button"
+              onClick={() => dispatch(appActions.requestTocAddEntry(currentPage, variant))}
+              disabled={busy}
+            >
               Add Entry
             </button>
             <button
               type="button"
               className="button"
-              onClick={() => onGenerate(variant)}
+              onClick={() => dispatch(appActions.requestTocGenerate(variant))}
               disabled={busy || !allowGenerate}
             >
               {generating
@@ -133,7 +120,7 @@ export default function TocModal({
                     value={entry.title}
                     placeholder="Section title"
                     onChange={(event) =>
-                      onUpdateEntry(index, { ...entry, title: event.target.value }, variant)
+                      dispatch(appActions.requestTocUpdateEntry(index, { ...entry, title: event.target.value }, variant))
                     }
                     disabled={busy}
                   />
@@ -147,7 +134,7 @@ export default function TocModal({
                       onChange={(event) => {
                         const raw = Number.parseInt(event.target.value, 10);
                         const level = Number.isInteger(raw) ? Math.max(0, Math.min(raw, 2)) : 0;
-                        onUpdateEntry(index, { ...entry, level }, variant);
+                        dispatch(appActions.requestTocUpdateEntry(index, { ...entry, level }, variant));
                       }}
                       disabled={busy}
                     >
@@ -169,7 +156,7 @@ export default function TocModal({
                       const raw = Number.parseInt(event.target.value, 10);
                       const normalized = Number.isInteger(raw) ? raw - 1 : 0;
                       const clamped = Math.max(0, Math.min(normalized, manifestLength - 1));
-                      onUpdateEntry(index, { ...entry, page: clamped }, variant);
+                      dispatch(appActions.requestTocUpdateEntry(index, { ...entry, page: clamped }, variant));
                     }}
                     disabled={busy}
                   />
@@ -177,7 +164,7 @@ export default function TocModal({
                 <button
                   type="button"
                   className="button button-secondary"
-                  onClick={() => onGenerateChapter(index)}
+                  onClick={() => dispatch(appActions.requestTocGenerateChapter(index))}
                   disabled={busy || chapterBusy || !allowGenerate}
                 >
                   {chapterGeneratingIndex === index ? 'Generating…' : 'Generate Text'}
@@ -185,7 +172,7 @@ export default function TocModal({
                 <button
                   type="button"
                   className="button button-ghost"
-                  onClick={() => onRemoveEntry(index, variant)}
+                  onClick={() => dispatch(appActions.requestTocRemoveEntry(index, variant))}
                   disabled={busy}
                 >
                   Remove
@@ -198,7 +185,7 @@ export default function TocModal({
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => onSave(variant)}
+            onClick={() => dispatch(appActions.requestTocSave(variant))}
             disabled={busy}
           >
             {saving ? 'Saving…' : 'Save'}

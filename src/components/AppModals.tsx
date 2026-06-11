@@ -20,7 +20,6 @@ import MemoryCardModal from '@/components/MemoryCardModal';
 import PromptEditorModal from '@/components/PromptEditorModal';
 import JobWorkerModal from '@/components/JobWorkerModal';
 
-type TocModalProps = ComponentProps<typeof TocModal>;
 type OcrQueueModalProps = ComponentProps<typeof OcrQueueModal>;
 type SettingsModalProps = ComponentProps<typeof SettingsModal>;
 type QuizModalProps = ComponentProps<typeof QuizModal>;
@@ -29,7 +28,6 @@ type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
-  tocModalProps: TocModalProps;
   ocrQueueModalProps: OcrQueueModalProps;
   settingsModalProps: SettingsModalProps;
   quizModalProps: QuizModalProps;
@@ -46,7 +44,6 @@ function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
 
 export default function AppModals({
   portalTarget,
-  tocModalProps,
   ocrQueueModalProps,
   settingsModalProps,
   quizModalProps,
@@ -62,7 +59,7 @@ export default function AppModals({
       <BookmarksModal />
       {renderInPortal(<TextModal />, portalTarget)}
       {renderInPortal(<TocNavModal />, portalTarget)}
-      {renderInPortal(<TocModal {...tocModalProps} />, portalTarget)}
+      {renderInPortal(<TocModal />, portalTarget)}
       {renderInPortal(<SearchModal />, portalTarget)}
       {renderInPortal(<BookCardModal />, portalTarget)}
       {renderInPortal(<SettingsModal {...settingsModalProps} />, portalTarget)}
