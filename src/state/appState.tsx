@@ -7,7 +7,7 @@ import {
   type ReactNode
 } from 'react';
 import type { MainView, ViewMode } from '@/lib/appConstants';
-import type { Bookmark, ImagePreviewTarget, PageTextOcrEngine, SearchResult } from '@/types/app';
+import type { AudioState, Bookmark, ImagePreviewTarget, PageTextOcrEngine, SearchResult } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
@@ -144,6 +144,7 @@ export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
   readerSession: ReaderSessionState;
+  audio: AudioState;
   chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
   chapterTextContext: ChapterTextContextState;
   refreshTokens: AppRefreshTokens;
@@ -179,6 +180,9 @@ export type AppAction =
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
+  | { type: 'audio/reset' }
+  | { type: 'audio/stop' }
+  | { type: 'audio/syncFloating'; playbackState: FloatingAudioPlaybackState; track: FloatingAudioTrack; pageKey: string | null }
   | {
       type: 'chapterVersionNavigation/request';
       chapterNumber: number;
@@ -245,6 +249,14 @@ function getInitialReaderSession(): ReaderSessionState {
   };
 }
 
+const initialAudioState: AudioState = {
+  status: 'idle',
+  url: null,
+  source: null,
+  provider: null,
+  currentPageKey: null
+};
+
 const initialAppState: CentralAppState = {
   ui: {
     modals: {
@@ -280,6 +292,7 @@ const initialAppState: CentralAppState = {
   },
   navigation: getInitialNavigation(),
   readerSession: getInitialReaderSession(),
+  audio: initialAudioState,
   chapterVersionNavigationRequest: null,
   chapterTextContext: {
     displayedChapterText: null,
@@ -375,6 +388,18 @@ export const appActions = {
   setReaderViewMode: (mode: ViewMode): AppAction => ({
     type: 'readerSession/setViewMode',
     mode
+  }),
+  resetAudio: (): AppAction => ({ type: 'audio/reset' }),
+  stopAudio: (): AppAction => ({ type: 'audio/stop' }),
+  syncFloatingAudio: (
+    playbackState: FloatingAudioPlaybackState,
+    track: FloatingAudioTrack,
+    pageKey: string | null
+  ): AppAction => ({
+    type: 'audio/syncFloating',
+    playbackState,
+    track,
+    pageKey
   }),
   requestChapterVersionNavigation: (chapterNumber: number, versionId: string): AppAction => ({
     type: 'chapterVersionNavigation/request',
@@ -658,6 +683,52 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           viewMode: action.mode
         }
       };
+    case 'audio/reset':
+      return {
+        ...state,
+        audio: { ...initialAudioState }
+      };
+    case 'audio/stop':
+      return {
+        ...state,
+        audio: {
+          ...state.audio,
+          status: 'idle',
+          source: null,
+          provider: null,
+          currentPageKey: null
+        }
+      };
+    case 'audio/syncFloating': {
+      if (action.track.kind !== 'page-tts' && action.track.kind !== 'text-tts') {
+        return state;
+      }
+      if (action.playbackState === 'ended') {
+        return {
+          ...state,
+          audio: {
+            ...state.audio,
+            status: 'idle',
+            url: action.track.url,
+            source: state.audio.source ?? 'ai',
+            provider: null,
+            currentPageKey: null
+          }
+        };
+      }
+      return {
+        ...state,
+        audio: {
+          ...state.audio,
+          status: action.playbackState,
+          url: action.track.url,
+          source: state.audio.source ?? 'ai',
+          provider: action.track.provider === 'xai' ? 'xai' : 'openai',
+          currentPageKey: action.pageKey,
+          error: action.playbackState === 'error' ? 'Playback failed' : undefined
+        }
+      };
+    }
     case 'chapterVersionNavigation/request':
       return {
         ...state,
@@ -914,6 +985,7 @@ export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
 export const selectNavigationState = (state: CentralAppState) => state.navigation;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
+export const selectAudioState = (state: CentralAppState) => state.audio;
 export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
   state.chapterVersionNavigationRequest;
 export const selectChapterTextContext = (state: CentralAppState) => state.chapterTextContext;
