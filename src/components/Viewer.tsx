@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clampPan } from '@/lib/math';
+import { parseStreamLocator } from '@/lib/streamLocator';
 import OcrOverlay from '@/components/OcrOverlay';
 import {
   appActions,
@@ -9,16 +10,13 @@ import {
   selectOcrEdit,
   selectPageTextWorkflow,
   selectReaderSession,
+  selectStreamRuntime,
+  selectStreamUiControls,
   selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { AppSettings, ViewerMetrics, ViewerPan } from '@/types/app';
-
-interface ViewerProps {
-  currentBlockId?: string | null;
-  playingBlockId?: string | null;
-}
 
 const INITIAL_METRICS: ViewerMetrics = {
   containerWidth: 0,
@@ -30,19 +28,31 @@ const INITIAL_METRICS: ViewerMetrics = {
 
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
-export default function Viewer({
-  currentBlockId = null,
-  playingBlockId = null
-}: ViewerProps) {
+export default function Viewer() {
   const dispatch = useAppDispatch();
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
   const { editMode } = useAppSelector(selectOcrEdit);
+  const streamState = useAppSelector(selectStreamRuntime);
+  const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
   const imageUrl = manifest[currentPage] ?? null;
   const pageText = imageUrl ? textCache[imageUrl] ?? null : null;
   const rotation = settings.rotation;
+  const streamPositionActive =
+    streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
+  const playingStreamLocator = useMemo(
+    () => parseStreamLocator(streamPositionActive ? streamState.pageKey : null),
+    [streamPositionActive, streamState.pageKey]
+  );
+  const selectedStreamLocator = useMemo(
+    () => parseStreamLocator(selectedStreamBlockKey),
+    [selectedStreamBlockKey]
+  );
+  const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
+  const currentBlockId = activeStreamLocator?.imageUrl === imageUrl ? activeStreamLocator.blockId : null;
+  const playingBlockId = playingStreamLocator?.imageUrl === imageUrl ? playingStreamLocator.blockId : null;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const pointerState = useRef<{ active: boolean; startX: number; startY: number; pan: ViewerPan }>({

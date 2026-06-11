@@ -319,10 +319,6 @@ export default function App() {
   });
   const {
     setSelectedStreamBlockKey,
-    streamPositionActive,
-    playingStreamLocator,
-    activeStreamLocator,
-    activeTextParagraph,
     handlePlayVisibleStream
   } = useStreamControls({
     bookId,
@@ -815,20 +811,8 @@ export default function App() {
     viewerShellRef,
     modalHostRef,
     footerMessage,
-    viewerProps: {
-      currentBlockId: activeStreamLocator?.imageUrl === currentImage ? activeStreamLocator.blockId : null,
-      playingBlockId: playingStreamLocator?.imageUrl === currentImage ? playingStreamLocator.blockId : null
-    },
     scrollViewerProps: {
-      currentStreamBlockKey:
-        activeStreamLocator ? makeStreamLocator(activeStreamLocator.imageUrl, activeStreamLocator.blockId) : null,
-      playingStreamBlockKey: streamPositionActive ? streamState.pageKey : null,
-      streamPageKey: streamPositionActive ? streamState.pageKey : null,
       fetchPageTextByImage
-    },
-    chapterViewerProps: {
-      playingParagraphStart: activeTextParagraph.startIndex,
-      playingParagraphMode: activeTextParagraph.mode
     }
   };
 

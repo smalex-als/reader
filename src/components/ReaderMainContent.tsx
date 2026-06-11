@@ -17,26 +17,20 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-type ViewerProps = ComponentProps<typeof Viewer>;
 type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
-type ChapterViewerProps = ComponentProps<typeof ChapterViewer>;
 
 interface ReaderMainContentProps {
   viewerShellRef: RefObject<HTMLDivElement>;
   modalHostRef: RefObject<HTMLDivElement>;
   footerMessage: string;
-  viewerProps: ViewerProps;
   scrollViewerProps: ScrollViewerProps;
-  chapterViewerProps: ChapterViewerProps;
 }
 
 export default function ReaderMainContent({
   viewerShellRef,
   modalHostRef,
   footerMessage,
-  viewerProps,
-  scrollViewerProps,
-  chapterViewerProps
+  scrollViewerProps
 }: ReaderMainContentProps) {
   const { mainView } = useAppSelector(selectNavigationState);
   const { viewMode } = useAppSelector(selectReaderSession);
@@ -63,14 +57,14 @@ export default function ReaderMainContent({
         ) : mainView === 'units' ? (
           <UnitsView />
         ) : viewMode === 'pages' ? (
-          <Viewer {...viewerProps} />
+          <Viewer />
         ) : viewMode === 'scroll' ? (
           <ScrollViewer {...scrollViewerProps} />
         ) : viewMode === 'text' ? (
           editorOpen ? (
             <ChapterEditor />
           ) : (
-            <ChapterViewer {...chapterViewerProps} />
+            <ChapterViewer />
           )
         ) : (
           <AudioView />

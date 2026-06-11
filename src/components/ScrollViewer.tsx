@@ -9,6 +9,7 @@ import {
   selectOcrEdit,
   selectPageTextWorkflow,
   selectReaderSession,
+  selectStreamRuntime,
   selectStreamUiControls,
   selectViewerWorkflow,
   useAppDispatch,
@@ -25,9 +26,6 @@ const BLOCK_SCROLL_TARGET_OFFSET = 88;
 const VIEWPORT_PREFETCH_PADDING = 1;
 
 interface ScrollViewerProps {
-  currentStreamBlockKey: string | null;
-  playingStreamBlockKey: string | null;
-  streamPageKey: string | null;
   fetchPageTextByImage: (
     image: string,
     options?: { force?: boolean; silent?: boolean; updateCurrentState?: boolean }
@@ -64,9 +62,6 @@ function scrollBlockIntoReadingZone(scroller: HTMLDivElement, block: HTMLElement
 }
 
 export default function ScrollViewer({
-  currentStreamBlockKey,
-  playingStreamBlockKey,
-  streamPageKey,
   fetchPageTextByImage
 }: ScrollViewerProps) {
   const dispatch = useAppDispatch();
@@ -75,7 +70,8 @@ export default function ScrollViewer({
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
   const { editMode } = useAppSelector(selectOcrEdit);
-  const { autoFollowStream: autoFollowEnabled } = useAppSelector(selectStreamUiControls);
+  const streamState = useAppSelector(selectStreamRuntime);
+  const { autoFollowStream: autoFollowEnabled, selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
   const currentImage = manifest[currentPage] ?? null;
   const pageText = currentImage ? textCache[currentImage] ?? null : null;
   const {
@@ -119,8 +115,15 @@ export default function ScrollViewer({
     const contrastFilter = `contrast(${contrast}%)`;
     return `${invertFilter} ${brightnessFilter} ${contrastFilter}`;
   }, [brightness, contrast, invert]);
-  const currentStreamLocator = useMemo(() => parseStreamLocator(currentStreamBlockKey), [currentStreamBlockKey]);
-  const playingStreamLocator = useMemo(() => parseStreamLocator(playingStreamBlockKey), [playingStreamBlockKey]);
+  const streamPositionActive =
+    streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
+  const streamPageKey = streamPositionActive ? streamState.pageKey : null;
+  const playingStreamLocator = useMemo(() => parseStreamLocator(streamPageKey), [streamPageKey]);
+  const selectedStreamLocator = useMemo(
+    () => parseStreamLocator(selectedStreamBlockKey),
+    [selectedStreamBlockKey]
+  );
+  const currentStreamLocator = playingStreamLocator ?? selectedStreamLocator;
   const setCurrentPageFromScroll = useCallback(
     (pageIndex: number) => {
       dispatch(appActions.setReaderCurrentPage(pageIndex));

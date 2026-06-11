@@ -16,17 +16,13 @@ import {
   selectBookSessionWorkflow,
   selectChapterVersionNavigationRequest,
   selectRefreshTokens,
+  selectStreamRuntime,
   selectTocWorkflow,
   selectViewerWorkflow,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-
-interface ChapterViewerProps {
-  playingParagraphStart: number | null;
-  playingParagraphMode: 'chapter' | 'narration' | null;
-}
 
 type TextOutlineItem = {
   id: string;
@@ -155,12 +151,10 @@ function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
   return blockRect.top >= comfortableTop && blockRect.bottom <= comfortableBottom;
 }
 
-export default function ChapterViewer({
-  playingParagraphStart,
-  playingParagraphMode
-}: ChapterViewerProps) {
+export default function ChapterViewer() {
   const dispatch = useAppDispatch();
   const { settings } = useAppSelector(selectViewerWorkflow);
+  const streamState = useAppSelector(selectStreamRuntime);
   const { loading: tocLoading } = useAppSelector(selectTocWorkflow);
   const {
     bookType,
@@ -171,6 +165,23 @@ export default function ChapterViewer({
   const versionNavigationRequest = useAppSelector(selectChapterVersionNavigationRequest);
   const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
   const { textFontSize } = settings;
+  const streamPositionActive =
+    streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
+  const activeTextParagraph = useMemo(() => {
+    if (!streamPositionActive || typeof streamState.pageKey !== 'string') {
+      return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
+    }
+    const match = streamState.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
+    if (!match) {
+      return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
+    }
+    return {
+      mode: match[1] as 'chapter' | 'narration',
+      startIndex: Number.parseInt(match[2], 10)
+    };
+  }, [streamPositionActive, streamState.pageKey]);
+  const playingParagraphStart = activeTextParagraph.startIndex;
+  const playingParagraphMode = activeTextParagraph.mode;
   const allowEdit = true;
   const allowGenerate = bookType !== 'text';
   const {
