@@ -39,8 +39,6 @@ type HotkeysOptions = {
   bookmarksOpen: boolean;
   bookModalOpen: boolean;
   imagePreviewOpen: boolean;
-  tocOpen: boolean;
-  tocManageOpen: boolean;
   quizOpen: boolean;
   vocabularyOpen: boolean;
   memoryCardOpen: boolean;
@@ -48,8 +46,6 @@ type HotkeysOptions = {
   closeBookModal: () => void;
   closePrintModal: () => void;
   closeBookmarks: () => void;
-  setTocOpen: (open: boolean) => void;
-  setTocManageOpen: (open: boolean) => void;
   openBookModal: () => void;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
@@ -92,8 +88,6 @@ export function useHotkeys({
   bookmarksOpen,
   bookModalOpen,
   imagePreviewOpen,
-  tocOpen,
-  tocManageOpen,
   quizOpen,
   vocabularyOpen,
   memoryCardOpen,
@@ -101,8 +95,6 @@ export function useHotkeys({
   closeBookModal,
   closePrintModal,
   closeBookmarks,
-  setTocOpen,
-  setTocManageOpen,
   openBookModal,
   onOpenQuiz,
   onOpenVocabulary,
@@ -113,6 +105,8 @@ export function useHotkeys({
   const searchOpen = useAppSelector(selectModalOpen('search'));
   const ocrQueueOpen = useAppSelector(selectModalOpen('ocrQueue'));
   const settingsOpen = useAppSelector(selectModalOpen('settings'));
+  const tocOpen = useAppSelector(selectModalOpen('tocNav'));
+  const tocManageOpen = useAppSelector(selectModalOpen('tocManage'));
   const listeningDashboardOpen = useAppSelector(selectModalOpen('listeningDashboard'));
   const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
   const bookCardOpen = useAppSelector(selectBookCardOpen);
@@ -355,7 +349,7 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          setTocOpen(true);
+          dispatch(appActions.openModal('tocNav'));
           break;
         case 'b':
           event.preventDefault();
@@ -390,10 +384,10 @@ export function useHotkeys({
             dispatch(appActions.closeModal('ocrQueue'));
           }
           if (tocOpen) {
-            setTocOpen(false);
+            dispatch(appActions.closeModal('tocNav'));
           }
           if (tocManageOpen) {
-            setTocManageOpen(false);
+            dispatch(appActions.closeModal('tocManage'));
           }
           if (settingsOpen) {
             dispatch(appActions.closeModal('settings'));
@@ -468,8 +462,6 @@ export function useHotkeys({
     memoryCardOpen,
     listeningDashboardOpen,
     promptEditorOpen,
-    setTocOpen,
-    setTocManageOpen,
     toggleTextModal,
     triggerBackgroundOcr,
     toggleOcrEditMode,

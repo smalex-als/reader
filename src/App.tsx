@@ -847,8 +847,6 @@ export default function App() {
     bookmarksOpen,
     bookModalOpen,
     imagePreviewOpen: imagePreview !== null,
-    tocOpen,
-    tocManageOpen,
     quizOpen,
     vocabularyOpen,
     memoryCardOpen,
@@ -856,8 +854,6 @@ export default function App() {
     closeBookModal,
     closePrintModal,
     closeBookmarks,
-    setTocOpen,
-    setTocManageOpen,
     openBookModal,
     onOpenQuiz: () => {
       setSettingsOpen(false);

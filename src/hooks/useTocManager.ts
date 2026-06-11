@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
 import type { TocEntry, ToastMessage } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -16,9 +17,14 @@ type TocManagerOptions = {
   showToast: (message: string, kind?: ToastMessage['kind']) => void;
 };
 
+function resolveNext<T>(next: T | ((prev: T) => T), current: T) {
+  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
+}
+
 export function useTocManager({ bookId, manifestLength, viewMode, showToast }: TocManagerOptions) {
-  const [tocOpen, setTocOpen] = useState(false);
-  const [tocManageOpen, setTocManageOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const tocOpen = useAppSelector(selectModalOpen('tocNav'));
+  const tocManageOpen = useAppSelector(selectModalOpen('tocManage'));
   const [tocEntries, setTocEntries] = useState<TocEntry[]>([]);
   const [detailedTocEntries, setDetailedTocEntries] = useState<TocEntry[]>([]);
   const [tocVariant, setTocVariant] = useState<'main' | 'detailed'>('main');
@@ -37,6 +43,20 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
       .filter((entry) => Number.isInteger(entry.page))
       .sort((a, b) => a.page - b.page);
   }, [detailedTocEntries]);
+
+  const setTocOpen = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      dispatch(appActions.setModalOpen('tocNav', resolveNext(next, tocOpen)));
+    },
+    [dispatch, tocOpen]
+  );
+
+  const setTocManageOpen = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      dispatch(appActions.setModalOpen('tocManage', resolveNext(next, tocManageOpen)));
+    },
+    [dispatch, tocManageOpen]
+  );
 
   const loadToc = useCallback(async () => {
     if (!bookId) {
@@ -222,9 +242,9 @@ export function useTocManager({ bookId, manifestLength, viewMode, showToast }: T
     setTocEntries([]);
     setDetailedTocEntries([]);
     setTocVariant('main');
-    setTocOpen(false);
-    setTocManageOpen(false);
-  }, [bookId]);
+    dispatch(appActions.closeModal('tocNav'));
+    dispatch(appActions.closeModal('tocManage'));
+  }, [bookId, dispatch]);
 
   useEffect(() => {
     void loadToc();

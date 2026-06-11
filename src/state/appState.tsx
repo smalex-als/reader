@@ -16,7 +16,9 @@ export type SimpleModal =
   | 'jobWorker'
   | 'search'
   | 'promptEditor'
-  | 'settings';
+  | 'settings'
+  | 'tocNav'
+  | 'tocManage';
 
 export interface AppUiState {
   modals: Record<SimpleModal, boolean> & {
@@ -58,6 +60,8 @@ const initialAppState: CentralAppState = {
       search: false,
       promptEditor: false,
       settings: false,
+      tocNav: false,
+      tocManage: false,
       bookCard: false
     },
     bookCardBookId: null,
