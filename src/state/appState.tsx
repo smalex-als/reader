@@ -55,6 +55,7 @@ export interface AppUiState {
   modals: Record<SimpleModal, boolean> & {
     bookCard: boolean;
   };
+  fullscreen: boolean;
   bookCardBookId: string | null;
   imagePreview: ImagePreviewTarget | null;
   editor: {
@@ -236,6 +237,7 @@ export type AppAction =
   | { type: 'bookCard/close' }
   | { type: 'bookCard/setOpen'; open: boolean }
   | { type: 'bookCard/setBookId'; bookId: string | null }
+  | { type: 'fullscreen/set'; fullscreen: boolean }
   | { type: 'imagePreview/open'; preview: ImagePreviewTarget }
   | { type: 'imagePreview/close' }
   | { type: 'imagePreview/setEnhancedUrl'; url: string | null }
@@ -371,6 +373,7 @@ const initialAppState: CentralAppState = {
       bookSelect: false,
       bookCard: false
     },
+    fullscreen: false,
     bookCardBookId: null,
     imagePreview: null,
     editor: {
@@ -485,6 +488,7 @@ export const appActions = {
   closeBookCard: (): AppAction => ({ type: 'bookCard/close' }),
   setBookCardOpen: (open: boolean): AppAction => ({ type: 'bookCard/setOpen', open }),
   setBookCardBookId: (bookId: string | null): AppAction => ({ type: 'bookCard/setBookId', bookId }),
+  setFullscreen: (fullscreen: boolean): AppAction => ({ type: 'fullscreen/set', fullscreen }),
   openImagePreview: (preview: ImagePreviewTarget): AppAction => ({ type: 'imagePreview/open', preview }),
   closeImagePreview: (): AppAction => ({ type: 'imagePreview/close' }),
   setImagePreviewEnhancedUrl: (url: string | null): AppAction => ({
@@ -783,6 +787,14 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ui: {
           ...state.ui,
           bookCardBookId: action.bookId
+        }
+      };
+    case 'fullscreen/set':
+      return {
+        ...state,
+        ui: {
+          ...state.ui,
+          fullscreen: action.fullscreen
         }
       };
     case 'imagePreview/open':
@@ -1419,6 +1431,7 @@ export function useAppSelector<T>(selector: (state: CentralAppState) => T): T {
 export const selectModalOpen = (modal: SimpleModal) => (state: CentralAppState) => state.ui.modals[modal];
 export const selectBookCardOpen = (state: CentralAppState) => state.ui.modals.bookCard;
 export const selectBookCardBookId = (state: CentralAppState) => state.ui.bookCardBookId;
+export const selectFullscreen = (state: CentralAppState) => state.ui.fullscreen;
 export const selectImagePreview = (state: CentralAppState) => state.ui.imagePreview;
 export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
