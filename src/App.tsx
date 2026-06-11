@@ -842,18 +842,12 @@ export default function App() {
     handlePlayNextStudyBlock,
     gotoInputRef,
     toggleFullscreen,
-    textModalOpen,
-    printModalOpen,
-    bookmarksOpen,
     bookModalOpen,
     imagePreviewOpen: imagePreview !== null,
     quizOpen,
     vocabularyOpen,
     memoryCardOpen,
-    closeTextModal,
     closeBookModal,
-    closePrintModal,
-    closeBookmarks,
     openBookModal,
     onOpenQuiz: () => {
       setSettingsOpen(false);

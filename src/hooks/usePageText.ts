@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { parseOcrLayout, serializeOcrLayout } from '@/lib/ocrLayout';
+import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
 import type { PageText, PageTextOcrEngine } from '@/types/app';
 
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -14,7 +15,8 @@ export function usePageText(
   currentImage: string | null,
   showToast: (message: string, kind?: 'info' | 'success' | 'error') => void
 ) {
-  const [textModalOpen, setTextModalOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const textModalOpen = useAppSelector(selectModalOpen('text'));
   const [textCache, setTextCache] = useState<Record<string, PageText>>({});
   const [textLoading, setTextLoading] = useState(false);
   const [textSaving, setTextSaving] = useState(false);
@@ -91,16 +93,15 @@ export function usePageText(
   );
 
   const toggleTextModal = useCallback(() => {
-    setTextModalOpen((prev) => {
-      const next = !prev;
-      if (!prev) {
-        void fetchPageText();
-      }
-      return next;
-    });
-  }, [fetchPageText]);
+    if (!textModalOpen) {
+      void fetchPageText();
+    }
+    dispatch(appActions.setModalOpen('text', !textModalOpen));
+  }, [dispatch, fetchPageText, textModalOpen]);
 
-  const closeTextModal = useCallback(() => setTextModalOpen(false), []);
+  const closeTextModal = useCallback(() => {
+    dispatch(appActions.closeModal('text'));
+  }, [dispatch]);
 
   const savePageText = useCallback(
     async (nextText: string): Promise<PageText | null> => {
@@ -138,11 +139,11 @@ export function usePageText(
 
   const resetTextState = useCallback(() => {
     setTextCache({});
-    setTextModalOpen(false);
+    dispatch(appActions.closeModal('text'));
     setTextLoading(false);
     setTextSaving(false);
     setRegeneratedText(false);
-  }, []);
+  }, [dispatch]);
 
   const currentText = useMemo(() => {
     return currentImage ? textCache[currentImage] ?? null : null;

@@ -18,7 +18,10 @@ export type SimpleModal =
   | 'promptEditor'
   | 'settings'
   | 'tocNav'
-  | 'tocManage';
+  | 'tocManage'
+  | 'text'
+  | 'print'
+  | 'bookmarks';
 
 export interface AppUiState {
   modals: Record<SimpleModal, boolean> & {
@@ -62,6 +65,9 @@ const initialAppState: CentralAppState = {
       settings: false,
       tocNav: false,
       tocManage: false,
+      text: false,
+      print: false,
+      bookmarks: false,
       bookCard: false
     },
     bookCardBookId: null,

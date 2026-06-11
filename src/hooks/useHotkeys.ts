@@ -34,18 +34,12 @@ type HotkeysOptions = {
   handlePlayNextStudyBlock: () => Promise<void> | void;
   gotoInputRef: RefObject<HTMLInputElement>;
   toggleFullscreen: () => Promise<void> | void;
-  textModalOpen: boolean;
-  printModalOpen: boolean;
-  bookmarksOpen: boolean;
   bookModalOpen: boolean;
   imagePreviewOpen: boolean;
   quizOpen: boolean;
   vocabularyOpen: boolean;
   memoryCardOpen: boolean;
-  closeTextModal: () => void;
   closeBookModal: () => void;
-  closePrintModal: () => void;
-  closeBookmarks: () => void;
   openBookModal: () => void;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
@@ -83,25 +77,22 @@ export function useHotkeys({
   handlePlayNextStudyBlock,
   gotoInputRef,
   toggleFullscreen,
-  textModalOpen,
-  printModalOpen,
-  bookmarksOpen,
   bookModalOpen,
   imagePreviewOpen,
   quizOpen,
   vocabularyOpen,
   memoryCardOpen,
-  closeTextModal,
   closeBookModal,
-  closePrintModal,
-  closeBookmarks,
   openBookModal,
   onOpenQuiz,
   onOpenVocabulary,
   onOpenMemoryCard
 }: HotkeysOptions) {
   const dispatch = useAppDispatch();
+  const textModalOpen = useAppSelector(selectModalOpen('text'));
   const helpOpen = useAppSelector(selectModalOpen('help'));
+  const printModalOpen = useAppSelector(selectModalOpen('print'));
+  const bookmarksOpen = useAppSelector(selectModalOpen('bookmarks'));
   const searchOpen = useAppSelector(selectModalOpen('search'));
   const ocrQueueOpen = useAppSelector(selectModalOpen('ocrQueue'));
   const settingsOpen = useAppSelector(selectModalOpen('settings'));
@@ -375,7 +366,7 @@ export function useHotkeys({
           break;
         case 'escape':
           if (textModalOpen) {
-            closeTextModal();
+            dispatch(appActions.closeModal('text'));
           }
           if (bookModalOpen) {
             closeBookModal();
@@ -396,10 +387,10 @@ export function useHotkeys({
             dispatch(appActions.closeModal('help'));
           }
           if (printModalOpen) {
-            closePrintModal();
+            dispatch(appActions.closeModal('print'));
           }
           if (bookmarksOpen) {
-            closeBookmarks();
+            dispatch(appActions.closeModal('bookmarks'));
           }
           if (searchOpen) {
             dispatch(appActions.closeModal('search'));
@@ -430,7 +421,6 @@ export function useHotkeys({
     handlePlayStream,
     handleToggleStreamPause,
     handlePlayNextStudyBlock,
-    closeTextModal,
     textModalOpen,
     updateRotation,
     updateZoom,
@@ -447,8 +437,6 @@ export function useHotkeys({
     searchOpen,
     bookCardOpen,
     imagePreviewOpen,
-    closeBookmarks,
-    closePrintModal,
     dispatch,
     ocrQueueOpen,
     streamStatus,

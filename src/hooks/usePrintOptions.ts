@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
 
 interface PrintOption {
   id: string;
@@ -15,7 +16,8 @@ interface UsePrintOptionsParams {
 }
 
 export function usePrintOptions({ bookId, manifest, currentPage, showToast }: UsePrintOptionsParams) {
-  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const printModalOpen = useAppSelector(selectModalOpen('print'));
   const [printSelection, setPrintSelection] = useState<string>('current');
   const [printLoading, setPrintLoading] = useState(false);
 
@@ -61,15 +63,15 @@ export function usePrintOptions({ bookId, manifest, currentPage, showToast }: Us
     printOptions.find((option) => option.id === printSelection) ?? printOptions[0] ?? null;
 
   const openPrintModal = useCallback(() => {
-    setPrintModalOpen(true);
+    dispatch(appActions.openModal('print'));
     if (selectedPrintOption) {
       setPrintSelection(selectedPrintOption.id);
     }
-  }, [selectedPrintOption]);
+  }, [dispatch, selectedPrintOption]);
 
   const closePrintModal = useCallback(() => {
-    setPrintModalOpen(false);
-  }, []);
+    dispatch(appActions.closeModal('print'));
+  }, [dispatch]);
 
   const createPrintPdf = useCallback(async () => {
     if (!bookId || !selectedPrintOption) {
@@ -107,14 +109,14 @@ export function usePrintOptions({ bookId, manifest, currentPage, showToast }: Us
       anchor.remove();
       URL.revokeObjectURL(url);
       showToast('PDF ready to print', 'success');
-      setPrintModalOpen(false);
+      dispatch(appActions.closeModal('print'));
     } catch (error) {
       console.error(error);
       showToast('Unable to create PDF', 'error');
     } finally {
       setPrintLoading(false);
     }
-  }, [bookId, manifest, selectedPrintOption, showToast]);
+  }, [bookId, dispatch, manifest, selectedPrintOption, showToast]);
 
   useEffect(() => {
     if (printOptions.length === 0) {

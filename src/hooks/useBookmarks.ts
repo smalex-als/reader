@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Bookmark } from '@/types/app';
 import { fetchJson } from '@/lib/fetchJson';
+import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
 
 interface UseBookmarksOptions {
   bookId: string | null;
@@ -12,8 +13,9 @@ interface UseBookmarksOptions {
 
 export function useBookmarks(options: UseBookmarksOptions) {
   const { bookId, currentPage, currentImage, renderPage, showToast } = options;
+  const dispatch = useAppDispatch();
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
-  const [bookmarksOpen, setBookmarksOpen] = useState(false);
+  const bookmarksOpen = useAppSelector(selectModalOpen('bookmarks'));
   const [bookmarksLoading, setBookmarksLoading] = useState(false);
 
   const fetchBookmarks = useCallback(
@@ -108,22 +110,22 @@ export function useBookmarks(options: UseBookmarksOptions) {
   }, [addBookmark, bookmarks, currentPage, removeBookmark]);
 
   const showBookmarks = useCallback(() => {
-    setBookmarksOpen(true);
+    dispatch(appActions.openModal('bookmarks'));
     if (bookmarks.length === 0) {
       void fetchBookmarks();
     }
-  }, [bookmarks.length, fetchBookmarks]);
+  }, [bookmarks.length, dispatch, fetchBookmarks]);
 
   const closeBookmarks = useCallback(() => {
-    setBookmarksOpen(false);
-  }, []);
+    dispatch(appActions.closeModal('bookmarks'));
+  }, [dispatch]);
 
   const handleSelectBookmark = useCallback(
     (bookmark: Bookmark) => {
-      setBookmarksOpen(false);
+      dispatch(appActions.closeModal('bookmarks'));
       renderPage(bookmark.page);
     },
-    [renderPage]
+    [dispatch, renderPage]
   );
 
   const handleRemoveBookmarkFromList = useCallback(
@@ -136,11 +138,11 @@ export function useBookmarks(options: UseBookmarksOptions) {
   useEffect(() => {
     if (!bookId) {
       setBookmarks([]);
-      setBookmarksOpen(false);
+      dispatch(appActions.closeModal('bookmarks'));
       return;
     }
     void fetchBookmarks(bookId);
-  }, [bookId, fetchBookmarks]);
+  }, [bookId, dispatch, fetchBookmarks]);
 
   const isBookmarked = useMemo(() => bookmarks.some((entry) => entry.page === currentPage), [
     bookmarks,
