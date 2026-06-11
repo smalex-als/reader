@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
 import {
   appActions,
@@ -22,8 +22,11 @@ export function useUnitActions({
   showToast
 }: UseUnitActionsOptions) {
   const dispatch = useAppDispatch();
-  const { refreshToken: unitsRefreshToken, quizLabel: unitQuizLabel } = useAppSelector(selectUnitWorkflow);
-  const [unitCreating, setUnitCreating] = useState(false);
+  const {
+    refreshToken: unitsRefreshToken,
+    quizLabel: unitQuizLabel,
+    creating: unitCreating
+  } = useAppSelector(selectUnitWorkflow);
 
   const refreshUnits = useCallback(() => {
     dispatch(appActions.refreshUnits());
@@ -59,7 +62,7 @@ export function useUnitActions({
         showToast('No visible chapter text available for units', 'error');
         return;
       }
-      setUnitCreating(true);
+      dispatch(appActions.setUnitCreating(true));
       try {
         const result = await fetchJson<{ item: UnitSet }>('/api/units', {
           method: 'POST',
@@ -84,7 +87,7 @@ export function useUnitActions({
         console.error(error);
         showToast('Unable to create unit', 'error');
       } finally {
-        setUnitCreating(false);
+        dispatch(appActions.setUnitCreating(false));
       }
     },
     [

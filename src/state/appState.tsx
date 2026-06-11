@@ -130,6 +130,7 @@ export interface StreamUiControlsState {
 export interface UnitWorkflowState {
   refreshToken: number;
   quizLabel: string;
+  creating: boolean;
 }
 
 export interface OcrEditState {
@@ -278,6 +279,7 @@ export type AppAction =
   | { type: 'streamUi/setPlaybackRate'; rate: number }
   | { type: 'unitWorkflow/refresh' }
   | { type: 'unitWorkflow/setQuizLabel'; label: string }
+  | { type: 'unitWorkflow/setCreating'; creating: boolean }
   | { type: 'ocrEdit/setMode'; enabled: boolean }
   | { type: 'ocrEdit/setSaving'; saving: boolean }
   | { type: 'floatingAudio/play'; track: FloatingAudioTrack }
@@ -432,7 +434,8 @@ const initialAppState: CentralAppState = {
   },
   unitWorkflow: {
     refreshToken: 0,
-    quizLabel: 'Topic'
+    quizLabel: 'Topic',
+    creating: false
   },
   ocrEdit: {
     editMode: false,
@@ -594,6 +597,10 @@ export const appActions = {
   setUnitQuizLabel: (label: string): AppAction => ({
     type: 'unitWorkflow/setQuizLabel',
     label
+  }),
+  setUnitCreating: (creating: boolean): AppAction => ({
+    type: 'unitWorkflow/setCreating',
+    creating
   }),
   setOcrEditMode: (enabled: boolean): AppAction => ({
     type: 'ocrEdit/setMode',
@@ -1110,6 +1117,14 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         unitWorkflow: {
           ...state.unitWorkflow,
           quizLabel: action.label
+        }
+      };
+    case 'unitWorkflow/setCreating':
+      return {
+        ...state,
+        unitWorkflow: {
+          ...state.unitWorkflow,
+          creating: action.creating
         }
       };
     case 'ocrEdit/setMode':
