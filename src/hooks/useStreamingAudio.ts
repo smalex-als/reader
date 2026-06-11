@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useToast } from '@/hooks/useToast';
 import type { StreamState } from '@/types/app';
 import { stripMarkdown } from '@/lib/streamText';
 
@@ -55,9 +56,8 @@ function getStreamPcmCacheKey(text: string, pageKey: string, voice: string) {
   return `${voice}\u001f${pageKey}\u001f${text}`;
 }
 
-export function useStreamingAudio(
-  showToast: (message: string, kind?: 'info' | 'success' | 'error') => void
-) {
+export function useStreamingAudio() {
+  const { showToast } = useToast();
   const [streamState, setStreamState] = useState<StreamState>(INITIAL_STREAM_STATE);
   const finalizeStreamRef = useRef<(status?: StreamState['status'], error?: string) => void>(() => {});
   const streamStateRef = useRef<StreamState>(INITIAL_STREAM_STATE);

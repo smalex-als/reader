@@ -356,7 +356,7 @@ export default function App() {
     stopStream,
     stopAfterCurrentStream,
     pauseStreamAtStart
-  } = useStreamingAudio(showToast);
+  } = useStreamingAudio();
   const {
     floatingAudio,
     floatingAudioPlaybackState,
