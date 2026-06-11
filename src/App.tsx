@@ -34,7 +34,6 @@ import { useToast } from '@/hooks/useToast';
 import { useTocManager } from '@/hooks/useTocManager';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useZoom } from '@/hooks/useZoom';
-import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clampPan } from '@/lib/math';
 import { trackEvent } from '@/lib/analytics';
 import { saveLastPage } from '@/lib/storage';
@@ -666,12 +665,8 @@ export default function App() {
   };
 
   const settingsToolbarProps = {
-    onZoomIn: () => updateZoom(settings.zoom + ZOOM_STEP),
-    onZoomOut: () => updateZoom(settings.zoom - ZOOM_STEP),
-    onResetZoom: resetTransform,
     onFitWidth: () => applyZoomModeWithAlign('fit-width'),
     onFitHeight: () => applyZoomModeWithAlign('fit-height'),
-    onRotate: updateRotation,
     onToggleOcrEditMode: () => {
       void handleToggleOcrEditMode();
     },

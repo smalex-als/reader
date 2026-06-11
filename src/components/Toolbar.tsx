@@ -19,16 +19,17 @@ import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useShareLink } from '@/hooks/useShareLink';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
-import { clamp } from '@/lib/math';
+import { ZOOM_STEP } from '@/lib/hotkeys';
+import { clamp, clampPan } from '@/lib/math';
+import type { AppSettings } from '@/types/app';
+
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 6;
 
 interface ToolbarProps {
   layout?: 'panel' | 'modal';
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onResetZoom: () => void;
   onFitWidth: () => void;
   onFitHeight: () => void;
-  onRotate: () => void;
   onToggleOcrEditMode: () => void;
   onToggleFullscreen: () => void;
   onCreateChapter: () => void;
@@ -41,12 +42,8 @@ interface ToolbarProps {
 
 export default function Toolbar({
   layout = 'panel',
-  onZoomIn,
-  onZoomOut,
-  onResetZoom,
   onFitWidth,
   onFitHeight,
-  onRotate,
   onToggleOcrEditMode,
   onToggleFullscreen,
   onCreateChapter,
@@ -84,7 +81,7 @@ export default function Toolbar({
     chapterNumber,
     chapterRange
   });
-  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { settings, metrics } = useAppSelector(selectViewerWorkflow);
   const {
     invert,
     zoom,
@@ -139,6 +136,21 @@ export default function Toolbar({
   const closeSettings = () => dispatch(appActions.closeModal('settings'));
   const applyViewerSettings = (nextSettings: Partial<typeof settings>) => {
     dispatch(appActions.setViewerSettings({ ...settings, ...nextSettings }));
+  };
+  const updateTransform = (partial: Partial<Pick<AppSettings, 'zoom' | 'zoomMode' | 'rotation' | 'pan'>>) => {
+    const requestedZoom = partial.zoom ?? settings.zoom;
+    const clampedZoom = clamp(requestedZoom, ZOOM_MIN, ZOOM_MAX);
+    const basePan = partial.pan ?? settings.pan;
+    const panMetrics = metrics ? { ...metrics, scale: clampedZoom } : null;
+    const nextPan = panMetrics ? clampPan(basePan, panMetrics) : basePan;
+    dispatch(appActions.setViewerSettings({
+      ...settings,
+      ...partial,
+      zoom: clampedZoom,
+      zoomMode: partial.zoomMode ?? settings.zoomMode,
+      rotation: partial.rotation ?? settings.rotation,
+      pan: nextPan
+    }));
   };
   const handleOpenPrint = () => {
     closeSettings();
@@ -227,7 +239,7 @@ export default function Toolbar({
               <button
                 type="button"
                 className="button"
-                onClick={onZoomOut}
+                onClick={() => updateTransform({ zoom: zoom - ZOOM_STEP, zoomMode: 'custom' })}
                 disabled={controlsDisabled}
                 aria-label="Zoom out"
               >
@@ -236,7 +248,7 @@ export default function Toolbar({
               <button
                 type="button"
                 className="button"
-                onClick={onZoomIn}
+                onClick={() => updateTransform({ zoom: zoom + ZOOM_STEP, zoomMode: 'custom' })}
                 disabled={controlsDisabled}
                 aria-label="Zoom in"
               >
@@ -245,7 +257,7 @@ export default function Toolbar({
               <button
                 type="button"
                 className="button"
-                onClick={onResetZoom}
+                onClick={() => updateTransform({ zoom: 1, zoomMode: 'custom', rotation: 0, pan: { x: 0, y: 0 } })}
                 disabled={controlsDisabled}
                 aria-label="Reset zoom"
               >
@@ -279,7 +291,12 @@ export default function Toolbar({
             <span className="toolbar-group-title">Image</span>
             {viewMode === 'pages' ? (
               <>
-                <button type="button" className="button" onClick={onRotate} disabled={controlsDisabled}>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => updateTransform({ rotation: (rotation + 90) % 360, pan: { x: 0, y: 0 } })}
+                  disabled={controlsDisabled}
+                >
                   Rotate 90°
                 </button>
                 <span className="toolbar-readout">{rotation}°</span>
