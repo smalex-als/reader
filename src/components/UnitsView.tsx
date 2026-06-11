@@ -5,7 +5,8 @@ import remarkGfm from 'remark-gfm';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import { useToast } from '@/hooks/useToast';
-import type { AppSettings, SelfCheckResult, StreamState, UnitItem, UnitSet } from '@/types/app';
+import { selectViewerWorkflow, useAppSelector } from '@/state/appState';
+import type { SelfCheckResult, StreamState, UnitItem, UnitSet } from '@/types/app';
 
 interface UnitsViewProps {
   refreshToken: number;
@@ -18,10 +19,6 @@ interface UnitsViewProps {
   onStopAudio: () => void;
   onOpenSource: (bookId: string, chapterNumber: number) => void;
   onOpenTopicQuiz: (payload: { unitSetId: string; topicId: string; label: string }) => void;
-  textFontSize: number;
-  onTextFontSizeChange: (value: number) => void;
-  textTheme: AppSettings['textTheme'];
-  onTextThemeChange: (value: string) => void;
 }
 
 async function readErrorMessage(response: Response) {
@@ -160,12 +157,10 @@ export default function UnitsView({
   onPlayTopicParagraph,
   onStopAudio,
   onOpenSource,
-  onOpenTopicQuiz,
-  textFontSize,
-  onTextFontSizeChange,
-  textTheme,
-  onTextThemeChange
+  onOpenTopicQuiz
 }: UnitsViewProps) {
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { textFontSize } = settings;
   const { showToast } = useToast();
   const [items, setItems] = useState<UnitSet[]>([]);
   const [loading, setLoading] = useState(false);
@@ -559,10 +554,6 @@ export default function UnitsView({
               id="unit-library-text-settings"
               className="unit-library-settings"
               controlPrefix="unit"
-              textFontSize={textFontSize}
-              onTextFontSizeChange={onTextFontSizeChange}
-              textTheme={textTheme}
-              onTextThemeChange={onTextThemeChange}
             />
           ) : null}
         </header>

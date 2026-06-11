@@ -1,13 +1,15 @@
+import {
+  appActions,
+  selectViewerWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { AppSettings } from '@/types/app';
 
 interface TextSettingsPanelProps {
   id: string;
   className?: string;
   controlPrefix: string;
-  textFontSize: number;
-  onTextFontSizeChange: (value: number) => void;
-  textTheme: AppSettings['textTheme'];
-  onTextThemeChange: (value: string) => void;
 }
 
 const FONT_SIZE_OPTIONS = [
@@ -34,15 +36,26 @@ const COLOR_OPTIONS: { label: string; value: AppSettings['textTheme'] }[] = [
 export default function TextSettingsPanel({
   id,
   className,
-  controlPrefix,
-  textFontSize,
-  onTextFontSizeChange,
-  textTheme,
-  onTextThemeChange
+  controlPrefix
 }: TextSettingsPanelProps) {
+  const dispatch = useAppDispatch();
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { textFontSize, textTheme } = settings;
   const panelClassName = ['text-viewer-settings', className].filter(Boolean).join(' ');
   const fontSizeName = `${controlPrefix}-font-size`;
   const colorSchemeName = `${controlPrefix}-color-scheme`;
+  const updateTextFontSize = (nextSize: number) => {
+    if (textFontSize === nextSize) {
+      return;
+    }
+    dispatch(appActions.setViewerSettings({ ...settings, textFontSize: nextSize }));
+  };
+  const updateTextTheme = (nextTheme: AppSettings['textTheme']) => {
+    if (textTheme === nextTheme) {
+      return;
+    }
+    dispatch(appActions.setViewerSettings({ ...settings, textTheme: nextTheme }));
+  };
 
   return (
     <div className={panelClassName} id={id}>
@@ -59,7 +72,7 @@ export default function TextSettingsPanel({
                   name={fontSizeName}
                   value={option.value}
                   checked={textFontSize === option.value}
-                  onChange={() => onTextFontSizeChange(option.value)}
+                  onChange={() => updateTextFontSize(option.value)}
                 />
                 <span>{option.label}</span>
               </label>
@@ -80,7 +93,7 @@ export default function TextSettingsPanel({
                   name={colorSchemeName}
                   value={option.value}
                   checked={textTheme === option.value}
-                  onChange={() => onTextThemeChange(option.value)}
+                  onChange={() => updateTextTheme(option.value)}
                 />
                 <span>{option.label}</span>
               </label>

@@ -42,8 +42,6 @@ import { trackEvent } from '@/lib/analytics';
 import { saveLastPage } from '@/lib/storage';
 import { makeStreamLocator } from '@/lib/streamLocator';
 import {
-  TEXT_FONT_SIZE_MIN,
-  TEXT_FONT_SIZE_MAX,
   createDefaultSettings,
   getMainViewFromLocation,
   normalizeTextFontSize,
@@ -603,33 +601,6 @@ export default function App() {
     [setSettings]
   );
 
-  const updateTextFontSize = useCallback(
-    (value: number) => {
-      const clamped = clamp(value, TEXT_FONT_SIZE_MIN, TEXT_FONT_SIZE_MAX);
-      const nextSize = normalizeTextFontSize(clamped);
-      setSettings((prev) => {
-        if (prev.textFontSize === nextSize) {
-          return prev;
-        }
-        return { ...prev, textFontSize: nextSize };
-      });
-    },
-    [setSettings]
-  );
-
-  const updateTextTheme = useCallback(
-    (value: string) => {
-      const nextTheme = normalizeTextTheme(value);
-      setSettings((prev) => {
-        if (prev.textTheme === nextTheme) {
-          return prev;
-        }
-        return { ...prev, textTheme: nextTheme };
-      });
-    },
-    [setSettings]
-  );
-
   const toggleStudyMode = useCallback(() => {
     const enablingStudyMode = !settings.studyMode;
     setSettings((prev) => ({ ...prev, studyMode: !prev.studyMode }));
@@ -1035,10 +1006,6 @@ export default function App() {
           }
         : undefined,
       onDeleteChapter: isTextBook ? handleDeleteChapter : undefined,
-      textFontSize: settings.textFontSize,
-      onTextFontSizeChange: updateTextFontSize,
-      textTheme: settings.textTheme,
-      onTextThemeChange: updateTextTheme,
       mp3Voice,
       mp3VoiceOptions,
       onMp3VoiceChange: handleMp3VoiceChange,
@@ -1059,11 +1026,7 @@ export default function App() {
     },
     audioLibraryViewProps: {
       onPlayAudio: handlePlayFloatingAudio,
-      onOpenBook: handleOpenLibraryBook,
-      textFontSize: settings.textFontSize,
-      onTextFontSizeChange: updateTextFontSize,
-      textTheme: settings.textTheme,
-      onTextThemeChange: updateTextTheme
+      onOpenBook: handleOpenLibraryBook
     },
     unitsViewProps: {
       refreshToken: unitsRefreshToken,
@@ -1081,11 +1044,7 @@ export default function App() {
       onOpenTopicQuiz: ({ label }: { unitSetId: string; topicId: string; label: string }) => {
         setUnitQuizLabel(label);
         void handleOpenUnitTopicQuiz().then(refreshUnits);
-      },
-      textFontSize: settings.textFontSize,
-      onTextFontSizeChange: updateTextFontSize,
-      textTheme: settings.textTheme,
-      onTextThemeChange: updateTextTheme
+      }
     },
     audioViewProps: {
       onOpenChapterText: (pageIndex: number, versionId?: string, targetChapterNumber?: number) => {

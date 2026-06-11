@@ -9,7 +9,7 @@ import TrashIcon from '@/components/TrashIcon';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
-import type { AppSettings } from '@/types/app';
+import { selectViewerWorkflow, useAppSelector } from '@/state/appState';
 import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface ChapterViewerProps {
@@ -29,10 +29,6 @@ interface ChapterViewerProps {
   }) => void;
   onCreateChapter?: () => void | Promise<void>;
   onDeleteChapter?: (chapterNumber: number) => void | Promise<void>;
-  textFontSize: number;
-  onTextFontSizeChange: (value: number) => void;
-  textTheme: AppSettings['textTheme'];
-  onTextThemeChange: (value: string) => void;
   mp3Voice: string;
   mp3VoiceOptions: readonly { id: string; label: string }[];
   onMp3VoiceChange: (voice: string) => void;
@@ -199,10 +195,6 @@ export default function ChapterViewer({
   onEditChapter,
   onCreateChapter,
   onDeleteChapter,
-  textFontSize,
-  onTextFontSizeChange,
-  textTheme,
-  onTextThemeChange,
   mp3Voice,
   mp3VoiceOptions,
   onMp3VoiceChange,
@@ -218,6 +210,8 @@ export default function ChapterViewer({
   playingParagraphStart,
   playingParagraphMode
 }: ChapterViewerProps) {
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { textFontSize } = settings;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
@@ -1012,10 +1006,6 @@ export default function ChapterViewer({
           <TextSettingsPanel
             id="text-viewer-settings"
             controlPrefix="text"
-            textFontSize={textFontSize}
-            onTextFontSizeChange={onTextFontSizeChange}
-            textTheme={textTheme}
-            onTextThemeChange={onTextThemeChange}
           />
         ) : null}
       </header>

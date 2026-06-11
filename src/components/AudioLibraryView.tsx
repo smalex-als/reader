@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import { useToast } from '@/hooks/useToast';
 import { onFloatingAudioTime } from '@/lib/floatingAudioEvents';
-import type { AppSettings } from '@/types/app';
+import { selectViewerWorkflow, useAppSelector } from '@/state/appState';
 import type { FloatingAudioSubchapter, FloatingAudioTrack } from '@/types/floatingAudio';
 
 type AudioLibraryItem = {
@@ -34,10 +34,6 @@ type SubtitleCue = {
 interface AudioLibraryViewProps {
   onPlayAudio: (payload: FloatingAudioTrack) => void;
   onOpenBook: (bookId: string, chapterNumber: number) => void;
-  textFontSize: number;
-  onTextFontSizeChange: (value: number) => void;
-  textTheme: AppSettings['textTheme'];
-  onTextThemeChange: (value: string) => void;
 }
 
 async function readErrorMessage(response: Response) {
@@ -219,12 +215,10 @@ function toFloatingTrack(item: AudioLibraryItem, startSeconds?: number): Floatin
 
 export default function AudioLibraryView({
   onPlayAudio,
-  onOpenBook,
-  textFontSize,
-  onTextFontSizeChange,
-  textTheme,
-  onTextThemeChange
+  onOpenBook
 }: AudioLibraryViewProps) {
+  const { settings } = useAppSelector(selectViewerWorkflow);
+  const { textFontSize } = settings;
   const { showToast } = useToast();
   const libraryRef = useRef<HTMLDivElement | null>(null);
   const cueRefs = useRef<Record<number, HTMLButtonElement | null>>({});
@@ -432,10 +426,6 @@ export default function AudioLibraryView({
             id="audio-library-text-settings"
             className="audio-library-settings"
             controlPrefix="audio"
-            textFontSize={textFontSize}
-            onTextFontSizeChange={onTextFontSizeChange}
-            textTheme={textTheme}
-            onTextThemeChange={onTextThemeChange}
           />
         ) : null}
 
