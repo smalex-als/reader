@@ -6,16 +6,15 @@ import {
   useAppSelector
 } from '@/state/appState';
 import type { AudioState } from '@/types/app';
-import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
+import type { FloatingAudioTrack } from '@/types/floatingAudio';
 
 interface UseFloatingAudioOptions {
   bookId: string | null;
   audioState: AudioState;
-  syncFloatingAudioState: (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => void;
 }
 
 export function useFloatingAudio(options: UseFloatingAudioOptions) {
-  const { bookId, audioState, syncFloatingAudioState } = options;
+  const { bookId, audioState } = options;
   const dispatch = useAppDispatch();
   const { track: floatingAudio, playbackState: floatingAudioPlaybackState } = useAppSelector(selectFloatingAudio);
 
@@ -24,14 +23,6 @@ export function useFloatingAudio(options: UseFloatingAudioOptions) {
       dispatch(appActions.playFloatingAudio(payload));
     },
     [dispatch]
-  );
-
-  const handlePlaybackStateChange = useCallback(
-    (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => {
-      dispatch(appActions.setFloatingAudioPlaybackState(state));
-      syncFloatingAudioState(state, track);
-    },
-    [dispatch, syncFloatingAudioState]
   );
 
   useEffect(() => {
@@ -49,7 +40,6 @@ export function useFloatingAudio(options: UseFloatingAudioOptions) {
 
   return {
     floatingAudioPlaybackState,
-    playFloatingAudio,
-    handlePlaybackStateChange
+    playFloatingAudio
   };
 }

@@ -248,9 +248,8 @@ export default function App() {
     audioState,
     resetAudio,
     resetAudioCache,
-    syncFloatingAudioState,
     stopAudio
-  } = useAudioController(currentImage);
+  } = useAudioController();
   const {
     streamState,
     startStream,
@@ -263,9 +262,8 @@ export default function App() {
   } = useStreamingAudio();
   const {
     floatingAudioPlaybackState,
-    playFloatingAudio: handlePlayFloatingAudio,
-    handlePlaybackStateChange: handleFloatingAudioPlaybackStateChange
-  } = useFloatingAudio({ bookId, audioState, syncFloatingAudioState });
+    playFloatingAudio: handlePlayFloatingAudio
+  } = useFloatingAudio({ bookId, audioState });
   const isListening =
     audioState.status === 'playing' ||
     streamState.status === 'streaming' ||
@@ -814,9 +812,6 @@ export default function App() {
       onToggleStudyMode: toggleStudyMode,
       onTogglePause: () => void handleToggleStreamPause(),
       onStopStream: handleStopStream
-    },
-    floatingAudioPlayerProps: {
-      onPlaybackStateChange: handleFloatingAudioPlaybackStateChange
     }
   };
 

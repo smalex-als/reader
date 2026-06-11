@@ -3,7 +3,9 @@ import { PLAYBACK_RATE_OPTIONS, normalizePlaybackRate } from '@/lib/appConstants
 import { emitFloatingAudioSubchapterSelect, emitFloatingAudioTime } from '@/lib/floatingAudioEvents';
 import {
   appActions,
+  selectBookSessionWorkflow,
   selectFloatingAudio,
+  selectReaderSession,
   selectStreamUiControls,
   useAppDispatch,
   useAppSelector
@@ -13,10 +15,6 @@ import type {
   FloatingAudioSubchapter,
   FloatingAudioTrack
 } from '@/types/floatingAudio';
-
-interface FloatingAudioPlayerProps {
-  onPlaybackStateChange?: (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => void;
-}
 
 function formatTime(value: number) {
   if (!Number.isFinite(value) || value < 0) {
@@ -140,12 +138,13 @@ function mergeAwkwardSubtitleCues(cues: SubtitleCue[]) {
   return merged;
 }
 
-export default function FloatingAudioPlayer({
-  onPlaybackStateChange
-}: FloatingAudioPlayerProps) {
+export default function FloatingAudioPlayer() {
   const dispatch = useAppDispatch();
   const { track } = useAppSelector(selectFloatingAudio);
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const { playbackRate } = useAppSelector(selectStreamUiControls);
+  const currentImage = manifest[currentPage] ?? null;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastEmittedSubchapterKeyRef = useRef<string | null>(null);
   const lastEmittedTrackKeyRef = useRef<string | null>(null);
@@ -172,6 +171,13 @@ export default function FloatingAudioPlayer({
         .find((entry) => currentTime >= entry.startSeconds) ?? subchapters[0]
     );
   }, [currentTime, subchapters]);
+  const syncPlaybackState = useCallback(
+    (state: FloatingAudioPlaybackState, nextTrack: FloatingAudioTrack) => {
+      dispatch(appActions.setFloatingAudioPlaybackState(state));
+      dispatch(appActions.syncFloatingAudio(state, nextTrack, nextTrack.pageKey ?? currentImage));
+    },
+    [currentImage, dispatch]
+  );
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -199,25 +205,25 @@ export default function FloatingAudioPlayer({
     const handlePlay = () => {
       setPlaying(true);
       if (track) {
-        onPlaybackStateChange?.('playing', track);
+        syncPlaybackState('playing', track);
       }
     };
     const handlePause = () => {
       setPlaying(false);
       if (track) {
-        onPlaybackStateChange?.('paused', track);
+        syncPlaybackState('paused', track);
       }
     };
     const handleEnded = () => {
       setPlaying(false);
       if (track) {
-        onPlaybackStateChange?.('ended', track);
+        syncPlaybackState('ended', track);
       }
     };
     const handleError = () => {
       setPlaying(false);
       if (track) {
-        onPlaybackStateChange?.('error', track);
+        syncPlaybackState('error', track);
       }
     };
     audio.addEventListener('loadedmetadata', handleLoaded);
@@ -238,7 +244,7 @@ export default function FloatingAudioPlayer({
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [onPlaybackStateChange, playbackRate, seeking, track]);
+  }, [playbackRate, seeking, syncPlaybackState, track]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -271,7 +277,7 @@ export default function FloatingAudioPlayer({
     if (track.startSeconds && track.startSeconds > 0) {
       audio.currentTime = track.startSeconds;
     }
-    onPlaybackStateChange?.('loading', track);
+    syncPlaybackState('loading', track);
     const nextDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
     const nextCurrentTime = Math.max(0, track.startSeconds ?? 0);
     setCurrentTime(nextCurrentTime);
@@ -281,7 +287,7 @@ export default function FloatingAudioPlayer({
     audio.play().catch(() => {
       setPlaying(false);
     });
-  }, [onPlaybackStateChange, track]);
+  }, [syncPlaybackState, track]);
 
 
   useEffect(() => {

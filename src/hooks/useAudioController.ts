@@ -5,9 +5,8 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
-export function useAudioController(currentImage: string | null) {
+export function useAudioController() {
   const dispatch = useAppDispatch();
   const audioState = useAppSelector(selectAudioState);
 
@@ -19,16 +18,6 @@ export function useAudioController(currentImage: string | null) {
     dispatch(appActions.stopAudio());
   }, [dispatch]);
 
-  const syncFloatingAudioState = useCallback(
-    (state: FloatingAudioPlaybackState, track: FloatingAudioTrack) => {
-      if (track.kind !== 'page-tts' && track.kind !== 'text-tts') {
-        return;
-      }
-      dispatch(appActions.syncFloatingAudio(state, track, track.pageKey ?? currentImage ?? null));
-    },
-    [currentImage, dispatch]
-  );
-
   const resetAudioCache = useCallback(() => {
     resetAudio();
   }, [resetAudio]);
@@ -37,7 +26,6 @@ export function useAudioController(currentImage: string | null) {
     audioState,
     resetAudio,
     resetAudioCache,
-    syncFloatingAudioState,
     stopAudio
   };
 }

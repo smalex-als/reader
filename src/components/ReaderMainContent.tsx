@@ -24,7 +24,6 @@ type AudioLibraryViewProps = ComponentProps<typeof AudioLibraryView>;
 type UnitsViewProps = ComponentProps<typeof UnitsView>;
 type AudioViewProps = ComponentProps<typeof AudioView>;
 type StreamBubbleProps = ComponentProps<typeof StreamBubble>;
-type FloatingAudioPlayerProps = ComponentProps<typeof FloatingAudioPlayer>;
 
 interface ReaderMainContentProps {
   viewerShellRef: RefObject<HTMLDivElement>;
@@ -37,7 +36,6 @@ interface ReaderMainContentProps {
   unitsViewProps: UnitsViewProps;
   audioViewProps: AudioViewProps;
   streamBubbleProps: StreamBubbleProps;
-  floatingAudioPlayerProps: FloatingAudioPlayerProps;
 }
 
 export default function ReaderMainContent({
@@ -50,8 +48,7 @@ export default function ReaderMainContent({
   audioLibraryViewProps,
   unitsViewProps,
   audioViewProps,
-  streamBubbleProps,
-  floatingAudioPlayerProps
+  streamBubbleProps
 }: ReaderMainContentProps) {
   const { mainView } = useAppSelector(selectNavigationState);
   const { viewMode } = useAppSelector(selectReaderSession);
@@ -92,7 +89,7 @@ export default function ReaderMainContent({
         )}
         {loading && <div className="viewer-status">Loading...</div>}
         <StreamBubble {...streamBubbleProps} />
-        <FloatingAudioPlayer {...floatingAudioPlayerProps} />
+        <FloatingAudioPlayer />
         <div ref={modalHostRef} className="modal-portal" />
       </div>
       <div className="page-footer">
