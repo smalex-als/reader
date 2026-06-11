@@ -12,7 +12,6 @@ import { useChapterTextContext } from '@/hooks/useChapterTextContext';
 import { useChapterVersionNavigation } from '@/hooks/useChapterVersionNavigation';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { useUnitActions } from '@/hooks/useUnitActions';
-import { useModalState } from '@/hooks/useModalState';
 import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
@@ -61,12 +60,6 @@ export default function App() {
     selectedUnitSetId,
     selectedUnitTopicId
   } = useUnitsRouteState();
-  const {
-    closeOcrQueue,
-    closeSearch,
-    closeBookCard,
-    setSettingsOpen
-  } = useModalState();
   const {
     displayedChapterText,
     firstChapterParagraph
@@ -473,13 +466,13 @@ export default function App() {
 
   useEffect(() => {
     closeBookmarks();
-    closeSearch();
-    closeBookCard();
+    dispatch(appActions.closeModal('search'));
+    dispatch(appActions.closeBookCard());
     resetTextState();
     resetAudioCache();
     stopAudio();
     stopStream();
-  }, [bookId, closeBookmarks, closeBookCard, closeSearch, resetAudioCache, resetTextState, stopAudio, stopStream]);
+  }, [bookId, closeBookmarks, dispatch, resetAudioCache, resetTextState, stopAudio, stopStream]);
 
   const {
     handleOpenDashboardBook,
@@ -495,10 +488,10 @@ export default function App() {
   });
 
   const handleSelectSearchResult = useCallback((result: SearchResult) => {
-    closeSearch();
+    dispatch(appActions.closeModal('search'));
     renderPage(result.page);
     setViewMode(isTextBook ? 'text' : viewMode === 'scroll' ? 'scroll' : 'pages');
-  }, [closeSearch, isTextBook, renderPage, setViewMode, viewMode]);
+  }, [dispatch, isTextBook, renderPage, setViewMode, viewMode]);
 
   const applyFilters = useCallback(
     (
@@ -527,8 +520,8 @@ export default function App() {
 
   useEffect(() => {
     resetQueue();
-    closeOcrQueue();
-  }, [bookId, closeOcrQueue, resetQueue]);
+    dispatch(appActions.closeModal('ocrQueue'));
+  }, [bookId, dispatch, resetQueue]);
 
   const { handleCopyText } = useCopyActions({
     currentImage,
@@ -592,7 +585,7 @@ export default function App() {
     gotoInputRef,
     toggleFullscreen,
     onOpenQuiz: () => {
-      setSettingsOpen(false);
+      dispatch(appActions.closeModal('settings'));
       if (mainView === 'units' && selectedUnitSetId && selectedUnitTopicId) {
         void handleOpenUnitTopicQuiz();
         return;
@@ -600,11 +593,11 @@ export default function App() {
       void handleOpenQuiz();
     },
     onOpenVocabulary: () => {
-      setSettingsOpen(false);
+      dispatch(appActions.closeModal('settings'));
       void handleOpenVocabulary();
     },
     onOpenMemoryCard: () => {
-      setSettingsOpen(false);
+      dispatch(appActions.closeModal('settings'));
       void handleOpenMemoryCard();
     }
   });
