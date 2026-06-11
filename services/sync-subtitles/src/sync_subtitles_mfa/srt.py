@@ -13,6 +13,7 @@ MAX_MERGED_SUBTITLE_CUE_SECONDS = 12.0
 MAX_SUBTITLE_CUE_SECONDS = 12.0
 MIN_SUBTITLE_CUE_SECONDS = 0.3
 MAX_SUBTITLE_CUE_GAP_SECONDS = 2.0
+PATHOLOGICAL_ALIGNMENT_GAP_SECONDS = 30.0
 SUBTITLE_CUE_GAP_SECONDS = 0.18
 MAX_TRAILING_STARTER_WORDS = 8
 MAX_TRAILING_STARTER_CHARS = 72
@@ -91,21 +92,25 @@ def clamp_cue_durations(
     max_duration: float = MAX_SUBTITLE_CUE_SECONDS,
     min_duration: float = MIN_SUBTITLE_CUE_SECONDS,
     max_gap: float = MAX_SUBTITLE_CUE_GAP_SECONDS,
+    pathological_gap: float = PATHOLOGICAL_ALIGNMENT_GAP_SECONDS,
     inserted_gap: float = SUBTITLE_CUE_GAP_SECONDS,
 ) -> list[Cue]:
     output: list[Cue] = []
     for index, cue in enumerate(cues):
         next_start = cues[index + 1].start if index + 1 < len(cues) else None
         start = cue.start
-        if output and start - output[-1].end > max_gap:
+        # Only a jump past pathological_gap means the alignment derailed; pull that cue
+        # back so subtitles keep flowing. Real speech pauses must keep their true start,
+        # otherwise the shift compounds and the whole timeline drifts ahead of the audio.
+        if output and start - output[-1].end > pathological_gap:
             start = output[-1].end + inserted_gap
         duration = max(min_duration, min(cue.end - cue.start, max_duration))
         end = start + duration
-        if next_start is not None and next_start - cue.end <= max_gap:
-            end = min(end, next_start)
-        end = max(end, start + min_duration)
-        if next_start is not None and next_start - cue.end <= max_gap:
-            end = min(end, next_start)
+        if next_start is not None:
+            end = min(end, max(next_start, start + min_duration))
+            # Hold the cue on screen through a pause instead of leaving a blank stretch.
+            if max_gap < next_start - end <= pathological_gap:
+                end = next_start - inserted_gap
         output.append(Cue(start=start, end=end, text=cue.text))
     return output
 

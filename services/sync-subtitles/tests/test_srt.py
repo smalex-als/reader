@@ -329,11 +329,29 @@ class SRTTest(unittest.TestCase):
         )
 
         self.assertEqual(cues[0].start, 1214.89)
-        self.assertEqual(cues[0].end, 1226.89)
-        self.assertAlmostEqual(cues[1].start, 1227.07)
-        self.assertAlmostEqual(cues[1].end, 1239.07)
-        self.assertAlmostEqual(cues[2].start, 1239.25)
-        self.assertAlmostEqual(cues[2].end, 1239.55)
+        self.assertAlmostEqual(cues[0].end, 1247.72)
+        self.assertAlmostEqual(cues[1].start, 1247.9)
+        self.assertAlmostEqual(cues[1].end, 1259.9)
+        self.assertAlmostEqual(cues[2].start, 1260.08)
+        self.assertAlmostEqual(cues[2].end, 1260.38)
+
+    def test_real_speech_pauses_keep_true_cue_starts(self) -> None:
+        # A pause longer than max_gap but shorter than pathological_gap is real
+        # silence (chapter break, TTS chunk boundary). The next cue must keep its
+        # true start or the timeline drifts ahead of the audio cumulatively.
+        cues = clamp_cue_durations(
+            [
+                Cue(10.0, 12.0, "first sentence."),
+                Cue(17.0, 19.0, "second sentence after a pause."),
+                Cue(24.5, 26.0, "third sentence after another pause."),
+            ]
+        )
+
+        self.assertEqual(cues[1].start, 17.0)
+        self.assertEqual(cues[2].start, 24.5)
+        # The earlier cue is held on screen through the pause.
+        self.assertAlmostEqual(cues[0].end, 16.82)
+        self.assertAlmostEqual(cues[1].end, 24.32)
 
     def test_merges_incomplete_phrase_despite_pathological_alignment_gap(self) -> None:
         words = [
