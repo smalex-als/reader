@@ -132,6 +132,17 @@ export type OcrBlockCommandRequest = {
   | { kind: 'toggleSpeechBlock'; blockId: string }
 );
 
+export type OcrQueueCommandRequest = {
+  id: number;
+} & (
+  | { kind: 'togglePause' }
+  | { kind: 'queueAll' }
+  | { kind: 'forceUpdateAll' }
+  | { kind: 'queueRemaining' }
+  | { kind: 'retryFailed' }
+  | { kind: 'clear' }
+);
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -292,6 +303,7 @@ export interface CentralAppState {
   toolbarCommandRequest: ToolbarCommandRequest | null;
   studyModeToggleRequest: StudyModeToggleRequest | null;
   ocrBlockCommandRequest: OcrBlockCommandRequest | null;
+  ocrQueueCommandRequest: OcrQueueCommandRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -370,6 +382,13 @@ export type AppAction =
   | { type: 'ocrBlockCommand/requestPlayBlock'; imageUrl: string; startIndex: number; blockId: string }
   | { type: 'ocrBlockCommand/requestToggleSpeechBlock'; blockId: string }
   | { type: 'ocrBlockCommand/clear' }
+  | { type: 'ocrQueueCommand/requestTogglePause' }
+  | { type: 'ocrQueueCommand/requestQueueAll' }
+  | { type: 'ocrQueueCommand/requestForceUpdateAll' }
+  | { type: 'ocrQueueCommand/requestQueueRemaining' }
+  | { type: 'ocrQueueCommand/requestRetryFailed' }
+  | { type: 'ocrQueueCommand/requestClear' }
+  | { type: 'ocrQueueCommand/clearRequest' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -546,6 +565,7 @@ const initialAppState: CentralAppState = {
   toolbarCommandRequest: null,
   studyModeToggleRequest: null,
   ocrBlockCommandRequest: null,
+  ocrQueueCommandRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -755,6 +775,13 @@ export const appActions = {
     blockId
   }),
   clearOcrBlockCommandRequest: (): AppAction => ({ type: 'ocrBlockCommand/clear' }),
+  requestOcrQueuePauseToggle: (): AppAction => ({ type: 'ocrQueueCommand/requestTogglePause' }),
+  requestOcrQueueAll: (): AppAction => ({ type: 'ocrQueueCommand/requestQueueAll' }),
+  requestOcrQueueForceUpdateAll: (): AppAction => ({ type: 'ocrQueueCommand/requestForceUpdateAll' }),
+  requestOcrQueueRemaining: (): AppAction => ({ type: 'ocrQueueCommand/requestQueueRemaining' }),
+  requestOcrQueueRetryFailed: (): AppAction => ({ type: 'ocrQueueCommand/requestRetryFailed' }),
+  requestOcrQueueClear: (): AppAction => ({ type: 'ocrQueueCommand/requestClear' }),
+  clearOcrQueueCommandRequest: (): AppAction => ({ type: 'ocrQueueCommand/clearRequest' }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1434,6 +1461,59 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         ocrBlockCommandRequest: null
+      };
+    case 'ocrQueueCommand/requestTogglePause':
+      return {
+        ...state,
+        ocrQueueCommandRequest: {
+          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
+          kind: 'togglePause'
+        }
+      };
+    case 'ocrQueueCommand/requestQueueAll':
+      return {
+        ...state,
+        ocrQueueCommandRequest: {
+          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
+          kind: 'queueAll'
+        }
+      };
+    case 'ocrQueueCommand/requestForceUpdateAll':
+      return {
+        ...state,
+        ocrQueueCommandRequest: {
+          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
+          kind: 'forceUpdateAll'
+        }
+      };
+    case 'ocrQueueCommand/requestQueueRemaining':
+      return {
+        ...state,
+        ocrQueueCommandRequest: {
+          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
+          kind: 'queueRemaining'
+        }
+      };
+    case 'ocrQueueCommand/requestRetryFailed':
+      return {
+        ...state,
+        ocrQueueCommandRequest: {
+          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
+          kind: 'retryFailed'
+        }
+      };
+    case 'ocrQueueCommand/requestClear':
+      return {
+        ...state,
+        ocrQueueCommandRequest: {
+          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
+          kind: 'clear'
+        }
+      };
+    case 'ocrQueueCommand/clearRequest':
+      return {
+        ...state,
+        ocrQueueCommandRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -2154,6 +2234,7 @@ export const selectStreamControlRequest = (state: CentralAppState) => state.stre
 export const selectToolbarCommandRequest = (state: CentralAppState) => state.toolbarCommandRequest;
 export const selectStudyModeToggleRequest = (state: CentralAppState) => state.studyModeToggleRequest;
 export const selectOcrBlockCommandRequest = (state: CentralAppState) => state.ocrBlockCommandRequest;
+export const selectOcrQueueCommandRequest = (state: CentralAppState) => state.ocrQueueCommandRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

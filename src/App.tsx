@@ -48,6 +48,7 @@ import type {
 import {
   appActions,
   selectOcrBlockCommandRequest,
+  selectOcrQueueCommandRequest,
   selectStudyModeToggleRequest,
   selectToolbarCommandRequest,
   useAppDispatch,
@@ -58,6 +59,7 @@ import {
 export default function App() {
   const dispatch = useAppDispatch();
   const ocrBlockCommandRequest = useAppSelector(selectOcrBlockCommandRequest);
+  const ocrQueueCommandRequest = useAppSelector(selectOcrQueueCommandRequest);
   const studyModeToggleRequest = useAppSelector(selectStudyModeToggleRequest);
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const {
@@ -394,6 +396,38 @@ export default function App() {
     retryFailed,
     togglePause
   } = useOcrQueue();
+
+  useEffect(() => {
+    if (!ocrQueueCommandRequest) {
+      return;
+    }
+
+    if (ocrQueueCommandRequest.kind === 'togglePause') {
+      togglePause();
+    } else if (ocrQueueCommandRequest.kind === 'queueAll') {
+      queueAllPages();
+    } else if (ocrQueueCommandRequest.kind === 'forceUpdateAll') {
+      forceUpdateAllPages();
+    } else if (ocrQueueCommandRequest.kind === 'queueRemaining') {
+      queueRemainingPages();
+    } else if (ocrQueueCommandRequest.kind === 'retryFailed') {
+      retryFailed();
+    } else {
+      clearQueue();
+    }
+
+    dispatch(appActions.clearOcrQueueCommandRequest());
+  }, [
+    clearQueue,
+    dispatch,
+    forceUpdateAllPages,
+    ocrQueueCommandRequest,
+    queueAllPages,
+    queueRemainingPages,
+    retryFailed,
+    togglePause
+  ]);
+
   useEffect(() => {
     if (
       !pendingAlignTopRef.current ||
@@ -657,13 +691,7 @@ export default function App() {
     },
     ocrQueueModalProps: {
       jobs: ocrJobs,
-      paused: ocrPaused,
-      onTogglePause: togglePause,
-      onQueueAll: queueAllPages,
-      onForceUpdateAll: forceUpdateAllPages,
-      onQueueRemaining: queueRemainingPages,
-      onRetryFailed: retryFailed,
-      onClearQueue: clearQueue
+      paused: ocrPaused
     },
     quizModalProps: {
       streamState,
