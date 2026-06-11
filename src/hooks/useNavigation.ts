@@ -15,12 +15,10 @@ import {
 
 interface UseNavigationParams {
   pendingAlignTopRef: MutableRefObject<boolean>;
-  stopStream: () => void;
 }
 
 export function useNavigation({
-  pendingAlignTopRef,
-  stopStream
+  pendingAlignTopRef
 }: UseNavigationParams) {
   const dispatch = useAppDispatch();
   const { resetAudio } = useAudioController();
@@ -62,7 +60,7 @@ export function useNavigation({
         saveLastPage(bookId, nextIndex);
       }
       resetAudio();
-      stopStream();
+      dispatch(appActions.requestStopStream());
     },
     [
       bookId,
@@ -70,7 +68,6 @@ export function useNavigation({
       navigationCount,
       pendingAlignTopRef,
       resetAudio,
-      stopStream,
       viewMode
     ]
   );

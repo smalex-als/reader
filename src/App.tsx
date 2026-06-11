@@ -174,8 +174,7 @@ export default function App() {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);
   useNavigation({
-    pendingAlignTopRef,
-    stopStream
+    pendingAlignTopRef
   });
 
   const {
