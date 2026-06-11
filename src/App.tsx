@@ -9,6 +9,7 @@ import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
+import { useUnitActions } from '@/hooks/useUnitActions';
 import { useModalState } from '@/hooks/useModalState';
 import { useNavigation } from '@/hooks/useNavigation';
 import { usePageText } from '@/hooks/usePageText';
@@ -16,13 +17,17 @@ import { useOcrQueue } from '@/hooks/useOcrQueue';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
 import { useStreamSequence } from '@/hooks/useStreamSequence';
 import { useStreamingAudio } from '@/hooks/useStreamingAudio';
+import { useStreamControls } from '@/hooks/useStreamControls';
 import { useMp3Voice, useStreamVoices } from '@/hooks/useStreamVoices';
 import { useUnitsRouteState, useUnitsRouteSync } from '@/hooks/useUnitsRoute';
 import { useStreamHistoryLogger } from '@/hooks/useStreamHistoryLogger';
 import { useOcrEditMode } from '@/hooks/useOcrEditMode';
 import { useShareLink } from '@/hooks/useShareLink';
 import { useBookSearch } from '@/hooks/useBookSearch';
+import { useCopyActions } from '@/hooks/useCopyActions';
+import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
 import { useFloatingAudio } from '@/hooks/useFloatingAudio';
+import { useImagePreview } from '@/hooks/useImagePreview';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useToast } from '@/hooks/useToast';
@@ -37,27 +42,22 @@ import {
   saveLastPage,
   saveQuizAutoplayForBook
 } from '@/lib/storage';
-import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
-import { fetchJson } from '@/lib/fetchJson';
-import { copyToClipboard } from '@/lib/clipboard';
+import { makeStreamLocator } from '@/lib/streamLocator';
 import {
   PLAYBACK_RATE_OPTIONS,
   TEXT_FONT_SIZE_MIN,
   TEXT_FONT_SIZE_MAX,
   createDefaultSettings,
   getMainViewFromLocation,
-  normalizePlaybackRate,
   normalizeTextFontSize,
   normalizeTextTheme,
   type MainView
 } from '@/lib/appConstants';
 import type {
   AppSettings,
-  ImagePreviewTarget,
   PageTextOcrEngine,
   SearchResult,
-  TocEntry,
-  UnitSet
+  TocEntry
 } from '@/types/app';
 import type { ToolbarTab } from '@/components/Toolbar';
 
@@ -72,9 +72,6 @@ export default function App() {
     selectedUnitTopicId,
     setSelectedUnitTopicId
   } = useUnitsRouteState();
-  const [unitQuizLabel, setUnitQuizLabel] = useState('Topic');
-  const [imagePreview, setImagePreview] = useState<ImagePreviewTarget | null>(null);
-  const [enhancedImagePreviewUrls, setEnhancedImagePreviewUrls] = useState<Record<string, string>>({});
   const {
     helpOpen,
     openHelp,
@@ -111,14 +108,11 @@ export default function App() {
     versionLabel: string | null;
     text: string;
   } | null>(null);
-  const [unitsRefreshToken, setUnitsRefreshToken] = useState(0);
-  const [unitCreating, setUnitCreating] = useState(false);
   const [firstChapterParagraph, setFirstChapterParagraph] = useState<{
     fullText: string;
     startIndex: number;
     key: string;
   } | null>(null);
-  const [playbackRate, setPlaybackRate] = useState(1);
   const [quizAutoPlayEnabled, setQuizAutoPlayEnabled] = useState(true);
   const [bookCardRefreshToken, setBookCardRefreshToken] = useState(0);
   const pendingAlignTopRef = useRef(false);
@@ -402,8 +396,6 @@ export default function App() {
     chapterNumber: number;
     versionId: string;
   } | null>(null);
-  const [autoFollowStream, setAutoFollowStream] = useState(true);
-  const [selectedStreamBlockKey, setSelectedStreamBlockKey] = useState<string | null>(null);
   useEffect(() => {
     setDisplayedChapterText(null);
   }, [bookId, chapterNumber]);
@@ -420,18 +412,6 @@ export default function App() {
     }
     saveQuizAutoplayForBook(bookId, quizAutoPlayEnabled);
   }, [bookId, quizAutoPlayEnabled]);
-  useEffect(() => {
-    setSelectedStreamBlockKey(null);
-  }, [bookId]);
-  useEffect(() => {
-    if (selectedStreamBlockKey || streamState.status === 'idle' || !streamState.pageKey) {
-      return;
-    }
-    const locator = parseStreamLocator(streamState.pageKey);
-    if (locator?.blockId) {
-      setSelectedStreamBlockKey(makeStreamLocator(locator.imageUrl, locator.blockId));
-    }
-  }, [selectedStreamBlockKey, streamState.pageKey, streamState.status]);
   const { renderPage, handlePrev, handleNext, footerMessage } = useNavigation({
     navigationCount,
     currentPage,
@@ -512,49 +492,34 @@ export default function App() {
     studyMode: settings.studyMode,
     onSequenceComplete: handleStreamSequenceComplete
   });
-  const selectedStreamLocator = useMemo(() => parseStreamLocator(selectedStreamBlockKey), [selectedStreamBlockKey]);
-  const streamPositionActive =
-    streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
-  const playingStreamLocator = useMemo(
-    () => parseStreamLocator(streamPositionActive ? streamState.pageKey : null),
-    [streamPositionActive, streamState.pageKey]
-  );
-  const activeTextParagraph = useMemo(() => {
-    if (!streamPositionActive || typeof streamState.pageKey !== 'string') {
-      return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
-    }
-    const match = streamState.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
-    if (!match) {
-      return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
-    }
-    return {
-      mode: match[1] as 'chapter' | 'narration',
-      startIndex: Number.parseInt(match[2], 10)
-    };
-  }, [streamPositionActive, streamState.pageKey]);
-  const handlePlayVisibleStream = useCallback(async () => {
-    if (viewMode === 'text') {
-      if (!displayedChapterText?.text?.trim()) {
-        showToast('No visible chapter text available to stream', 'error');
-        return;
-      }
-      await handlePlayChapterParagraph({
-        fullText: displayedChapterText.text,
-        startIndex: 0,
-        key: `chapter-${chapterNumber ?? 'unknown'}-${displayedChapterText.versionId ?? 'base'}`
-      });
-      return;
-    }
-    await startStreamSequence();
-  }, [
+  const {
+    autoFollowStream,
+    toggleAutoFollowStream,
+    setSelectedStreamBlockKey,
+    streamPositionActive,
+    playingStreamLocator,
+    activeStreamLocator,
+    activeTextParagraph,
+    playbackRate,
+    handlePlaybackRateChange,
+    handlePlayVisibleStream,
+    handleActiveStreamVoiceChange,
+    handleMp3VoiceChange
+  } = useStreamControls({
+    bookId,
     chapterNumber,
+    viewMode,
     displayedChapterText,
-    handlePlayChapterParagraph,
-    showToast,
+    streamState,
     startStreamSequence,
-    viewMode
-  ]);
-  const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
+    handlePlayChapterParagraph,
+    restartStreamFromPageKey,
+    isStreamVoice,
+    setStreamVoice,
+    mp3VoiceOptions,
+    setMp3Voice,
+    showToast
+  });
 
   useStreamHistoryLogger({
     bookId,
@@ -589,13 +554,15 @@ export default function App() {
   const {
     jobs: ocrJobs,
     paused: ocrPaused,
-    progress: ocrProgress,
-    enqueuePages,
+    queueState: ocrQueueState,
+    queueAllPages,
+    forceUpdateAllPages,
+    queueRemainingPages,
     clearQueue,
     resetQueue,
     retryFailed,
     togglePause
-  } = useOcrQueue({ manifest, showToast });
+  } = useOcrQueue({ manifest, currentPage, showToast });
   const {
     closePrintModal,
     createPrintPdf,
@@ -712,72 +679,24 @@ export default function App() {
     runSearch: handleSearch
   } = useBookSearch({ bookId, showToast });
 
-  const handleOpenDashboardBook = useCallback(
-    (targetBookId: string) => {
-      closeListeningDashboard();
-      setBookId(targetBookId);
-    },
-    [closeListeningDashboard, setBookId]
-  );
-
-  const handleOpenDashboardChapter = useCallback(
-    async (
-      targetBookId: string,
-      targetChapterNumber: number | null,
-      _targetSubchapterTitle?: string | null,
-      targetPageNumber?: number | null,
-      _targetPageKeyEnd?: string | null
-    ) => {
-      if (!targetChapterNumber || targetChapterNumber < 1) {
-        closeListeningDashboard();
-        setBookId(targetBookId);
-        return;
-      }
-
-      let targetPage = targetChapterNumber - 1;
-      try {
-        const [manifestResponse, mainResponse] = await Promise.all([
-          fetchJson<{ manifest?: string[] }>(`/api/books/${encodeURIComponent(targetBookId)}/manifest`),
-          fetchJson<{ toc: TocEntry[] }>(`/api/books/${encodeURIComponent(targetBookId)}/toc`)
-        ]);
-        const manifestEntries = Array.isArray(manifestResponse.manifest) ? manifestResponse.manifest : [];
-        const tocEntries = Array.isArray(mainResponse.toc) ? mainResponse.toc : [];
-        const normalizedPageNumber = Number.isInteger(targetPageNumber) ? Number(targetPageNumber) : null;
-        if (
-          normalizedPageNumber !== null &&
-          normalizedPageNumber >= 0 &&
-          normalizedPageNumber < manifestEntries.length
-        ) {
-          targetPage = normalizedPageNumber;
-        }
-        const tocEntry = tocEntries[targetChapterNumber - 1];
-        if (targetPage === targetChapterNumber - 1 && tocEntry && Number.isInteger(tocEntry.page)) {
-          targetPage = tocEntry.page;
-        }
-      } catch (error) {
-        console.error(error);
-      }
-
-      saveLastPage(targetBookId, targetPage);
-      closeListeningDashboard();
-      if (bookId === targetBookId) {
-        renderPage(targetPage);
-        return;
-      }
-      setBookId(targetBookId);
-    },
-    [bookId, closeListeningDashboard, renderPage, setBookId]
-  );
-
-  const handleOpenDashboardUnit = useCallback(
-    (unitSetId: string, topicId: string) => {
-      closeListeningDashboard();
-      setMainView('units');
-      setSelectedUnitSetId(unitSetId);
-      setSelectedUnitTopicId(topicId);
-    },
-    [closeListeningDashboard]
-  );
+  const {
+    handleOpenDashboardBook,
+    handleOpenDashboardChapter,
+    handleOpenDashboardUnit,
+    handleOpenAudioLibrary,
+    handleOpenLibraryBook,
+    handleOpenUnitSource
+  } = useDashboardNavigation({
+    bookId,
+    setBookId,
+    renderPage,
+    setMainView,
+    setViewMode,
+    setSelectedUnitSetId,
+    setSelectedUnitTopicId,
+    setSettingsOpen,
+    closeListeningDashboard
+  });
 
   const handleSelectSearchResult = useCallback((result: SearchResult) => {
     closeSearch();
@@ -837,69 +756,17 @@ export default function App() {
     }
   }, [setSettings, settings.studyMode, stopAfterCurrentStream, streamState.status]);
 
-  const queueAllPages = useCallback(() => {
-    const pages = manifest.map((_, index) => index);
-    enqueuePages(pages);
-  }, [enqueuePages, manifest]);
-
-  const forceUpdateAllPages = useCallback(() => {
-    const pages = manifest.map((_, index) => index);
-    enqueuePages(pages, { force: true });
-  }, [enqueuePages, manifest]);
-
-  const queueRemainingPages = useCallback(() => {
-    const pages = manifest.map((_, index) => index).filter((index) => index >= currentPage);
-    enqueuePages(pages);
-  }, [currentPage, enqueuePages, manifest]);
-
-  const ocrQueueState = useMemo(
-    () => ({
-      total: ocrProgress.total,
-      processed: ocrProgress.processed,
-      failed: ocrProgress.failed,
-      running: ocrProgress.running,
-      paused: ocrPaused
-    }),
-    [ocrPaused, ocrProgress]
-  );
-
   useEffect(() => {
     resetQueue();
     closeOcrQueue();
   }, [bookId, closeOcrQueue, resetQueue]);
 
-  const handleCopyText = useCallback(async (overrideText?: string) => {
-    if (!overrideText && !currentImage) {
-      showToast('No page selected', 'error');
-      return;
-    }
-    const pageText = overrideText ? null : currentText ?? (await fetchPageText());
-    const textValue = (overrideText ?? pageText?.text ?? '').trim();
-    if (!textValue) {
-      showToast('No text available to copy', 'error');
-      return;
-    }
-    const copied = await copyToClipboard(textValue);
-    showToast(copied ? 'Copied page text to clipboard' : 'Unable to copy text', copied ? 'success' : 'error');
-  }, [currentImage, currentText, fetchPageText, showToast]);
-  const handleCopyVocabulary = useCallback(async (textValue: string) => {
-    const trimmed = textValue.trim();
-    if (!trimmed) {
-      showToast('No vocabulary available to copy', 'error');
-      return;
-    }
-    const copied = await copyToClipboard(trimmed);
-    showToast(copied ? 'Copied vocabulary to clipboard' : 'Unable to copy vocabulary', copied ? 'success' : 'error');
-  }, [showToast]);
-  const handleCopyMemoryCard = useCallback(async (textValue: string) => {
-    const trimmed = textValue.trim();
-    if (!trimmed) {
-      showToast('No memory card available to copy', 'error');
-      return;
-    }
-    const copied = await copyToClipboard(trimmed);
-    showToast(copied ? 'Copied memory card to clipboard' : 'Unable to copy memory card', copied ? 'success' : 'error');
-  }, [showToast]);
+  const { handleCopyText, handleCopyVocabulary, handleCopyMemoryCard } = useCopyActions({
+    currentImage,
+    currentText,
+    fetchPageText,
+    showToast
+  });
 
   const { shareLink: handleShareLink } = useShareLink({
     bookId,
@@ -909,157 +776,32 @@ export default function App() {
     showToast
   });
 
-  const restartActiveStream = useCallback(
-    (voice: string) => {
-      if (
-        (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused') &&
-        typeof streamState.pageKey === 'string' &&
-        streamState.pageKey
-      ) {
-        void restartStreamFromPageKey(streamState.pageKey, voice);
-      }
-    },
-    [restartStreamFromPageKey, streamState.pageKey, streamState.status]
-  );
-
-  const handleActiveStreamVoiceChange = useCallback(
-    (voice: string) => {
-      if (!isStreamVoice(voice)) {
-        return;
-      }
-      setStreamVoice(voice);
-      restartActiveStream(voice);
-    },
-    [isStreamVoice, restartActiveStream, setStreamVoice]
-  );
-  const handleMp3VoiceChange = useCallback(
-    (voice: string) => {
-      if (!mp3VoiceOptions.some((option) => option.id === voice)) {
-        return;
-      }
-      setMp3Voice(voice);
-    },
-    [mp3VoiceOptions]
-  );
-  const handlePlaybackRateChange = useCallback((rate: number) => {
-    setPlaybackRate(normalizePlaybackRate(rate));
-  }, []);
-
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
   const closeBookModal = useCallback(() => setBookModalOpen(false), [setBookModalOpen]);
-  const handleOpenAudioLibrary = useCallback(() => {
-    setSettingsOpen(false);
-    setMainView('audio-library');
-  }, []);
-  const handleOpenUnits = useCallback(() => {
-    setSettingsOpen(false);
-    setSelectedUnitSetId(null);
-    setSelectedUnitTopicId(null);
-    setMainView('units');
-  }, []);
-  const handleOpenLibraryBook = useCallback(
-    (targetBookId: string, targetChapterNumber: number) => {
-      setMainView('reader');
-      setViewMode('audio');
-      setBookId(targetBookId);
-      if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
-        saveLastPage(targetBookId, targetChapterNumber - 1);
-      }
-    },
-    [setBookId, setViewMode]
-  );
-  const handleOpenUnitSource = useCallback(
-    (targetBookId: string, targetChapterNumber: number) => {
-      setSelectedUnitSetId(null);
-      setSelectedUnitTopicId(null);
-      setMainView('reader');
-      setViewMode('text');
-      setBookId(targetBookId);
-      if (Number.isInteger(targetChapterNumber) && targetChapterNumber > 0) {
-        saveLastPage(targetBookId, targetChapterNumber - 1);
-        if (bookId === targetBookId) {
-          renderPage(targetChapterNumber - 1);
-        }
-      }
-    },
-    [bookId, renderPage, setBookId, setViewMode]
-  );
-  const handleCreateUnit = useCallback(
-    async (payload: {
-      text: string;
-      chapterTitle: string | null;
-      versionLabel: string | null;
-      versionId: string | null;
-    }) => {
-      if (!bookId || !chapterNumber) {
-        showToast('Select a chapter before creating units', 'error');
-        return;
-      }
-      const content = payload.text.trim();
-      if (!content) {
-        showToast('No visible chapter text available for units', 'error');
-        return;
-      }
-      setUnitCreating(true);
-      try {
-        const result = await fetchJson<{ item: UnitSet }>('/api/units', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            sourceBookId: bookId,
-            sourceChapterNumber: chapterNumber,
-            sourceChapterTitle: payload.chapterTitle ?? currentChapterEntry?.title ?? null,
-            sourceVersionId: payload.versionId ?? payload.versionLabel ?? null,
-            content
-          })
-        });
-        setUnitsRefreshToken((prev) => prev + 1);
-        setSelectedUnitSetId(result.item.id);
-        setSelectedUnitTopicId(null);
-        setSettingsOpen(false);
-        setMainView('units');
-        showToast('Unit created', 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Unable to create unit', 'error');
-      } finally {
-        setUnitCreating(false);
-      }
-    },
-    [bookId, chapterNumber, currentChapterEntry?.title, showToast]
-  );
-  const handleOpenImagePreview = useCallback(
-    (payload: { imageUrl: string; bounds: [number, number, number, number]; caption?: string | null }) => {
-      if (!bookId) {
-        return;
-      }
-      const imageFilename = payload.imageUrl.split('/').pop();
-      if (!imageFilename) {
-        return;
-      }
-      const [left, top, right, bottom] = payload.bounds;
-      const params = new URLSearchParams({
-        image: imageFilename,
-        left: String(left),
-        top: String(top),
-        right: String(right),
-        bottom: String(bottom)
-      });
-      const previewKey = `${bookId}:${imageFilename}:${left}:${top}:${right}:${bottom}`;
-      setImagePreview({
-        bookId,
-        imageFilename,
-        imageUrl: payload.imageUrl,
-        bounds: payload.bounds,
-        caption: payload.caption ?? null,
-        cropUrl: `/api/books/${encodeURIComponent(bookId)}/image-preview?${params.toString()}`,
-        enhancedUrl: enhancedImagePreviewUrls[previewKey] ?? null
-      });
-    },
-    [bookId, enhancedImagePreviewUrls]
-  );
+  const {
+    unitsRefreshToken,
+    refreshUnits,
+    unitCreating,
+    unitQuizLabel,
+    setUnitQuizLabel,
+    handleOpenUnits,
+    handleCreateUnit
+  } = useUnitActions({
+    bookId,
+    chapterNumber,
+    currentChapterTitle: currentChapterEntry?.title ?? null,
+    showToast,
+    setMainView,
+    setSelectedUnitSetId,
+    setSelectedUnitTopicId,
+    setSettingsOpen
+  });
+  const {
+    imagePreview,
+    handleOpenImagePreview,
+    handleImagePreviewEnhanced,
+    closeImagePreview
+  } = useImagePreview({ bookId });
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
       applyZoomMode(mode);
@@ -1452,7 +1194,7 @@ export default function App() {
       onAutoPlayEnabledChange: setQuizAutoPlayEnabled,
       onRegenerate: () => {
         if (unitQuizOpen) {
-          void handleRegenerateUnitTopicQuiz().then(() => setUnitsRefreshToken((prev) => prev + 1));
+          void handleRegenerateUnitTopicQuiz().then(refreshUnits);
           return;
         }
         void handleRegenerateQuiz();
@@ -1469,30 +1211,8 @@ export default function App() {
     imagePreviewModalProps: {
       open: imagePreview !== null,
       preview: imagePreview,
-      onEnhanced: (url: string) => {
-        if (!imagePreview) {
-          return;
-        }
-        const [left, top, right, bottom] = imagePreview.bounds;
-        const previewKey = `${imagePreview.bookId}:${imagePreview.imageFilename}:${left}:${top}:${right}:${bottom}`;
-        setEnhancedImagePreviewUrls((prev) => {
-          if (!url) {
-            const next = { ...prev };
-            delete next[previewKey];
-            return next;
-          }
-          return { ...prev, [previewKey]: url };
-        });
-        setImagePreview((current) =>
-          current
-            ? {
-                ...current,
-                enhancedUrl: url || null
-              }
-            : current
-        );
-      },
-      onClose: () => setImagePreview(null)
+      onEnhanced: handleImagePreviewEnhanced,
+      onClose: closeImagePreview
     },
     vocabularyModalProps: {
       open: vocabularyOpen,
@@ -1702,7 +1422,7 @@ export default function App() {
       onOpenSource: handleOpenUnitSource,
       onOpenTopicQuiz: ({ label }: { unitSetId: string; topicId: string; label: string }) => {
         setUnitQuizLabel(label);
-        void handleOpenUnitTopicQuiz().then(() => setUnitsRefreshToken((prev) => prev + 1));
+        void handleOpenUnitTopicQuiz().then(refreshUnits);
       },
       textFontSize: settings.textFontSize,
       onTextFontSizeChange: updateTextFontSize,
@@ -1739,7 +1459,7 @@ export default function App() {
       onStreamVoiceChange: handleActiveStreamVoiceChange,
       showAutoFollow: viewMode === 'scroll',
       autoFollowEnabled: autoFollowStream,
-      onToggleAutoFollow: () => setAutoFollowStream((prev) => !prev),
+      onToggleAutoFollow: toggleAutoFollowStream,
       studyMode: settings.studyMode,
       onToggleStudyMode: toggleStudyMode,
       onTogglePause: () => void handleToggleStreamPause(),

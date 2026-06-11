@@ -22,6 +22,7 @@ interface OcrQueueProgress {
 
 interface UseOcrQueueOptions {
   manifest: string[];
+  currentPage: number;
   showToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
@@ -40,7 +41,7 @@ async function requestPageText(imageUrl: string, options: { signal?: AbortSignal
   }
 }
 
-export function useOcrQueue({ manifest, showToast }: UseOcrQueueOptions) {
+export function useOcrQueue({ manifest, currentPage, showToast }: UseOcrQueueOptions) {
   const [jobs, setJobs] = useState<OcrJob[]>([]);
   const [paused, setPaused] = useState(false);
   const idCounterRef = useRef(0);
@@ -131,6 +132,32 @@ export function useOcrQueue({ manifest, showToast }: UseOcrQueueOptions) {
     return { total, processed, completed, failed, running, pending };
   }, [jobs]);
 
+  const queueAllPages = useCallback(() => {
+    const pages = manifest.map((_, index) => index);
+    enqueuePages(pages);
+  }, [enqueuePages, manifest]);
+
+  const forceUpdateAllPages = useCallback(() => {
+    const pages = manifest.map((_, index) => index);
+    enqueuePages(pages, { force: true });
+  }, [enqueuePages, manifest]);
+
+  const queueRemainingPages = useCallback(() => {
+    const pages = manifest.map((_, index) => index).filter((index) => index >= currentPage);
+    enqueuePages(pages);
+  }, [currentPage, enqueuePages, manifest]);
+
+  const queueState = useMemo(
+    () => ({
+      total: progress.total,
+      processed: progress.processed,
+      failed: progress.failed,
+      running: progress.running,
+      paused
+    }),
+    [paused, progress]
+  );
+
   useEffect(() => {
     const busy = progress.pending > 0 || progress.running;
     if (wasBusyRef.current && !busy && progress.total > 0) {
@@ -191,7 +218,11 @@ export function useOcrQueue({ manifest, showToast }: UseOcrQueueOptions) {
     jobs,
     paused,
     progress,
+    queueState,
     enqueuePages,
+    queueAllPages,
+    forceUpdateAllPages,
+    queueRemainingPages,
     clearQueue,
     resetQueue,
     retryFailed,
