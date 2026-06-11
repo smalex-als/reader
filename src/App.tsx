@@ -128,7 +128,6 @@ export default function App() {
     tocOpen,
     tocEntries,
     sortedTocEntries,
-    sortedDetailedTocEntries,
     handleGenerateToc,
     handleSaveToc,
     handleAddTocEntry,
@@ -156,24 +155,6 @@ export default function App() {
     }
     return currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
   }, [currentChapterIndex, currentPage, isTextBook, sortedTocEntries]);
-  const nextChapterEntry =
-    !isTextBook && currentChapterIndex !== null
-      ? sortedTocEntries[currentChapterIndex + 1]
-      : null;
-  const currentSubchapterEntry = useMemo(() => {
-    if (sortedDetailedTocEntries.length === 0) {
-      return null;
-    }
-    const chapterStart = currentChapterEntry?.page ?? 0;
-    const chapterEnd = nextChapterEntry?.page ?? manifest.length;
-    const candidates = sortedDetailedTocEntries.filter((entry) => {
-      if (!Number.isInteger(entry.page)) {
-        return false;
-      }
-      return entry.page >= chapterStart && entry.page <= currentPage && entry.page < chapterEnd;
-    });
-    return candidates.length > 0 ? candidates[candidates.length - 1] : null;
-  }, [currentChapterEntry?.page, currentPage, manifest.length, nextChapterEntry?.page, sortedDetailedTocEntries]);
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
   const {
     regenerateQuiz: handleRegenerateQuiz
@@ -293,14 +274,7 @@ export default function App() {
     setMp3Voice
   });
 
-  useStreamHistoryLogger({
-    bookId,
-    chapterNumber,
-    currentChapterEntry,
-    currentSubchapterEntry,
-    currentPage,
-    streamState
-  });
+  useStreamHistoryLogger();
 
   const {
     toggleOcrEditMode: handleToggleOcrEditMode,

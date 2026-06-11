@@ -1,15 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { logStreamHistory } from '@/lib/analytics';
-import type { StreamState, TocEntry } from '@/types/app';
-
-interface UseStreamHistoryLoggerOptions {
-  bookId: string | null;
-  chapterNumber: number | null;
-  currentChapterEntry: TocEntry | null;
-  currentSubchapterEntry: TocEntry | null;
-  currentPage: number;
-  streamState: StreamState;
-}
+import {
+  selectBookSessionWorkflow,
+  selectReaderSession,
+  selectStreamRuntime,
+  selectTocWorkflow,
+  useAppSelector
+} from '@/state/appState';
 
 function parseUnitStreamPageKey(pageKey: string | null) {
   if (typeof pageKey !== 'string') {
@@ -29,9 +26,61 @@ function parseUnitStreamPageKey(pageKey: string | null) {
   }
 }
 
-export function useStreamHistoryLogger(options: UseStreamHistoryLoggerOptions) {
-  const { bookId, chapterNumber, currentChapterEntry, currentSubchapterEntry, currentPage, streamState } = options;
-
+export function useStreamHistoryLogger() {
+  const { bookId, currentPage } = useAppSelector(selectReaderSession);
+  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { entries: tocEntries, detailedEntries: detailedTocEntries } = useAppSelector(selectTocWorkflow);
+  const streamState = useAppSelector(selectStreamRuntime);
+  const sortedTocEntries = useMemo(() => {
+    return [...tocEntries]
+      .filter((entry) => Number.isInteger(entry.page))
+      .sort((a, b) => a.page - b.page);
+  }, [tocEntries]);
+  const sortedDetailedTocEntries = useMemo(() => {
+    return [...detailedTocEntries]
+      .filter((entry) => Number.isInteger(entry.page))
+      .sort((a, b) => a.page - b.page);
+  }, [detailedTocEntries]);
+  const isTextBook = bookType === 'text';
+  const navigationCount = isTextBook ? chapterCount : manifest.length;
+  const currentChapterIndex = useMemo(() => {
+    if (isTextBook) {
+      return navigationCount > 0 ? currentPage : null;
+    }
+    if (sortedTocEntries.length === 0) {
+      return null;
+    }
+    const nextIndex = sortedTocEntries.findIndex((entry) => entry.page > currentPage);
+    if (nextIndex === -1) {
+      return sortedTocEntries.length - 1;
+    }
+    return Math.max(0, nextIndex - 1);
+  }, [currentPage, isTextBook, navigationCount, sortedTocEntries]);
+  const currentChapterEntry = useMemo(() => {
+    if (isTextBook) {
+      return sortedTocEntries.find((entry) => entry.page === currentPage) ?? null;
+    }
+    return currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
+  }, [currentChapterIndex, currentPage, isTextBook, sortedTocEntries]);
+  const nextChapterEntry =
+    !isTextBook && currentChapterIndex !== null
+      ? sortedTocEntries[currentChapterIndex + 1]
+      : null;
+  const currentSubchapterEntry = useMemo(() => {
+    if (sortedDetailedTocEntries.length === 0) {
+      return null;
+    }
+    const chapterStart = currentChapterEntry?.page ?? 0;
+    const chapterEnd = nextChapterEntry?.page ?? manifest.length;
+    const candidates = sortedDetailedTocEntries.filter((entry) => {
+      if (!Number.isInteger(entry.page)) {
+        return false;
+      }
+      return entry.page >= chapterStart && entry.page <= currentPage && entry.page < chapterEnd;
+    });
+    return candidates.length > 0 ? candidates[candidates.length - 1] : null;
+  }, [currentChapterEntry?.page, currentPage, manifest.length, nextChapterEntry?.page, sortedDetailedTocEntries]);
+  const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
   const sessionRef = useRef<{
     bookId: string;
     chapterNumber: number | null;
