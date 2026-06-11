@@ -5,6 +5,7 @@ import {
   selectReaderSession,
   useAppSelector
 } from '@/state/appState';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 
 export type ToolbarTab = 'image' | 'study' | 'tools';
 
@@ -38,8 +39,6 @@ interface ToolbarProps {
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
   onOpenMemoryCard: () => void;
-  quizDisabled: boolean;
-  currentChapterLabel?: string | null;
   onOpenPrint: () => void;
   onShareLink: () => void;
   onOpenHelp: () => void;
@@ -84,8 +83,6 @@ export default function Toolbar({
   onOpenQuiz,
   onOpenVocabulary,
   onOpenMemoryCard,
-  quizDisabled,
-  currentChapterLabel,
   onOpenPrint,
   onShareLink,
   onOpenHelp,
@@ -103,11 +100,14 @@ export default function Toolbar({
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
+  const { chapterNumber, chapterLabel } = useCurrentChapterContext();
   const isTextBook = bookType === 'text';
   const manifestLength = isTextBook ? chapterCount : manifest.length;
   const disableImageActions = isTextBook;
   const isModal = layout === 'modal';
   const controlsDisabled = manifestLength === 0 || !currentBook;
+  const quizDisabled = !currentBook || !chapterNumber;
+  const currentChapterLabel = chapterNumber ? chapterLabel : null;
   const showOcrStatus = ocrQueueTotal > 0;
   const ocrStatusText = (() => {
     if (!showOcrStatus) {

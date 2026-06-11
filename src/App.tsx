@@ -768,8 +768,6 @@ export default function App() {
       setSettingsOpen(false);
       void handleOpenMemoryCard();
     },
-    quizDisabled: !bookId || !chapterNumber,
-    currentChapterLabel: currentChapterEntry?.title ?? (chapterNumber ? `Chapter ${chapterNumber}` : null),
     onOpenPrint: () => {
       setSettingsOpen(false);
       openPrintModal();
