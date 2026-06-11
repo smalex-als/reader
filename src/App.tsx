@@ -80,9 +80,7 @@ export default function App() {
     setOcrQueueOpen,
     openOcrQueue,
     closeOcrQueue,
-    jobWorkerOpen,
     openJobWorker,
-    closeJobWorker,
     searchOpen,
     setSearchOpen,
     openSearch,
@@ -1156,10 +1154,6 @@ export default function App() {
       open: promptEditorOpen,
       onClose: closePromptEditor,
       onChanged: refreshChapterView
-    },
-    jobWorkerModalProps: {
-      open: jobWorkerOpen,
-      onClose: closeJobWorker
     }
   };
 

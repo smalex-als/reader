@@ -36,7 +36,6 @@ type VocabularyModalProps = ComponentProps<typeof VocabularyModal>;
 type ListeningDashboardModalProps = ComponentProps<typeof ListeningDashboardModal>;
 type MemoryCardModalProps = ComponentProps<typeof MemoryCardModal>;
 type PromptEditorModalProps = ComponentProps<typeof PromptEditorModal>;
-type JobWorkerModalProps = ComponentProps<typeof JobWorkerModal>;
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
@@ -56,7 +55,6 @@ interface AppModalsProps {
   listeningDashboardModalProps: ListeningDashboardModalProps;
   memoryCardModalProps: MemoryCardModalProps;
   promptEditorModalProps: PromptEditorModalProps;
-  jobWorkerModalProps: JobWorkerModalProps;
 }
 
 function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
@@ -83,8 +81,7 @@ export default function AppModals({
   vocabularyModalProps,
   listeningDashboardModalProps,
   memoryCardModalProps,
-  promptEditorModalProps,
-  jobWorkerModalProps
+  promptEditorModalProps
 }: AppModalsProps) {
   return (
     <>
@@ -105,7 +102,7 @@ export default function AppModals({
       {renderInPortal(<PromptEditorModal {...promptEditorModalProps} />, portalTarget)}
       {renderInPortal(<ListeningDashboardModal {...listeningDashboardModalProps} />, portalTarget)}
       {renderInPortal(<ImagePreviewModal {...imagePreviewModalProps} />, portalTarget)}
-      {renderInPortal(<JobWorkerModal {...jobWorkerModalProps} />, portalTarget)}
+      {renderInPortal(<JobWorkerModal />, portalTarget)}
       <OcrQueueModal {...ocrQueueModalProps} />
     </>
   );

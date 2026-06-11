@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 
@@ -17,11 +23,6 @@ interface JobWorkerJob {
   result: unknown;
   logs: Array<{ timestamp: string; message: string; details: unknown }>;
   payload: Record<string, unknown>;
-}
-
-interface JobWorkerModalProps {
-  open: boolean;
-  onClose: () => void;
 }
 
 function formatDate(value: string | null) {
@@ -71,10 +72,15 @@ function getStatusLabel(status: JobStatus) {
   }
 }
 
-export default function JobWorkerModal({ open, onClose }: JobWorkerModalProps) {
+export default function JobWorkerModal() {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('jobWorker'));
   const [jobs, setJobs] = useState<JobWorkerJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const handleClose = () => {
+    dispatch(appActions.closeModal('jobWorker'));
+  };
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -147,7 +153,7 @@ export default function JobWorkerModal({ open, onClose }: JobWorkerModalProps) {
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close job worker"
             title="Close job worker"
           >
@@ -206,7 +212,7 @@ export default function JobWorkerModal({ open, onClose }: JobWorkerModalProps) {
           </ul>
         </section>
         <footer className="modal-footer modal-footer-right">
-          <button type="button" className="button button-primary" onClick={onClose}>
+          <button type="button" className="button button-primary" onClick={handleClose}>
             Done
           </button>
         </footer>
