@@ -2,6 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import {
+  appActions,
+  selectBookSessionWorkflow,
+  selectModalOpen,
+  selectReaderSession,
+  selectRefreshTokens,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
+import {
   loadBookMeta,
   loadBookSortMode,
   loadLibraryStateFromServer,
@@ -21,36 +30,25 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 }
 
 interface BookSelectModalProps {
-  open: boolean;
-  books: string[];
-  currentBook: string | null;
-  onSelect: (bookId: string | null) => void;
   onDelete: (bookId: string) => void;
   onUploadChapter: (file: File, details: { bookName: string; chapterTitle: string }) => void;
-  uploadingChapter: boolean;
   onUploadPdf: (file: File) => void;
-  uploadingPdf: boolean;
   onOpenEditCard: (bookId: string) => void;
   onOpenAudioLibrary: () => void;
-  cardRefreshToken?: number;
-  onClose: () => void;
 }
 
 export default function BookSelectModal({
-  open,
-  books,
-  currentBook,
-  onSelect,
   onDelete,
   onUploadChapter,
-  uploadingChapter,
   onUploadPdf,
-  uploadingPdf,
   onOpenEditCard,
-  onOpenAudioLibrary,
-  cardRefreshToken = 0,
-  onClose
+  onOpenAudioLibrary
 }: BookSelectModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('bookSelect'));
+  const { bookId: currentBook } = useAppSelector(selectReaderSession);
+  const { books, uploadingChapter, uploadingPdf } = useAppSelector(selectBookSessionWorkflow);
+  const { bookCards: cardRefreshToken } = useAppSelector(selectRefreshTokens);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [chapterBook, setChapterBook] = useState('');
@@ -186,6 +184,19 @@ export default function BookSelectModal({
   const handleTriggerPdfUpload = () => {
     pdfInputRef.current?.click();
   };
+  const handleClose = () => {
+    dispatch(appActions.closeModal('bookSelect'));
+  };
+  const handleSelectBook = (book: string) => {
+    dispatch(appActions.closeModal('settings'));
+    dispatch(appActions.setMainView('reader'));
+    dispatch(appActions.setReaderBookId(book));
+    dispatch(appActions.closeModal('bookSelect'));
+  };
+  const handleOpenAudioLibrary = () => {
+    dispatch(appActions.closeModal('bookSelect'));
+    onOpenAudioLibrary();
+  };
 
   if (!open) {
     return null;
@@ -197,13 +208,13 @@ export default function BookSelectModal({
         <header className="modal-header">
           <h2 className="modal-title">Select a book</h2>
           <div className="modal-actions">
-            <button type="button" className="button button-secondary" onClick={onOpenAudioLibrary}>
+            <button type="button" className="button button-secondary" onClick={handleOpenAudioLibrary}>
               MP3 Library
             </button>
             <button
               type="button"
               className="button button-ghost modal-icon-button"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label="Close book selector"
               title="Close book selector"
             >
@@ -263,7 +274,7 @@ export default function BookSelectModal({
                       <button
                         type="button"
                         className={`book-select-button ${active ? 'book-select-button-active' : ''}`}
-                        onClick={() => onSelect(book)}
+                        onClick={() => handleSelectBook(book)}
                       >
                         <span className="book-select-cover">
                           {displayCover ? (
@@ -406,7 +417,7 @@ export default function BookSelectModal({
           </div>
         </section>
         <footer className="modal-footer">
-          <button type="button" className="button button-primary" onClick={onClose}>
+          <button type="button" className="button button-primary" onClick={handleClose}>
             Done
           </button>
         </footer>

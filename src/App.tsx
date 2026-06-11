@@ -113,7 +113,6 @@ export default function App() {
   } = useChapterTextContext();
   const {
     chapterViewRefresh,
-    bookCardRefreshToken,
     refreshChapterView,
     refreshBookCards
   } = useRefreshTokens();
@@ -162,11 +161,9 @@ export default function App() {
     viewMode,
     setViewMode,
     loading,
-    bookModalOpen,
     setBookModalOpen,
     uploadingChapter,
     deletingChapter,
-    uploadingPdf,
     handleUploadChapter,
     handleCreateChapter,
     handleUploadPdf,
@@ -752,7 +749,6 @@ export default function App() {
   });
 
   const openBookModal = useCallback(() => setBookModalOpen(true), [setBookModalOpen]);
-  const closeBookModal = useCallback(() => setBookModalOpen(false), [setBookModalOpen]);
   const {
     unitsRefreshToken,
     refreshUnits,
@@ -978,27 +974,11 @@ export default function App() {
       loading: printLoading
     },
     bookSelectModalProps: {
-      open: bookModalOpen,
-      books,
-      currentBook: bookId,
-      onSelect: (nextBook: string | null) => {
-        setSettingsOpen(false);
-        setMainView('reader');
-        setBookId(nextBook);
-        closeBookModal();
-      },
       onDelete: handleDeleteBook,
       onUploadChapter: handleUploadChapter,
-      uploadingChapter,
       onUploadPdf: handleUploadPdf,
-      uploadingPdf,
       onOpenEditCard: openBookCard,
-      onOpenAudioLibrary: () => {
-        closeBookModal();
-        handleOpenAudioLibrary();
-      },
-      cardRefreshToken: bookCardRefreshToken,
-      onClose: closeBookModal
+      onOpenAudioLibrary: handleOpenAudioLibrary
     },
     helpModalProps: { open: helpOpen, hotkeys, onClose: closeHelp },
     bookmarksModalProps: {
