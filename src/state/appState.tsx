@@ -83,6 +83,18 @@ export interface ReaderSessionState {
   viewMode: ViewMode;
 }
 
+export interface BookSessionWorkflowState {
+  books: string[];
+  manifest: string[];
+  bookType: 'image' | 'text';
+  chapterCount: number;
+  loading: boolean;
+  uploadingChapter: boolean;
+  deletingChapter: boolean;
+  uploadingPdf: boolean;
+  libraryStateReady: boolean;
+}
+
 export interface ChapterEditorTextVersion {
   versionId: string;
   versionLabel: string | null;
@@ -220,6 +232,7 @@ export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
   readerSession: ReaderSessionState;
+  bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
   chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
   chapterTextContext: ChapterTextContextState;
@@ -266,6 +279,15 @@ export type AppAction =
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
+  | { type: 'bookSessionWorkflow/setBooks'; books: string[] }
+  | { type: 'bookSessionWorkflow/setManifest'; manifest: string[] }
+  | { type: 'bookSessionWorkflow/setBookType'; bookType: 'image' | 'text' }
+  | { type: 'bookSessionWorkflow/setChapterCount'; chapterCount: number }
+  | { type: 'bookSessionWorkflow/setLoading'; loading: boolean }
+  | { type: 'bookSessionWorkflow/setUploadingChapter'; uploading: boolean }
+  | { type: 'bookSessionWorkflow/setDeletingChapter'; deleting: boolean }
+  | { type: 'bookSessionWorkflow/setUploadingPdf'; uploading: boolean }
+  | { type: 'bookSessionWorkflow/setLibraryStateReady'; ready: boolean }
   | { type: 'audio/reset' }
   | { type: 'audio/stop' }
   | { type: 'audio/syncFloating'; playbackState: FloatingAudioPlaybackState; track: FloatingAudioTrack; pageKey: string | null }
@@ -425,6 +447,17 @@ const initialAppState: CentralAppState = {
   },
   navigation: getInitialNavigation(),
   readerSession: getInitialReaderSession(),
+  bookSessionWorkflow: {
+    books: [],
+    manifest: [],
+    bookType: 'image',
+    chapterCount: 0,
+    loading: false,
+    uploadingChapter: false,
+    deletingChapter: false,
+    uploadingPdf: false,
+    libraryStateReady: false
+  },
   audio: initialAudioState,
   chapterVersionNavigationRequest: null,
   chapterTextContext: {
@@ -567,6 +600,42 @@ export const appActions = {
   setReaderViewMode: (mode: ViewMode): AppAction => ({
     type: 'readerSession/setViewMode',
     mode
+  }),
+  setBookSessionBooks: (books: string[]): AppAction => ({
+    type: 'bookSessionWorkflow/setBooks',
+    books
+  }),
+  setBookSessionManifest: (manifest: string[]): AppAction => ({
+    type: 'bookSessionWorkflow/setManifest',
+    manifest
+  }),
+  setBookSessionBookType: (bookType: 'image' | 'text'): AppAction => ({
+    type: 'bookSessionWorkflow/setBookType',
+    bookType
+  }),
+  setBookSessionChapterCount: (chapterCount: number): AppAction => ({
+    type: 'bookSessionWorkflow/setChapterCount',
+    chapterCount
+  }),
+  setBookSessionLoading: (loading: boolean): AppAction => ({
+    type: 'bookSessionWorkflow/setLoading',
+    loading
+  }),
+  setBookSessionUploadingChapter: (uploading: boolean): AppAction => ({
+    type: 'bookSessionWorkflow/setUploadingChapter',
+    uploading
+  }),
+  setBookSessionDeletingChapter: (deleting: boolean): AppAction => ({
+    type: 'bookSessionWorkflow/setDeletingChapter',
+    deleting
+  }),
+  setBookSessionUploadingPdf: (uploading: boolean): AppAction => ({
+    type: 'bookSessionWorkflow/setUploadingPdf',
+    uploading
+  }),
+  setBookSessionLibraryStateReady: (ready: boolean): AppAction => ({
+    type: 'bookSessionWorkflow/setLibraryStateReady',
+    ready
   }),
   resetAudio: (): AppAction => ({ type: 'audio/reset' }),
   stopAudio: (): AppAction => ({ type: 'audio/stop' }),
@@ -1015,6 +1084,78 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         readerSession: {
           ...state.readerSession,
           viewMode: action.mode
+        }
+      };
+    case 'bookSessionWorkflow/setBooks':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          books: action.books
+        }
+      };
+    case 'bookSessionWorkflow/setManifest':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          manifest: action.manifest
+        }
+      };
+    case 'bookSessionWorkflow/setBookType':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          bookType: action.bookType
+        }
+      };
+    case 'bookSessionWorkflow/setChapterCount':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          chapterCount: action.chapterCount
+        }
+      };
+    case 'bookSessionWorkflow/setLoading':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          loading: action.loading
+        }
+      };
+    case 'bookSessionWorkflow/setUploadingChapter':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          uploadingChapter: action.uploading
+        }
+      };
+    case 'bookSessionWorkflow/setDeletingChapter':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          deletingChapter: action.deleting
+        }
+      };
+    case 'bookSessionWorkflow/setUploadingPdf':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          uploadingPdf: action.uploading
+        }
+      };
+    case 'bookSessionWorkflow/setLibraryStateReady':
+      return {
+        ...state,
+        bookSessionWorkflow: {
+          ...state.bookSessionWorkflow,
+          libraryStateReady: action.ready
         }
       };
     case 'audio/reset':
@@ -1635,6 +1776,7 @@ export const selectEditorState = (state: CentralAppState) => state.ui.editor;
 export const selectSettingsToolbarTab = (state: CentralAppState) => state.ui.settingsToolbar.activeTab;
 export const selectNavigationState = (state: CentralAppState) => state.navigation;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
+export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;
 export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
   state.chapterVersionNavigationRequest;

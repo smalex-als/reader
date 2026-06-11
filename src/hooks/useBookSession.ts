@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { ViewMode } from '@/lib/appConstants';
 import { useToast } from '@/hooks/useToast';
 import { clamp } from '@/lib/math';
 import {
   appActions,
+  selectBookSessionWorkflow,
   selectModalOpen,
   selectReaderSession,
   useAppDispatch,
@@ -84,6 +85,10 @@ function getViewModeFromLocation(expectedBookId: string | null): ViewMode | null
   return null;
 }
 
+function resolveNext<T>(next: SetStateAction<T>, current: T) {
+  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
+}
+
 export function useBookSession<StreamVoice extends string>({
   settings,
   setSettings,
@@ -99,20 +104,57 @@ export function useBookSession<StreamVoice extends string>({
   createDefaultSettings
 }: BookSessionOptions<StreamVoice>) {
   const { showToast } = useToast();
-  const [books, setBooks] = useState<string[]>([]);
-  const [manifest, setManifest] = useState<string[]>([]);
-  const [bookType, setBookType] = useState<'image' | 'text'>('image');
-  const [chapterCount, setChapterCount] = useState(0);
-  const [loading, setLoading] = useState(false);
   const dispatch = useAppDispatch();
   const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const [uploadingChapter, setUploadingChapter] = useState(false);
-  const [deletingChapter, setDeletingChapter] = useState(false);
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [libraryStateReady, setLibraryStateReady] = useState(false);
+  const {
+    books,
+    manifest,
+    bookType,
+    chapterCount,
+    loading,
+    uploadingChapter,
+    deletingChapter,
+    uploadingPdf,
+    libraryStateReady
+  } = useAppSelector(selectBookSessionWorkflow);
   const pendingPageRef = useRef<number | null>(null);
   const shouldUseLocationPositionRef = useRef(true);
+
+  const setBooks: Dispatch<SetStateAction<string[]>> = useCallback(
+    (next) => {
+      dispatch(appActions.setBookSessionBooks(resolveNext(next, books)));
+    },
+    [books, dispatch]
+  );
+
+  const setManifest = useCallback((nextManifest: string[]) => {
+    dispatch(appActions.setBookSessionManifest(nextManifest));
+  }, [dispatch]);
+
+  const setBookType = useCallback((nextBookType: 'image' | 'text') => {
+    dispatch(appActions.setBookSessionBookType(nextBookType));
+  }, [dispatch]);
+
+  const setChapterCount = useCallback((nextChapterCount: number) => {
+    dispatch(appActions.setBookSessionChapterCount(nextChapterCount));
+  }, [dispatch]);
+
+  const setLoading = useCallback((nextLoading: boolean) => {
+    dispatch(appActions.setBookSessionLoading(nextLoading));
+  }, [dispatch]);
+
+  const setUploadingChapter = useCallback((uploading: boolean) => {
+    dispatch(appActions.setBookSessionUploadingChapter(uploading));
+  }, [dispatch]);
+
+  const setDeletingChapter = useCallback((deleting: boolean) => {
+    dispatch(appActions.setBookSessionDeletingChapter(deleting));
+  }, [dispatch]);
+
+  const setUploadingPdf = useCallback((uploading: boolean) => {
+    dispatch(appActions.setBookSessionUploadingPdf(uploading));
+  }, [dispatch]);
 
   const setBookId = useCallback((nextBookId: string | null, options?: { preferLocationPosition?: boolean }) => {
     shouldUseLocationPositionRef.current = options?.preferLocationPosition ?? false;
@@ -153,13 +195,13 @@ export function useBookSession<StreamVoice extends string>({
       })
       .finally(() => {
         if (!cancelled) {
-          setLibraryStateReady(true);
+          dispatch(appActions.setBookSessionLibraryStateReady(true));
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [setBookId]);
+  }, [dispatch, setBookId]);
 
   useEffect(() => {
     if (!libraryStateReady) {
