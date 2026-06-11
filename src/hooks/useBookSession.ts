@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { clamp } from '@/lib/math';
+import { appActions, selectModalOpen, useAppDispatch, useAppSelector } from '@/state/appState';
 import {
   loadLastBook,
   loadLastPage,
@@ -102,7 +103,8 @@ export function useBookSession<StreamVoice extends string>({
   const [currentPage, setCurrentPage] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('pages');
   const [loading, setLoading] = useState(false);
-  const [bookModalOpen, setBookModalOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
   const [uploadingChapter, setUploadingChapter] = useState(false);
   const [deletingChapter, setDeletingChapter] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
@@ -114,6 +116,13 @@ export function useBookSession<StreamVoice extends string>({
     shouldUseLocationPositionRef.current = options?.preferLocationPosition ?? false;
     rawSetBookId(nextBookId);
   }, []);
+
+  const setBookModalOpen = useCallback(
+    (open: boolean) => {
+      dispatch(appActions.setModalOpen('bookSelect', open));
+    },
+    [dispatch]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -164,7 +173,7 @@ export function useBookSession<StreamVoice extends string>({
         showToast('Unable to load books', 'error');
       }
     })();
-  }, [bookId, libraryStateReady, setBookId, showToast]);
+  }, [bookId, libraryStateReady, setBookId, setBookModalOpen, showToast]);
 
   useEffect(() => {
     if (bookId) {
@@ -408,7 +417,7 @@ export function useBookSession<StreamVoice extends string>({
         setUploadingChapter(false);
       }
     },
-    [bookId, bookType, books, onUpdateTocEntries, showToast]
+    [bookId, bookType, books, onUpdateTocEntries, setBookModalOpen, showToast]
   );
 
   const handleCreateChapter = useCallback(
@@ -479,7 +488,7 @@ export function useBookSession<StreamVoice extends string>({
         setUploadingChapter(false);
       }
     },
-    [bookId, bookType, books, onUpdateTocEntries, setEditorChapterNumber, setEditorOpen, showToast]
+    [bookId, bookType, books, onUpdateTocEntries, setBookModalOpen, setEditorChapterNumber, setEditorOpen, showToast]
   );
 
   const handleUploadPdf = useCallback(
@@ -515,7 +524,7 @@ export function useBookSession<StreamVoice extends string>({
         setUploadingPdf(false);
       }
     },
-    [onUpdateTocEntries, showToast]
+    [onUpdateTocEntries, setBookModalOpen, showToast]
   );
 
   const handleDeleteBook = useCallback(
@@ -551,7 +560,7 @@ export function useBookSession<StreamVoice extends string>({
         showToast('Unable to delete book', 'error');
       }
     },
-    [bookId, showToast]
+    [bookId, setBookModalOpen, showToast]
   );
 
   const handleDeleteChapter = useCallback(

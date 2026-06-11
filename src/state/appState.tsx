@@ -25,7 +25,8 @@ export type SimpleModal =
   | 'chapterQuiz'
   | 'unitQuiz'
   | 'vocabulary'
-  | 'memoryCard';
+  | 'memoryCard'
+  | 'bookSelect';
 
 export interface AppUiState {
   modals: Record<SimpleModal, boolean> & {
@@ -76,6 +77,7 @@ const initialAppState: CentralAppState = {
       unitQuiz: false,
       vocabulary: false,
       memoryCard: false,
+      bookSelect: false,
       bookCard: false
     },
     bookCardBookId: null,

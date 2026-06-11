@@ -34,10 +34,7 @@ type HotkeysOptions = {
   handlePlayNextStudyBlock: () => Promise<void> | void;
   gotoInputRef: RefObject<HTMLInputElement>;
   toggleFullscreen: () => Promise<void> | void;
-  bookModalOpen: boolean;
   imagePreviewOpen: boolean;
-  closeBookModal: () => void;
-  openBookModal: () => void;
   onOpenQuiz: () => void;
   onOpenVocabulary: () => void;
   onOpenMemoryCard: () => void;
@@ -74,10 +71,7 @@ export function useHotkeys({
   handlePlayNextStudyBlock,
   gotoInputRef,
   toggleFullscreen,
-  bookModalOpen,
   imagePreviewOpen,
-  closeBookModal,
-  openBookModal,
   onOpenQuiz,
   onOpenVocabulary,
   onOpenMemoryCard
@@ -96,6 +90,7 @@ export function useHotkeys({
   const unitQuizOpen = useAppSelector(selectModalOpen('unitQuiz'));
   const vocabularyOpen = useAppSelector(selectModalOpen('vocabulary'));
   const memoryCardOpen = useAppSelector(selectModalOpen('memoryCard'));
+  const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
   const listeningDashboardOpen = useAppSelector(selectModalOpen('listeningDashboard'));
   const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
   const bookCardOpen = useAppSelector(selectBookCardOpen);
@@ -343,7 +338,7 @@ export function useHotkeys({
           break;
         case 'b':
           event.preventDefault();
-          openBookModal();
+          dispatch(appActions.openModal('bookSelect'));
           break;
         case ',':
           event.preventDefault();
@@ -368,7 +363,7 @@ export function useHotkeys({
             dispatch(appActions.closeModal('text'));
           }
           if (bookModalOpen) {
-            closeBookModal();
+            dispatch(appActions.closeModal('bookSelect'));
           }
           if (ocrQueueOpen) {
             dispatch(appActions.closeModal('ocrQueue'));
@@ -428,8 +423,6 @@ export function useHotkeys({
     handlePrev,
     setViewMode,
     bookModalOpen,
-    closeBookModal,
-    openBookModal,
     helpOpen,
     printModalOpen,
     bookmarksOpen,
