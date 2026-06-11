@@ -70,9 +70,7 @@ export default function App() {
     setSelectedUnitTopicId
   } = useUnitsRouteState();
   const {
-    helpOpen,
     openHelp,
-    closeHelp,
     listeningDashboardOpen,
     openListeningDashboard,
     closeListeningDashboard,
@@ -959,7 +957,7 @@ export default function App() {
       onOpenEditCard: openBookCard,
       onOpenAudioLibrary: handleOpenAudioLibrary
     },
-    helpModalProps: { open: helpOpen, hotkeys, onClose: closeHelp },
+    helpModalProps: { hotkeys },
     bookmarksModalProps: {
       open: bookmarksOpen,
       bookmarks,

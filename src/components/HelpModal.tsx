@@ -1,4 +1,10 @@
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 interface Hotkey {
   keys: string;
@@ -6,12 +12,16 @@ interface Hotkey {
 }
 
 interface HelpModalProps {
-  open: boolean;
   hotkeys: Hotkey[];
-  onClose: () => void;
 }
 
-export default function HelpModal({ open, hotkeys, onClose }: HelpModalProps) {
+export default function HelpModal({ hotkeys }: HelpModalProps) {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('help'));
+  const handleClose = () => {
+    dispatch(appActions.closeModal('help'));
+  };
+
   if (!open) {
     return null;
   }
@@ -24,7 +34,7 @@ export default function HelpModal({ open, hotkeys, onClose }: HelpModalProps) {
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close shortcuts"
             title="Close shortcuts"
           >
@@ -42,7 +52,7 @@ export default function HelpModal({ open, hotkeys, onClose }: HelpModalProps) {
           </ul>
         </section>
         <footer className="modal-footer">
-          <button type="button" className="button button-primary" onClick={onClose}>
+          <button type="button" className="button button-primary" onClick={handleClose}>
             Got it
           </button>
         </footer>
