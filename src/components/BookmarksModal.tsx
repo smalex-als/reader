@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import { useRemoveBookmark } from '@/hooks/useBookmarks';
 import {
   appActions,
   selectBookmarkWorkflow,
@@ -11,14 +12,13 @@ import type { Bookmark } from '@/types/app';
 
 interface BookmarksModalProps {
   onSelect: (bookmark: Bookmark) => void;
-  onRemove: (bookmark: Bookmark) => void;
 }
 
 export default function BookmarksModal({
-  onSelect,
-  onRemove
+  onSelect
 }: BookmarksModalProps) {
   const dispatch = useAppDispatch();
+  const removeBookmark = useRemoveBookmark();
   const open = useAppSelector(selectModalOpen('bookmarks'));
   const { bookId: currentBook, currentPage } = useAppSelector(selectReaderSession);
   const { items: bookmarks, loading } = useAppSelector(selectBookmarkWorkflow);
@@ -83,7 +83,7 @@ export default function BookmarksModal({
                       <button
                         type="button"
                         className="button button-ghost"
-                        onClick={() => onRemove(bookmark)}
+                        onClick={() => void removeBookmark(bookmark.page)}
                       >
                         Remove
                       </button>

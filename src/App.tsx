@@ -516,7 +516,6 @@ export default function App() {
 
   const {
     closeBookmarks,
-    handleRemoveBookmarkFromList,
     handleSelectBookmark,
     showBookmarks,
     toggleBookmark
@@ -748,8 +747,7 @@ export default function App() {
       onOpenEditCard: openBookCard
     },
     bookmarksModalProps: {
-      onSelect: handleSelectBookmark,
-      onRemove: handleRemoveBookmarkFromList
+      onSelect: handleSelectBookmark
     },
     textModalProps: {
       onRegenerate: (engine: PageTextOcrEngine) => {
