@@ -9,7 +9,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import { useShowBookmarks } from '@/hooks/useBookmarks';
+import { useShowBookmarks, useToggleBookmark } from '@/hooks/useBookmarks';
 import type { StreamState } from '@/types/app';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
@@ -20,7 +20,6 @@ interface ReaderSidebarProps {
   onPrev: () => void;
   onNext: () => void;
   onGoTo: (page: number) => void;
-  onToggleBookmark: () => void;
   onStreamVoiceChange: (voice: string) => void;
   onPlayStream: () => void;
   onStopStream: () => void;
@@ -76,13 +75,13 @@ export default function ReaderSidebar({
   onPrev,
   onNext,
   onGoTo,
-  onToggleBookmark,
   onStreamVoiceChange,
   onPlayStream,
   onStopStream
 }: ReaderSidebarProps) {
   const dispatch = useAppDispatch();
   const showBookmarks = useShowBookmarks();
+  const toggleBookmark = useToggleBookmark();
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { mainView } = useAppSelector(selectNavigationState);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
@@ -275,7 +274,7 @@ export default function ReaderSidebar({
           <button
             type="button"
             className={`reader-sidebar-action ${isBookmarked ? 'reader-sidebar-action-active' : ''}`}
-            onClick={onToggleBookmark}
+            onClick={toggleBookmark}
             disabled={controlsDisabled}
             title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
             data-tooltip={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}

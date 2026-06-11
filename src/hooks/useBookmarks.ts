@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/useToast';
 import {
   appActions,
   selectBookmarkWorkflow,
+  selectBookSessionWorkflow,
   selectReaderSession,
   useAppDispatch,
   useAppSelector
@@ -12,56 +13,15 @@ import {
 
 interface UseBookmarksOptions {
   bookId: string | null;
-  currentPage: number;
-  currentImage: string | null;
   renderPage: (pageIndex: number) => void;
 }
 
 export function useBookmarks(options: UseBookmarksOptions) {
-  const { bookId, currentPage, currentImage, renderPage } = options;
-  const { showToast } = useToast();
+  const { bookId, renderPage } = options;
   const dispatch = useAppDispatch();
-  const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
   const fetchBookmarks = useFetchBookmarks();
-
-  const addBookmark = useCallback(async () => {
-    if (!bookId || !currentImage) {
-      return;
-    }
-    try {
-      dispatch(appActions.setBookmarksLoading(true));
-      const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/bookmarks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          page: currentPage,
-          image: currentImage
-        })
-      });
-      if (!response.ok) {
-        throw new Error('Failed to save bookmark');
-      }
-      const data = (await response.json()) as { bookmarks: Bookmark[] };
-      dispatch(appActions.setBookmarks(data.bookmarks ?? []));
-      showToast('Bookmark saved', 'success');
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to save bookmark', 'error');
-    } finally {
-      dispatch(appActions.setBookmarksLoading(false));
-    }
-  }, [bookId, currentImage, currentPage, dispatch, showToast]);
-
+  const addBookmark = useAddBookmark();
   const removeBookmark = useRemoveBookmark();
-
-  const toggleBookmark = useCallback(() => {
-    const existing = bookmarks.some((entry) => entry.page === currentPage);
-    if (existing) {
-      void removeBookmark(currentPage);
-    } else {
-      void addBookmark();
-    }
-  }, [addBookmark, bookmarks, currentPage, removeBookmark]);
 
   const closeBookmarks = useCallback(() => {
     dispatch(appActions.closeModal('bookmarks'));
@@ -89,9 +49,60 @@ export function useBookmarks(options: UseBookmarksOptions) {
     closeBookmarks,
     fetchBookmarks,
     handleSelectBookmark,
-    removeBookmark,
-    toggleBookmark
+    removeBookmark
   };
+}
+
+export function useAddBookmark() {
+  const { bookId, currentPage } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const { showToast } = useToast();
+  const dispatch = useAppDispatch();
+  const currentImage = manifest[currentPage] ?? null;
+
+  return useCallback(async () => {
+    if (!bookId || !currentImage) {
+      return;
+    }
+    try {
+      dispatch(appActions.setBookmarksLoading(true));
+      const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page: currentPage,
+          image: currentImage
+        })
+      });
+      if (!response.ok) {
+        throw new Error('Failed to save bookmark');
+      }
+      const data = (await response.json()) as { bookmarks: Bookmark[] };
+      dispatch(appActions.setBookmarks(data.bookmarks ?? []));
+      showToast('Bookmark saved', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Unable to save bookmark', 'error');
+    } finally {
+      dispatch(appActions.setBookmarksLoading(false));
+    }
+  }, [bookId, currentImage, currentPage, dispatch, showToast]);
+}
+
+export function useToggleBookmark() {
+  const { currentPage } = useAppSelector(selectReaderSession);
+  const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
+  const addBookmark = useAddBookmark();
+  const removeBookmark = useRemoveBookmark();
+
+  return useCallback(() => {
+    const existing = bookmarks.some((entry) => entry.page === currentPage);
+    if (existing) {
+      void removeBookmark(currentPage);
+    } else {
+      void addBookmark();
+    }
+  }, [addBookmark, bookmarks, currentPage, removeBookmark]);
 }
 
 export function useFetchBookmarks() {
