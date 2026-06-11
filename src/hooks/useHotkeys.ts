@@ -1,10 +1,14 @@
-import { useEffect, type RefObject } from 'react';
+import { useCallback, useEffect, type RefObject } from 'react';
+import { useChapterQuiz } from '@/hooks/useChapterQuiz';
+import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
+import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
 import {
   appActions,
   selectBookSessionWorkflow,
   selectBookCardOpen,
   selectModalOpen,
+  selectNavigationState,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -34,9 +38,6 @@ type HotkeysOptions = {
   handlePlayNextStudyBlock: () => Promise<void> | void;
   gotoInputRef: RefObject<HTMLInputElement>;
   toggleFullscreen: () => Promise<void> | void;
-  onOpenQuiz: () => void;
-  onOpenVocabulary: () => void;
-  onOpenMemoryCard: () => void;
 };
 
 function isTextInput(element: EventTarget | null) {
@@ -68,12 +69,10 @@ export function useHotkeys({
   handleToggleStreamPause,
   handlePlayNextStudyBlock,
   gotoInputRef,
-  toggleFullscreen,
-  onOpenQuiz,
-  onOpenVocabulary,
-  onOpenMemoryCard
+  toggleFullscreen
 }: HotkeysOptions) {
   const dispatch = useAppDispatch();
+  const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
   const textModalOpen = useAppSelector(selectModalOpen('text'));
   const helpOpen = useAppSelector(selectModalOpen('help'));
   const printModalOpen = useAppSelector(selectModalOpen('print'));
@@ -93,8 +92,33 @@ export function useHotkeys({
   const promptEditorOpen = useAppSelector(selectModalOpen('promptEditor'));
   const bookCardOpen = useAppSelector(selectBookCardOpen);
   const { bookType } = useAppSelector(selectBookSessionWorkflow);
+  const { openQuiz: openChapterQuiz } = useChapterQuiz();
+  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz({
+    unitSetId: selectedUnitSetId,
+    topicId: selectedUnitTopicId
+  });
+  const { openVocabulary } = useChapterVocabulary();
   const isTextBook = bookType === 'text';
   const quizOpen = chapterQuizOpen || unitQuizOpen;
+  const openQuiz = useCallback(() => {
+    dispatch(appActions.closeModal('settings'));
+    if (mainView === 'units' && selectedUnitSetId && selectedUnitTopicId) {
+      void openUnitTopicQuiz();
+      return;
+    }
+    void openChapterQuiz();
+  }, [
+    dispatch,
+    mainView,
+    openChapterQuiz,
+    openUnitTopicQuiz,
+    selectedUnitSetId,
+    selectedUnitTopicId
+  ]);
+  const openVocabularyModal = useCallback(() => {
+    dispatch(appActions.closeModal('settings'));
+    void openVocabulary();
+  }, [dispatch, openVocabulary]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -247,11 +271,11 @@ export function useHotkeys({
           break;
         case '7':
           event.preventDefault();
-          onOpenQuiz();
+          openQuiz();
           break;
         case '8':
           event.preventDefault();
-          onOpenVocabulary();
+          openVocabularyModal();
           break;
         case 's':
           event.preventDefault();
@@ -414,13 +438,12 @@ export function useHotkeys({
     listeningDashboardOpen,
     promptEditorOpen,
     isTextBook,
+    openQuiz,
+    openVocabularyModal,
     toggleTextModal,
     triggerBackgroundOcr,
     toggleOcrEditMode,
-    gotoInputRef,
-    onOpenQuiz,
-    onOpenVocabulary,
-    onOpenMemoryCard
+    gotoInputRef
   ]);
 
 }

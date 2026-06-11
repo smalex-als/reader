@@ -6,8 +6,6 @@ import { useAudioController } from '@/hooks/useAudioController';
 import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
-import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
-import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useChapterTextContext } from '@/hooks/useChapterTextContext';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { useUnitActions } from '@/hooks/useUnitActions';
@@ -188,22 +186,14 @@ export default function App() {
   }, [currentChapterEntry?.page, currentPage, manifest.length, nextChapterEntry?.page, sortedDetailedTocEntries]);
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
   const {
-    openQuiz: handleOpenQuiz,
     regenerateQuiz: handleRegenerateQuiz
   } = useChapterQuiz();
   const {
-    openQuiz: handleOpenUnitTopicQuiz,
     regenerateQuiz: handleRegenerateUnitTopicQuiz
   } = useUnitTopicQuiz({
     unitSetId: selectedUnitSetId,
     topicId: selectedUnitTopicId
   });
-  const {
-    openVocabulary: handleOpenVocabulary
-  } = useChapterVocabulary();
-  const {
-    openMemoryCard: handleOpenMemoryCard
-  } = useChapterMemoryCard();
 
   const {
     audioState,
@@ -774,23 +764,7 @@ export default function App() {
     handleToggleStreamPause,
     handlePlayNextStudyBlock,
     gotoInputRef,
-    toggleFullscreen,
-    onOpenQuiz: () => {
-      dispatch(appActions.closeModal('settings'));
-      if (mainView === 'units' && selectedUnitSetId && selectedUnitTopicId) {
-        void handleOpenUnitTopicQuiz();
-        return;
-      }
-      void handleOpenQuiz();
-    },
-    onOpenVocabulary: () => {
-      dispatch(appActions.closeModal('settings'));
-      void handleOpenVocabulary();
-    },
-    onOpenMemoryCard: () => {
-      dispatch(appActions.closeModal('settings'));
-      void handleOpenMemoryCard();
-    }
+    toggleFullscreen
   });
 
   const modalProps = {
