@@ -1,28 +1,20 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useToast } from '@/hooks/useToast';
 import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import {
   appActions,
+  selectChapterTextContext,
+  selectReaderSession,
   selectStreamControlRequest,
+  selectStreamRuntime,
   selectStreamUiControls,
+  selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { StreamState } from '@/types/app';
-
-interface DisplayedChapterText {
-  text: string;
-  chapterTitle: string | null;
-  versionLabel: string | null;
-  versionId: string | null;
-}
 
 interface UseStreamControlsOptions {
-  bookId: string | null;
-  chapterNumber: number | null;
-  viewMode: 'pages' | 'scroll' | 'text' | 'audio';
-  displayedChapterText: DisplayedChapterText | null;
-  streamState: StreamState;
   startStreamSequence: () => Promise<void>;
   handlePlayChapterParagraph: (payload: {
     fullText: string;
@@ -32,32 +24,35 @@ interface UseStreamControlsOptions {
   restartStreamFromPageKey: (pageKey: string, voice: string) => Promise<void>;
   handleStopStream: () => void;
   handleToggleStreamPause: () => Promise<void> | void;
-  isStreamVoice: (voice: string) => boolean;
-  setStreamVoice: (voice: string) => void;
-  mp3VoiceOptions: ReadonlyArray<{ id: string }>;
-  setMp3Voice: (voice: string) => void;
 }
 
 export function useStreamControls({
-  bookId,
-  chapterNumber,
-  viewMode,
-  displayedChapterText,
-  streamState,
   startStreamSequence,
   handlePlayChapterParagraph,
   restartStreamFromPageKey,
   handleStopStream,
-  handleToggleStreamPause,
-  isStreamVoice,
-  setStreamVoice,
-  mp3VoiceOptions,
-  setMp3Voice
+  handleToggleStreamPause
 }: UseStreamControlsOptions) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
+  const { bookId, chapterNumber } = useCurrentChapterContext();
+  const { viewMode } = useAppSelector(selectReaderSession);
+  const { displayedChapterText } = useAppSelector(selectChapterTextContext);
   const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
+  const streamState = useAppSelector(selectStreamRuntime);
   const streamControlRequest = useAppSelector(selectStreamControlRequest);
+  const { streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
+  const mp3VoiceOptions = useMemo(
+    () =>
+      streamVoiceOptions.filter(
+        (option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'
+      ),
+    [streamVoiceOptions]
+  );
+  const isStreamVoice = useCallback(
+    (voice: string) => streamVoiceOptions.length === 0 || streamVoiceOptions.some((option) => option.id === voice),
+    [streamVoiceOptions]
+  );
 
   const setSelectedStreamBlockKey = useCallback(
     (key: string | null) => {
@@ -146,10 +141,10 @@ export function useStreamControls({
       if (!isStreamVoice(voice)) {
         return;
       }
-      setStreamVoice(voice);
+      dispatch(appActions.setStreamVoice(voice));
       restartActiveStream(voice);
     },
-    [isStreamVoice, restartActiveStream, setStreamVoice]
+    [dispatch, isStreamVoice, restartActiveStream]
   );
 
   const handleMp3VoiceChange = useCallback(
@@ -157,9 +152,9 @@ export function useStreamControls({
       if (!mp3VoiceOptions.some((option) => option.id === voice)) {
         return;
       }
-      setMp3Voice(voice);
+      dispatch(appActions.setMp3Voice(voice));
     },
-    [mp3VoiceOptions, setMp3Voice]
+    [dispatch, mp3VoiceOptions]
   );
 
   useEffect(() => {

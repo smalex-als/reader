@@ -6,7 +6,6 @@ import { useAudioController } from '@/hooks/useAudioController';
 import { useBookSession } from '@/hooks/useBookSession';
 import { useBookmarks } from '@/hooks/useBookmarks';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
-import { useChapterTextContext } from '@/hooks/useChapterTextContext';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { useNavigation } from '@/hooks/useNavigation';
@@ -62,7 +61,6 @@ export default function App() {
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const tocCommandRequest = useAppSelector(selectTocCommandRequest);
   const { mainView } = useUnitsRouteState();
-  const { displayedChapterText } = useChapterTextContext();
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
@@ -85,12 +83,8 @@ export default function App() {
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
   const {
-    streamVoiceOptions,
-    streamVoice,
-    setStreamVoice,
     isStreamVoice,
-    getDefaultStreamVoice,
-    mp3VoiceOptions
+    getDefaultStreamVoice
   } = useStreamVoices();
   const {
     bookId,
@@ -127,7 +121,7 @@ export default function App() {
     handleUpdateTocEntry,
     handleGenerateChapter
   } = useTocManager();
-  const { setMp3Voice } = useMp3Voice();
+  useMp3Voice();
   const currentChapterIndex = useMemo(() => {
     if (isTextBook) {
       return navigationCount > 0 ? currentPage : null;
@@ -228,20 +222,11 @@ export default function App() {
     setSelectedStreamBlockKey,
     handlePlayVisibleStream
   } = useStreamControls({
-    bookId,
-    chapterNumber,
-    viewMode,
-    displayedChapterText,
-    streamState,
     startStreamSequence,
     handlePlayChapterParagraph,
     restartStreamFromPageKey,
     handleStopStream,
-    handleToggleStreamPause,
-    isStreamVoice,
-    setStreamVoice,
-    mp3VoiceOptions,
-    setMp3Voice
+    handleToggleStreamPause
   });
 
   useStreamHistoryLogger();
