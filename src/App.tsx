@@ -87,9 +87,7 @@ export default function App() {
     bookCardBookId,
     openBookCard,
     closeBookCard,
-    promptEditorOpen,
     openPromptEditor,
-    closePromptEditor,
     settingsOpen,
     setSettingsOpen,
     settingsTab,
@@ -1147,11 +1145,6 @@ export default function App() {
       onOpenChapter: handleOpenDashboardChapter,
       onOpenUnit: handleOpenDashboardUnit,
       onClose: closeListeningDashboard
-    },
-    promptEditorModalProps: {
-      open: promptEditorOpen,
-      onClose: closePromptEditor,
-      onChanged: refreshChapterView
     }
   };
 

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import {
+  appActions,
+  selectModalOpen,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { ChapterTextPrompt } from '@/types/app';
-
-interface PromptEditorModalProps {
-  open: boolean;
-  onClose: () => void;
-  onChanged?: () => void;
-}
 
 type PromptLibraryResponse = {
   prompts?: ChapterTextPrompt[];
@@ -46,7 +46,9 @@ Rules:
 Source:
 {{chapter_text}}`;
 
-export default function PromptEditorModal({ open, onClose, onChanged }: PromptEditorModalProps) {
+export default function PromptEditorModal() {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectModalOpen('promptEditor'));
   const [prompts, setPrompts] = useState<ChapterTextPrompt[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [draftName, setDraftName] = useState('');
@@ -64,6 +66,9 @@ export default function PromptEditorModal({ open, onClose, onChanged }: PromptEd
     selectedPrompt !== null &&
     (draftName.trim() !== selectedPrompt.name || draftTemplate.trim() !== selectedPrompt.template);
   const canSave = selectedPrompt !== null && draftName.trim().length > 0 && draftTemplate.trim().length > 0 && isDirty;
+  const handleClose = () => {
+    dispatch(appActions.closeModal('promptEditor'));
+  };
 
   useEffect(() => {
     if (!open) {
@@ -119,7 +124,7 @@ export default function PromptEditorModal({ open, onClose, onChanged }: PromptEd
         ? nextSelectedId
         : nextPrompts[0]?.id ?? ''
     );
-    onChanged?.();
+    dispatch(appActions.refreshChapterView());
   };
 
   const handleCreate = async () => {
@@ -222,7 +227,7 @@ export default function PromptEditorModal({ open, onClose, onChanged }: PromptEd
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close prompt editor"
             title="Close prompt editor"
             disabled={saving}
@@ -290,7 +295,7 @@ export default function PromptEditorModal({ open, onClose, onChanged }: PromptEd
           >
             Delete
           </button>
-          <button type="button" className="button button-secondary" onClick={onClose} disabled={saving}>
+          <button type="button" className="button button-secondary" onClick={handleClose} disabled={saving}>
             Close
           </button>
           <button type="button" className="button" onClick={handleSave} disabled={!canSave || saving}>
