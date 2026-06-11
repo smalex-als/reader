@@ -2,16 +2,21 @@ import {
   appActions,
   selectBookSessionWorkflow,
   selectFullscreen,
+  selectNavigationState,
   selectOcrEdit,
   selectReaderSession,
   selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
+import { useChapterQuiz } from '@/hooks/useChapterQuiz';
+import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useCopyActions } from '@/hooks/useCopyActions';
 import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
+import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { clamp } from '@/lib/math';
 
 export type ToolbarTab = 'image' | 'study' | 'tools';
@@ -29,9 +34,6 @@ interface ToolbarProps {
   onToggleOcrEditMode: () => void;
   onToggleFullscreen: () => void;
   onCreateChapter: () => void;
-  onOpenQuiz: () => void;
-  onOpenVocabulary: () => void;
-  onOpenMemoryCard: () => void;
   onShareLink: () => void;
   ocrQueueTotal: number;
   ocrQueueProcessed: number;
@@ -53,9 +55,6 @@ export default function Toolbar({
   onToggleOcrEditMode,
   onToggleFullscreen,
   onCreateChapter,
-  onOpenQuiz,
-  onOpenVocabulary,
-  onOpenMemoryCard,
   onShareLink,
   ocrQueueTotal,
   ocrQueueProcessed,
@@ -65,11 +64,31 @@ export default function Toolbar({
 }: ToolbarProps) {
   const dispatch = useAppDispatch();
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
   const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
-  const { chapterNumber, chapterLabel } = useCurrentChapterContext();
+  const { chapterNumber, chapterLabel, pageRange: chapterRange } = useCurrentChapterContext();
   const { openPrintModal } = usePrintOptions();
+  const { openQuiz: openChapterQuiz } = useChapterQuiz({
+    bookId: currentBook,
+    chapterNumber,
+    chapterRange
+  });
+  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz({
+    unitSetId: selectedUnitSetId,
+    topicId: selectedUnitTopicId
+  });
+  const { openVocabulary } = useChapterVocabulary({
+    bookId: currentBook,
+    chapterNumber,
+    chapterRange
+  });
+  const { openMemoryCard } = useChapterMemoryCard({
+    bookId: currentBook,
+    chapterNumber,
+    chapterRange
+  });
   const { settings } = useAppSelector(selectViewerWorkflow);
   const {
     invert,
@@ -143,6 +162,22 @@ export default function Toolbar({
   const handleToggleTextModal = () => {
     closeSettings();
     toggleTextModal();
+  };
+  const handleOpenQuiz = () => {
+    closeSettings();
+    if (mainView === 'units' && selectedUnitSetId && selectedUnitTopicId) {
+      void openUnitTopicQuiz();
+      return;
+    }
+    void openChapterQuiz();
+  };
+  const handleOpenVocabulary = () => {
+    closeSettings();
+    void openVocabulary();
+  };
+  const handleOpenMemoryCard = () => {
+    closeSettings();
+    void openMemoryCard();
   };
 
   return (
@@ -313,7 +348,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onOpenQuiz}
+            onClick={handleOpenQuiz}
             disabled={quizDisabled}
           >
             Open Quiz
@@ -321,7 +356,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onOpenVocabulary}
+            onClick={handleOpenVocabulary}
             disabled={quizDisabled}
           >
             Open Vocabulary
@@ -329,7 +364,7 @@ export default function Toolbar({
           <button
             type="button"
             className="button"
-            onClick={onOpenMemoryCard}
+            onClick={handleOpenMemoryCard}
             disabled={quizDisabled}
           >
             Open Memory Card

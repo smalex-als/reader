@@ -684,22 +684,6 @@ export default function App() {
       }
       void handleCreateChapter({ bookName: '', chapterTitle: '' });
     },
-    onOpenQuiz: () => {
-      setSettingsOpen(false);
-      if (mainView === 'units' && selectedUnitSetId && selectedUnitTopicId) {
-        void handleOpenUnitTopicQuiz();
-        return;
-      }
-      void handleOpenQuiz();
-    },
-    onOpenVocabulary: () => {
-      setSettingsOpen(false);
-      void handleOpenVocabulary();
-    },
-    onOpenMemoryCard: () => {
-      setSettingsOpen(false);
-      void handleOpenMemoryCard();
-    },
     onShareLink: () => void handleShareLink(),
     ocrQueueTotal: ocrQueueState.total,
     ocrQueueProcessed: ocrQueueState.processed,
