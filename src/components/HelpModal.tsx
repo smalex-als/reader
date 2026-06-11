@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import { HOTKEYS } from '@/lib/hotkeys';
 import {
   appActions,
   selectModalOpen,
@@ -6,16 +7,7 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-interface Hotkey {
-  keys: string;
-  action: string;
-}
-
-interface HelpModalProps {
-  hotkeys: Hotkey[];
-}
-
-export default function HelpModal({ hotkeys }: HelpModalProps) {
+export default function HelpModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('help'));
   const handleClose = () => {
@@ -43,7 +35,7 @@ export default function HelpModal({ hotkeys }: HelpModalProps) {
         </header>
         <section className="modal-body">
           <ul className="hotkey-list">
-            {hotkeys.map((hotkey) => (
+            {HOTKEYS.map((hotkey) => (
               <li key={hotkey.keys} className="hotkey-row">
                 <span className="hotkey-keys">{hotkey.keys}</span>
                 <span className="hotkey-action">{hotkey.action}</span>

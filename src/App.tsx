@@ -620,7 +620,7 @@ export default function App() {
     [applyZoomMode, viewMode]
   );
 
-  const { hotkeys } = useHotkeys({
+  useHotkeys({
     viewMode,
     currentImage,
     settings,
@@ -747,7 +747,6 @@ export default function App() {
       onUploadPdf: handleUploadPdf,
       onOpenEditCard: openBookCard
     },
-    helpModalProps: { hotkeys },
     bookmarksModalProps: {
       onSelect: handleSelectBookmark,
       onRemove: handleRemoveBookmarkFromList
