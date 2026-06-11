@@ -93,10 +93,7 @@ export function useHotkeys({
   const bookCardOpen = useAppSelector(selectBookCardOpen);
   const { bookType } = useAppSelector(selectBookSessionWorkflow);
   const { openQuiz: openChapterQuiz } = useChapterQuiz();
-  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz({
-    unitSetId: selectedUnitSetId,
-    topicId: selectedUnitTopicId
-  });
+  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz();
   const { openVocabulary } = useChapterVocabulary();
   const isTextBook = bookType === 'text';
   const quizOpen = chapterQuizOpen || unitQuizOpen;

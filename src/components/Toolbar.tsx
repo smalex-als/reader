@@ -39,10 +39,7 @@ export default function Toolbar() {
   const { chapterNumber, chapterLabel } = useCurrentChapterContext();
   const { openPrintModal } = usePrintOptions();
   const { openQuiz: openChapterQuiz } = useChapterQuiz();
-  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz({
-    unitSetId: selectedUnitSetId,
-    topicId: selectedUnitTopicId
-  });
+  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz();
   const { openVocabulary } = useChapterVocabulary();
   const { openMemoryCard } = useChapterMemoryCard();
   const { settings, metrics } = useAppSelector(selectViewerWorkflow);

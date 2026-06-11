@@ -1,12 +1,10 @@
 import { useCallback } from 'react';
 import { useQuiz } from '@/hooks/useQuiz';
+import { selectNavigationState, useAppSelector } from '@/state/appState';
 
-type UseUnitTopicQuizOptions = {
-  unitSetId: string | null;
-  topicId: string | null;
-};
-
-export function useUnitTopicQuiz({ unitSetId, topicId }: UseUnitTopicQuizOptions) {
+export function useUnitTopicQuiz() {
+  const { selectedUnitSetId: unitSetId, selectedUnitTopicId: topicId } =
+    useAppSelector(selectNavigationState);
   const buildUrl = useCallback(() => {
     if (!unitSetId || !topicId) {
       return null;

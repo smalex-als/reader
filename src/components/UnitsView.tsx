@@ -152,10 +152,7 @@ export default function UnitsView() {
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
   const { showToast } = useToast();
-  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz({
-    unitSetId: selectedSetId,
-    topicId: selectedTopicId
-  });
+  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz();
   const [items, setItems] = useState<UnitSet[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');

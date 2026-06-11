@@ -61,11 +61,7 @@ export default function App() {
   const studyModeToggleRequest = useAppSelector(selectStudyModeToggleRequest);
   const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
   const tocCommandRequest = useAppSelector(selectTocCommandRequest);
-  const {
-    mainView,
-    selectedUnitSetId,
-    selectedUnitTopicId
-  } = useUnitsRouteState();
+  const { mainView } = useUnitsRouteState();
   const {
     displayedChapterText,
     firstChapterParagraph
@@ -161,10 +157,7 @@ export default function App() {
   } = useChapterQuiz();
   const {
     regenerateQuiz: handleRegenerateUnitTopicQuiz
-  } = useUnitTopicQuiz({
-    unitSetId: selectedUnitSetId,
-    topicId: selectedUnitTopicId
-  });
+  } = useUnitTopicQuiz();
 
   const {
     audioState,
