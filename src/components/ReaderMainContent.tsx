@@ -1,4 +1,4 @@
-import type { ComponentProps, RefObject } from 'react';
+import type { RefObject } from 'react';
 import ChapterEditor from '@/components/ChapterEditor';
 import AudioLibraryView from '@/components/AudioLibraryView';
 import AudioView from '@/components/AudioView';
@@ -17,20 +17,16 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-type ScrollViewerProps = ComponentProps<typeof ScrollViewer>;
-
 interface ReaderMainContentProps {
   viewerShellRef: RefObject<HTMLDivElement>;
   modalHostRef: RefObject<HTMLDivElement>;
   footerMessage: string;
-  scrollViewerProps: ScrollViewerProps;
 }
 
 export default function ReaderMainContent({
   viewerShellRef,
   modalHostRef,
-  footerMessage,
-  scrollViewerProps
+  footerMessage
 }: ReaderMainContentProps) {
   const { mainView } = useAppSelector(selectNavigationState);
   const { viewMode } = useAppSelector(selectReaderSession);
@@ -59,7 +55,7 @@ export default function ReaderMainContent({
         ) : viewMode === 'pages' ? (
           <Viewer />
         ) : viewMode === 'scroll' ? (
-          <ScrollViewer {...scrollViewerProps} />
+          <ScrollViewer />
         ) : viewMode === 'text' ? (
           editorOpen ? (
             <ChapterEditor />

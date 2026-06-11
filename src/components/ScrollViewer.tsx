@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, type HTMLAttributes } from 'react';
 import { Virtuoso, type ListRange, type VirtuosoHandle } from 'react-virtuoso';
 import OcrOverlay from '@/components/OcrOverlay';
+import { usePageText } from '@/hooks/usePageText';
 import { saveLastPage } from '@/lib/storage';
 import { parseStreamLocator } from '@/lib/streamLocator';
 import {
@@ -15,7 +16,6 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { PageText } from '@/types/app';
 
 const PAGE_VISIBILITY_THRESHOLD = 0.35;
 const BLOCK_VISIBILITY_THRESHOLD = 0.55;
@@ -24,13 +24,6 @@ const BLOCK_READING_ZONE_TOP = 48;
 const BLOCK_READING_ZONE_HEIGHT_RATIO = 0.66;
 const BLOCK_SCROLL_TARGET_OFFSET = 88;
 const VIEWPORT_PREFETCH_PADDING = 1;
-
-interface ScrollViewerProps {
-  fetchPageTextByImage: (
-    image: string,
-    options?: { force?: boolean; silent?: boolean; updateCurrentState?: boolean }
-  ) => Promise<PageText | null>;
-}
 
 const ScrollScroller = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function ScrollScroller(props, ref) {
@@ -61,9 +54,7 @@ function scrollBlockIntoReadingZone(scroller: HTMLDivElement, block: HTMLElement
   });
 }
 
-export default function ScrollViewer({
-  fetchPageTextByImage
-}: ScrollViewerProps) {
+export default function ScrollViewer() {
   const dispatch = useAppDispatch();
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
@@ -74,6 +65,7 @@ export default function ScrollViewer({
   const { autoFollowStream: autoFollowEnabled } = useAppSelector(selectStreamUiControls);
   const currentImage = manifest[currentPage] ?? null;
   const pageText = currentImage ? textCache[currentImage] ?? null : null;
+  const { fetchPageTextByImage } = usePageText(currentImage);
   const {
     invert,
     brightness,

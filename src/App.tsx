@@ -806,10 +806,7 @@ export default function App() {
   const mainContentProps = {
     viewerShellRef,
     modalHostRef,
-    footerMessage,
-    scrollViewerProps: {
-      fetchPageTextByImage
-    }
+    footerMessage
   };
 
   return (
