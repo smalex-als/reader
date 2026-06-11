@@ -3,6 +3,7 @@ import {
   selectFullscreen,
   selectOcrEdit,
   selectReaderSession,
+  selectViewerWorkflow,
   useAppSelector
 } from '@/state/appState';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
@@ -20,13 +21,6 @@ interface ToolbarProps {
   onFitHeight: () => void;
   onRotate: () => void;
   onInvert: () => void;
-  invert: boolean;
-  zoom: number;
-  rotation: number;
-  brightness: number;
-  contrast: number;
-  dimOutsideBlocks: boolean;
-  dimOutsideBlocksIntensity: number;
   onBrightness: (value: number) => void;
   onContrast: (value: number) => void;
   onToggleDimOutsideBlocks: () => void;
@@ -64,13 +58,6 @@ export default function Toolbar({
   onFitHeight,
   onRotate,
   onInvert,
-  invert,
-  zoom,
-  rotation,
-  brightness,
-  contrast,
-  dimOutsideBlocks,
-  dimOutsideBlocksIntensity,
   onBrightness,
   onContrast,
   onToggleDimOutsideBlocks,
@@ -101,6 +88,17 @@ export default function Toolbar({
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
   const { chapterNumber, chapterLabel } = useCurrentChapterContext();
+  const {
+    settings: {
+      invert,
+      zoom,
+      rotation,
+      brightness,
+      contrast,
+      dimOutsideBlocks,
+      dimOutsideBlocksIntensity
+    }
+  } = useAppSelector(selectViewerWorkflow);
   const isTextBook = bookType === 'text';
   const manifestLength = isTextBook ? chapterCount : manifest.length;
   const disableImageActions = isTextBook;
