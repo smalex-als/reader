@@ -30,7 +30,6 @@ const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 
 type BookSessionOptions<StreamVoice extends string> = {
   urlSyncPaused?: boolean;
-  onUpdateTocEntries: (entries: TocEntry[]) => void;
   isStreamVoice: (value: string) => value is StreamVoice;
   getDefaultStreamVoice: () => StreamVoice;
   createDefaultSettings: () => AppSettings;
@@ -86,7 +85,6 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
 
 export function useBookSession<StreamVoice extends string>({
   urlSyncPaused = false,
-  onUpdateTocEntries,
   isStreamVoice,
   getDefaultStreamVoice,
   createDefaultSettings
@@ -452,7 +450,7 @@ export function useBookSession<StreamVoice extends string>({
         setBookType('text');
         setChapterCount(Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0);
         setManifest([]);
-        onUpdateTocEntries(Array.isArray(data.toc) ? data.toc : []);
+        dispatch(appActions.setTocEntries(Array.isArray(data.toc) ? data.toc : []));
         const nextChapterIndex = Number.isInteger(data.chapterIndex)
           ? (data.chapterIndex as number)
           : null;
@@ -473,7 +471,6 @@ export function useBookSession<StreamVoice extends string>({
       bookId,
       bookType,
       books,
-      onUpdateTocEntries,
       dispatch,
       setBookId,
       setBookModalOpen,
@@ -514,7 +511,7 @@ export function useBookSession<StreamVoice extends string>({
         const nextChapterCount = Number.isInteger(data.chapterCount) ? (data.chapterCount as number) : 0;
         const nextToc = Array.isArray(data.toc) ? data.toc : [];
         setChapterCount(nextChapterCount);
-        onUpdateTocEntries(nextToc);
+        dispatch(appActions.setTocEntries(nextToc));
         if (nextChapterCount <= 0) {
           setCurrentPage(0);
         } else {
@@ -544,7 +541,6 @@ export function useBookSession<StreamVoice extends string>({
       bookId,
       bookType,
       dispatch,
-      onUpdateTocEntries,
       setCurrentPage,
       showToast
     ]

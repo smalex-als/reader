@@ -39,10 +39,7 @@ import {
   normalizeTextTheme,
   type MainView
 } from '@/lib/appConstants';
-import type {
-  AppSettings,
-  TocEntry
-} from '@/types/app';
+import type { AppSettings } from '@/types/app';
 import {
   appActions,
   selectChapterCommandRequest,
@@ -95,7 +92,6 @@ export default function App() {
   const fullscreenControls = useFullscreen(viewerShellRef);
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
-  const tocEntriesRef = useRef<React.Dispatch<React.SetStateAction<TocEntry[]>> | null>(null);
   const {
     streamVoiceOptions,
     streamVoice,
@@ -119,7 +115,6 @@ export default function App() {
     handleDeleteChapter
   } = useBookSession({
     urlSyncPaused: mainView === 'units',
-    onUpdateTocEntries: (entries) => tocEntriesRef.current?.(entries),
     isStreamVoice,
     getDefaultStreamVoice,
     createDefaultSettings
@@ -133,7 +128,6 @@ export default function App() {
   const {
     tocOpen,
     tocEntries,
-    setTocEntries,
     sortedTocEntries,
     sortedDetailedTocEntries,
     handleGenerateToc,
@@ -143,9 +137,6 @@ export default function App() {
     handleUpdateTocEntry,
     handleGenerateChapter
   } = useTocManager();
-  useEffect(() => {
-    tocEntriesRef.current = setTocEntries;
-  }, [setTocEntries]);
   const { setMp3Voice } = useMp3Voice({ bookId, mp3VoiceOptions, getDefaultMp3Voice });
   const currentChapterIndex = useMemo(() => {
     if (isTextBook) {
