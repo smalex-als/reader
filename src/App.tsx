@@ -476,7 +476,6 @@ export default function App() {
   });
   const {
     autoFollowStream,
-    toggleAutoFollowStream,
     setSelectedStreamBlockKey,
     streamPositionActive,
     playingStreamLocator,
@@ -1350,12 +1349,7 @@ export default function App() {
     },
     streamBubbleProps: {
       streamState,
-      streamVoice,
-      streamVoiceOptions,
       onStreamVoiceChange: handleActiveStreamVoiceChange,
-      showAutoFollow: viewMode === 'scroll',
-      autoFollowEnabled: autoFollowStream,
-      onToggleAutoFollow: toggleAutoFollowStream,
       studyMode: settings.studyMode,
       onToggleStudyMode: toggleStudyMode,
       onTogglePause: () => void handleToggleStreamPause(),

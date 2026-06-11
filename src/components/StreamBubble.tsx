@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react';
 import type { StreamState } from '@/types/app';
 import { useStreamUi } from '@/hooks/useStreamUi';
-
-type StreamVoiceOption = {
-  id: string;
-  label: string;
-};
+import {
+  appActions,
+  selectReaderSession,
+  selectStreamUiControls,
+  selectVoiceWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 interface StreamBubbleProps {
   streamState: StreamState;
-  streamVoice: string;
-  streamVoiceOptions: readonly StreamVoiceOption[];
   onStreamVoiceChange: (voice: string) => void;
-  showAutoFollow?: boolean;
-  autoFollowEnabled?: boolean;
-  onToggleAutoFollow?: () => void;
   studyMode?: boolean;
   onToggleStudyMode?: () => void;
   onTogglePause: () => void;
@@ -23,20 +21,20 @@ interface StreamBubbleProps {
 
 export default function StreamBubble({
   streamState,
-  streamVoice,
-  streamVoiceOptions,
   onStreamVoiceChange,
-  showAutoFollow = false,
-  autoFollowEnabled = false,
-  onToggleAutoFollow,
   studyMode = false,
   onToggleStudyMode,
   onTogglePause,
   onStopStream
 }: StreamBubbleProps) {
+  const dispatch = useAppDispatch();
+  const { viewMode } = useAppSelector(selectReaderSession);
+  const { autoFollowStream } = useAppSelector(selectStreamUiControls);
+  const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const { isVisible, status, isDisabled, ariaLabel, title } = useStreamUi(streamState);
   const [renderVisible, setRenderVisible] = useState(isVisible);
   const [displayStatus, setDisplayStatus] = useState(status);
+  const showAutoFollow = viewMode === 'scroll';
   const playedSeconds = Math.max(0, Math.floor(streamState.playbackSeconds));
   const minutes = Math.floor(playedSeconds / 60);
   const seconds = playedSeconds % 60;
@@ -111,10 +109,10 @@ export default function StreamBubble({
           <span className="stream-bubble-divider" aria-hidden="true" />
           <button
             type="button"
-            className={`stream-bubble-toggle ${autoFollowEnabled ? 'stream-bubble-toggle-active' : ''}`}
-            onClick={onToggleAutoFollow}
-            aria-pressed={autoFollowEnabled}
-            title={autoFollowEnabled ? 'Disable auto-follow' : 'Enable auto-follow'}
+            className={`stream-bubble-toggle ${autoFollowStream ? 'stream-bubble-toggle-active' : ''}`}
+            onClick={() => dispatch(appActions.toggleAutoFollowStream())}
+            aria-pressed={autoFollowStream}
+            title={autoFollowStream ? 'Disable auto-follow' : 'Enable auto-follow'}
           >
             Follow
           </button>
