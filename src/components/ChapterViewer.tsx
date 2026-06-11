@@ -199,11 +199,7 @@ export default function ChapterViewer() {
   const {
     unitCreating,
     handleCreateUnit
-  } = useUnitActions({
-    bookId,
-    chapterNumber,
-    currentChapterTitle: chapterTitle
-  });
+  } = useUnitActions();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
   const [outlineOpen, setOutlineOpen] = useState(true);

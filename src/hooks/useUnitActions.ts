@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { fetchJson } from '@/lib/fetchJson';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useToast } from '@/hooks/useToast';
 import {
   appActions,
@@ -9,19 +10,14 @@ import {
 } from '@/state/appState';
 import type { UnitSet } from '@/types/app';
 
-interface UseUnitActionsOptions {
-  bookId: string | null;
-  chapterNumber: number | null;
-  currentChapterTitle: string | null;
-}
-
-export function useUnitActions({
-  bookId,
-  chapterNumber,
-  currentChapterTitle
-}: UseUnitActionsOptions) {
+export function useUnitActions() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
+  const {
+    bookId,
+    chapterNumber,
+    chapterTitle: currentChapterTitle
+  } = useCurrentChapterContext();
   const {
     refreshToken: unitsRefreshToken,
     quizLabel: unitQuizLabel,

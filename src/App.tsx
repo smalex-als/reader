@@ -530,11 +530,7 @@ export default function App() {
 
   const {
     refreshUnits
-  } = useUnitActions({
-    bookId,
-    chapterNumber,
-    currentChapterTitle: currentChapterEntry?.title ?? null
-  });
+  } = useUnitActions();
 
   useEffect(() => {
     if (!studyAudioCommandRequest) {
