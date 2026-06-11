@@ -1,13 +1,37 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { clamp, clampPan } from '@/lib/math';
+import {
+  appActions,
+  selectViewerWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { AppSettings, ViewerMetrics, ViewerPan, ZoomMode } from '@/types/app';
 
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
 
-export function useZoom(initialSettings: AppSettings) {
-  const [settings, setSettings] = useState<AppSettings>(initialSettings);
-  const [metrics, setMetrics] = useState<ViewerMetrics | null>(null);
+function resolveNext<T>(next: SetStateAction<T>, current: T) {
+  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
+}
+
+export function useZoom(_initialSettings: AppSettings) {
+  const dispatch = useAppDispatch();
+  const { settings, metrics } = useAppSelector(selectViewerWorkflow);
+
+  const setSettings: Dispatch<SetStateAction<AppSettings>> = useCallback(
+    (next) => {
+      dispatch(appActions.setViewerSettings(resolveNext(next, settings)));
+    },
+    [dispatch, settings]
+  );
+
+  const setMetrics: Dispatch<SetStateAction<ViewerMetrics | null>> = useCallback(
+    (next) => {
+      dispatch(appActions.setViewerMetrics(resolveNext(next, metrics)));
+    },
+    [dispatch, metrics]
+  );
 
   const updateTransform = useCallback(
     (partial: Partial<Pick<AppSettings, 'zoom' | 'zoomMode' | 'rotation' | 'pan'>>) => {
@@ -40,7 +64,7 @@ export function useZoom(initialSettings: AppSettings) {
         };
       });
     },
-    [metrics]
+    [metrics, setSettings]
   );
 
   const applyZoomMode = useCallback(
@@ -69,7 +93,7 @@ export function useZoom(initialSettings: AppSettings) {
 
       updateTransform({ zoom: nextZoom, zoomMode: mode, pan: settings.pan });
     },
-    [metrics, settings.rotation, settings.zoom, updateTransform]
+    [metrics, settings.pan, settings.rotation, settings.zoom, updateTransform]
   );
 
   const updateZoom = useCallback(
@@ -96,8 +120,8 @@ export function useZoom(initialSettings: AppSettings) {
   }, [updateTransform]);
 
   const handleMetricsChange = useCallback((nextMetrics: ViewerMetrics) => {
-    setMetrics(nextMetrics);
-  }, []);
+    dispatch(appActions.setViewerMetrics(nextMetrics));
+  }, [dispatch]);
 
   useEffect(() => {
     if (!metrics) {

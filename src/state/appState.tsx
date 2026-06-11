@@ -6,8 +6,9 @@ import {
   type Dispatch,
   type ReactNode
 } from 'react';
-import type { MainView, ViewMode } from '@/lib/appConstants';
+import { createDefaultSettings, type MainView, type ViewMode } from '@/lib/appConstants';
 import type {
+  AppSettings,
   AudioState,
   Bookmark,
   ChapterMemoryCard,
@@ -16,7 +17,8 @@ import type {
   PageText,
   PageTextOcrEngine,
   Quiz,
-  SearchResult
+  SearchResult,
+  ViewerMetrics
 } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
 
@@ -182,6 +184,11 @@ export interface ImagePreviewWorkflowState {
   enhancedUrls: Record<string, string>;
 }
 
+export interface ViewerWorkflowState {
+  settings: AppSettings;
+  metrics: ViewerMetrics | null;
+}
+
 export interface CentralAppState {
   ui: AppUiState;
   navigation: AppNavigationState;
@@ -204,6 +211,7 @@ export interface CentralAppState {
   memoryCardWorkflow: MemoryCardWorkflowState;
   pageTextWorkflow: PageTextWorkflowState;
   imagePreviewWorkflow: ImagePreviewWorkflowState;
+  viewerWorkflow: ViewerWorkflowState;
 }
 
 export type AppAction =
@@ -278,7 +286,9 @@ export type AppAction =
   | { type: 'pageTextWorkflow/setLoading'; loading: boolean }
   | { type: 'pageTextWorkflow/setSaving'; saving: boolean }
   | { type: 'pageTextWorkflow/setRegenerated'; regenerated: boolean }
-  | { type: 'imagePreviewWorkflow/setEnhancedUrl'; key: string; url: string | null };
+  | { type: 'imagePreviewWorkflow/setEnhancedUrl'; key: string; url: string | null }
+  | { type: 'viewerWorkflow/setSettings'; settings: AppSettings }
+  | { type: 'viewerWorkflow/setMetrics'; metrics: ViewerMetrics | null };
 
 function getInitialNavigation(): AppNavigationState {
   if (typeof window === 'undefined') {
@@ -433,6 +443,10 @@ const initialAppState: CentralAppState = {
   },
   imagePreviewWorkflow: {
     enhancedUrls: {}
+  },
+  viewerWorkflow: {
+    settings: createDefaultSettings(),
+    metrics: null
   }
 };
 
@@ -646,6 +660,14 @@ export const appActions = {
     type: 'imagePreviewWorkflow/setEnhancedUrl',
     key,
     url
+  }),
+  setViewerSettings: (settings: AppSettings): AppAction => ({
+    type: 'viewerWorkflow/setSettings',
+    settings
+  }),
+  setViewerMetrics: (metrics: ViewerMetrics | null): AppAction => ({
+    type: 'viewerWorkflow/setMetrics',
+    metrics
   })
 };
 
@@ -1276,6 +1298,22 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         }
       };
     }
+    case 'viewerWorkflow/setSettings':
+      return {
+        ...state,
+        viewerWorkflow: {
+          ...state.viewerWorkflow,
+          settings: action.settings
+        }
+      };
+    case 'viewerWorkflow/setMetrics':
+      return {
+        ...state,
+        viewerWorkflow: {
+          ...state.viewerWorkflow,
+          metrics: action.metrics
+        }
+      };
     default:
       return state;
   }
@@ -1338,3 +1376,4 @@ export const selectVocabularyWorkflow = (state: CentralAppState) => state.vocabu
 export const selectMemoryCardWorkflow = (state: CentralAppState) => state.memoryCardWorkflow;
 export const selectPageTextWorkflow = (state: CentralAppState) => state.pageTextWorkflow;
 export const selectImagePreviewWorkflow = (state: CentralAppState) => state.imagePreviewWorkflow;
+export const selectViewerWorkflow = (state: CentralAppState) => state.viewerWorkflow;
