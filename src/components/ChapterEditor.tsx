@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  appActions,
+  selectBookSessionWorkflow,
+  selectEditorState,
+  selectReaderSession,
+  selectTocWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 import type { TocEntry } from '@/types/app';
 
 interface ChapterEditorProps {
-  bookId: string | null;
-  chapterNumber: number | null;
-  chapterTitle: string | null;
-  versionId?: string | null;
-  versionLabel?: string | null;
-  initialText?: string | null;
-  onClose: () => void;
   onSaved: (toc: TocEntry[] | null) => void;
 }
 
@@ -17,21 +19,64 @@ function formatChapterFilename(chapterNumber: number) {
 }
 
 export default function ChapterEditor({
-  bookId,
-  chapterNumber,
-  chapterTitle,
-  versionId = null,
-  versionLabel = null,
-  initialText = null,
-  onClose,
   onSaved
 }: ChapterEditorProps) {
+  const dispatch = useAppDispatch();
+  const { bookId, currentPage } = useAppSelector(selectReaderSession);
+  const { bookType, chapterCount } = useAppSelector(selectBookSessionWorkflow);
+  const { chapterNumber: editorChapterNumber, textVersion } = useAppSelector(selectEditorState);
+  const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
+  const sortedTocEntries = useMemo(
+    () =>
+      [...tocEntries]
+        .filter((entry) => Number.isInteger(entry.page))
+        .sort((left, right) => left.page - right.page),
+    [tocEntries]
+  );
+  const currentChapterIndex = useMemo(() => {
+    if (bookType === 'text') {
+      return chapterCount > 0 ? currentPage : null;
+    }
+    if (sortedTocEntries.length === 0) {
+      return null;
+    }
+    const nextIndex = sortedTocEntries.findIndex((entry) => entry.page > currentPage);
+    if (nextIndex === -1) {
+      return sortedTocEntries.length - 1;
+    }
+    return Math.max(0, nextIndex - 1);
+  }, [bookType, chapterCount, currentPage, sortedTocEntries]);
+  const currentChapterEntry = useMemo(() => {
+    if (bookType === 'text') {
+      return sortedTocEntries.find((entry) => entry.page === currentPage) ?? null;
+    }
+    return currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
+  }, [bookType, currentChapterIndex, currentPage, sortedTocEntries]);
+  const chapterNumber = editorChapterNumber ?? (currentChapterIndex !== null ? currentChapterIndex + 1 : null);
+  const chapterTitle = useMemo(() => {
+    if (!editorChapterNumber) {
+      return currentChapterEntry?.title ?? null;
+    }
+    return (
+      sortedTocEntries.find((entry) => entry.page === editorChapterNumber - 1)?.title ??
+      currentChapterEntry?.title ??
+      null
+    );
+  }, [currentChapterEntry, editorChapterNumber, sortedTocEntries]);
+  const versionId = textVersion?.versionId ?? null;
+  const versionLabel = textVersion?.versionLabel ?? null;
+  const initialText = textVersion?.text ?? null;
   const [draftText, setDraftText] = useState('');
   const [draftTitle, setDraftTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editingTextVersion = Boolean(versionId);
+  const handleClose = useCallback(() => {
+    dispatch(appActions.setEditorOpen(false));
+    dispatch(appActions.setEditorChapterNumber(null));
+    dispatch(appActions.setEditorTextVersion(null));
+  }, [dispatch]);
 
   useEffect(() => {
     if (!bookId || !chapterNumber) {
@@ -108,13 +153,14 @@ export default function ChapterEditor({
       }
       const payload = (await response.json()) as { toc?: TocEntry[] };
       onSaved(Array.isArray(payload.toc) ? payload.toc : null);
+      handleClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to save chapter.';
       setError(message);
     } finally {
       setSaving(false);
     }
-  }, [bookId, chapterNumber, draftText, draftTitle, editingTextVersion, onSaved, saving, versionId]);
+  }, [bookId, chapterNumber, draftText, draftTitle, editingTextVersion, handleClose, onSaved, saving, versionId]);
 
   return (
     <div className="chapter-editor">
@@ -136,7 +182,7 @@ export default function ChapterEditor({
           <button type="button" className="button" onClick={handleSave} disabled={saving || loading}>
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button type="button" className="button button-secondary" onClick={onClose} disabled={saving}>
+          <button type="button" className="button button-secondary" onClick={handleClose} disabled={saving}>
             Close
           </button>
         </div>

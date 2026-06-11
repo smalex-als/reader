@@ -77,11 +77,8 @@ export default function App() {
     closeBookCard,
     openPromptEditor,
     setSettingsOpen,
-    editorOpen,
     setEditorOpen,
-    editorChapterNumber,
     setEditorChapterNumber,
-    editorTextVersion,
     setEditorTextVersion
   } = useModalState();
   const {
@@ -214,16 +211,6 @@ export default function App() {
     }
     return currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
   }, [currentChapterIndex, currentPage, isTextBook, sortedTocEntries]);
-  const editorChapterTitle = useMemo(() => {
-    if (!editorChapterNumber) {
-      return currentChapterEntry?.title ?? null;
-    }
-    return (
-      sortedTocEntries.find((entry) => entry.page === editorChapterNumber - 1)?.title ??
-      currentChapterEntry?.title ??
-      null
-    );
-  }, [currentChapterEntry, editorChapterNumber, sortedTocEntries]);
   const nextChapterEntry =
     !isTextBook && currentChapterIndex !== null
       ? sortedTocEntries[currentChapterIndex + 1]
@@ -956,24 +943,10 @@ export default function App() {
       onCurrentPageChange: handleScrollCurrentPageChange
     },
     chapterEditorProps: {
-      bookId,
-      chapterNumber: editorChapterNumber ?? chapterNumber,
-      chapterTitle: editorChapterTitle,
-      versionId: editorTextVersion?.versionId ?? null,
-      versionLabel: editorTextVersion?.versionLabel ?? null,
-      initialText: editorTextVersion?.text ?? null,
-      onClose: () => {
-        setEditorOpen(false);
-        setEditorChapterNumber(null);
-        setEditorTextVersion(null);
-      },
       onSaved: (nextToc: TocEntry[] | null) => {
         if (nextToc) {
           setTocEntries(nextToc);
         }
-        setEditorOpen(false);
-        setEditorChapterNumber(null);
-        setEditorTextVersion(null);
         refreshChapterView();
       }
     },
