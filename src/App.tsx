@@ -120,12 +120,6 @@ export default function App() {
     }
     return Math.max(0, nextIndex - 1);
   }, [currentPage, isTextBook, navigationCount, sortedTocEntries]);
-  const currentChapterEntry = useMemo(() => {
-    if (isTextBook) {
-      return sortedTocEntries.find((entry) => entry.page === currentPage) ?? null;
-    }
-    return currentChapterIndex !== null ? sortedTocEntries[currentChapterIndex] : null;
-  }, [currentChapterIndex, currentPage, isTextBook, sortedTocEntries]);
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
   const {
     regenerateQuiz: handleRegenerateQuiz
