@@ -1,10 +1,8 @@
-import {useRef} from 'react';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
 import ReaderSidebar from '@/components/ReaderSidebar';
 import {useAudioController} from '@/hooks/useAudioController';
 import {useBookSession} from '@/hooks/useBookSession';
-import {useNavigation} from '@/hooks/useNavigation';
 import {useOcrQueue} from '@/hooks/useOcrQueue';
 import {useStreamSequence} from '@/hooks/useStreamSequence';
 import {useStreamingAudio} from '@/hooks/useStreamingAudio';
@@ -16,26 +14,16 @@ import {useOcrEditMode} from '@/hooks/useOcrEditMode';
 import {useShareLink} from '@/hooks/useShareLink';
 import {useDashboardNavigation} from '@/hooks/useDashboardNavigation';
 import {useFloatingAudio} from '@/hooks/useFloatingAudio';
-import {useFullscreen} from '@/hooks/useFullscreen';
 import {useHotkeys} from '@/hooks/useHotkeys';
 import {useCurrentChapterContext} from '@/hooks/useCurrentChapterLabel';
 import {ReaderCommandProvider} from '@/hooks/useReaderCommands';
 import {useReaderCommandBindings} from '@/hooks/useReaderCommandBindings';
 import {useReaderLifecycleEffects} from '@/hooks/useReaderLifecycleEffects';
+import {useReaderShellControls} from '@/hooks/useReaderShellControls';
 import {useTocManager} from '@/hooks/useTocManager';
 import {usePlaybackWakeLock} from '@/hooks/useWakeLock';
-import {useZoom} from '@/hooks/useZoom';
 
 export default function App() {
-  const pendingAlignTopRef = useRef(false);
-  const modalHostRef = useRef<HTMLDivElement | null>(null);
-
-  const viewerShellRef = useRef<HTMLDivElement | null>(null);
-  const gotoInputRef = useRef<HTMLInputElement | null>(null);
-
-  const fullscreenControls = useFullscreen(viewerShellRef);
-  const { isFullscreen, toggleFullscreen } = fullscreenControls;
-
   useStreamVoices();
   const {
     bookId,
@@ -49,9 +37,13 @@ export default function App() {
   const currentImage = manifest[currentPage] ?? null;
   const {
     fitWidth,
-    fitHeight
-  } = useZoom({
-    pendingAlignTopRef,
+    fitHeight,
+    gotoInputRef,
+    isFullscreen,
+    modalHostRef,
+    toggleFullscreen,
+    viewerShellRef
+  } = useReaderShellControls({
     viewMode,
     currentImage
   });
@@ -89,9 +81,6 @@ export default function App() {
     resetAudioCache,
     stopAudio,
     stopStream
-  });
-  useNavigation({
-    pendingAlignTopRef
   });
 
   const {
