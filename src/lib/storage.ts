@@ -1,3 +1,11 @@
+import {
+  fetchLibraryState,
+  saveLibraryStatePatch,
+  type BookSortMode,
+  type LibraryStatePatch,
+  type LibraryStateSnapshot,
+  type StoredBookMeta
+} from '@/api/libraryState';
 import type { AppSettings } from '@/types/app';
 
 const SETTINGS_KEY = 'scanned-reader:settings';
@@ -10,21 +18,7 @@ const BOOK_META_KEY = 'scanned-reader:bookMeta';
 const BOOK_SORT_MODE_KEY = 'scanned-reader:bookSortMode';
 
 type StoredSettings = Record<string, AppSettings>;
-type StoredBookMeta = Record<
-  string,
-  {
-    lastOpenedAt?: string;
-    deferred?: boolean;
-  }
->;
-type BookSortMode = 'alphabetical' | 'recent' | 'deferred';
-
-export interface LibraryStateSnapshot {
-  lastBook: string | null;
-  lastPages: Record<string, number>;
-  bookMeta: StoredBookMeta;
-  bookSortMode: BookSortMode;
-}
+export type { BookSortMode, LibraryStateSnapshot, StoredBookMeta };
 
 let libraryStateCache: LibraryStateSnapshot = {
   lastBook: null,
@@ -59,18 +53,9 @@ function writeJson<T>(key: string, value: T) {
   }
 }
 
-async function persistLibraryPatch(patch: {
-  lastBook?: string | null;
-  lastPages?: Record<string, number | null>;
-  bookMeta?: Record<string, { lastOpenedAt?: string | null; deferred?: boolean | null } | null>;
-  bookSortMode?: BookSortMode;
-}) {
+async function persistLibraryPatch(patch: LibraryStatePatch) {
   try {
-    await fetch('/api/library/state', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch)
-    });
+    await saveLibraryStatePatch(patch);
   } catch (error) {
     console.error('Unable to persist library state', error);
   }
@@ -78,20 +63,7 @@ async function persistLibraryPatch(patch: {
 
 export async function loadLibraryStateFromServer(): Promise<LibraryStateSnapshot> {
   try {
-    const response = await fetch('/api/library/state');
-    if (!response.ok) {
-      throw new Error(`${response.status} ${response.statusText}`);
-    }
-    const data = (await response.json()) as Partial<LibraryStateSnapshot>;
-    const snapshot: LibraryStateSnapshot = {
-      lastBook: typeof data.lastBook === 'string' && data.lastBook.trim() ? data.lastBook : null,
-      lastPages: data.lastPages && typeof data.lastPages === 'object' ? data.lastPages : {},
-      bookMeta: data.bookMeta && typeof data.bookMeta === 'object' ? data.bookMeta : {},
-      bookSortMode:
-        data.bookSortMode === 'recent' || data.bookSortMode === 'deferred'
-          ? data.bookSortMode
-          : 'recent'
-    };
+    const snapshot = await fetchLibraryState();
     libraryStateCache = snapshot;
     return snapshot;
   } catch (error) {

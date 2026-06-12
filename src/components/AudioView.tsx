@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from 'react';
-import type { ChapterAudioProvider } from '@/api/chapterAudio';
 import { useAudioViewActions } from '@/hooks/useAudioViewActions';
 import {
   appActions,
@@ -10,6 +9,7 @@ import {
   useAppSelector
 } from '@/state/appState';
 import TrashIcon from '@/components/TrashIcon';
+import type { ChapterAudioProvider } from '@/types/app';
 
 export default function AudioView() {
   const dispatch = useAppDispatch();

@@ -1,5 +1,5 @@
-import type { ChapterAudioJobStatus, ChapterAudioProvider } from '@/api/chapterAudio';
-import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
+import type { ChapterAudioJobStatus } from '@/api/chapterAudio';
+import type { ChapterAudioProvider, ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 
 export type ChapterTextVersionsResult = {
   latestVersionId: string | null;

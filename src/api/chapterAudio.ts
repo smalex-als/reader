@@ -1,7 +1,5 @@
-import type { ChapterTextVersion } from '@/types/app';
+import type { ChapterAudioProvider, ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
-
-export type ChapterAudioProvider = 'default' | 'xai' | 'yandex';
 
 export type ChapterAudioJobStatus = {
   provider?: ChapterAudioProvider;

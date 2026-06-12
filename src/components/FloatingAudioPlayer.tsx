@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchSubtitleText } from '@/api/audioLibrary';
+import { useFloatingAudioSubtitles } from '@/hooks/useFloatingAudioSubtitles';
 import { PLAYBACK_RATE_OPTIONS, normalizePlaybackRate } from '@/lib/appConstants';
 import { emitFloatingAudioSubchapterSelect, emitFloatingAudioTime } from '@/lib/floatingAudioEvents';
-import { parseSrt } from '@/lib/subtitles';
 import {
   appActions,
   selectBookSessionWorkflow,
@@ -17,7 +16,6 @@ import type {
   FloatingAudioSubchapter,
   FloatingAudioTrack
 } from '@/types/floatingAudio';
-import type { SubtitleCue } from '@/types/audioLibrary';
 
 function formatTime(value: number) {
   if (!Number.isFinite(value) || value < 0) {
@@ -47,7 +45,7 @@ export default function FloatingAudioPlayer() {
   const [duration, setDuration] = useState(0);
   const [seeking, setSeeking] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
+  const subtitleCues = useFloatingAudioSubtitles(track?.srtUrl);
   const subchapters = useMemo(
     () =>
       (track?.subchapters ?? [])
@@ -157,7 +155,6 @@ export default function FloatingAudioPlayer() {
       setCurrentTime(0);
       setDuration(0);
       setMinimized(false);
-      setSubtitleCues([]);
       return;
     }
     lastEmittedSubchapterKeyRef.current = null;
@@ -200,30 +197,6 @@ export default function FloatingAudioPlayer() {
       playing
     });
   }, [currentTime, duration, playing, track]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setSubtitleCues([]);
-    if (!track?.srtUrl) {
-      return () => {
-        cancelled = true;
-      };
-    }
-    void fetchSubtitleText(track.srtUrl)
-      .then((text) => {
-        if (!cancelled) {
-          setSubtitleCues(parseSrt(text));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSubtitleCues([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [track?.srtUrl]);
 
   const emitSubchapterNavigation = useCallback(
     (entry: FloatingAudioSubchapter) => {

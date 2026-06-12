@@ -12,7 +12,7 @@ import {
   startChapterVersionAudio,
   type ChapterTextVersionsResult
 } from '@/api/chapterTextVersions';
-import type { ChapterAudioJobStatus, ChapterAudioProvider } from '@/api/chapterAudio';
+import type { ChapterAudioJobStatus } from '@/api/chapterAudio';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { createActionHandlerRegistry } from '@/lib/actionHandlers';
 import {
@@ -23,7 +23,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
+import type { ChapterAudioProvider, ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
 
 type AudioJobStatus = ChapterAudioJobStatus;

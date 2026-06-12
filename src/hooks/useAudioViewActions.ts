@@ -8,11 +8,11 @@ import {
 } from '@/api/chapterAudio';
 import type {
   AudioChapter,
-  ChapterAudioJobStatus,
-  ChapterAudioProvider
+  ChapterAudioJobStatus
 } from '@/api/chapterAudio';
 import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
+import type { ChapterAudioProvider } from '@/types/app';
 
 type ChapterStatus = {
   audioReady: boolean;
