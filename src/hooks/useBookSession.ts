@@ -16,6 +16,7 @@ import {
   appActions,
   selectBookIds,
   selectBookLibraryStateReady,
+  selectNavigationState,
   selectReaderSession,
   useAppDispatch,
   useAppSelector
@@ -33,6 +34,7 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
 export function useBookSession() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
+  const { mainView } = useAppSelector(selectNavigationState);
   const { bookId } = useAppSelector(selectReaderSession);
   const books = useAppSelector(selectBookIds);
   const libraryStateReady = useAppSelector(selectBookLibraryStateReady);
@@ -192,6 +194,9 @@ export function useBookSession() {
     if (!libraryStateReady) {
       return;
     }
+    if (mainView !== 'reader') {
+      return;
+    }
     if (!bookId) {
       setManifest([]);
       setBookType('image');
@@ -214,6 +219,7 @@ export function useBookSession() {
     });
   }, [
     bookId,
+    mainView,
     libraryStateReady,
     dispatch
   ]);
