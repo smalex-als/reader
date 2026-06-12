@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { fetchJson } from '@/lib/fetchJson';
+import { createUnitSetFromChapter } from '@/api/units';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useToast } from '@/hooks/useToast';
 import {
@@ -8,7 +8,6 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { UnitSet } from '@/types/app';
 
 export function useUnitActions() {
   const dispatch = useAppDispatch();
@@ -60,18 +59,12 @@ export function useUnitActions() {
       }
       dispatch(appActions.setUnitCreating(true));
       try {
-        const result = await fetchJson<{ item: UnitSet }>('/api/units', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            sourceBookId: bookId,
-            sourceChapterNumber: chapterNumber,
-            sourceChapterTitle: payload.chapterTitle ?? currentChapterTitle ?? null,
-            sourceVersionId: payload.versionId ?? payload.versionLabel ?? null,
-            content
-          })
+        const result = await createUnitSetFromChapter({
+          sourceBookId: bookId,
+          sourceChapterNumber: chapterNumber,
+          sourceChapterTitle: payload.chapterTitle ?? currentChapterTitle ?? null,
+          sourceVersionId: payload.versionId ?? payload.versionLabel ?? null,
+          content
         });
         dispatch(appActions.refreshUnits());
         dispatch(appActions.setSelectedUnitSetId(result.item.id));

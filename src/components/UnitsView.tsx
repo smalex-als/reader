@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
-import { useToast } from '@/hooks/useToast';
+import { useUnitsViewActions } from '@/hooks/useUnitsViewActions';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import {
   appActions,
@@ -15,16 +15,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { SelfCheckResult, UnitItem, UnitSet } from '@/types/app';
-
-async function readErrorMessage(response: Response) {
-  try {
-    const payload = (await response.json()) as { error?: string };
-    return payload?.error ?? `Request failed (${response.status})`;
-  } catch {
-    return `Request failed (${response.status})`;
-  }
-}
+import type { UnitItem, UnitSet } from '@/types/app';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -151,40 +142,28 @@ export default function UnitsView() {
   const { refreshToken } = useAppSelector(selectUnitWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
-  const { showToast } = useToast();
   const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz();
-  const [items, setItems] = useState<UnitSet[]>([]);
-  const [loading, setLoading] = useState(false);
+  const {
+    items,
+    loading,
+    selfCheckLoading,
+    selfCheckError,
+    selfCheckResult,
+    clearSelfCheckFeedback,
+    loadItems,
+    toggleTopicRead,
+    evaluateSelfCheck
+  } = useUnitsViewActions();
   const [query, setQuery] = useState('');
   const [selfCheckOpen, setSelfCheckOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selfCheckIndex, setSelfCheckIndex] = useState(0);
   const [selfCheckAnswer, setSelfCheckAnswer] = useState('');
-  const [selfCheckLoading, setSelfCheckLoading] = useState(false);
-  const [selfCheckError, setSelfCheckError] = useState<string | null>(null);
-  const [selfCheckResult, setSelfCheckResult] = useState<SelfCheckResult | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
   const textStyle = useMemo(
     () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
     [textFontSize]
   );
-
-  const loadItems = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/units');
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response));
-      }
-      const payload = (await response.json()) as { items?: UnitSet[] };
-      setItems(Array.isArray(payload.items) ? payload.items : []);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to load units.';
-      showToast(message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
 
   useEffect(() => {
     void loadItems();
@@ -252,36 +231,11 @@ export default function UnitsView() {
     [dispatch, openUnitTopicQuiz]
   );
 
-  const replaceUnitSet = useCallback((item: UnitSet) => {
-    setItems((current) => current.map((unitSet) => (unitSet.id === item.id ? item : unitSet)));
-  }, []);
-
   const handleToggleTopicRead = useCallback(
     async (unitSetId: string, topicId: string, read: boolean) => {
-      try {
-        const response = await fetch(
-          `/api/units/${encodeURIComponent(unitSetId)}/topics/${encodeURIComponent(topicId)}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ read })
-          }
-        );
-        if (!response.ok) {
-          throw new Error(await readErrorMessage(response));
-        }
-        const payload = (await response.json()) as { item?: UnitSet };
-        if (payload.item) {
-          replaceUnitSet(payload.item);
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unable to update topic.';
-        showToast(message, 'error');
-      }
+      await toggleTopicRead({ unitSetId, topicId, read });
     },
-    [replaceUnitSet, showToast]
+    [toggleTopicRead]
   );
 
   useEffect(() => {
@@ -292,9 +246,8 @@ export default function UnitsView() {
     setSelfCheckOpen(false);
     setSelfCheckIndex(0);
     setSelfCheckAnswer('');
-    setSelfCheckError(null);
-    setSelfCheckResult(null);
-  }, [selectedTopicId]);
+    clearSelfCheckFeedback();
+  }, [clearSelfCheckFeedback, selectedTopicId]);
 
   if (selectedSet && selectedUnit) {
     const selectedUnitIndex = selectedSet.units.findIndex((unit) => unit.id === selectedUnit.id);
@@ -336,8 +289,7 @@ export default function UnitsView() {
     const selectSelfCheckQuestion = (index: number) => {
       setSelfCheckIndex(index);
       setSelfCheckAnswer('');
-      setSelfCheckError(null);
-      setSelfCheckResult(null);
+      clearSelfCheckFeedback();
     };
     const goToNextSelfCheckQuestion = () => {
       if (selfCheckIndex >= selfCheckQuestions.length - 1) {
@@ -350,31 +302,12 @@ export default function UnitsView() {
       if (!selectedSet || !selectedUnit || !currentSelfCheckQuestion || !selfCheckAnswer.trim()) {
         return;
       }
-      setSelfCheckLoading(true);
-      setSelfCheckError(null);
-      try {
-        const response = await fetch(
-          `/api/units/${encodeURIComponent(selectedSet.id)}/topics/${encodeURIComponent(selectedUnit.id)}/self-check`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              question: currentSelfCheckQuestion,
-              answer: selfCheckAnswer
-            })
-          }
-        );
-        if (!response.ok) {
-          throw new Error(await readErrorMessage(response));
-        }
-        setSelfCheckResult((await response.json()) as SelfCheckResult);
-      } catch (error) {
-        setSelfCheckError(error instanceof Error ? error.message : 'Unable to check answer.');
-      } finally {
-        setSelfCheckLoading(false);
-      }
+      await evaluateSelfCheck({
+        unitSetId: selectedSet.id,
+        topicId: selectedUnit.id,
+        question: currentSelfCheckQuestion,
+        answer: selfCheckAnswer
+      });
     };
     const activeParagraphStart = (() => {
       if (!topicStreamActive || typeof streamState.pageKey !== 'string') {
@@ -519,8 +452,7 @@ export default function UnitsView() {
                 setSelfCheckOpen(true);
                 setSelfCheckIndex(0);
                 setSelfCheckAnswer('');
-                setSelfCheckError(null);
-                setSelfCheckResult(null);
+                clearSelfCheckFeedback();
               }}
               disabled={selfCheckQuestions.length === 0}
             >
@@ -632,8 +564,7 @@ export default function UnitsView() {
                         disabled={selfCheckLoading}
                         onChange={(event) => {
                           setSelfCheckAnswer(event.currentTarget.value);
-                          setSelfCheckResult(null);
-                          setSelfCheckError(null);
+                          clearSelfCheckFeedback();
                         }}
                       />
                     </label>
