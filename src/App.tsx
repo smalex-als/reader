@@ -22,7 +22,7 @@ import {useHotkeys} from '@/hooks/useHotkeys';
 import {useCurrentChapterContext} from '@/hooks/useCurrentChapterLabel';
 import {ReaderCommandProvider, type ReaderCommands} from '@/hooks/useReaderCommands';
 import {useTocManager} from '@/hooks/useTocManager';
-import {useWakeLock} from '@/hooks/useWakeLock';
+import {usePlaybackWakeLock} from '@/hooks/useWakeLock';
 import {useZoom} from '@/hooks/useZoom';
 import {clampPan} from '@/lib/math';
 import {makeStreamLocator} from '@/lib/streamLocator';
@@ -77,8 +77,6 @@ export default function App() {
   } = useTocManager();
   useMp3Voice();
   const {
-    audioState,
-    resetAudio,
     resetAudioCache,
     stopAudio
   } = useAudioController();
@@ -97,15 +95,8 @@ export default function App() {
     dispatch(appActions.setStreamRuntime(streamState));
   }, [dispatch, streamState]);
 
-  const {
-    floatingAudioPlaybackState,
-    playFloatingAudio: handlePlayFloatingAudio
-  } = useFloatingAudio();
-  const isListening =
-    audioState.status === 'playing' ||
-    streamState.status === 'streaming' ||
-    floatingAudioPlaybackState === 'playing';
-  useWakeLock(isListening);
+  useFloatingAudio();
+  usePlaybackWakeLock();
   useEffect(() => {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);

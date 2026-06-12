@@ -1,4 +1,10 @@
 import { useEffect, useRef } from 'react';
+import {
+  selectAudioState,
+  selectFloatingAudio,
+  selectStreamRuntime,
+  useAppSelector
+} from '@/state/appState';
 
 export function useWakeLock(enabled: boolean) {
   const wakeLockRef = useRef<any>(null);
@@ -58,4 +64,16 @@ export function useWakeLock(enabled: boolean) {
       void releaseLock();
     };
   }, [enabled]);
+}
+
+export function usePlaybackWakeLock() {
+  const audioState = useAppSelector(selectAudioState);
+  const streamState = useAppSelector(selectStreamRuntime);
+  const { playbackState: floatingAudioPlaybackState } = useAppSelector(selectFloatingAudio);
+  const isListening =
+    audioState.status === 'playing' ||
+    streamState.status === 'streaming' ||
+    floatingAudioPlaybackState === 'playing';
+
+  useWakeLock(isListening);
 }
