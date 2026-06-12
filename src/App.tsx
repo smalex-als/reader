@@ -89,10 +89,6 @@ export default function App() {
     pauseStreamAtStart
   } = useStreamingAudio();
 
-  useEffect(() => {
-    dispatch(appActions.setStreamRuntime(streamState));
-  }, [dispatch, streamState]);
-
   useFloatingAudio();
   usePlaybackWakeLock();
   useEffect(() => {
