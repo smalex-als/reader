@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { clamp, clampPan } from '@/lib/math';
 import {
   appActions,
@@ -10,6 +10,11 @@ import type { AppSettings, ViewerMetrics, ViewerPan, ZoomMode } from '@/types/ap
 
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
+
+type UseZoomOptions = {
+  pendingAlignTopRef?: MutableRefObject<boolean>;
+  viewMode?: 'pages' | 'scroll' | 'text' | 'audio';
+};
 
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
@@ -139,7 +144,10 @@ export function useViewerTransformControls() {
   };
 }
 
-export function useZoom() {
+export function useZoom({
+  pendingAlignTopRef,
+  viewMode
+}: UseZoomOptions = {}) {
   const {
     settings,
     setSettings,
@@ -151,6 +159,24 @@ export function useZoom() {
     resetTransform,
     applyFilters
   } = useViewerTransformControls();
+
+  const applyZoomModeWithAlign = useCallback(
+    (mode: 'fit-width' | 'fit-height') => {
+      applyZoomMode(mode);
+      if (viewMode === 'pages' && pendingAlignTopRef) {
+        pendingAlignTopRef.current = true;
+      }
+    },
+    [applyZoomMode, pendingAlignTopRef, viewMode]
+  );
+
+  const fitWidth = useCallback(() => {
+    applyZoomModeWithAlign('fit-width');
+  }, [applyZoomModeWithAlign]);
+
+  const fitHeight = useCallback(() => {
+    applyZoomModeWithAlign('fit-height');
+  }, [applyZoomModeWithAlign]);
 
   useEffect(() => {
     if (!metrics) {
@@ -167,6 +193,8 @@ export function useZoom() {
     setSettings,
     metrics,
     applyZoomMode,
+    fitWidth,
+    fitHeight,
     updateZoom,
     updateRotation,
     updatePan,

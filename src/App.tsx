@@ -35,12 +35,6 @@ export default function App() {
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
-  const {
-    settings,
-    setSettings,
-    metrics,
-    applyZoomMode
-  } = useZoom();
 
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const gotoInputRef = useRef<HTMLInputElement | null>(null);
@@ -59,6 +53,16 @@ export default function App() {
     viewMode,
     loading
   } = useBookSession();
+  const {
+    settings,
+    setSettings,
+    metrics,
+    fitWidth,
+    fitHeight
+  } = useZoom({
+    pendingAlignTopRef,
+    viewMode
+  });
 
   useUnitsRouteSync();
 
@@ -271,24 +275,6 @@ export default function App() {
     [handlePlayChapterParagraph]
   );
 
-  const applyZoomModeWithAlign = useCallback(
-    (mode: 'fit-width' | 'fit-height') => {
-      applyZoomMode(mode);
-      if (viewMode === 'pages') {
-        pendingAlignTopRef.current = true;
-      }
-    },
-    [applyZoomMode, viewMode]
-  );
-
-  const handleFitWidth = useCallback(() => {
-    applyZoomModeWithAlign('fit-width');
-  }, [applyZoomModeWithAlign]);
-
-  const handleFitHeight = useCallback(() => {
-    applyZoomModeWithAlign('fit-height');
-  }, [applyZoomModeWithAlign]);
-
   const handleToggleOcrEditModeCommand = useCallback(() => {
     void handleToggleOcrEditMode();
   }, [handleToggleOcrEditMode]);
@@ -299,16 +285,16 @@ export default function App() {
 
   useHotkeys({
     gotoInputRef,
-    fitWidth: handleFitWidth,
-    fitHeight: handleFitHeight,
+    fitWidth,
+    fitHeight,
     toggleOcrEditMode: handleToggleOcrEditModeCommand,
     toggleFullscreen: handleToggleFullscreenCommand
   });
 
   const readerCommands = useMemo<ReaderCommands>(
     () => ({
-      fitWidth: handleFitWidth,
-      fitHeight: handleFitHeight,
+      fitWidth,
+      fitHeight,
       toggleOcrEditMode: handleToggleOcrEditModeCommand,
       toggleFullscreen: handleToggleFullscreenCommand,
       toggleStudyMode: handleToggleStudyMode,
@@ -333,10 +319,10 @@ export default function App() {
     }),
     [
       clearQueue,
+      fitHeight,
+      fitWidth,
       forceUpdateAllPages,
       handleAddTocEntry,
-      handleFitHeight,
-      handleFitWidth,
       handleGenerateChapter,
       handleGenerateToc,
       handlePlayOcrBlock,
