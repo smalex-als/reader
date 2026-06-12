@@ -10,12 +10,12 @@ import { useChapterTextVersionModalRuntime } from '@/hooks/useChapterTextVersion
 import { useChapterTextOutline } from '@/hooks/useChapterTextOutline';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { useChapterVersionSelectionNavigation } from '@/hooks/useChapterVersionNavigation';
+import { useChapterViewerActions } from '@/hooks/useChapterViewerActions';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useDisplayedChapterText } from '@/hooks/useDisplayedChapterText';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { formatListeningTime } from '@/lib/listeningTime';
 import {
-  appActions,
   selectBookDeletingChapter,
   selectBookType,
   selectBookUploadingChapter,
@@ -23,12 +23,10 @@ import {
   selectTocWorkflow,
   selectViewerWorkflow,
   selectVoiceWorkflow,
-  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 
 export default function ChapterViewer() {
-  const dispatch = useAppDispatch();
   const { handleCreateChapter, handleDeleteChapter } = useChapterActions();
   const { settings } = useAppSelector(selectViewerWorkflow);
   const streamState = useAppSelector(selectStreamRuntime);
@@ -107,22 +105,20 @@ export default function ChapterViewer() {
     () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
     [textFontSize]
   );
-  const mp3VoiceOptions = useMemo(
-    () =>
-      streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'
-      ),
-    [streamVoiceOptions]
-  );
-  const handleMp3VoiceChange = useCallback(
-    (voice: string) => {
-      if (!mp3VoiceOptions.some((option) => option.id === voice)) {
-        return;
-      }
-      dispatch(appActions.setMp3Voice(voice));
-    },
-    [dispatch, mp3VoiceOptions]
-  );
+  const {
+    mp3VoiceOptions,
+    handleMp3VoiceChange,
+    openAudioView,
+    openChapterEditor,
+    playChapterAudio
+  } = useChapterViewerActions({
+    chapterNumber,
+    chapterTitle,
+    displayText: displayText ?? '',
+    selectedVersion,
+    selectedVersionId,
+    streamVoiceOptions
+  });
   const {
     activeOutlineId,
     outlineItems,
@@ -185,10 +181,7 @@ export default function ChapterViewer() {
             <button
               type="button"
               className="text-viewer-audio-link"
-              onClick={() => {
-                dispatch(appActions.clearChapterVersionNavigation());
-                dispatch(appActions.setReaderViewMode('audio'));
-              }}
+              onClick={openAudioView}
             >
               Audio
             </button>
@@ -219,15 +212,7 @@ export default function ChapterViewer() {
             <button
               type="button"
               className="button button-secondary"
-              onClick={() => {
-                dispatch(appActions.setEditorChapterNumber(chapterNumber));
-                dispatch(appActions.setEditorTextVersion({
-                  versionId: selectedVersionId || 'base',
-                  versionLabel: selectedVersion?.label ?? null,
-                  text: displayText ?? ''
-                }));
-                dispatch(appActions.setEditorOpen(true));
-              }}
+              onClick={openChapterEditor}
               disabled={!displayText?.trim() || displayLoading}
             >
               Edit
@@ -377,14 +362,10 @@ export default function ChapterViewer() {
                         type="button"
                         className="button button-secondary"
                         onClick={() =>
-                          dispatch(appActions.playFloatingAudio({
-                            title: chapterTitle ?? `Chapter ${chapterNumber}`,
-                            subtitle: selectedVersion?.label,
-                            url: chapterAudioUrl,
-                            chapterNumber,
-                            versionId: selectedVersionId,
+                          playChapterAudio({
+                            audioUrl: chapterAudioUrl,
                             subchapters: chapterAudioSubchapters
-                          }))
+                          })
                         }
                         disabled={audioDeleting}
                       >
