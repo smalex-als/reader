@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
-import { fetchJson } from '@/lib/fetchJson';
+import { resolveDashboardChapterPage } from '@/api/dashboardNavigation';
+import { createActionHandlerRegistry } from '@/lib/actionHandlers';
 import { saveLastPage } from '@/lib/storage';
 import {
   appActions,
@@ -8,7 +9,39 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { TocEntry } from '@/types/app';
+
+type DashboardNavigationPayloads = {
+  resolveChapterPage: {
+    bookId: string;
+    chapterNumber: number;
+    pageNumber?: number | null;
+  };
+};
+
+type DashboardNavigationActions = {
+  setResolvedPage: (page: number) => void;
+};
+
+const dashboardNavigationHandlers = createActionHandlerRegistry<
+  unknown,
+  DashboardNavigationActions,
+  DashboardNavigationPayloads
+>();
+const { addActionHandler } = dashboardNavigationHandlers;
+
+addActionHandler('resolveChapterPage', async (_state, actions, payload): Promise<void> => {
+  let page = payload.chapterNumber - 1;
+  try {
+    page = await resolveDashboardChapterPage({
+      bookId: payload.bookId,
+      chapterNumber: payload.chapterNumber,
+      pageNumber: payload.pageNumber
+    });
+  } catch (error) {
+    console.error(error);
+  }
+  actions.setResolvedPage(page);
+});
 
 export function useDashboardNavigation() {
   const dispatch = useAppDispatch();
@@ -48,28 +81,20 @@ export function useDashboardNavigation() {
       }
 
       let targetPage = targetChapterNumber - 1;
-      try {
-        const [manifestResponse, mainResponse] = await Promise.all([
-          fetchJson<{ manifest?: string[] }>(`/api/books/${encodeURIComponent(targetBookId)}/manifest`),
-          fetchJson<{ toc: TocEntry[] }>(`/api/books/${encodeURIComponent(targetBookId)}/toc`)
-        ]);
-        const manifestEntries = Array.isArray(manifestResponse.manifest) ? manifestResponse.manifest : [];
-        const tocEntries = Array.isArray(mainResponse.toc) ? mainResponse.toc : [];
-        const normalizedPageNumber = Number.isInteger(targetPageNumber) ? Number(targetPageNumber) : null;
-        if (
-          normalizedPageNumber !== null &&
-          normalizedPageNumber >= 0 &&
-          normalizedPageNumber < manifestEntries.length
-        ) {
-          targetPage = normalizedPageNumber;
+      await dashboardNavigationHandlers.runAction(
+        'resolveChapterPage',
+        undefined,
+        {
+          setResolvedPage: (page) => {
+            targetPage = page;
+          }
+        },
+        {
+          bookId: targetBookId,
+          chapterNumber: targetChapterNumber,
+          pageNumber: targetPageNumber
         }
-        const tocEntry = tocEntries[targetChapterNumber - 1];
-        if (targetPage === targetChapterNumber - 1 && tocEntry && Number.isInteger(tocEntry.page)) {
-          targetPage = tocEntry.page;
-        }
-      } catch (error) {
-        console.error(error);
-      }
+      );
 
       saveLastPage(targetBookId, targetPage);
       closeListeningDashboard();
