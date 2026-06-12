@@ -6,6 +6,7 @@ import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
 import { useChapterActions } from '@/hooks/useBookMutations';
+import { useChapterTextPlaybackMarker } from '@/hooks/useChapterTextPlaybackMarker';
 import { useChapterTextVersionModalRuntime } from '@/hooks/useChapterTextVersionModalRuntime';
 import { useChapterTextOutline } from '@/hooks/useChapterTextOutline';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
@@ -19,7 +20,6 @@ import {
   selectBookDeletingChapter,
   selectBookType,
   selectBookUploadingChapter,
-  selectStreamRuntime,
   selectTocWorkflow,
   selectViewerWorkflow,
   selectVoiceWorkflow,
@@ -29,28 +29,13 @@ import {
 export default function ChapterViewer() {
   const { handleCreateChapter, handleDeleteChapter } = useChapterActions();
   const { settings } = useAppSelector(selectViewerWorkflow);
-  const streamState = useAppSelector(selectStreamRuntime);
   const { loading: tocLoading } = useAppSelector(selectTocWorkflow);
   const bookType = useAppSelector(selectBookType);
   const chapterCreating = useAppSelector(selectBookUploadingChapter);
   const chapterDeleting = useAppSelector(selectBookDeletingChapter);
   const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
   const { textFontSize } = settings;
-  const streamPositionActive =
-    streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
-  const activeTextParagraph = useMemo(() => {
-    if (!streamPositionActive || typeof streamState.pageKey !== 'string') {
-      return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
-    }
-    const match = streamState.pageKey.match(/^(chapter|narration)::paragraph-start-(\d+)$/);
-    if (!match) {
-      return { mode: null as 'chapter' | 'narration' | null, startIndex: null as number | null };
-    }
-    return {
-      mode: match[1] as 'chapter' | 'narration',
-      startIndex: Number.parseInt(match[2], 10)
-    };
-  }, [streamPositionActive, streamState.pageKey]);
+  const activeTextParagraph = useChapterTextPlaybackMarker();
   const playingParagraphStart = activeTextParagraph.startIndex;
   const playingParagraphMode = activeTextParagraph.mode;
   const allowEdit = true;
