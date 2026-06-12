@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useCurrentChapterLabel } from '@/hooks/useCurrentChapterLabel';
 import { useReaderCommands } from '@/hooks/useReaderCommands';
+import { useUnitActions } from '@/hooks/useUnitActions';
+import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import {
   appActions,
   selectModalOpen,
@@ -18,9 +21,11 @@ export default function QuizModal() {
   const dispatch = useAppDispatch();
   const {
     stopStudyAudio,
-    playStudyAudioSingle,
-    regenerateStudyAudioQuiz
+    playStudyAudioSingle
   } = useReaderCommands();
+  const { regenerateQuiz: regenerateChapterQuiz } = useChapterQuiz();
+  const { refreshUnits } = useUnitActions();
+  const { regenerateQuiz: regenerateUnitTopicQuiz } = useUnitTopicQuiz();
   const unitQuizOpen = useAppSelector(selectModalOpen('unitQuiz'));
   const chapterQuizOpen = useAppSelector(selectModalOpen('chapterQuiz'));
   const activeModal: QuizModalId = unitQuizOpen ? 'unitQuiz' : 'chapterQuiz';
@@ -39,6 +44,13 @@ export default function QuizModal() {
   const handleClose = () => {
     stopStudyAudio();
     dispatch(appActions.closeModal(activeModal));
+  };
+  const handleRegenerateQuiz = () => {
+    if (activeModal === 'unitQuiz') {
+      void regenerateUnitTopicQuiz().then(refreshUnits);
+      return;
+    }
+    void regenerateChapterQuiz();
   };
 
   useEffect(() => {
@@ -124,7 +136,7 @@ export default function QuizModal() {
             <button
               type="button"
               className="button button-secondary"
-              onClick={() => regenerateStudyAudioQuiz(activeModal)}
+              onClick={handleRegenerateQuiz}
               disabled={loading}
             >
               Regenerate Quiz

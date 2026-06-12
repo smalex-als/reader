@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { TocVariant, QuizModal } from '@/state/appState';
+import type { TocVariant } from '@/state/appState';
 import type { TocEntry } from '@/types/app';
 
 export type StudyAudioParagraphPayload = {
@@ -24,7 +24,6 @@ export type ReaderCommands = {
   toggleOcrQueuePause: () => void;
   stopStudyAudio: () => void;
   playStudyAudioSingle: (payload: { text: string; pageKey: string }) => void;
-  regenerateStudyAudioQuiz: (modal: QuizModal) => void;
   playStudyAudioUnitTopicParagraph: (payload: StudyAudioParagraphPayload) => void;
   playStudyAudioChapterParagraph: (payload: StudyAudioParagraphPayload) => void;
   generateToc: (variant: TocVariant) => void;

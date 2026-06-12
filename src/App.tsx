@@ -5,9 +5,6 @@ import ReaderSidebar from '@/components/ReaderSidebar';
 import {useAudioController} from '@/hooks/useAudioController';
 import {useBookSession} from '@/hooks/useBookSession';
 import {useBookmarks} from '@/hooks/useBookmarks';
-import {useChapterQuiz} from '@/hooks/useChapterQuiz';
-import {useUnitTopicQuiz} from '@/hooks/useUnitTopicQuiz';
-import {useUnitActions} from '@/hooks/useUnitActions';
 import {useNavigation} from '@/hooks/useNavigation';
 import {useOcrQueue} from '@/hooks/useOcrQueue';
 import {useStreamSequence} from '@/hooks/useStreamSequence';
@@ -93,13 +90,6 @@ export default function App() {
     return Math.max(0, nextIndex - 1);
   }, [currentPage, isTextBook, navigationCount, sortedTocEntries]);
   const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
-  const {
-    regenerateQuiz: handleRegenerateQuiz
-  } = useChapterQuiz();
-  const {
-    regenerateQuiz: handleRegenerateUnitTopicQuiz
-  } = useUnitTopicQuiz();
-
   const {
     audioState,
     resetAudio,
@@ -294,21 +284,6 @@ export default function App() {
 
   useShareLink();
 
-  const {
-    refreshUnits
-  } = useUnitActions();
-
-  const handleRegenerateStudyAudioQuiz = useCallback(
-    (modal: 'unitQuiz' | 'chapterQuiz') => {
-      if (modal === 'unitQuiz') {
-        void handleRegenerateUnitTopicQuiz().then(refreshUnits);
-      } else {
-        void handleRegenerateQuiz();
-      }
-    },
-    [handleRegenerateQuiz, handleRegenerateUnitTopicQuiz, refreshUnits]
-  );
-
   const handlePlayStudyAudioParagraph = useCallback(
     (payload: { fullText: string; startIndex: number; key: string }) => {
       void handlePlayChapterParagraph({
@@ -371,7 +346,6 @@ export default function App() {
       toggleOcrQueuePause: togglePause,
       stopStudyAudio: handleStopStream,
       playStudyAudioSingle: (payload) => void handlePlaySingleStream(payload),
-      regenerateStudyAudioQuiz: handleRegenerateStudyAudioQuiz,
       playStudyAudioUnitTopicParagraph: handlePlayStudyAudioParagraph,
       playStudyAudioChapterParagraph: handlePlayStudyAudioParagraph,
       generateToc: (variant) => void handleGenerateToc(variant),
@@ -392,7 +366,6 @@ export default function App() {
       handlePlayOcrBlock,
       handlePlayStudyAudioParagraph,
       handlePlaySingleStream,
-      handleRegenerateStudyAudioQuiz,
       handleRemoveTocEntry,
       handleSaveToc,
       handleStopStream,
