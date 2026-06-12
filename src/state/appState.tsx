@@ -119,6 +119,7 @@ export type StreamControlRequest = {
   | { kind: 'playVisible' }
   | { kind: 'playNextStudyBlock' }
   | { kind: 'stop' }
+  | { kind: 'stopAfterCurrent' }
   | { kind: 'togglePause' }
   | { kind: 'setVoice'; voice: string }
 );
@@ -413,6 +414,7 @@ export type AppAction =
   | { type: 'streamControl/requestPlayVisible' }
   | { type: 'streamControl/requestPlayNextStudyBlock' }
   | { type: 'streamControl/requestStop' }
+  | { type: 'streamControl/requestStopAfterCurrent' }
   | { type: 'streamControl/requestTogglePause' }
   | { type: 'streamControl/requestSetVoice'; voice: string }
   | { type: 'streamControl/clear' }
@@ -907,6 +909,7 @@ export const appActions = {
   requestPlayVisibleStream: (): AppAction => ({ type: 'streamControl/requestPlayVisible' }),
   requestPlayNextStudyBlock: (): AppAction => ({ type: 'streamControl/requestPlayNextStudyBlock' }),
   requestStopStream: (): AppAction => ({ type: 'streamControl/requestStop' }),
+  requestStopAfterCurrentStream: (): AppAction => ({ type: 'streamControl/requestStopAfterCurrent' }),
   requestToggleStreamPause: (): AppAction => ({ type: 'streamControl/requestTogglePause' }),
   requestStreamVoiceChange: (voice: string): AppAction => ({
     type: 'streamControl/requestSetVoice',
@@ -1636,6 +1639,14 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         streamControlRequest: {
           id: (state.streamControlRequest?.id ?? 0) + 1,
           kind: 'stop'
+        }
+      };
+    case 'streamControl/requestStopAfterCurrent':
+      return {
+        ...state,
+        streamControlRequest: {
+          id: (state.streamControlRequest?.id ?? 0) + 1,
+          kind: 'stopAfterCurrent'
         }
       };
     case 'streamControl/requestTogglePause':

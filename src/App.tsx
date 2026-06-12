@@ -53,8 +53,6 @@ export default function App() {
   const { chapterNumber } = useCurrentChapterContext();
   const currentImage = manifest[currentPage] ?? null;
   const {
-    settings,
-    setSettings,
     fitWidth,
     fitHeight
   } = useZoom({
@@ -79,7 +77,6 @@ export default function App() {
     stopAudio
   } = useAudioController();
   const {
-    streamState,
     startStream,
     enqueueStream,
     pauseStream,
@@ -120,6 +117,7 @@ export default function App() {
     handlePlayChapterParagraph,
     restartStreamFromPageKey,
     handleStopStream,
+    handleStopAfterCurrentStream: stopAfterCurrentStream,
     handleToggleStreamPause,
     handlePlayNextStudyBlock
   });
@@ -172,22 +170,6 @@ export default function App() {
     handleOpenAudioLibrary
   } = useDashboardNavigation();
 
-  const handleToggleStudyMode = useCallback(() => {
-    const enablingStudyMode = !settings.studyMode;
-    setSettings((prev) => ({ ...prev, studyMode: !prev.studyMode }));
-    if (
-      enablingStudyMode &&
-      (streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused')
-    ) {
-      stopAfterCurrentStream();
-    }
-  }, [
-    setSettings,
-    settings.studyMode,
-    stopAfterCurrentStream,
-    streamState.status
-  ]);
-
   useShareLink();
 
   const handlePlayStudyAudioParagraph = useCallback(
@@ -223,7 +205,6 @@ export default function App() {
       fitHeight,
       toggleOcrEditMode: handleToggleOcrEditModeCommand,
       toggleFullscreen: handleToggleFullscreenCommand,
-      toggleStudyMode: handleToggleStudyMode,
       playOcrBlock: handlePlayOcrBlock,
       toggleOcrBlockSpeech: handleToggleOcrBlockSpeech,
       queueRemainingOcrPages: queueRemainingPages,
@@ -260,7 +241,6 @@ export default function App() {
       handleToggleFullscreenCommand,
       handleToggleOcrBlockSpeech,
       handleToggleOcrEditModeCommand,
-      handleToggleStudyMode,
       handleUpdateTocEntry,
       queueAllPages,
       queueRemainingPages,

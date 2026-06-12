@@ -13,7 +13,6 @@ export type ReaderCommands = {
   fitHeight: () => void;
   toggleOcrEditMode: () => void;
   toggleFullscreen: () => void;
-  toggleStudyMode: () => void;
   playOcrBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }) => void;
   toggleOcrBlockSpeech: (blockId: string) => void;
   queueRemainingOcrPages: () => void;

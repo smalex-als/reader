@@ -23,6 +23,7 @@ interface UseStreamControlsOptions {
   }) => Promise<void>;
   restartStreamFromPageKey: (pageKey: string, voice: string) => Promise<void>;
   handleStopStream: () => void;
+  handleStopAfterCurrentStream: () => void;
   handleToggleStreamPause: () => Promise<void> | void;
   handlePlayNextStudyBlock: () => Promise<void> | void;
 }
@@ -32,6 +33,7 @@ export function useStreamControls({
   handlePlayChapterParagraph,
   restartStreamFromPageKey,
   handleStopStream,
+  handleStopAfterCurrentStream,
   handleToggleStreamPause,
   handlePlayNextStudyBlock
 }: UseStreamControlsOptions) {
@@ -169,6 +171,8 @@ export function useStreamControls({
       void handlePlayNextStudyBlock();
     } else if (streamControlRequest.kind === 'stop') {
       handleStopStream();
+    } else if (streamControlRequest.kind === 'stopAfterCurrent') {
+      handleStopAfterCurrentStream();
     } else if (streamControlRequest.kind === 'togglePause') {
       void handleToggleStreamPause();
     } else {
@@ -180,6 +184,7 @@ export function useStreamControls({
     handleActiveStreamVoiceChange,
     handlePlayNextStudyBlock,
     handlePlayVisibleStream,
+    handleStopAfterCurrentStream,
     handleStopStream,
     handleToggleStreamPause,
     streamControlRequest

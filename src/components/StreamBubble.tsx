@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useReaderCommands } from '@/hooks/useReaderCommands';
+import { useStudyModeToggle } from '@/hooks/useStudyModeToggle';
 import { useStreamUi } from '@/hooks/useStreamUi';
 import {
   appActions,
   selectReaderSession,
   selectStreamRuntime,
   selectStreamUiControls,
-  selectViewerWorkflow,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
@@ -14,13 +13,11 @@ import {
 
 export default function StreamBubble() {
   const dispatch = useAppDispatch();
-  const { toggleStudyMode } = useReaderCommands();
+  const { studyMode, toggleStudyMode } = useStudyModeToggle();
   const { viewMode } = useAppSelector(selectReaderSession);
   const streamState = useAppSelector(selectStreamRuntime);
   const { autoFollowStream } = useAppSelector(selectStreamUiControls);
-  const { settings } = useAppSelector(selectViewerWorkflow);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
-  const { studyMode } = settings;
   const { isVisible, status, isDisabled, ariaLabel, title } = useStreamUi(streamState);
   const [renderVisible, setRenderVisible] = useState(isVisible);
   const [displayStatus, setDisplayStatus] = useState(status);
