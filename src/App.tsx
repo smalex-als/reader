@@ -78,7 +78,6 @@ export default function App() {
     chapterCount,
     currentPage,
     viewMode,
-    setViewMode,
     loading,
     handleCreateChapter,
     handleDeleteChapter
@@ -330,17 +329,6 @@ export default function App() {
       });
     }
   }, [settings.textTheme, setSettings]);
-  const handleViewModeChange = useCallback(
-    (mode: 'pages' | 'scroll' | 'text' | 'audio') => {
-      if (isTextBook && (mode === 'pages' || mode === 'scroll')) {
-        return;
-      }
-      dispatch(appActions.setMainView('reader'));
-      setViewMode(mode);
-    },
-    [dispatch, isTextBook, setViewMode]
-  );
-
   const { closeBookmarks } = useBookmarks();
 
   useEffect(() => {
