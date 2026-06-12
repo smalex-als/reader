@@ -10,7 +10,6 @@ import { clamp } from '@/lib/math';
 import {
   appActions,
   selectBookSessionWorkflow,
-  selectModalOpen,
   selectNavigationState,
   selectReaderSession,
   selectViewerWorkflow,
@@ -73,7 +72,6 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
 export function useBookSession() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
-  const bookModalOpen = useAppSelector(selectModalOpen('bookSelect'));
   const { mainView } = useAppSelector(selectNavigationState);
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { settings } = useAppSelector(selectViewerWorkflow);
@@ -83,10 +81,6 @@ export function useBookSession() {
     manifest,
     bookType,
     chapterCount,
-    loading,
-    uploadingChapter,
-    deletingChapter,
-    uploadingPdf,
     libraryStateReady
   } = useAppSelector(selectBookSessionWorkflow);
   const pendingPageRef = useRef<number | null>(null);
@@ -382,23 +376,4 @@ export function useBookSession() {
     }, 150);
     return () => window.clearTimeout(timeout);
   }, [bookId, streamVoice]);
-
-  return {
-    books,
-    bookId,
-    setBookId,
-    manifest,
-    bookType,
-    chapterCount,
-    currentPage,
-    setCurrentPage,
-    viewMode,
-    setViewMode,
-    loading,
-    bookModalOpen,
-    setBookModalOpen,
-    uploadingChapter,
-    deletingChapter,
-    uploadingPdf
-  };
 }
