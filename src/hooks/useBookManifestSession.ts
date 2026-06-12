@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  bookSessionHandlers,
-  createBookSessionActions,
-  type BookSessionActions
-} from '@/hooks/bookSessionActions';
+  bookManifestHandlers,
+  createBookManifestActions,
+  type BookManifestActions
+} from '@/hooks/bookManifestActions';
 import type { ViewMode } from '@/lib/appConstants';
 import {
   getPageFromLocation,
@@ -61,8 +61,8 @@ export function useBookManifestSession() {
     [dispatch]
   );
 
-  const bookSessionActions = useMemo<BookSessionActions>(
-    () => createBookSessionActions({
+  const bookManifestActions = useMemo<BookManifestActions>(
+    () => createBookManifestActions({
       applyLoadedManifest: (data, options) => {
         setBookType(data.bookType);
         setChapterCount(data.chapterCount);
@@ -92,8 +92,6 @@ export function useBookManifestSession() {
         setChapterCount(0);
       },
       setLoading,
-      showInfo: (message) => showToast(message, 'info'),
-      showSuccess: (message) => showToast(message, 'success'),
       showError: (message) => showToast(message, 'error')
     }),
     [
@@ -106,11 +104,11 @@ export function useBookManifestSession() {
       showToast
     ]
   );
-  const bookSessionActionsRef = useRef(bookSessionActions);
+  const bookManifestActionsRef = useRef(bookManifestActions);
 
   useEffect(() => {
-    bookSessionActionsRef.current = bookSessionActions;
-  }, [bookSessionActions]);
+    bookManifestActionsRef.current = bookManifestActions;
+  }, [bookManifestActions]);
 
   useEffect(() => {
     if (!libraryStateReady) {
@@ -133,7 +131,7 @@ export function useBookManifestSession() {
 
     const requestedPageFromLocation = getPageFromLocation(bookId);
     const requestedViewFromLocation = getViewModeFromLocation(bookId);
-    void bookSessionHandlers.runAction('loadBookManifest', null, bookSessionActionsRef.current, {
+    void bookManifestHandlers.runAction('loadBookManifest', null, bookManifestActionsRef.current, {
       bookId,
       pendingPage: pendingPageRef.current,
       requestedPageFromLocation,

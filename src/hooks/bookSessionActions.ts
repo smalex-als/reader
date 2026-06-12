@@ -3,29 +3,20 @@ import {
   deleteBook,
   deleteTextChapter,
   fetchBookIds,
-  fetchBookManifest,
-  uploadPdfBook,
   uploadTextChapter,
-  type BookManifestResult,
+  uploadPdfBook,
   type DeleteBookResult,
   type TextChapterMutationResult,
   type UploadPdfResult
 } from '@/api/bookSession';
 import { createActionHandlerRegistry } from '@/lib/actionHandlers';
 import { removeBookStorage } from '@/lib/storage';
-import type { ViewMode } from '@/lib/appConstants';
 
 const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
 
 type BookSessionPayloads = {
   loadBooks: {
     currentBookId: string | null;
-  };
-  loadBookManifest: {
-    bookId: string;
-    pendingPage: number | null;
-    requestedPageFromLocation: number | null;
-    requestedViewFromLocation: ViewMode | null;
   };
   createChapter: {
     bookName: string;
@@ -55,20 +46,11 @@ type BookSessionPayloads = {
 
 export type BookSessionActions = {
   applyLoadedBooks: (books: string[], currentBookId: string | null) => void;
-  applyLoadedManifest: (
-    result: BookManifestResult,
-    options: Pick<
-      BookSessionPayloads['loadBookManifest'],
-      'pendingPage' | 'requestedPageFromLocation' | 'requestedViewFromLocation'
-    >
-  ) => void;
   applyCreatedChapter: (result: TextChapterMutationResult) => void;
   applyDeletedChapter: (bookId: string, chapterNumber: number, result: TextChapterMutationResult) => void;
   applyDeletedBook: (targetBookId: string, currentBookId: string | null, result: DeleteBookResult) => void;
   applyUploadedPdf: (result: UploadPdfResult) => void;
   applyUploadedChapter: (result: TextChapterMutationResult) => void;
-  resetBookManifest: () => void;
-  setLoading: (loading: boolean) => void;
   setUploadingChapter: (uploading: boolean) => void;
   setDeletingChapter: (deleting: boolean) => void;
   setUploadingPdf: (uploading: boolean) => void;
@@ -91,24 +73,6 @@ addActionHandler('loadBooks', async (_state, actions, payload): Promise<void> =>
   } catch (error) {
     console.error(error);
     actions.showError('Unable to load books');
-  }
-});
-
-addActionHandler('loadBookManifest', async (_state, actions, payload): Promise<void> => {
-  actions.setLoading(true);
-  try {
-    const result = await fetchBookManifest(payload.bookId);
-    actions.applyLoadedManifest(result, {
-      pendingPage: payload.pendingPage,
-      requestedPageFromLocation: payload.requestedPageFromLocation,
-      requestedViewFromLocation: payload.requestedViewFromLocation
-    });
-  } catch (error) {
-    console.error(error);
-    actions.showError('Unable to load book manifest');
-    actions.resetBookManifest();
-  } finally {
-    actions.setLoading(false);
   }
 });
 
@@ -182,14 +146,11 @@ addActionHandler('uploadChapter', async (_state, actions, payload): Promise<void
 
 const EMPTY_BOOK_SESSION_ACTIONS: BookSessionActions = {
   applyLoadedBooks: () => {},
-  applyLoadedManifest: () => {},
   applyCreatedChapter: () => {},
   applyDeletedChapter: () => {},
   applyDeletedBook: () => {},
   applyUploadedPdf: () => {},
   applyUploadedChapter: () => {},
-  resetBookManifest: () => {},
-  setLoading: () => {},
   setUploadingChapter: () => {},
   setDeletingChapter: () => {},
   setUploadingPdf: () => {},
