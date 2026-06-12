@@ -9,6 +9,8 @@ import {
 import {
   createDefaultSettings,
   type MainView,
+  normalizeTextFontSize,
+  normalizeTextTheme,
   type StreamVoice,
   type StreamVoiceOption,
   type ViewMode
@@ -2621,7 +2623,11 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ...state,
         viewerWorkflow: {
           ...state.viewerWorkflow,
-          settings: action.settings
+          settings: {
+            ...action.settings,
+            textFontSize: normalizeTextFontSize(action.settings.textFontSize),
+            textTheme: normalizeTextTheme(action.settings.textTheme)
+          }
         }
       };
     case 'viewerWorkflow/setMetrics':

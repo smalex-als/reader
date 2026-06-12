@@ -25,7 +25,6 @@ import {useWakeLock} from '@/hooks/useWakeLock';
 import {useZoom} from '@/hooks/useZoom';
 import {clampPan} from '@/lib/math';
 import {makeStreamLocator} from '@/lib/streamLocator';
-import {normalizeTextFontSize, normalizeTextTheme} from '@/lib/appConstants';
 import {
   appActions,
   useAppDispatch
@@ -221,29 +220,6 @@ export default function App() {
     lastImageRef.current = currentImage;
   }, [currentImage, viewMode]);
 
-  useEffect(() => {
-    const normalized = normalizeTextFontSize(settings.textFontSize);
-    if (normalized !== settings.textFontSize) {
-      setSettings((prev) => {
-        if (prev.textFontSize === normalized) {
-          return prev;
-        }
-        return { ...prev, textFontSize: normalized };
-      });
-    }
-  }, [settings.textFontSize, setSettings]);
-
-  useEffect(() => {
-    const normalized = normalizeTextTheme(settings.textTheme);
-    if (normalized !== settings.textTheme) {
-      setSettings((prev) => {
-        if (prev.textTheme === normalized) {
-          return prev;
-        }
-        return { ...prev, textTheme: normalized };
-      });
-    }
-  }, [settings.textTheme, setSettings]);
   const { closeBookmarks } = useBookmarks();
 
   useEffect(() => {
