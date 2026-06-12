@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { requestOcrPageText } from '@/api/ocrQueue';
 import { useToast } from '@/hooks/useToast';
+import { createActionHandlerRegistry } from '@/lib/actionHandlers';
 import {
   appActions,
   selectBookSessionWorkflow,
@@ -22,16 +24,39 @@ function createJobId(counter: number) {
   return `ocr-${Date.now()}-${counter}`;
 }
 
-async function requestPageText(imageUrl: string, options: { signal?: AbortSignal; force?: boolean } = {}) {
-  const params = new URLSearchParams({ image: imageUrl });
-  if (options.force) {
-    params.set('skipCache', '1');
+type OcrQueuePayloads = {
+  processJob: {
+    job: OcrJob;
+    signal: AbortSignal;
+  };
+};
+
+type OcrQueueActions = {
+  completeJob: (jobId: string) => void;
+  requeueJob: (jobId: string) => void;
+  failJob: (jobId: string, error: string) => void;
+};
+
+const ocrQueueHandlers = createActionHandlerRegistry<unknown, OcrQueueActions, OcrQueuePayloads>();
+const { addActionHandler } = ocrQueueHandlers;
+
+addActionHandler('processJob', async (_state, actions, payload): Promise<void> => {
+  try {
+    await requestOcrPageText({
+      imageUrl: payload.job.imageUrl,
+      signal: payload.signal,
+      force: payload.job.force
+    });
+    actions.completeJob(payload.job.id);
+  } catch (error) {
+    if (payload.signal.aborted) {
+      actions.requeueJob(payload.job.id);
+      return;
+    }
+    const message = error instanceof Error ? error.message : 'Request failed';
+    actions.failJob(payload.job.id, message);
   }
-  const response = await fetch(`/api/page-text?${params.toString()}`, { signal: options.signal });
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-}
+});
 
 export function useOcrQueue() {
   const dispatch = useAppDispatch();
@@ -190,27 +215,28 @@ export function useOcrQueue() {
     abortRef.current = controller;
 
     (async () => {
-      try {
-        await requestPageText(nextJob.imageUrl, {
-          signal: controller.signal,
-          force: nextJob.force
-        });
-        setJobs((prev) =>
-          prev.map((job) => (job.id === nextJob.id ? { ...job, status: 'completed' } : job))
-        );
-      } catch (error) {
-        if (controller.signal.aborted) {
+      const actions: OcrQueueActions = {
+        completeJob: (jobId) => {
           setJobs((prev) =>
-            prev.map((job) => (job.id === nextJob.id ? { ...job, status: 'pending' } : job))
+            prev.map((job) => (job.id === jobId ? { ...job, status: 'completed' } : job))
           );
-        } else {
-          const message = error instanceof Error ? error.message : 'Request failed';
+        },
+        requeueJob: (jobId) => {
           setJobs((prev) =>
-            prev.map((job) =>
-              job.id === nextJob.id ? { ...job, status: 'error', error: message } : job
-            )
+            prev.map((job) => (job.id === jobId ? { ...job, status: 'pending' } : job))
+          );
+        },
+        failJob: (jobId, error) => {
+          setJobs((prev) =>
+            prev.map((job) => (job.id === jobId ? { ...job, status: 'error', error } : job))
           );
         }
+      };
+      try {
+        await ocrQueueHandlers.runAction('processJob', undefined, actions, {
+          job: nextJob,
+          signal: controller.signal
+        });
       } finally {
         activeJobIdRef.current = null;
         abortRef.current = null;
