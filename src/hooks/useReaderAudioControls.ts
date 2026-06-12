@@ -61,9 +61,11 @@ export function useReaderAudioControls({
     resumeStream,
     pauseStreamAtStart
   });
-  const { setSelectedStreamBlockKey } = useStreamControls({
+  useStreamControls({
     startStreamSequence,
+    handlePlayPageBlock,
     handlePlayChapterParagraph,
+    handlePlaySingleStream,
     restartStreamFromPageKey,
     handleStopStream,
     handleStopAfterCurrentStream: stopAfterCurrentStream,
@@ -72,12 +74,4 @@ export function useReaderAudioControls({
   });
 
   useStreamHistoryLogger();
-
-  return {
-    playOcrBlock: handlePlayPageBlock,
-    playStudyAudioParagraph: handlePlayChapterParagraph,
-    playStudyAudioSingle: handlePlaySingleStream,
-    setSelectedStreamBlockKey,
-    stopStudyAudio: handleStopStream
-  };
 }

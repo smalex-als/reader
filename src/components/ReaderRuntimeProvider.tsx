@@ -24,13 +24,7 @@ export default function ReaderRuntimeProvider({
     viewMode,
     currentImage
   });
-  const {
-    playOcrBlock,
-    playStudyAudioParagraph,
-    playStudyAudioSingle,
-    setSelectedStreamBlockKey,
-    stopStudyAudio
-  } = useReaderAudioControls({
+  useReaderAudioControls({
     bookId,
     chapterNumber
   });
@@ -38,12 +32,7 @@ export default function ReaderRuntimeProvider({
     fitWidth: shellControls.fitWidth,
     fitHeight: shellControls.fitHeight,
     gotoInputRef: shellControls.gotoInputRef,
-    toggleFullscreen: shellControls.toggleFullscreen,
-    playOcrBlock,
-    setSelectedStreamBlockKey,
-    stopStudyAudio,
-    playStudyAudioSingle,
-    playStudyAudioParagraph
+    toggleFullscreen: shellControls.toggleFullscreen
   });
 
   return (

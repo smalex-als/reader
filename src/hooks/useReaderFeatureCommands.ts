@@ -3,10 +3,7 @@ import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useOcrEditMode } from '@/hooks/useOcrEditMode';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
-import {
-  type ReaderCommands,
-  type StudyAudioParagraphPayload
-} from '@/hooks/useReaderCommands';
+import type { ReaderCommands } from '@/hooks/useReaderCommands';
 import { useReaderCommandBindings } from '@/hooks/useReaderCommandBindings';
 import { useShareLink } from '@/hooks/useShareLink';
 import { useTocManager } from '@/hooks/useTocManager';
@@ -14,34 +11,18 @@ import { useUnitsRouteSync } from '@/hooks/useUnitsRoute';
 
 type MaybePromise = Promise<void> | void;
 
-type OcrBlockPayload = {
-  imageUrl: string;
-  startIndex: number;
-  blockId: string;
-};
-
 type UseReaderFeatureCommandsOptions = {
   fitWidth: () => void;
   fitHeight: () => void;
   gotoInputRef: RefObject<HTMLInputElement>;
   toggleFullscreen: () => MaybePromise;
-  playOcrBlock: (payload: OcrBlockPayload) => MaybePromise;
-  playStudyAudioParagraph: (payload: StudyAudioParagraphPayload) => MaybePromise;
-  playStudyAudioSingle: (payload: { text: string; pageKey: string }) => MaybePromise;
-  setSelectedStreamBlockKey: (key: string | null) => void;
-  stopStudyAudio: () => void;
 };
 
 export function useReaderFeatureCommands({
   fitWidth,
   fitHeight,
   gotoInputRef,
-  toggleFullscreen,
-  playOcrBlock,
-  playStudyAudioParagraph,
-  playStudyAudioSingle,
-  setSelectedStreamBlockKey,
-  stopStudyAudio
+  toggleFullscreen
 }: UseReaderFeatureCommandsOptions): ReaderCommands {
   useUnitsRouteSync();
 
@@ -74,18 +55,13 @@ export function useReaderFeatureCommands({
     fitHeight,
     toggleOcrEditMode,
     toggleFullscreen,
-    playOcrBlock,
     toggleOcrBlockSpeech: toggleSpeechBlock,
-    setSelectedStreamBlockKey,
     queueRemainingOcrPages: queueRemainingPages,
     queueAllOcrPages: queueAllPages,
     forceUpdateAllOcrPages: forceUpdateAllPages,
     retryFailedOcrPages: retryFailed,
     clearOcrQueue: clearQueue,
     toggleOcrQueuePause: togglePause,
-    stopStudyAudio,
-    playStudyAudioSingle,
-    playStudyAudioParagraph,
     generateToc: handleGenerateToc,
     saveToc: handleSaveToc,
     addTocEntry: handleAddTocEntry,

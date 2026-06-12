@@ -16,11 +16,17 @@ import {
 
 interface UseStreamControlsOptions {
   startStreamSequence: () => Promise<void>;
+  handlePlayPageBlock: (payload: {
+    imageUrl: string;
+    startIndex: number;
+    blockId: string;
+  }) => Promise<void>;
   handlePlayChapterParagraph: (payload: {
     fullText: string;
     startIndex: number;
     key: string;
   }) => Promise<void>;
+  handlePlaySingleStream: (payload: { text: string; pageKey: string }) => Promise<void>;
   restartStreamFromPageKey: (pageKey: string, voice: string) => Promise<void>;
   handleStopStream: () => void;
   handleStopAfterCurrentStream: () => void;
@@ -30,7 +36,9 @@ interface UseStreamControlsOptions {
 
 export function useStreamControls({
   startStreamSequence,
+  handlePlayPageBlock,
   handlePlayChapterParagraph,
+  handlePlaySingleStream,
   restartStreamFromPageKey,
   handleStopStream,
   handleStopAfterCurrentStream,
@@ -169,6 +177,28 @@ export function useStreamControls({
       void handlePlayVisibleStream();
     } else if (streamControlRequest.kind === 'playNextStudyBlock') {
       void handlePlayNextStudyBlock();
+    } else if (streamControlRequest.kind === 'playOcrBlock') {
+      dispatch(
+        appActions.setSelectedStreamBlockKey(
+          makeStreamLocator(streamControlRequest.imageUrl, streamControlRequest.blockId)
+        )
+      );
+      void handlePlayPageBlock({
+        imageUrl: streamControlRequest.imageUrl,
+        startIndex: streamControlRequest.startIndex,
+        blockId: streamControlRequest.blockId
+      });
+    } else if (streamControlRequest.kind === 'playStudyAudioSingle') {
+      void handlePlaySingleStream({
+        text: streamControlRequest.text,
+        pageKey: streamControlRequest.pageKey
+      });
+    } else if (streamControlRequest.kind === 'playStudyAudioParagraph') {
+      void handlePlayChapterParagraph({
+        fullText: streamControlRequest.fullText,
+        startIndex: streamControlRequest.startIndex,
+        key: streamControlRequest.key
+      });
     } else if (streamControlRequest.kind === 'stop') {
       handleStopStream();
     } else if (streamControlRequest.kind === 'stopAfterCurrent') {
@@ -182,7 +212,10 @@ export function useStreamControls({
   }, [
     dispatch,
     handleActiveStreamVoiceChange,
+    handlePlayChapterParagraph,
+    handlePlayPageBlock,
     handlePlayNextStudyBlock,
+    handlePlaySingleStream,
     handlePlayVisibleStream,
     handleStopAfterCurrentStream,
     handleStopStream,

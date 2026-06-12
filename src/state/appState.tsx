@@ -118,6 +118,9 @@ export type StreamControlRequest = {
 } & (
   | { kind: 'playVisible' }
   | { kind: 'playNextStudyBlock' }
+  | { kind: 'playOcrBlock'; imageUrl: string; startIndex: number; blockId: string }
+  | { kind: 'playStudyAudioSingle'; text: string; pageKey: string }
+  | { kind: 'playStudyAudioParagraph'; fullText: string; startIndex: number; key: string }
   | { kind: 'stop' }
   | { kind: 'stopAfterCurrent' }
   | { kind: 'togglePause' }
@@ -413,6 +416,9 @@ export type AppAction =
   | { type: 'dashboardNavigation/clear' }
   | { type: 'streamControl/requestPlayVisible' }
   | { type: 'streamControl/requestPlayNextStudyBlock' }
+  | { type: 'streamControl/requestPlayOcrBlock'; imageUrl: string; startIndex: number; blockId: string }
+  | { type: 'streamControl/requestPlayStudyAudioSingle'; text: string; pageKey: string }
+  | { type: 'streamControl/requestPlayStudyAudioParagraph'; fullText: string; startIndex: number; key: string }
   | { type: 'streamControl/requestStop' }
   | { type: 'streamControl/requestStopAfterCurrent' }
   | { type: 'streamControl/requestTogglePause' }
@@ -908,6 +914,18 @@ export const appActions = {
   clearDashboardNavigation: (): AppAction => ({ type: 'dashboardNavigation/clear' }),
   requestPlayVisibleStream: (): AppAction => ({ type: 'streamControl/requestPlayVisible' }),
   requestPlayNextStudyBlock: (): AppAction => ({ type: 'streamControl/requestPlayNextStudyBlock' }),
+  requestPlayOcrBlock: (payload: { imageUrl: string; startIndex: number; blockId: string }): AppAction => ({
+    type: 'streamControl/requestPlayOcrBlock',
+    ...payload
+  }),
+  requestPlayStudyAudioSingle: (payload: { text: string; pageKey: string }): AppAction => ({
+    type: 'streamControl/requestPlayStudyAudioSingle',
+    ...payload
+  }),
+  requestPlayStudyAudioParagraph: (payload: ChapterParagraph): AppAction => ({
+    type: 'streamControl/requestPlayStudyAudioParagraph',
+    ...payload
+  }),
   requestStopStream: (): AppAction => ({ type: 'streamControl/requestStop' }),
   requestStopAfterCurrentStream: (): AppAction => ({ type: 'streamControl/requestStopAfterCurrent' }),
   requestToggleStreamPause: (): AppAction => ({ type: 'streamControl/requestTogglePause' }),
@@ -1631,6 +1649,38 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         streamControlRequest: {
           id: (state.streamControlRequest?.id ?? 0) + 1,
           kind: 'playNextStudyBlock'
+        }
+      };
+    case 'streamControl/requestPlayOcrBlock':
+      return {
+        ...state,
+        streamControlRequest: {
+          id: (state.streamControlRequest?.id ?? 0) + 1,
+          kind: 'playOcrBlock',
+          imageUrl: action.imageUrl,
+          startIndex: action.startIndex,
+          blockId: action.blockId
+        }
+      };
+    case 'streamControl/requestPlayStudyAudioSingle':
+      return {
+        ...state,
+        streamControlRequest: {
+          id: (state.streamControlRequest?.id ?? 0) + 1,
+          kind: 'playStudyAudioSingle',
+          text: action.text,
+          pageKey: action.pageKey
+        }
+      };
+    case 'streamControl/requestPlayStudyAudioParagraph':
+      return {
+        ...state,
+        streamControlRequest: {
+          id: (state.streamControlRequest?.id ?? 0) + 1,
+          kind: 'playStudyAudioParagraph',
+          fullText: action.fullText,
+          startIndex: action.startIndex,
+          key: action.key
         }
       };
     case 'streamControl/requestStop':
