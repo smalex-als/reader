@@ -12,6 +12,7 @@ import {
 } from '@/hooks/chapterTextVersionState';
 import { useChapterAudioPolling } from '@/hooks/useChapterAudioPolling';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useChapterTextVersionRefs } from '@/hooks/useChapterTextVersionRefs';
 import {
   appActions,
   selectRefreshTokens,
@@ -63,32 +64,20 @@ export function useChapterTextVersions() {
   const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
   const [chapterAudioSubchapters, setChapterAudioSubchapters] = useState<FloatingAudioSubchapter[]>([]);
   const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
-  const bookIdRef = useRef(bookId);
-  const chapterNumberRef = useRef(chapterNumber);
-  const sourceVersionIdRef = useRef(sourceVersionId);
-  const selectedPromptIdRef = useRef(selectedPromptId);
-  const selectedVersionIdRef = useRef(selectedVersionId);
   const chapterTextVersionActionsRef = useRef<ChapterTextVersionActions | null>(null);
-
-  useEffect(() => {
-    bookIdRef.current = bookId;
-  }, [bookId]);
-
-  useEffect(() => {
-    chapterNumberRef.current = chapterNumber;
-  }, [chapterNumber]);
-
-  useEffect(() => {
-    sourceVersionIdRef.current = sourceVersionId;
-  }, [sourceVersionId]);
-
-  useEffect(() => {
-    selectedPromptIdRef.current = selectedPromptId;
-  }, [selectedPromptId]);
-
-  useEffect(() => {
-    selectedVersionIdRef.current = selectedVersionId;
-  }, [selectedVersionId]);
+  const {
+    bookIdRef,
+    chapterNumberRef,
+    sourceVersionIdRef,
+    selectedPromptIdRef,
+    selectedVersionIdRef
+  } = useChapterTextVersionRefs({
+    bookId,
+    chapterNumber,
+    sourceVersionId,
+    selectedPromptId,
+    selectedVersionId
+  });
 
   const setSourceVersionId = useCallback(
     (next: SetStateAction<string>) => {
