@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
-import { fetchJson } from '@/lib/fetchJson';
+import { fetchStreamVoices } from '@/api/streamVoices';
 import { useToast } from '@/hooks/useToast';
+import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 import { loadMp3VoiceForBook, saveMp3VoiceForBook } from '@/lib/storage';
 import {
   appActions,
@@ -14,6 +15,36 @@ import type { StreamVoice, StreamVoiceOption } from '@/lib/appConstants';
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
+
+type VoicePayloads = {
+  loadVoices: undefined;
+};
+
+type VoiceActions = {
+  setVoiceOptions: (voices: StreamVoiceOption[], defaultVoice: StreamVoice) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  showError: (message: string) => void;
+};
+
+const voiceHandlers = createActionHandlerRegistry<unknown, VoiceActions, VoicePayloads>();
+const { addActionHandler } = voiceHandlers;
+
+addActionHandler('loadVoices', async (_state, actions): Promise<void> => {
+  await runRequest({
+    setBusy: actions.setLoading,
+    setError: actions.setError,
+    fallbackError: 'Unable to load streaming voices',
+    request: fetchStreamVoices,
+    onSuccess: ({ voices, defaultVoice }) => {
+      actions.setVoiceOptions(voices, defaultVoice);
+    },
+    onError: (error) => {
+      console.error('Unable to load streaming voices', error);
+      actions.showError('Unable to load streaming voices');
+    }
+  });
+});
 
 export function useStreamVoices() {
   const { showToast } = useToast();
@@ -45,33 +76,22 @@ export function useStreamVoices() {
   );
   useEffect(() => {
     let cancelled = false;
-    void fetchJson<{ defaultVoice?: string; voices?: StreamVoiceOption[] }>('/api/stream-audio/voices')
-      .then((payload) => {
+    const actions: VoiceActions = {
+      setVoiceOptions: (voices, defaultVoice) => {
         if (cancelled) {
           return;
         }
-        const voices = Array.isArray(payload.voices)
-          ? payload.voices.filter(
-              (voice) =>
-                typeof voice.id === 'string' &&
-                voice.id.trim() &&
-                typeof voice.label === 'string' &&
-                (voice.provider === 'openai' ||
-                  voice.provider === 'xai' ||
-                  voice.provider === 'yandex' ||
-                  voice.provider === 'streaming')
-            )
-          : [];
-        const defaultVoice =
-          typeof payload.defaultVoice === 'string' && voices.some((voice) => voice.id === payload.defaultVoice)
-            ? payload.defaultVoice
-            : voices[0]?.id ?? '';
         dispatch(appActions.setVoiceOptions(voices, defaultVoice));
-      })
-      .catch((error) => {
-        console.error('Unable to load streaming voices', error);
-        showToast('Unable to load streaming voices', 'error');
-      });
+      },
+      setLoading: () => undefined,
+      setError: () => undefined,
+      showError: (message) => {
+        if (!cancelled) {
+          showToast(message, 'error');
+        }
+      }
+    };
+    void voiceHandlers.runAction('loadVoices', undefined, actions, undefined);
     return () => {
       cancelled = true;
     };

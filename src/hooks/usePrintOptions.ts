@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { createBookPrintPdf } from '@/api/print';
 import {
   appActions,
   selectBookSessionWorkflow,
@@ -8,6 +9,7 @@ import {
   useAppSelector
 } from '@/state/appState';
 import { useToast } from '@/hooks/useToast';
+import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 
 interface PrintOption {
   id: string;
@@ -16,6 +18,54 @@ interface PrintOption {
   pages: number[];
   disabled?: boolean;
 }
+
+type PrintPayloads = {
+  createPrintPdf: {
+    bookId: string | null;
+    pages: string[];
+    fallbackFilename: string;
+  };
+};
+
+type PrintActions = {
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  closeModal: () => void;
+  downloadPdf: (blob: Blob, filename: string) => void;
+  showError: (message: string) => void;
+  showSuccess: (message: string) => void;
+};
+
+const printHandlers = createActionHandlerRegistry<unknown, PrintActions, PrintPayloads>();
+const { addActionHandler } = printHandlers;
+
+addActionHandler('createPrintPdf', async (_state, actions, payload): Promise<void> => {
+  if (!payload.bookId || payload.pages.length === 0) {
+    actions.showError('No pages available to print');
+    return;
+  }
+
+  await runRequest({
+    setBusy: actions.setLoading,
+    setError: actions.setError,
+    fallbackError: 'Unable to create PDF',
+    request: () =>
+      createBookPrintPdf({
+        bookId: payload.bookId!,
+        pages: payload.pages,
+        fallbackFilename: payload.fallbackFilename
+      }),
+    onSuccess: ({ blob, filename }) => {
+      actions.downloadPdf(blob, filename);
+      actions.showSuccess('PDF ready to print');
+      actions.closeModal();
+    },
+    onError: (error) => {
+      console.error(error);
+      actions.showError('Unable to create PDF');
+    }
+  });
+});
 
 export function usePrintOptions() {
   const dispatch = useAppDispatch();
@@ -83,38 +133,28 @@ export function usePrintOptions() {
       showToast('No pages available to print', 'error');
       return;
     }
-    try {
-      dispatch(appActions.setPrintLoading(true));
-      const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/print`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pages })
-      });
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
-      }
-      const disposition = response.headers.get('content-disposition') ?? '';
-      const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
-      const serverFilename = match?.[1];
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const fallback = `${bookId}-pages-${selectedPrintOption.id}.pdf`;
-      const filename = serverFilename || fallback;
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(url);
-      showToast('PDF ready to print', 'success');
-      dispatch(appActions.closeModal('print'));
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to create PDF', 'error');
-    } finally {
-      dispatch(appActions.setPrintLoading(false));
-    }
+    const actions: PrintActions = {
+      setLoading: (loading) => dispatch(appActions.setPrintLoading(loading)),
+      setError: () => undefined,
+      closeModal: () => dispatch(appActions.closeModal('print')),
+      downloadPdf: (blob, filename) => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+      },
+      showError: (message) => showToast(message, 'error'),
+      showSuccess: (message) => showToast(message, 'success')
+    };
+    await printHandlers.runAction('createPrintPdf', undefined, actions, {
+      bookId,
+      pages,
+      fallbackFilename: `${bookId}-pages-${selectedPrintOption.id}.pdf`
+    });
   }, [bookId, dispatch, manifest, selectedPrintOption, showToast]);
 
   useEffect(() => {
