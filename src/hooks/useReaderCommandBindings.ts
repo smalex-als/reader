@@ -19,11 +19,6 @@ type OcrBlockPayload = {
 };
 
 type UseReaderCommandBindingsOptions = {
-  fitWidth: () => void;
-  fitHeight: () => void;
-  toggleOcrEditMode: () => MaybePromise;
-  toggleFullscreen: () => MaybePromise;
-  toggleOcrBlockSpeech: (blockId: string) => MaybePromise;
   queueRemainingOcrPages: () => void;
   queueAllOcrPages: () => void;
   forceUpdateAllOcrPages: () => void;
@@ -39,11 +34,6 @@ type UseReaderCommandBindingsOptions = {
 };
 
 export function useReaderCommandBindings({
-  fitWidth,
-  fitHeight,
-  toggleOcrEditMode,
-  toggleFullscreen,
-  toggleOcrBlockSpeech,
   queueRemainingOcrPages,
   queueAllOcrPages,
   forceUpdateAllOcrPages,
@@ -66,13 +56,6 @@ export function useReaderCommandBindings({
     [dispatch]
   );
 
-  const handleToggleOcrBlockSpeech = useCallback(
-    (blockId: string) => {
-      void toggleOcrBlockSpeech(blockId);
-    },
-    [toggleOcrBlockSpeech]
-  );
-
   const handlePlayStudyAudioParagraph = useCallback(
     (payload: StudyAudioParagraphPayload) => {
       dispatch(appActions.requestPlayStudyAudioParagraph(payload));
@@ -80,22 +63,14 @@ export function useReaderCommandBindings({
     [dispatch]
   );
 
-  const handleToggleOcrEditMode = useCallback(() => {
-    void toggleOcrEditMode();
-  }, [toggleOcrEditMode]);
-
-  const handleToggleFullscreen = useCallback(() => {
-    void toggleFullscreen();
-  }, [toggleFullscreen]);
-
   return useMemo<ReaderCommands>(
     () => ({
-      fitWidth,
-      fitHeight,
-      toggleOcrEditMode: handleToggleOcrEditMode,
-      toggleFullscreen: handleToggleFullscreen,
+      fitWidth: () => dispatch(appActions.requestFitWidth()),
+      fitHeight: () => dispatch(appActions.requestFitHeight()),
+      toggleOcrEditMode: () => dispatch(appActions.requestToggleOcrEditMode()),
+      toggleFullscreen: () => dispatch(appActions.requestToggleFullscreen()),
       playOcrBlock: handlePlayOcrBlock,
-      toggleOcrBlockSpeech: handleToggleOcrBlockSpeech,
+      toggleOcrBlockSpeech: (blockId) => dispatch(appActions.requestToggleOcrBlockSpeech(blockId)),
       queueRemainingOcrPages,
       queueAllOcrPages,
       forceUpdateAllOcrPages,
@@ -116,16 +91,11 @@ export function useReaderCommandBindings({
     [
       addTocEntry,
       clearOcrQueue,
-      fitHeight,
-      fitWidth,
       forceUpdateAllOcrPages,
       generateChapterText,
       generateToc,
       handlePlayOcrBlock,
       handlePlayStudyAudioParagraph,
-      handleToggleFullscreen,
-      handleToggleOcrBlockSpeech,
-      handleToggleOcrEditMode,
       dispatch,
       queueAllOcrPages,
       queueRemainingOcrPages,

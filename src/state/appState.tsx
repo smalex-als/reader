@@ -127,6 +127,21 @@ export type StreamControlRequest = {
   | { kind: 'setVoice'; voice: string }
 );
 
+export type ShellControlRequest = {
+  id: number;
+} & (
+  | { kind: 'fitWidth' }
+  | { kind: 'fitHeight' }
+  | { kind: 'toggleFullscreen' }
+);
+
+export type OcrEditRequest = {
+  id: number;
+} & (
+  | { kind: 'toggleMode' }
+  | { kind: 'toggleSpeechBlock'; blockId: string }
+);
+
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -345,6 +360,8 @@ export interface CentralAppState {
   pageNavigationRequest: PageNavigationRequest | null;
   dashboardNavigationRequest: DashboardNavigationRequest | null;
   streamControlRequest: StreamControlRequest | null;
+  shellControlRequest: ShellControlRequest | null;
+  ocrEditRequest: OcrEditRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -424,6 +441,13 @@ export type AppAction =
   | { type: 'streamControl/requestTogglePause' }
   | { type: 'streamControl/requestSetVoice'; voice: string }
   | { type: 'streamControl/clear' }
+  | { type: 'shellControl/requestFitWidth' }
+  | { type: 'shellControl/requestFitHeight' }
+  | { type: 'shellControl/requestToggleFullscreen' }
+  | { type: 'shellControl/clear' }
+  | { type: 'ocrEdit/requestToggleMode' }
+  | { type: 'ocrEdit/requestToggleSpeechBlock'; blockId: string }
+  | { type: 'ocrEdit/clearRequest' }
   | {
       type: 'ocrQueueWorkflow/setSnapshot';
       jobs: OcrJob[];
@@ -691,6 +715,8 @@ const initialAppState: CentralAppState = {
   pageNavigationRequest: null,
   dashboardNavigationRequest: null,
   streamControlRequest: null,
+  shellControlRequest: null,
+  ocrEditRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -934,6 +960,16 @@ export const appActions = {
     voice
   }),
   clearStreamControlRequest: (): AppAction => ({ type: 'streamControl/clear' }),
+  requestFitWidth: (): AppAction => ({ type: 'shellControl/requestFitWidth' }),
+  requestFitHeight: (): AppAction => ({ type: 'shellControl/requestFitHeight' }),
+  requestToggleFullscreen: (): AppAction => ({ type: 'shellControl/requestToggleFullscreen' }),
+  clearShellControlRequest: (): AppAction => ({ type: 'shellControl/clear' }),
+  requestToggleOcrEditMode: (): AppAction => ({ type: 'ocrEdit/requestToggleMode' }),
+  requestToggleOcrBlockSpeech: (blockId: string): AppAction => ({
+    type: 'ocrEdit/requestToggleSpeechBlock',
+    blockId
+  }),
+  clearOcrEditRequest: (): AppAction => ({ type: 'ocrEdit/clearRequest' }),
   setOcrQueueSnapshot: (payload: {
     jobs: OcrJob[];
     paused: boolean;
@@ -1721,6 +1757,35 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ...state,
         streamControlRequest: null
       };
+    case 'shellControl/requestFitWidth':
+      return {
+        ...state,
+        shellControlRequest: {
+          id: (state.shellControlRequest?.id ?? 0) + 1,
+          kind: 'fitWidth'
+        }
+      };
+    case 'shellControl/requestFitHeight':
+      return {
+        ...state,
+        shellControlRequest: {
+          id: (state.shellControlRequest?.id ?? 0) + 1,
+          kind: 'fitHeight'
+        }
+      };
+    case 'shellControl/requestToggleFullscreen':
+      return {
+        ...state,
+        shellControlRequest: {
+          id: (state.shellControlRequest?.id ?? 0) + 1,
+          kind: 'toggleFullscreen'
+        }
+      };
+    case 'shellControl/clear':
+      return {
+        ...state,
+        shellControlRequest: null
+      };
     case 'ocrQueueWorkflow/setSnapshot':
       return {
         ...state,
@@ -2002,6 +2067,28 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           ...state.ocrEdit,
           saving: action.saving
         }
+      };
+    case 'ocrEdit/requestToggleMode':
+      return {
+        ...state,
+        ocrEditRequest: {
+          id: (state.ocrEditRequest?.id ?? 0) + 1,
+          kind: 'toggleMode'
+        }
+      };
+    case 'ocrEdit/requestToggleSpeechBlock':
+      return {
+        ...state,
+        ocrEditRequest: {
+          id: (state.ocrEditRequest?.id ?? 0) + 1,
+          kind: 'toggleSpeechBlock',
+          blockId: action.blockId
+        }
+      };
+    case 'ocrEdit/clearRequest':
+      return {
+        ...state,
+        ocrEditRequest: null
       };
     case 'floatingAudio/play':
       return {
@@ -2777,6 +2864,8 @@ export const selectNavigationState = (state: CentralAppState) => state.navigatio
 export const selectPageNavigationRequest = (state: CentralAppState) => state.pageNavigationRequest;
 export const selectDashboardNavigationRequest = (state: CentralAppState) => state.dashboardNavigationRequest;
 export const selectStreamControlRequest = (state: CentralAppState) => state.streamControlRequest;
+export const selectShellControlRequest = (state: CentralAppState) => state.shellControlRequest;
+export const selectOcrEditRequest = (state: CentralAppState) => state.ocrEditRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

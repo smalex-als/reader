@@ -9,20 +9,12 @@ import { useShareLink } from '@/hooks/useShareLink';
 import { useTocManager } from '@/hooks/useTocManager';
 import { useUnitsRouteSync } from '@/hooks/useUnitsRoute';
 
-type MaybePromise = Promise<void> | void;
-
 type UseReaderFeatureCommandsOptions = {
-  fitWidth: () => void;
-  fitHeight: () => void;
   gotoInputRef: RefObject<HTMLInputElement>;
-  toggleFullscreen: () => MaybePromise;
 };
 
 export function useReaderFeatureCommands({
-  fitWidth,
-  fitHeight,
-  gotoInputRef,
-  toggleFullscreen
+  gotoInputRef
 }: UseReaderFeatureCommandsOptions): ReaderCommands {
   useUnitsRouteSync();
 
@@ -34,10 +26,7 @@ export function useReaderFeatureCommands({
     handleUpdateTocEntry,
     handleGenerateChapter
   } = useTocManager();
-  const {
-    toggleOcrEditMode,
-    toggleSpeechBlock
-  } = useOcrEditMode();
+  useOcrEditMode();
   const {
     queueAllPages,
     forceUpdateAllPages,
@@ -51,11 +40,6 @@ export function useReaderFeatureCommands({
   useShareLink();
 
   const readerCommands = useReaderCommandBindings({
-    fitWidth,
-    fitHeight,
-    toggleOcrEditMode,
-    toggleFullscreen,
-    toggleOcrBlockSpeech: toggleSpeechBlock,
     queueRemainingOcrPages: queueRemainingPages,
     queueAllOcrPages: queueAllPages,
     forceUpdateAllOcrPages: forceUpdateAllPages,
@@ -71,11 +55,7 @@ export function useReaderFeatureCommands({
   });
 
   useHotkeys({
-    gotoInputRef,
-    fitWidth,
-    fitHeight,
-    toggleOcrEditMode: readerCommands.toggleOcrEditMode,
-    toggleFullscreen: readerCommands.toggleFullscreen
+    gotoInputRef
   });
 
   return readerCommands;

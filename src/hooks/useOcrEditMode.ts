@@ -5,6 +5,7 @@ import {
   appActions,
   selectBookSessionWorkflow,
   selectOcrEdit,
+  selectOcrEditRequest,
   selectPageTextWorkflow,
   selectReaderSession,
   useAppDispatch,
@@ -18,6 +19,7 @@ export function useOcrEditMode() {
   const { bookType, manifest } = useAppSelector(selectBookSessionWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
   const { editMode: ocrEditMode } = useAppSelector(selectOcrEdit);
+  const ocrEditRequest = useAppSelector(selectOcrEditRequest);
   const currentImage = manifest[currentPage] ?? null;
   const currentText = currentImage ? textCache[currentImage] ?? null : null;
   const isTextBook = bookType === 'text';
@@ -119,8 +121,15 @@ export function useOcrEditMode() {
     [currentImage, currentText, fetchPageText, showToast, updatePageTextBlocks]
   );
 
-  return {
-    toggleOcrEditMode,
-    toggleSpeechBlock
-  };
+  useEffect(() => {
+    if (!ocrEditRequest) {
+      return;
+    }
+    if (ocrEditRequest.kind === 'toggleMode') {
+      void toggleOcrEditMode();
+    } else {
+      void toggleSpeechBlock(ocrEditRequest.blockId);
+    }
+    dispatch(appActions.clearOcrEditRequest());
+  }, [dispatch, ocrEditRequest, toggleOcrEditMode, toggleSpeechBlock]);
 }
