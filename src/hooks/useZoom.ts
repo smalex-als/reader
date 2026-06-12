@@ -27,7 +27,11 @@ export function useViewerTransformControls() {
 
   const setSettings: Dispatch<SetStateAction<AppSettings>> = useCallback(
     (next) => {
-      dispatch(appActions.setViewerSettings(resolveNext(next, settings)));
+      const nextSettings = resolveNext(next, settings);
+      if (nextSettings === settings) {
+        return;
+      }
+      dispatch(appActions.setViewerSettings(nextSettings));
     },
     [dispatch, settings]
   );

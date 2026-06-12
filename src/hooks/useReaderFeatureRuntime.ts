@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import { useBookSession } from '@/hooks/useBookSession';
 import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useOcrEditMode } from '@/hooks/useOcrEditMode';
@@ -12,6 +13,7 @@ type UseReaderFeatureRuntimeOptions = {
 export function useReaderFeatureRuntime({
   gotoInputRef
 }: UseReaderFeatureRuntimeOptions) {
+  useBookSession();
   useUnitsRouteSync();
   useOcrEditMode();
   useDashboardNavigation();
