@@ -23,7 +23,7 @@ import {
   loadLastPage
 } from '@/lib/storage';
 
-export function useBookSession() {
+export function useBookManifestSession() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const { mainView } = useAppSelector(selectNavigationState);

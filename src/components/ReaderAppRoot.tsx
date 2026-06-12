@@ -1,7 +1,7 @@
 import ReaderShell from '@/components/ReaderShell';
 import { useBookLibrarySession } from '@/hooks/useBookLibrarySession';
+import { useBookManifestSession } from '@/hooks/useBookManifestSession';
 import { useBookOpenTracking } from '@/hooks/useBookOpenTracking';
-import { useBookSession } from '@/hooks/useBookSession';
 import { useBookUrlSession } from '@/hooks/useBookUrlSession';
 import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
 import { useHotkeys } from '@/hooks/useHotkeys';
@@ -13,7 +13,7 @@ import { useUnitsRouteSync } from '@/hooks/useUnitsRoute';
 
 export default function ReaderAppRoot() {
   useBookLibrarySession();
-  useBookSession();
+  useBookManifestSession();
   useBookUrlSession();
   useBookOpenTracking();
   useViewerSettingsSession();
