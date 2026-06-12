@@ -2,29 +2,25 @@ import { useEffect, useRef } from 'react';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { useNavigation } from '@/hooks/useNavigation';
 import { useZoom } from '@/hooks/useZoom';
-import type { ViewMode } from '@/lib/appConstants';
 import {
   appActions,
+  selectBookSessionWorkflow,
+  selectReaderSession,
   selectShellControlRequest,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 
-type UseReaderShellControlsOptions = {
-  viewMode: ViewMode;
-  currentImage: string | null;
-};
-
-export function useReaderShellControls({
-  viewMode,
-  currentImage
-}: UseReaderShellControlsOptions) {
+export function useReaderShellControls() {
   const dispatch = useAppDispatch();
   const pendingAlignTopRef = useRef(false);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const gotoInputRef = useRef<HTMLInputElement | null>(null);
+  const { currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const shellControlRequest = useAppSelector(selectShellControlRequest);
+  const currentImage = manifest[currentPage] ?? null;
 
   const { isFullscreen, toggleFullscreen } = useFullscreen(viewerShellRef);
   const { fitWidth, fitHeight } = useZoom({
