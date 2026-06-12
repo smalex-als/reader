@@ -1,10 +1,9 @@
-import {useEffect, useRef} from 'react';
+import {useRef} from 'react';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
 import ReaderSidebar from '@/components/ReaderSidebar';
 import {useAudioController} from '@/hooks/useAudioController';
 import {useBookSession} from '@/hooks/useBookSession';
-import {useBookmarks} from '@/hooks/useBookmarks';
 import {useNavigation} from '@/hooks/useNavigation';
 import {useOcrQueue} from '@/hooks/useOcrQueue';
 import {useStreamSequence} from '@/hooks/useStreamSequence';
@@ -22,16 +21,12 @@ import {useHotkeys} from '@/hooks/useHotkeys';
 import {useCurrentChapterContext} from '@/hooks/useCurrentChapterLabel';
 import {ReaderCommandProvider} from '@/hooks/useReaderCommands';
 import {useReaderCommandBindings} from '@/hooks/useReaderCommandBindings';
+import {useReaderLifecycleEffects} from '@/hooks/useReaderLifecycleEffects';
 import {useTocManager} from '@/hooks/useTocManager';
 import {usePlaybackWakeLock} from '@/hooks/useWakeLock';
 import {useZoom} from '@/hooks/useZoom';
-import {
-  appActions,
-  useAppDispatch
-} from '@/state/appState';
 
 export default function App() {
-  const dispatch = useAppDispatch();
   const pendingAlignTopRef = useRef(false);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
 
@@ -88,9 +83,13 @@ export default function App() {
 
   useFloatingAudio();
   usePlaybackWakeLock();
-  useEffect(() => {
-    dispatch(appActions.setDisplayedChapterText(null));
-  }, [bookId, chapterNumber, dispatch]);
+  useReaderLifecycleEffects({
+    bookId,
+    chapterNumber,
+    resetAudioCache,
+    stopAudio,
+    stopStream
+  });
   useNavigation({
     pendingAlignTopRef
   });
@@ -137,19 +136,6 @@ export default function App() {
     retryFailed,
     togglePause
   } = useOcrQueue();
-
-  const { closeBookmarks } = useBookmarks();
-
-  useEffect(() => {
-    closeBookmarks();
-    dispatch(appActions.closeModal('search'));
-    dispatch(appActions.closeModal('text'));
-    dispatch(appActions.closeBookCard());
-    dispatch(appActions.resetPageText());
-    resetAudioCache();
-    stopAudio();
-    stopStream();
-  }, [bookId, closeBookmarks, dispatch, resetAudioCache, stopAudio, stopStream]);
 
   useDashboardNavigation();
 
