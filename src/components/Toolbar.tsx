@@ -11,7 +11,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import { useChapterActions } from '@/hooks/useBookSession';
+import { useChapterActions } from '@/hooks/useBookMutations';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';

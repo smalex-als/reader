@@ -1,20 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 import {
-  createEmptyTextChapter,
-  deleteBook,
-  deleteTextChapter,
-  fetchBookIds,
-  fetchBookManifest,
-  uploadPdfBook,
-  uploadTextChapter,
-  type BookManifestResult,
-  type DeleteBookResult,
-  type TextChapterMutationResult,
-  type UploadPdfResult
-} from '@/api/bookSession';
+  bookSessionHandlers,
+  createBookSessionActions,
+  type BookSessionActions
+} from '@/hooks/bookSessionActions';
 import { createDefaultSettings, type ViewMode } from '@/lib/appConstants';
 import { useToast } from '@/hooks/useToast';
-import { createActionHandlerRegistry } from '@/lib/actionHandlers';
 import { clamp } from '@/lib/math';
 import {
   appActions,
@@ -33,200 +24,11 @@ import {
   loadSettingsForBook,
   loadStreamVoiceForBook,
   markBookOpened,
-  removeBookStorage,
   saveLastBook,
-  saveLastPage,
   saveSettingsForBook,
   saveStreamVoiceForBook
 } from '@/lib/storage';
 import type { AppSettings } from '@/types/app';
-
-const BOOK_SORT_OPTIONS = { numeric: true, sensitivity: 'base' } as const;
-
-type BookSessionPayloads = {
-  loadBooks: {
-    currentBookId: string | null;
-  };
-  loadBookManifest: {
-    bookId: string;
-    pendingPage: number | null;
-    requestedPageFromLocation: number | null;
-    requestedViewFromLocation: ViewMode | null;
-  };
-  createChapter: {
-    bookName: string;
-    chapterTitle: string;
-    targetBookId: string;
-    isExisting: boolean;
-  };
-  deleteChapter: {
-    bookId: string;
-    chapterNumber: number;
-  };
-  deleteBook: {
-    targetBookId: string;
-    currentBookId: string | null;
-  };
-  uploadPdf: {
-    file: File;
-  };
-  uploadChapter: {
-    file: File;
-    bookName: string;
-    chapterTitle: string;
-    targetBookId: string;
-    isExisting: boolean;
-  };
-};
-
-type BookSessionActions = {
-  applyLoadedBooks: (books: string[], currentBookId: string | null) => void;
-  applyLoadedManifest: (
-    result: BookManifestResult,
-    options: Pick<BookSessionPayloads['loadBookManifest'], 'pendingPage' | 'requestedPageFromLocation' | 'requestedViewFromLocation'>
-  ) => void;
-  applyCreatedChapter: (result: TextChapterMutationResult) => void;
-  applyDeletedChapter: (bookId: string, chapterNumber: number, result: TextChapterMutationResult) => void;
-  applyDeletedBook: (targetBookId: string, currentBookId: string | null, result: DeleteBookResult) => void;
-  applyUploadedPdf: (result: UploadPdfResult) => void;
-  applyUploadedChapter: (result: TextChapterMutationResult) => void;
-  resetBookManifest: () => void;
-  setLoading: (loading: boolean) => void;
-  setUploadingChapter: (uploading: boolean) => void;
-  setDeletingChapter: (deleting: boolean) => void;
-  setUploadingPdf: (uploading: boolean) => void;
-  showInfo: (message: string) => void;
-  showSuccess: (message: string) => void;
-  showError: (message: string) => void;
-};
-
-const bookSessionHandlers = createActionHandlerRegistry<
-  null,
-  BookSessionActions,
-  BookSessionPayloads
->();
-const { addActionHandler } = bookSessionHandlers;
-
-addActionHandler('loadBooks', async (_state, actions, payload): Promise<void> => {
-  try {
-    const books = await fetchBookIds();
-    actions.applyLoadedBooks(books, payload.currentBookId);
-  } catch (error) {
-    console.error(error);
-    actions.showError('Unable to load books');
-  }
-});
-
-addActionHandler('loadBookManifest', async (_state, actions, payload): Promise<void> => {
-  actions.setLoading(true);
-  try {
-    const result = await fetchBookManifest(payload.bookId);
-    actions.applyLoadedManifest(result, {
-      pendingPage: payload.pendingPage,
-      requestedPageFromLocation: payload.requestedPageFromLocation,
-      requestedViewFromLocation: payload.requestedViewFromLocation
-    });
-  } catch (error) {
-    console.error(error);
-    actions.showError('Unable to load book manifest');
-    actions.resetBookManifest();
-  } finally {
-    actions.setLoading(false);
-  }
-});
-
-addActionHandler('createChapter', async (_state, actions, payload): Promise<void> => {
-  actions.setUploadingChapter(true);
-  try {
-    const result = await createEmptyTextChapter(payload);
-    actions.applyCreatedChapter(result);
-    actions.showSuccess('Chapter created');
-  } catch (error) {
-    console.error(error);
-    actions.showError('Failed to create chapter');
-  } finally {
-    actions.setUploadingChapter(false);
-  }
-});
-
-addActionHandler('deleteChapter', async (_state, actions, payload): Promise<void> => {
-  actions.setDeletingChapter(true);
-  try {
-    const result = await deleteTextChapter(payload.bookId, payload.chapterNumber);
-    actions.applyDeletedChapter(payload.bookId, payload.chapterNumber, result);
-    actions.showSuccess(`Deleted chapter ${result.chapterNumber ?? payload.chapterNumber}`);
-  } catch (error) {
-    console.error(error);
-    actions.showError('Unable to delete chapter');
-  } finally {
-    actions.setDeletingChapter(false);
-  }
-});
-
-addActionHandler('deleteBook', async (_state, actions, payload): Promise<void> => {
-  try {
-    const result = await deleteBook(payload.targetBookId);
-    removeBookStorage(payload.targetBookId);
-    actions.applyDeletedBook(payload.targetBookId, payload.currentBookId, result);
-    actions.showSuccess(`Deleted ${result.book}`);
-  } catch (error) {
-    console.error(error);
-    actions.showError('Unable to delete book');
-  }
-});
-
-addActionHandler('uploadPdf', async (_state, actions, payload): Promise<void> => {
-  actions.setUploadingPdf(true);
-  try {
-    const result = await uploadPdfBook(payload.file);
-    actions.applyUploadedPdf(result);
-    actions.showSuccess('Book created from PDF');
-  } catch (error) {
-    console.error(error);
-    actions.showError('Failed to upload PDF');
-  } finally {
-    actions.setUploadingPdf(false);
-  }
-});
-
-addActionHandler('uploadChapter', async (_state, actions, payload): Promise<void> => {
-  actions.setUploadingChapter(true);
-  try {
-    const result = await uploadTextChapter(payload);
-    actions.applyUploadedChapter(result);
-    actions.showSuccess('Chapter uploaded');
-  } catch (error) {
-    console.error(error);
-    actions.showError('Failed to upload chapter');
-  } finally {
-    actions.setUploadingChapter(false);
-  }
-});
-
-const EMPTY_BOOK_SESSION_ACTIONS: BookSessionActions = {
-  applyLoadedBooks: () => {},
-  applyLoadedManifest: () => {},
-  applyCreatedChapter: () => {},
-  applyDeletedChapter: () => {},
-  applyDeletedBook: () => {},
-  applyUploadedPdf: () => {},
-  applyUploadedChapter: () => {},
-  resetBookManifest: () => {},
-  setLoading: () => {},
-  setUploadingChapter: () => {},
-  setDeletingChapter: () => {},
-  setUploadingPdf: () => {},
-  showInfo: () => {},
-  showSuccess: () => {},
-  showError: () => {}
-};
-
-function createBookSessionActions(actions: Partial<BookSessionActions>): BookSessionActions {
-  return {
-    ...EMPTY_BOOK_SESSION_ACTIONS,
-    ...actions
-  };
-}
 
 function getBookFromLocation(): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -268,12 +70,6 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
 
-function addSortedBook(books: string[], bookId: string) {
-  const next = Array.from(new Set([...books, bookId]));
-  next.sort((a, b) => a.localeCompare(b, 'en', BOOK_SORT_OPTIONS));
-  return next;
-}
-
 export function useBookSession() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
@@ -293,7 +89,6 @@ export function useBookSession() {
     uploadingPdf,
     libraryStateReady
   } = useAppSelector(selectBookSessionWorkflow);
-  const { handleCreateChapter, handleDeleteChapter } = useChapterActions();
   const pendingPageRef = useRef<number | null>(null);
   const shouldUseLocationPositionRef = useRef(true);
   const urlSyncPaused = mainView === 'units';
@@ -329,18 +124,6 @@ export function useBookSession() {
     dispatch(appActions.setBookSessionLoading(nextLoading));
   }, [dispatch]);
 
-  const setUploadingChapter = useCallback((uploading: boolean) => {
-    dispatch(appActions.setBookSessionUploadingChapter(uploading));
-  }, [dispatch]);
-
-  const setDeletingChapter = useCallback((deleting: boolean) => {
-    dispatch(appActions.setBookSessionDeletingChapter(deleting));
-  }, [dispatch]);
-
-  const setUploadingPdf = useCallback((uploading: boolean) => {
-    dispatch(appActions.setBookSessionUploadingPdf(uploading));
-  }, [dispatch]);
-
   const setBookId = useCallback((nextBookId: string | null, options?: { preferLocationPosition?: boolean }) => {
     shouldUseLocationPositionRef.current = options?.preferLocationPosition ?? false;
     dispatch(appActions.setReaderBookId(nextBookId));
@@ -368,7 +151,7 @@ export function useBookSession() {
   );
 
   const bookSessionActions = useMemo<BookSessionActions>(
-    () => ({
+    () => createBookSessionActions({
       applyLoadedBooks: (loadedBooks, currentBookId) => {
         setBooks(loadedBooks);
         if (loadedBooks.length === 0) {
@@ -410,110 +193,25 @@ export function useBookSession() {
           showToast(`Loaded ${data.manifest.length} pages`, 'success');
         }
       },
-      applyCreatedChapter: (data) => {
-        const newBookId = data.book;
-        setBooks((prev) => addSortedBook(prev, newBookId));
-        setBookId(newBookId);
-        setBookType('text');
-        setChapterCount(data.chapterCount);
-        setManifest([]);
-        dispatch(appActions.setTocEntries(data.toc));
-        setCurrentPage(data.chapterIndex ?? 0);
-        dispatch(appActions.setEditorChapterNumber(data.chapterIndex !== null ? data.chapterIndex + 1 : null));
-        dispatch(appActions.setEditorOpen(true));
-        setViewMode('text');
-        setBookModalOpen(false);
-      },
-      applyDeletedChapter: (targetBookId, chapterNumber, data) => {
-        const nextChapterCount = data.chapterCount;
-        const nextToc = data.toc;
-        setChapterCount(nextChapterCount);
-        dispatch(appActions.setTocEntries(nextToc));
-        if (nextChapterCount <= 0) {
-          setCurrentPage(0);
-        } else {
-          const deletedIndex = data.chapterIndex ?? chapterNumber - 1;
-          const sortedPages = nextToc
-            .map((entry) => entry.page)
-            .filter((page) => Number.isInteger(page) && page >= 0 && page < nextChapterCount)
-            .sort((a, b) => a - b);
-          const nextExistingPage =
-            sortedPages.find((page) => page > deletedIndex) ??
-            [...sortedPages].reverse().find((page) => page < deletedIndex) ??
-            clamp(Math.min(deletedIndex, nextChapterCount - 1), 0, nextChapterCount - 1);
-          setCurrentPage(nextExistingPage);
-          saveLastPage(targetBookId, nextExistingPage);
-        }
-        dispatch(appActions.setEditorOpen(false));
-        dispatch(appActions.setEditorChapterNumber(null));
-      },
-      applyDeletedBook: (targetBookId, currentBookId, data) => {
-        dispatch(appActions.setBookSessionBooks(data.books));
-        if (currentBookId !== targetBookId) {
-          return;
-        }
-        if (data.books.length === 0) {
-          dispatch(appActions.setReaderBookId(null));
-          dispatch(appActions.setModalOpen('bookSelect', true));
-          showToast('No books found. Add files to /data to begin.', 'info');
-          return;
-        }
-        const fallback = data.books[0];
-        dispatch(appActions.setReaderBookId(fallback));
-        saveLastBook(fallback);
-      },
-      applyUploadedPdf: (data) => {
-        const newBookId = data.book;
-        dispatch(appActions.setBookSessionBooks(addSortedBook(books, newBookId)));
-        dispatch(appActions.setReaderBookId(newBookId));
-        dispatch(appActions.setBookSessionBookType('image'));
-        dispatch(appActions.setBookSessionChapterCount(0));
-        dispatch(appActions.setBookSessionManifest(data.manifest));
-        dispatch(appActions.setTocEntries([]));
-        dispatch(appActions.setDetailedTocEntries([]));
-        dispatch(appActions.setReaderCurrentPage(0));
-        dispatch(appActions.setReaderViewMode('pages'));
-        dispatch(appActions.setModalOpen('bookSelect', false));
-      },
-      applyUploadedChapter: (data) => {
-        const newBookId = data.book;
-        dispatch(appActions.setBookSessionBooks(addSortedBook(books, newBookId)));
-        dispatch(appActions.setReaderBookId(newBookId));
-        dispatch(appActions.setBookSessionBookType('text'));
-        dispatch(appActions.setBookSessionChapterCount(data.chapterCount));
-        dispatch(appActions.setBookSessionManifest([]));
-        dispatch(appActions.setTocEntries(data.toc));
-        dispatch(appActions.setReaderCurrentPage(data.chapterIndex ?? 0));
-        dispatch(appActions.setReaderViewMode('text'));
-        dispatch(appActions.setModalOpen('bookSelect', false));
-      },
       resetBookManifest: () => {
         setManifest([]);
         setBookType('image');
         setChapterCount(0);
       },
       setLoading,
-      setUploadingChapter,
-      setDeletingChapter,
-      setUploadingPdf,
       showInfo: (message) => showToast(message, 'info'),
       showSuccess: (message) => showToast(message, 'success'),
       showError: (message) => showToast(message, 'error')
     }),
     [
-      books,
-      dispatch,
       setBookId,
       setBookModalOpen,
       setBooks,
       setBookType,
       setChapterCount,
       setCurrentPage,
-      setDeletingChapter,
       setLoading,
       setManifest,
-      setUploadingChapter,
-      setUploadingPdf,
       setViewMode,
       showToast
     ]
@@ -701,246 +399,6 @@ export function useBookSession() {
     setBookModalOpen,
     uploadingChapter,
     deletingChapter,
-    uploadingPdf,
-    handleCreateChapter,
-    handleDeleteChapter
+    uploadingPdf
   };
-}
-
-export function useChapterActions() {
-  const { showToast } = useToast();
-  const dispatch = useAppDispatch();
-  const { bookId } = useAppSelector(selectReaderSession);
-  const { books, bookType } = useAppSelector(selectBookSessionWorkflow);
-  const actions = useMemo(
-    () =>
-      createBookSessionActions({
-        applyCreatedChapter: (data) => {
-          const newBookId = data.book;
-          dispatch(appActions.setBookSessionBooks(addSortedBook(books, newBookId)));
-          dispatch(appActions.setReaderBookId(newBookId));
-          dispatch(appActions.setBookSessionBookType('text'));
-          dispatch(appActions.setBookSessionChapterCount(data.chapterCount));
-          dispatch(appActions.setBookSessionManifest([]));
-          dispatch(appActions.setTocEntries(data.toc));
-          dispatch(appActions.setReaderCurrentPage(data.chapterIndex ?? 0));
-          dispatch(appActions.setEditorChapterNumber(data.chapterIndex !== null ? data.chapterIndex + 1 : null));
-          dispatch(appActions.setEditorOpen(true));
-          dispatch(appActions.setReaderViewMode('text'));
-          dispatch(appActions.setModalOpen('bookSelect', false));
-        },
-        applyDeletedChapter: (targetBookId, chapterNumber, data) => {
-          const nextChapterCount = data.chapterCount;
-          const nextToc = data.toc;
-          dispatch(appActions.setBookSessionChapterCount(nextChapterCount));
-          dispatch(appActions.setTocEntries(nextToc));
-          if (nextChapterCount <= 0) {
-            dispatch(appActions.setReaderCurrentPage(0));
-          } else {
-            const deletedIndex = data.chapterIndex ?? chapterNumber - 1;
-            const sortedPages = nextToc
-              .map((entry) => entry.page)
-              .filter((page) => Number.isInteger(page) && page >= 0 && page < nextChapterCount)
-              .sort((a, b) => a - b);
-            const nextExistingPage =
-              sortedPages.find((page) => page > deletedIndex) ??
-              [...sortedPages].reverse().find((page) => page < deletedIndex) ??
-              clamp(Math.min(deletedIndex, nextChapterCount - 1), 0, nextChapterCount - 1);
-            dispatch(appActions.setReaderCurrentPage(nextExistingPage));
-            saveLastPage(targetBookId, nextExistingPage);
-          }
-          dispatch(appActions.setEditorOpen(false));
-          dispatch(appActions.setEditorChapterNumber(null));
-        },
-        setUploadingChapter: (uploading) => dispatch(appActions.setBookSessionUploadingChapter(uploading)),
-        setDeletingChapter: (deleting) => dispatch(appActions.setBookSessionDeletingChapter(deleting)),
-        showSuccess: (message) => showToast(message, 'success'),
-        showError: (message) => showToast(message, 'error')
-      }),
-    [books, dispatch, showToast]
-  );
-
-  const handleCreateChapter = useCallback(
-    async (details: { bookName: string; chapterTitle: string }) => {
-      const bookName = details.bookName.trim();
-      const chapterTitle = details.chapterTitle.trim();
-      const targetBookId = bookName || bookId || '';
-      if (!targetBookId) {
-        showToast('Book name is required for a new text book', 'error');
-        return;
-      }
-      if (!bookName && bookId && bookType !== 'text') {
-        showToast('Select a text book or enter a new book name', 'error');
-        return;
-      }
-      await bookSessionHandlers.runAction('createChapter', null, actions, {
-        bookName,
-        chapterTitle,
-        targetBookId,
-        isExisting: books.includes(targetBookId)
-      });
-    },
-    [actions, bookId, bookType, books, showToast]
-  );
-
-  const handleDeleteChapter = useCallback(
-    async (chapterNumber: number) => {
-      if (!bookId || bookType !== 'text') {
-        return;
-      }
-      if (!Number.isInteger(chapterNumber) || chapterNumber < 1) {
-        showToast('Valid chapter is required', 'error');
-        return;
-      }
-      const confirmed = window.confirm(
-        `Delete chapter ${chapterNumber}? Other chapter numbers will stay unchanged.`
-      );
-      if (!confirmed) {
-        return;
-      }
-      await bookSessionHandlers.runAction('deleteChapter', null, actions, {
-        bookId,
-        chapterNumber
-      });
-    },
-    [actions, bookId, bookType, showToast]
-  );
-
-  return {
-    handleCreateChapter,
-    handleDeleteChapter
-  };
-}
-
-export function useDeleteBook() {
-  const { showToast } = useToast();
-  const dispatch = useAppDispatch();
-  const { bookId } = useAppSelector(selectReaderSession);
-  const actions = useMemo(
-    () =>
-      createBookSessionActions({
-        applyDeletedBook: (targetBookId, currentBookId, data) => {
-          dispatch(appActions.setBookSessionBooks(data.books));
-          if (currentBookId !== targetBookId) {
-            return;
-          }
-          if (data.books.length === 0) {
-            dispatch(appActions.setReaderBookId(null));
-            dispatch(appActions.setModalOpen('bookSelect', true));
-            showToast('No books found. Add files to /data to begin.', 'info');
-            return;
-          }
-          const fallback = data.books[0];
-          dispatch(appActions.setReaderBookId(fallback));
-          saveLastBook(fallback);
-        },
-        showSuccess: (message) => showToast(message, 'success'),
-        showError: (message) => showToast(message, 'error')
-      }),
-    [dispatch, showToast]
-  );
-
-  return useCallback(
-    async (targetBookId: string) => {
-      const confirmed = window.confirm(
-        `Delete "${targetBookId}" and all of its files? This cannot be undone.`
-      );
-      if (!confirmed) {
-        return;
-      }
-      await bookSessionHandlers.runAction('deleteBook', null, actions, {
-        targetBookId,
-        currentBookId: bookId
-      });
-    },
-    [actions, bookId]
-  );
-}
-
-export function useUploadPdf() {
-  const { showToast } = useToast();
-  const dispatch = useAppDispatch();
-  const { books } = useAppSelector(selectBookSessionWorkflow);
-  const actions = useMemo(
-    () =>
-      createBookSessionActions({
-        applyUploadedPdf: (data) => {
-          const newBookId = data.book;
-          dispatch(appActions.setBookSessionBooks(addSortedBook(books, newBookId)));
-          dispatch(appActions.setReaderBookId(newBookId));
-          dispatch(appActions.setBookSessionBookType('image'));
-          dispatch(appActions.setBookSessionChapterCount(0));
-          dispatch(appActions.setBookSessionManifest(data.manifest));
-          dispatch(appActions.setTocEntries([]));
-          dispatch(appActions.setDetailedTocEntries([]));
-          dispatch(appActions.setReaderCurrentPage(0));
-          dispatch(appActions.setReaderViewMode('pages'));
-          dispatch(appActions.setModalOpen('bookSelect', false));
-        },
-        setUploadingPdf: (uploading) => dispatch(appActions.setBookSessionUploadingPdf(uploading)),
-        showSuccess: (message) => showToast(message, 'success'),
-        showError: (message) => showToast(message, 'error')
-      }),
-    [books, dispatch, showToast]
-  );
-
-  return useCallback(
-    async (file: File) => {
-      await bookSessionHandlers.runAction('uploadPdf', null, actions, { file });
-    },
-    [actions]
-  );
-}
-
-export function useUploadChapter() {
-  const { showToast } = useToast();
-  const dispatch = useAppDispatch();
-  const { bookId } = useAppSelector(selectReaderSession);
-  const { books, bookType } = useAppSelector(selectBookSessionWorkflow);
-  const actions = useMemo(
-    () =>
-      createBookSessionActions({
-        applyUploadedChapter: (data) => {
-          const newBookId = data.book;
-          dispatch(appActions.setBookSessionBooks(addSortedBook(books, newBookId)));
-          dispatch(appActions.setReaderBookId(newBookId));
-          dispatch(appActions.setBookSessionBookType('text'));
-          dispatch(appActions.setBookSessionChapterCount(data.chapterCount));
-          dispatch(appActions.setBookSessionManifest([]));
-          dispatch(appActions.setTocEntries(data.toc));
-          dispatch(appActions.setReaderCurrentPage(data.chapterIndex ?? 0));
-          dispatch(appActions.setReaderViewMode('text'));
-          dispatch(appActions.setModalOpen('bookSelect', false));
-        },
-        setUploadingChapter: (uploading) => dispatch(appActions.setBookSessionUploadingChapter(uploading)),
-        showSuccess: (message) => showToast(message, 'success'),
-        showError: (message) => showToast(message, 'error')
-      }),
-    [books, dispatch, showToast]
-  );
-
-  return useCallback(
-    async (file: File, details: { bookName: string; chapterTitle: string }) => {
-      const bookName = details.bookName.trim();
-      const chapterTitle = details.chapterTitle.trim();
-      const targetBookId = bookName || bookId || '';
-      if (!targetBookId) {
-        showToast('Book name is required for a new text book', 'error');
-        return;
-      }
-      if (!bookName && bookId && bookType !== 'text') {
-        showToast('Select a text book or enter a new book name', 'error');
-        return;
-      }
-      const isExisting = books.includes(targetBookId);
-      await bookSessionHandlers.runAction('uploadChapter', null, actions, {
-        file,
-        bookName,
-        chapterTitle,
-        targetBookId,
-        isExisting
-      });
-    },
-    [actions, bookId, bookType, books, showToast]
-  );
 }

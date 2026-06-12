@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import CloseIcon from '@/components/CloseIcon';
-import { useDeleteBook, useUploadChapter, useUploadPdf } from '@/hooks/useBookSession';
+import { useDeleteBook, useUploadChapter, useUploadPdf } from '@/hooks/useBookMutations';
 import {
   appActions,
   selectBookCardWorkflow,

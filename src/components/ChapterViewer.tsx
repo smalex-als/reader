@@ -6,7 +6,7 @@ import AddIcon from '@/components/AddIcon';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
-import { useChapterActions } from '@/hooks/useBookSession';
+import { useChapterActions } from '@/hooks/useBookMutations';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useUnitActions } from '@/hooks/useUnitActions';
