@@ -6,6 +6,7 @@ import {
   updatePrompt,
   type PromptLibraryResult
 } from '@/api/chapterTextPrompts';
+import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 import {
   appActions,
   selectPromptEditorWorkflow,
@@ -36,20 +37,12 @@ type PromptEditorActions = {
   setPrompts: (result: PromptLibraryResult) => void;
 };
 
-type PromptEditorActionHandler<T extends keyof PromptEditorActionPayloads> = (
-  global: PromptEditorWorkflowState,
-  actions: PromptEditorActions,
-  payload: PromptEditorActionPayloads[T]
-) => Promise<void>;
-
-const actionHandlers: Partial<Record<keyof PromptEditorActionPayloads, unknown>> = {};
-
-function addActionHandler<T extends keyof PromptEditorActionPayloads>(
-  action: T,
-  handler: PromptEditorActionHandler<T>
-) {
-  actionHandlers[action] = handler;
-}
+const promptEditorHandlers = createActionHandlerRegistry<
+  PromptEditorWorkflowState,
+  PromptEditorActions,
+  PromptEditorActionPayloads
+>();
+const { addActionHandler } = promptEditorHandlers;
 
 function getCommandStatus(kind: 'createPrompt' | 'savePrompt' | 'deletePrompt') {
   switch (kind) {
@@ -78,35 +71,27 @@ function getCommandFallbackError(kind: 'createPrompt' | 'savePrompt' | 'deletePr
 }
 
 addActionHandler('loadPrompts', async (_global, actions): Promise<void> => {
-  actions.setLoading(true);
-  actions.setError(null);
-  actions.setStatus(null);
-
-  try {
-    const result = await fetchPromptLibrary();
-    actions.setPrompts(result);
-  } catch (error) {
-    actions.setPrompts({ prompts: [] });
-    actions.setError(error instanceof Error ? error.message : 'Unable to load prompts.');
-  } finally {
-    actions.setLoading(false);
-  }
+  await runRequest({
+    setBusy: actions.setLoading,
+    setError: actions.setError,
+    setStatus: actions.setStatus,
+    fallbackError: 'Unable to load prompts.',
+    request: fetchPromptLibrary,
+    onSuccess: actions.setPrompts,
+    onError: () => actions.setPrompts({ prompts: [] })
+  });
 });
 
 addActionHandler('createPrompt', async (_global, actions, draft): Promise<void> => {
-  actions.setSaving(true);
-  actions.setError(null);
-  actions.setStatus(null);
-
-  try {
-    const result = await createPromptApi(draft);
-    actions.applyPromptResult(result);
-    actions.setStatus(getCommandStatus('createPrompt'));
-  } catch (error) {
-    actions.setError(error instanceof Error ? error.message : getCommandFallbackError('createPrompt'));
-  } finally {
-    actions.setSaving(false);
-  }
+  await runRequest({
+    setBusy: actions.setSaving,
+    setError: actions.setError,
+    setStatus: actions.setStatus,
+    fallbackError: getCommandFallbackError('createPrompt'),
+    successStatus: getCommandStatus('createPrompt'),
+    request: () => createPromptApi(draft),
+    onSuccess: actions.applyPromptResult
+  });
 });
 
 addActionHandler('savePrompt', async (global, actions, payload): Promise<void> => {
@@ -115,19 +100,15 @@ addActionHandler('savePrompt', async (global, actions, payload): Promise<void> =
     return;
   }
 
-  actions.setSaving(true);
-  actions.setError(null);
-  actions.setStatus(null);
-
-  try {
-    const result = await updatePrompt(payload.promptId, payload.draft);
-    actions.applyPromptResult(result);
-    actions.setStatus(getCommandStatus('savePrompt'));
-  } catch (error) {
-    actions.setError(error instanceof Error ? error.message : getCommandFallbackError('savePrompt'));
-  } finally {
-    actions.setSaving(false);
-  }
+  await runRequest({
+    setBusy: actions.setSaving,
+    setError: actions.setError,
+    setStatus: actions.setStatus,
+    fallbackError: getCommandFallbackError('savePrompt'),
+    successStatus: getCommandStatus('savePrompt'),
+    request: () => updatePrompt(payload.promptId, payload.draft),
+    onSuccess: actions.applyPromptResult
+  });
 });
 
 addActionHandler('deletePrompt', async (global, actions, payload): Promise<void> => {
@@ -136,19 +117,15 @@ addActionHandler('deletePrompt', async (global, actions, payload): Promise<void>
     return;
   }
 
-  actions.setSaving(true);
-  actions.setError(null);
-  actions.setStatus(null);
-
-  try {
-    const result = await deletePromptApi(payload.promptId);
-    actions.applyPromptResult(result);
-    actions.setStatus(getCommandStatus('deletePrompt'));
-  } catch (error) {
-    actions.setError(error instanceof Error ? error.message : getCommandFallbackError('deletePrompt'));
-  } finally {
-    actions.setSaving(false);
-  }
+  await runRequest({
+    setBusy: actions.setSaving,
+    setError: actions.setError,
+    setStatus: actions.setStatus,
+    fallbackError: getCommandFallbackError('deletePrompt'),
+    successStatus: getCommandStatus('deletePrompt'),
+    request: () => deletePromptApi(payload.promptId),
+    onSuccess: actions.applyPromptResult
+  });
 });
 
 export function usePromptEditorActions() {
@@ -190,11 +167,7 @@ export function usePromptEditorActions() {
       action: T,
       payload: PromptEditorActionPayloads[T]
     ) => {
-      const handler = actionHandlers[action] as PromptEditorActionHandler<T> | undefined;
-      if (!handler) {
-        return;
-      }
-      await handler(globalRef.current, actions, payload);
+      await promptEditorHandlers.runAction(action, globalRef.current, actions, payload);
     },
     [actions]
   );
