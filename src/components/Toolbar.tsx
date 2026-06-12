@@ -19,7 +19,6 @@ import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useCopyActions } from '@/hooks/useCopyActions';
 import { usePageText } from '@/hooks/usePageText';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
-import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { useShareLink } from '@/hooks/useShareLink';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import { ZOOM_STEP } from '@/lib/hotkeys';
@@ -45,12 +44,6 @@ export default function Toolbar() {
   const { openVocabulary } = useChapterVocabulary();
   const { openMemoryCard } = useChapterMemoryCard();
   const { handleCreateChapter } = useChapterActions();
-  const {
-    fitWidth,
-    fitHeight,
-    toggleOcrEditMode,
-    toggleFullscreen
-  } = useReaderCommands();
   const { settings, metrics } = useAppSelector(selectViewerWorkflow);
   const {
     invert,
@@ -227,7 +220,7 @@ export default function Toolbar() {
             <button
               type="button"
               className="button"
-              onClick={fitWidth}
+              onClick={() => dispatch(appActions.requestFitWidth())}
               disabled={controlsDisabled}
               aria-label="Fit width"
             >
@@ -236,7 +229,7 @@ export default function Toolbar() {
             <button
               type="button"
               className="button"
-              onClick={fitHeight}
+              onClick={() => dispatch(appActions.requestFitHeight())}
               disabled={controlsDisabled}
               aria-label="Fit height"
             >
@@ -370,7 +363,7 @@ export default function Toolbar() {
           <button
             type="button"
             className={`button ${ocrEditMode ? 'button-active' : ''}`}
-            onClick={toggleOcrEditMode}
+            onClick={() => dispatch(appActions.requestToggleOcrEditMode())}
             disabled={controlsDisabled || disableImageActions || ocrEditSaving}
           >
             {ocrEditSaving ? 'Saving Blocks…' : ocrEditMode ? 'Finish Blocks' : 'Edit Blocks'}
@@ -448,7 +441,7 @@ export default function Toolbar() {
           <button type="button" className="button" onClick={handleOpenHelp}>
             Help / Hotkeys
           </button>
-          <button type="button" className="button" onClick={toggleFullscreen}>
+          <button type="button" className="button" onClick={() => dispatch(appActions.requestToggleFullscreen())}>
             {fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           </button>
         </div>

@@ -4,8 +4,7 @@ import ReaderSidebar from '@/components/ReaderSidebar';
 import { useBookSession } from '@/hooks/useBookSession';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useReaderAudioControls } from '@/hooks/useReaderAudioControls';
-import { ReaderCommandProvider } from '@/hooks/useReaderCommands';
-import { useReaderFeatureCommands } from '@/hooks/useReaderFeatureCommands';
+import { useReaderFeatureRuntime } from '@/hooks/useReaderFeatureRuntime';
 import { useReaderShellControls } from '@/hooks/useReaderShellControls';
 import { ReaderShellProvider, useReaderShell } from '@/hooks/useReaderShellContext';
 
@@ -21,7 +20,7 @@ export default function ReaderAppRoot() {
     viewMode,
     currentImage: manifest[currentPage] ?? null
   });
-  const readerCommands = useReaderFeatureCommands({
+  useReaderFeatureRuntime({
     gotoInputRef: shellControls.gotoInputRef
   });
   useReaderAudioControls({
@@ -31,9 +30,7 @@ export default function ReaderAppRoot() {
 
   return (
     <ReaderShellProvider value={shellControls}>
-      <ReaderCommandProvider value={readerCommands}>
-        <ReaderAppLayout />
-      </ReaderCommandProvider>
+      <ReaderAppLayout />
     </ReaderShellProvider>
   );
 }

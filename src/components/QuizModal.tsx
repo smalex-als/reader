@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useCurrentChapterLabel } from '@/hooks/useCurrentChapterLabel';
-import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import {
@@ -19,10 +18,6 @@ import {
 
 export default function QuizModal() {
   const dispatch = useAppDispatch();
-  const {
-    stopStudyAudio,
-    playStudyAudioSingle
-  } = useReaderCommands();
   const { regenerateQuiz: regenerateChapterQuiz } = useChapterQuiz();
   const { refreshUnits } = useUnitActions();
   const { regenerateQuiz: regenerateUnitTopicQuiz } = useUnitTopicQuiz();
@@ -42,7 +37,7 @@ export default function QuizModal() {
   const wasOpenRef = useRef(false);
   const autoPlayQuestionKeyRef = useRef<string | null>(null);
   const handleClose = () => {
-    stopStudyAudio();
+    dispatch(appActions.requestStopStream());
     dispatch(appActions.closeModal(activeModal));
   };
   const handleRegenerateQuiz = () => {
@@ -114,11 +109,11 @@ export default function QuizModal() {
       'Answer choices.',
       ...currentQuestion.options.map((option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`)
     ].join('\n\n');
-    playStudyAudioSingle({
+    dispatch(appActions.requestPlayStudyAudioSingle({
       text: spokenText,
       pageKey: `${quiz.contextKey}::question-${currentIndex + 1}`
-    });
-  }, [autoPlayEnabled, currentIndex, currentQuestion, currentQuestionAnswered, open, playStudyAudioSingle, quiz]);
+    }));
+  }, [autoPlayEnabled, currentIndex, currentQuestion, currentQuestionAnswered, dispatch, open, quiz]);
 
   if (!open) {
     return null;
@@ -182,7 +177,7 @@ export default function QuizModal() {
                     }`}
                     onClick={() => {
                       if (isCurrentQuestionStreaming) {
-                        stopStudyAudio();
+                        dispatch(appActions.requestStopStream());
                         return;
                       }
                       const spokenText = [
@@ -202,10 +197,10 @@ export default function QuizModal() {
                       ]
                         .filter(Boolean)
                         .join('\n\n');
-                      playStudyAudioSingle({
+                      dispatch(appActions.requestPlayStudyAudioSingle({
                         text: spokenText,
                         pageKey: `${quiz.contextKey}::question-${currentIndex + 1}`
-                      });
+                      }));
                     }}
                     aria-label={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
                     title={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
@@ -258,10 +253,10 @@ export default function QuizModal() {
                             .join('\n\n');
                           setAnswers((prev) => ({ ...prev, [currentQuestion.id]: optionIndex }));
                           if (autoPlayEnabled) {
-                            playStudyAudioSingle({
+                            dispatch(appActions.requestPlayStudyAudioSingle({
                               text: answerFeedback,
                               pageKey: `${quiz.contextKey}::question-${currentIndex + 1}::answer`
-                            });
+                            }));
                           }
                         }}
                         disabled={submitted || currentQuestionAnswered}
