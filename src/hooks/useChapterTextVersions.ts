@@ -7,11 +7,11 @@ import {
 import {
   getChapterAudioProvider,
   getChapterTextVersionDisplayState,
-  normalizeVersionSelection,
   selectChapterTextVersion
 } from '@/hooks/chapterTextVersionState';
 import { useChapterAudioPolling } from '@/hooks/useChapterAudioPolling';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useChapterTextVersionActionBridge } from '@/hooks/useChapterTextVersionActionBridge';
 import { useChapterTextVersionRefs } from '@/hooks/useChapterTextVersionRefs';
 import {
   appActions,
@@ -105,10 +105,18 @@ export function useChapterTextVersions() {
     actionsRef: chapterTextVersionActionsRef,
     resetAudioJob
   });
-
-  const chapterTextVersionActions = useMemo<ChapterTextVersionActions>(
-    () => ({
-      setChapterLoading: setLoading,
+  const refreshChapter = useCallback(() => {
+    setLocalRefreshToken((prev) => prev + 1);
+  }, []);
+  const chapterTextVersionActions = useChapterTextVersionActionBridge({
+    refs: {
+      bookIdRef,
+      chapterNumberRef,
+      selectedVersionIdRef,
+      actionsRef: chapterTextVersionActionsRef
+    },
+    status: {
+      setLoading,
       setVersionLoading,
       setGenerating,
       setAudioGenerating,
@@ -118,77 +126,31 @@ export function useChapterTextVersions() {
       setVersionError,
       setAudioError,
       setVersionStatus,
-      setMissingFile,
+      setMissingFile
+    },
+    text: {
       setChapterText,
       setSelectedText,
-      setSelectedTextVersionId,
-      applyTextVersions: (result, mode) => {
-        const nextVersions = result.versions;
-        setVersions(nextVersions);
-        setPromptLibrary(result.promptLibrary);
-        const nextVersionId = normalizeVersionSelection(result);
-        if (mode === 'load') {
-          setSelectedVersionId((current) =>
-            current && nextVersions.some((version) => version.id === current) ? current : nextVersionId
-          );
-          setSourceVersionId((current) =>
-            current && nextVersions.some((version) => version.id === current) ? current : nextVersionId
-          );
-          setSelectedPromptId((current) => current || result.promptLibrary[0]?.id || 'narration-default');
-          return;
-        }
-        setSelectedVersionId(nextVersionId);
-        if (mode === 'create') {
-          setSourceVersionId(nextVersionId);
-        }
-      },
-      applyAudioStatus: (job, currentVersionId) => {
-        const audioVersionId = job?.status === 'completed' ? job.versionId ?? null : null;
-        setChapterAudioVersionId(audioVersionId);
-        setChapterAudioReady(Boolean(job?.audioUrl) && audioVersionId === currentVersionId);
-        setChapterAudioUrl(job?.audioUrl ?? null);
-        setChapterAudioSubchapters(job?.subchapters ?? []);
-      },
+      setSelectedTextVersionId
+    },
+    versions: {
+      setVersions,
+      setPromptLibrary,
+      setSelectedVersionId,
+      setSourceVersionId,
+      setSelectedPromptId,
+      refreshChapter
+    },
+    audio: {
+      setChapterAudioReady,
+      setChapterAudioVersionId,
+      setChapterAudioUrl,
+      setChapterAudioSubchapters,
       setAudioJob,
       clearAudioPoll,
-      scheduleAudioPoll,
-      refreshChapter: () => setLocalRefreshToken((prev) => prev + 1),
-      reloadAudioStatus: async () => {
-        const currentBookId = bookIdRef.current;
-        const currentChapterNumber = chapterNumberRef.current;
-        if (!currentBookId || !currentChapterNumber) {
-          return;
-        }
-        const actions = chapterTextVersionActionsRef.current;
-        if (!actions) {
-          return;
-        }
-        await chapterTextVersionHandlers.runAction(
-          'loadAudioStatus',
-          null,
-          actions,
-          {
-            bookId: currentBookId,
-            chapterNumber: currentChapterNumber,
-            versionId: selectedVersionIdRef.current || 'base'
-          }
-        );
-      },
-      resetTextVersionDraft: () => dispatch(appActions.resetTextVersionModalDraft()),
-      markAudioDeleted: () => {
-        setChapterAudioReady(false);
-        setChapterAudioVersionId(null);
-        setChapterAudioUrl(null);
-        setAudioJob(null);
-      },
-      setCreateVersionSucceeded: () => {}
-    }),
-    [
-      dispatch,
-      setSelectedPromptId,
-      setSourceVersionId
-    ]
-  );
+      scheduleAudioPoll
+    }
+  });
 
   useEffect(() => {
     chapterTextVersionActionsRef.current = chapterTextVersionActions;
