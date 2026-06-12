@@ -1,104 +1,68 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
-import {
-  type AudioJobStatus,
-  type ChapterTextVersionActions
-} from '@/hooks/chapterTextVersionActions';
-import {
-  getChapterTextVersionDisplayState,
-  selectChapterTextVersion
-} from '@/hooks/chapterTextVersionState';
+import { useCallback, useEffect, useRef } from 'react';
+import type { ChapterTextVersionActions } from '@/hooks/chapterTextVersionActions';
 import { useChapterAudioPolling } from '@/hooks/useChapterAudioPolling';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useChapterTextVersionActionBridge } from '@/hooks/useChapterTextVersionActionBridge';
 import { useChapterTextVersionCommands } from '@/hooks/useChapterTextVersionCommands';
 import { useChapterTextVersionLoadEffects } from '@/hooks/useChapterTextVersionLoadEffects';
+import { useChapterTextVersionModalWorkflow } from '@/hooks/useChapterTextVersionModalWorkflow';
 import { useChapterTextVersionRefs } from '@/hooks/useChapterTextVersionRefs';
+import { useChapterTextVersionState } from '@/hooks/useChapterTextVersionState';
 import {
-  appActions,
   selectRefreshTokens,
-  selectTextVersionModalWorkflow,
   selectVoiceWorkflow,
-  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
-import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
-
-function resolveNext<T>(next: SetStateAction<T>, current: T) {
-  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
-}
 
 export function useChapterTextVersions() {
-  const dispatch = useAppDispatch();
   const { bookId, chapterNumber, pageRange: chapterRange } = useCurrentChapterContext();
   const { chapterView: refreshToken } = useAppSelector(selectRefreshTokens);
   const { mp3Voice } = useAppSelector(selectVoiceWorkflow);
+  const {
+    state,
+    publicState,
+    setters,
+    setterGroups,
+    derived
+  } = useChapterTextVersionState({
+    bookId,
+    chapterNumber,
+    chapterRange
+  });
+  const {
+    setAudioJob,
+    setLocalRefreshToken,
+    setSelectedVersionId
+  } = setters;
   const {
     sourceVersionId,
     versionModel,
     selectedPromptId,
     customPrompt,
     promptName,
-    savePromptToLibrary
-  } = useAppSelector(selectTextVersionModalWorkflow);
-  const [chapterText, setChapterText] = useState('');
-  const [selectedText, setSelectedText] = useState('');
-  const [selectedTextVersionId, setSelectedTextVersionId] = useState<string | null>(null);
-  const [versions, setVersions] = useState<ChapterTextVersion[]>([]);
-  const [promptLibrary, setPromptLibrary] = useState<ChapterTextPrompt[]>([]);
-  const [selectedVersionId, setSelectedVersionId] = useState('base');
-  const [loading, setLoading] = useState(false);
-  const [versionLoading, setVersionLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [missingFile, setMissingFile] = useState<string | null>(null);
-  const [versionError, setVersionError] = useState<string | null>(null);
-  const [localRefreshToken, setLocalRefreshToken] = useState(0);
-  const [audioGenerating, setAudioGenerating] = useState(false);
-  const [audioDeleting, setAudioDeleting] = useState(false);
-  const [audioError, setAudioError] = useState<string | null>(null);
-  const [versionSaving, setVersionSaving] = useState(false);
-  const [versionStatus, setVersionStatus] = useState<string | null>(null);
-  const [chapterAudioReady, setChapterAudioReady] = useState(false);
-  const [chapterAudioVersionId, setChapterAudioVersionId] = useState<string | null>(null);
-  const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
-  const [chapterAudioSubchapters, setChapterAudioSubchapters] = useState<FloatingAudioSubchapter[]>([]);
-  const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
+    savePromptToLibrary,
+    setSourceVersionId,
+    setSelectedPromptId
+  } = useChapterTextVersionModalWorkflow({
+    versions: state.versions,
+    promptLibrary: state.promptLibrary,
+    versionSaving: state.versionSaving,
+    canCreateVersion: derived.canCreateVersion
+  });
   const chapterTextVersionActionsRef = useRef<ChapterTextVersionActions | null>(null);
   const {
     bookIdRef,
     chapterNumberRef,
-    sourceVersionIdRef,
-    selectedPromptIdRef,
     selectedVersionIdRef
   } = useChapterTextVersionRefs({
     bookId,
     chapterNumber,
-    sourceVersionId,
-    selectedPromptId,
-    selectedVersionId
+    selectedVersionId: state.selectedVersionId
   });
 
-  const setSourceVersionId = useCallback(
-    (next: SetStateAction<string>) => {
-      dispatch(appActions.setTextVersionModalSourceVersionId(resolveNext(next, sourceVersionIdRef.current)));
-    },
-    [dispatch]
-  );
-  const setSelectedPromptId = useCallback(
-    (next: SetStateAction<string>) => {
-      dispatch(appActions.setTextVersionModalSelectedPromptId(resolveNext(next, selectedPromptIdRef.current)));
-    },
-    [dispatch]
-  );
-
-  const selectedVersion = useMemo(
-    () => selectChapterTextVersion(versions, selectedVersionId),
-    [selectedVersionId, versions]
-  );
   const resetAudioJob = useCallback(() => {
     setAudioJob(null);
-  }, []);
+  }, [setAudioJob]);
   const { clearAudioPoll, scheduleAudioPoll } = useChapterAudioPolling({
     bookId,
     chapterNumber,
@@ -107,7 +71,7 @@ export function useChapterTextVersions() {
   });
   const refreshChapter = useCallback(() => {
     setLocalRefreshToken((prev) => prev + 1);
-  }, []);
+  }, [setLocalRefreshToken]);
   const chapterTextVersionActions = useChapterTextVersionActionBridge({
     refs: {
       bookIdRef,
@@ -115,38 +79,16 @@ export function useChapterTextVersions() {
       selectedVersionIdRef,
       actionsRef: chapterTextVersionActionsRef
     },
-    status: {
-      setLoading,
-      setVersionLoading,
-      setGenerating,
-      setAudioGenerating,
-      setAudioDeleting,
-      setVersionSaving,
-      setError,
-      setVersionError,
-      setAudioError,
-      setVersionStatus,
-      setMissingFile
-    },
-    text: {
-      setChapterText,
-      setSelectedText,
-      setSelectedTextVersionId
-    },
+    status: setterGroups.status,
+    text: setterGroups.text,
     versions: {
-      setVersions,
-      setPromptLibrary,
-      setSelectedVersionId,
+      ...setterGroups.versions,
       setSourceVersionId,
       setSelectedPromptId,
       refreshChapter
     },
     audio: {
-      setChapterAudioReady,
-      setChapterAudioVersionId,
-      setChapterAudioUrl,
-      setChapterAudioSubchapters,
-      setAudioJob,
+      ...setterGroups.audio,
       clearAudioPoll,
       scheduleAudioPoll
     }
@@ -159,97 +101,39 @@ export function useChapterTextVersions() {
   useChapterTextVersionLoadEffects({
     bookId,
     chapterNumber,
-    selectedVersionId,
-    selectedVersion,
-    chapterText,
-    missingFile,
+    selectedVersionId: state.selectedVersionId,
+    selectedVersion: derived.selectedVersion,
+    chapterText: state.chapterText,
+    missingFile: state.missingFile,
     refreshToken,
-    localRefreshToken,
+    localRefreshToken: state.localRefreshToken,
     actions: chapterTextVersionActions,
     setSourceVersionId,
     setSelectedPromptId,
-    text: {
-      setChapterText,
-      setSelectedText,
-      setSelectedTextVersionId
-    },
-    versions: {
-      setVersions,
-      setPromptLibrary,
-      setSelectedVersionId
-    },
-    status: {
-      setLoading,
-      setVersionLoading,
-      setError,
-      setMissingFile,
-      setVersionError,
-      setAudioGenerating,
-      setAudioError,
-      setVersionSaving,
-      setVersionStatus
-    },
-    audio: {
-      setChapterAudioReady,
-      setChapterAudioVersionId,
-      setChapterAudioUrl,
-      setChapterAudioSubchapters,
-      setAudioJob
-    }
+    text: setterGroups.text,
+    versions: setterGroups.versions,
+    status: setterGroups.loadStatus,
+    audio: setterGroups.audio
   });
 
-  const { displayText, displayLoading, displayError } = getChapterTextVersionDisplayState({
-    bookId,
-    chapterNumber,
-    selectedVersionId,
-    selectedVersion,
-    selectedTextVersionId,
-    chapterText,
-    selectedText,
-    loading,
-    versionLoading,
-    error,
-    versionError
-  });
-  const canGenerate = Boolean(bookId && chapterNumber && chapterRange);
-  const canCreateVersion = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
-  const canGenerateAudio = Boolean(bookId && chapterNumber && displayText && !displayLoading);
-  const isAudioJobActive = audioJob?.status === 'queued' || audioJob?.status === 'running';
-
-  useEffect(() => {
-    dispatch(appActions.setTextVersionModalResources({
-      versions,
-      promptLibrary,
-      versionSaving,
-      canCreateVersion
-    }));
-  }, [canCreateVersion, dispatch, promptLibrary, versionSaving, versions]);
-
-  const {
-    handleGenerate,
-    handleGenerateAudio,
-    handleDeleteAudio,
-    handleCreateVersion,
-    handleDeleteVersion,
-    handleCancelAudioJob
-  } = useChapterTextVersionCommands({
+  const commands = useChapterTextVersionCommands({
     bookId,
     chapterNumber,
     chapterRange,
-    canGenerate,
-    generating,
-    canGenerateAudio,
-    audioGenerating,
-    audioDeleting,
-    isAudioJobActive,
+    canGenerate: derived.canGenerate,
+    generating: state.generating,
+    canGenerateAudio: derived.canGenerateAudio,
+    audioGenerating: state.audioGenerating,
+    audioDeleting: state.audioDeleting,
+    isAudioJobActive: derived.isAudioJobActive,
     mp3Voice,
-    selectedVersionId,
-    selectedVersion,
-    chapterAudioReady,
-    chapterAudioVersionId,
-    chapterAudioUrl,
-    canCreateVersion,
-    versionSaving,
+    selectedVersionId: state.selectedVersionId,
+    selectedVersion: derived.selectedVersion,
+    chapterAudioReady: state.chapterAudioReady,
+    chapterAudioVersionId: state.chapterAudioVersionId,
+    chapterAudioUrl: state.chapterAudioUrl,
+    canCreateVersion: derived.canCreateVersion,
+    versionSaving: state.versionSaving,
     selectedPromptId,
     sourceVersionId,
     versionModel,
@@ -260,35 +144,8 @@ export function useChapterTextVersions() {
   });
 
   return {
-    chapterText,
-    displayText,
-    displayLoading,
-    displayError,
-    versions,
-    selectedVersion,
-    selectedVersionId,
+    ...publicState,
     setSelectedVersionId,
-    generating,
-    canGenerate,
-    missingFile,
-    audioGenerating,
-    audioDeleting,
-    audioError,
-    versionSaving,
-    versionStatus,
-    chapterAudioReady,
-    chapterAudioVersionId,
-    chapterAudioUrl,
-    chapterAudioSubchapters,
-    audioJob,
-    isAudioJobActive,
-    canCreateVersion,
-    canGenerateAudio,
-    handleGenerate,
-    handleGenerateAudio,
-    handleDeleteAudio,
-    handleCreateVersion,
-    handleDeleteVersion,
-    handleCancelAudioJob
+    ...commands
   };
 }
