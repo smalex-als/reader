@@ -9,7 +9,11 @@ import { useToast } from '@/hooks/useToast';
 import { clamp } from '@/lib/math';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookIds,
+  selectBookLibraryStateReady,
+  selectBookManifest,
+  selectBookType,
   selectNavigationState,
   selectReaderSession,
   selectViewerWorkflow,
@@ -76,13 +80,11 @@ export function useBookSession() {
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { defaultStreamVoice, streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
-  const {
-    books,
-    manifest,
-    bookType,
-    chapterCount,
-    libraryStateReady
-  } = useAppSelector(selectBookSessionWorkflow);
+  const books = useAppSelector(selectBookIds);
+  const manifest = useAppSelector(selectBookManifest);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const libraryStateReady = useAppSelector(selectBookLibraryStateReady);
   const pendingPageRef = useRef<number | null>(null);
   const shouldUseLocationPositionRef = useRef(true);
   const urlSyncPaused = mainView === 'units';

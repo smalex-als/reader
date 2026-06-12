@@ -2867,7 +2867,6 @@ export const selectStreamControlRequest = (state: CentralAppState) => state.stre
 export const selectShellControlRequest = (state: CentralAppState) => state.shellControlRequest;
 export const selectOcrEditRequest = (state: CentralAppState) => state.ocrEditRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
-export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectBookIds = (state: CentralAppState) => state.bookSessionWorkflow.books;
 export const selectBookManifest = (state: CentralAppState) => state.bookSessionWorkflow.manifest;
 export const selectBookType = (state: CentralAppState) => state.bookSessionWorkflow.bookType;
