@@ -1,21 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useChapterEditorActions } from '@/hooks/useChapterEditorActions';
 import {
-  appActions,
   selectBookSessionWorkflow,
   selectEditorState,
   selectReaderSession,
   selectTocWorkflow,
-  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { TocEntry } from '@/types/app';
-
-function formatChapterFilename(chapterNumber: number) {
-  return `chapter${String(chapterNumber).padStart(3, '0')}.txt`;
-}
 
 export default function ChapterEditor() {
-  const dispatch = useAppDispatch();
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
   const { bookType, chapterCount } = useAppSelector(selectBookSessionWorkflow);
   const { chapterNumber: editorChapterNumber, textVersion } = useAppSelector(selectEditorState);
@@ -60,104 +53,36 @@ export default function ChapterEditor() {
   const versionId = textVersion?.versionId ?? null;
   const versionLabel = textVersion?.versionLabel ?? null;
   const initialText = textVersion?.text ?? null;
-  const [draftText, setDraftText] = useState('');
-  const [draftTitle, setDraftTitle] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    draftText,
+    draftTitle,
+    loading,
+    saving,
+    error,
+    setDraftText,
+    setDraftTitle,
+    loadDraft,
+    saveDraft,
+    closeEditor
+  } = useChapterEditorActions();
   const editingTextVersion = Boolean(versionId);
-  const handleClose = useCallback(() => {
-    dispatch(appActions.setEditorOpen(false));
-    dispatch(appActions.setEditorChapterNumber(null));
-    dispatch(appActions.setEditorTextVersion(null));
-  }, [dispatch]);
 
   useEffect(() => {
-    if (!bookId || !chapterNumber) {
-      setDraftText('');
-      setDraftTitle('');
-      setError(null);
-      setLoading(false);
-      return;
-    }
+    void loadDraft({
+      bookId,
+      chapterNumber,
+      chapterTitle,
+      initialText
+    });
+  }, [bookId, chapterNumber, chapterTitle, initialText, loadDraft]);
 
-    if (initialText !== null) {
-      setDraftText(initialText);
-      setDraftTitle(chapterTitle ?? '');
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
-    let canceled = false;
-    const filename = formatChapterFilename(chapterNumber);
-    const url = `/data/${encodeURIComponent(bookId)}/${filename}`;
-
-    setLoading(true);
-    setError(null);
-
-    fetch(url)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error('Failed to load chapter.');
-        }
-        return response.text();
-      })
-      .then((text) => {
-        if (canceled) {
-          return;
-        }
-        setDraftText(text.trim());
-        setDraftTitle(chapterTitle ?? '');
-      })
-      .catch((err: Error) => {
-        if (canceled) {
-          return;
-        }
-        setError(err.message || 'Unable to load chapter text.');
-      })
-      .finally(() => {
-        if (!canceled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      canceled = true;
-    };
-  }, [bookId, chapterNumber, chapterTitle, initialText]);
-
-  const handleSave = useCallback(async () => {
-    if (!bookId || !chapterNumber || saving) {
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const url = editingTextVersion
-        ? `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/text-versions/${encodeURIComponent(versionId || 'base')}`
-        : `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}`;
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: draftText, title: draftTitle })
-      });
-      if (!response.ok) {
-        throw new Error(`Save failed: ${response.status}`);
-      }
-      const payload = (await response.json()) as { toc?: TocEntry[] };
-      if (Array.isArray(payload.toc)) {
-        dispatch(appActions.setTocEntries(payload.toc));
-      }
-      dispatch(appActions.refreshChapterView());
-      handleClose();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to save chapter.';
-      setError(message);
-    } finally {
-      setSaving(false);
-    }
-  }, [bookId, chapterNumber, dispatch, draftText, draftTitle, editingTextVersion, handleClose, saving, versionId]);
+  const handleSave = useCallback(() => {
+    void saveDraft({
+      bookId,
+      chapterNumber,
+      versionId
+    });
+  }, [bookId, chapterNumber, saveDraft, versionId]);
 
   return (
     <div className="chapter-editor">
@@ -179,7 +104,7 @@ export default function ChapterEditor() {
           <button type="button" className="button" onClick={handleSave} disabled={saving || loading}>
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button type="button" className="button button-secondary" onClick={handleClose} disabled={saving}>
+          <button type="button" className="button button-secondary" onClick={() => void closeEditor()} disabled={saving}>
             Close
           </button>
         </div>
