@@ -17,7 +17,6 @@ import {
   selectNavigationState,
   selectReaderSession,
   selectViewerWorkflow,
-  selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
@@ -25,13 +24,10 @@ import {
   loadLastPage,
   loadLibraryStateFromServer,
   loadSettingsForBook,
-  loadStreamVoiceForBook,
   markBookOpened,
   saveLastBook,
-  saveSettingsForBook,
-  saveStreamVoiceForBook
+  saveSettingsForBook
 } from '@/lib/storage';
-import type { AppSettings } from '@/types/app';
 
 function getBookFromLocation(): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -79,7 +75,6 @@ export function useBookSession() {
   const { mainView } = useAppSelector(selectNavigationState);
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { settings } = useAppSelector(selectViewerWorkflow);
-  const { defaultStreamVoice, streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const books = useAppSelector(selectBookIds);
   const manifest = useAppSelector(selectBookManifest);
   const bookType = useAppSelector(selectBookType);
@@ -88,14 +83,6 @@ export function useBookSession() {
   const pendingPageRef = useRef<number | null>(null);
   const shouldUseLocationPositionRef = useRef(true);
   const urlSyncPaused = mainView === 'units';
-  const isStreamVoice = useCallback(
-    (value: string) => streamVoiceOptions.length === 0 || streamVoiceOptions.some((voice) => voice.id === value),
-    [streamVoiceOptions]
-  );
-  const getDefaultStreamVoice = useCallback(
-    () => defaultStreamVoice || streamVoiceOptions[0]?.id || '',
-    [defaultStreamVoice, streamVoiceOptions]
-  );
 
   const setBooks: Dispatch<SetStateAction<string[]>> = useCallback(
     (next) => {
@@ -316,7 +303,6 @@ export function useBookSession() {
       setManifest([]);
       setBookType('image');
       setChapterCount(0);
-      dispatch(appActions.setStreamVoice(getDefaultStreamVoice()));
       return;
     }
     const baseSettings = createDefaultSettings();
@@ -329,12 +315,6 @@ export function useBookSession() {
         }
       : baseSettings;
     dispatch(appActions.setViewerSettings(nextSettings));
-    const storedVoice = loadStreamVoiceForBook(bookId);
-    if (storedVoice && isStreamVoice(storedVoice)) {
-      dispatch(appActions.setStreamVoice(storedVoice));
-    } else {
-      dispatch(appActions.setStreamVoice(getDefaultStreamVoice()));
-    }
     pendingPageRef.current = loadLastPage(bookId);
     setLoading(true);
     dispatch(appActions.setViewerMetrics(null));
@@ -353,8 +333,6 @@ export function useBookSession() {
   }, [
     bookId,
     createDefaultSettings,
-    getDefaultStreamVoice,
-    isStreamVoice,
     libraryStateReady,
     dispatch
   ]);
@@ -368,14 +346,4 @@ export function useBookSession() {
     }, 250);
     return () => window.clearTimeout(timeout);
   }, [bookId, settings]);
-
-  useEffect(() => {
-    if (!bookId) {
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      saveStreamVoiceForBook(bookId, streamVoice);
-    }, 150);
-    return () => window.clearTimeout(timeout);
-  }, [bookId, streamVoice]);
 }

@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } f
 import { fetchStreamVoices } from '@/api/streamVoices';
 import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
-import { loadMp3VoiceForBook, saveMp3VoiceForBook } from '@/lib/storage';
+import {
+  loadMp3VoiceForBook,
+  loadStreamVoiceForBook,
+  saveMp3VoiceForBook,
+  saveStreamVoiceForBook
+} from '@/lib/storage';
 import {
   appActions,
   selectReaderSession,
@@ -49,6 +54,7 @@ addActionHandler('loadVoices', async (_state, actions): Promise<void> => {
 export function useStreamVoices() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
+  const { bookId } = useAppSelector(selectReaderSession);
   const { streamVoiceOptions, defaultStreamVoice, streamVoice } = useAppSelector(selectVoiceWorkflow);
 
   const setStreamVoice: Dispatch<SetStateAction<StreamVoice>> = useCallback(
@@ -96,6 +102,28 @@ export function useStreamVoices() {
       cancelled = true;
     };
   }, [dispatch, showToast]);
+
+  useEffect(() => {
+    const storedVoice = bookId ? loadStreamVoiceForBook(bookId) : null;
+    const nextVoice =
+      storedVoice && isStreamVoice(storedVoice)
+        ? storedVoice
+        : getDefaultStreamVoice();
+    if (streamVoice === nextVoice) {
+      return;
+    }
+    dispatch(appActions.setStreamVoice(nextVoice));
+  }, [bookId, dispatch, getDefaultStreamVoice, isStreamVoice, streamVoice]);
+
+  useEffect(() => {
+    if (!bookId) {
+      return;
+    }
+    const timeout = window.setTimeout(() => {
+      saveStreamVoiceForBook(bookId, streamVoice);
+    }, 150);
+    return () => window.clearTimeout(timeout);
+  }, [bookId, streamVoice]);
 
   return {
     streamVoiceOptions,
