@@ -187,6 +187,11 @@ export interface ChapterTextPrompt {
   updatedAt?: string | null;
 }
 
+export interface ChapterTextPromptDraft {
+  name: string;
+  template: string;
+}
+
 export interface ChapterTextVersion {
   id: string;
   index: number;

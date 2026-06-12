@@ -3,33 +3,10 @@ import CloseIcon from '@/components/CloseIcon';
 import {
   appActions,
   selectModalOpen,
+  selectPromptEditorWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { ChapterTextPrompt } from '@/types/app';
-
-type PromptLibraryResponse = {
-  prompts?: ChapterTextPrompt[];
-  prompt?: ChapterTextPrompt;
-};
-
-async function readErrorMessage(response: Response) {
-  try {
-    const payload = (await response.json()) as { error?: string };
-    return payload?.error ?? `Request failed (${response.status})`;
-  } catch {
-    return `Request failed (${response.status})`;
-  }
-}
-
-async function fetchPromptLibrary(init?: RequestInit) {
-  const response = await fetch('/api/chapter-text-prompts', init);
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response));
-  }
-  const payload = (await response.json()) as PromptLibraryResponse;
-  return Array.isArray(payload.prompts) ? payload.prompts : [];
-}
 
 const NEW_PROMPT_TEMPLATE = `Rewrite the chapter into a clean article version.
 
@@ -49,14 +26,9 @@ Source:
 export default function PromptEditorModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('promptEditor'));
-  const [prompts, setPrompts] = useState<ChapterTextPrompt[]>([]);
-  const [selectedId, setSelectedId] = useState('');
+  const { prompts, selectedId, loading, saving, error, status } = useAppSelector(selectPromptEditorWorkflow);
   const [draftName, setDraftName] = useState('');
   const [draftTemplate, setDraftTemplate] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
 
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedId) ?? prompts[0] ?? null,
@@ -74,38 +46,8 @@ export default function PromptEditorModal() {
     if (!open) {
       return;
     }
-    let canceled = false;
-    setLoading(true);
-    setError(null);
-    setStatus(null);
-    fetchPromptLibrary()
-      .then((nextPrompts) => {
-        if (canceled) {
-          return;
-        }
-        setPrompts(nextPrompts);
-        setSelectedId((current) =>
-          current && nextPrompts.some((prompt) => prompt.id === current)
-            ? current
-            : nextPrompts[0]?.id ?? ''
-        );
-      })
-      .catch((err) => {
-        if (!canceled) {
-          setPrompts([]);
-          setSelectedId('');
-          setError(err instanceof Error ? err.message : 'Unable to load prompts.');
-        }
-      })
-      .finally(() => {
-        if (!canceled) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      canceled = true;
-    };
-  }, [open]);
+    dispatch(appActions.loadPromptEditorPrompts());
+  }, [dispatch, open]);
 
   useEffect(() => {
     if (!selectedPrompt) {
@@ -117,94 +59,28 @@ export default function PromptEditorModal() {
     setDraftTemplate(selectedPrompt.template);
   }, [selectedPrompt]);
 
-  const updatePrompts = (nextPrompts: ChapterTextPrompt[], nextSelectedId = selectedId) => {
-    setPrompts(nextPrompts);
-    setSelectedId(
-      nextSelectedId && nextPrompts.some((prompt) => prompt.id === nextSelectedId)
-        ? nextSelectedId
-        : nextPrompts[0]?.id ?? ''
-    );
-    dispatch(appActions.refreshChapterView());
+  const handleCreate = () => {
+    dispatch(appActions.createPromptEditorPrompt({
+      name: 'New article version prompt',
+      template: NEW_PROMPT_TEMPLATE
+    }));
   };
 
-  const handleCreate = async () => {
-    setSaving(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const response = await fetch('/api/chapter-text-prompts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'New article version prompt',
-          template: NEW_PROMPT_TEMPLATE
-        })
-      });
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response));
-      }
-      const payload = (await response.json()) as PromptLibraryResponse;
-      const nextPrompts = Array.isArray(payload.prompts) ? payload.prompts : [];
-      updatePrompts(nextPrompts, payload.prompt?.id);
-      setStatus('Prompt created.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to create prompt.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!selectedPrompt || !canSave) {
       return;
     }
-    setSaving(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const response = await fetch(`/api/chapter-text-prompts/${encodeURIComponent(selectedPrompt.id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: draftName,
-          template: draftTemplate
-        })
-      });
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response));
-      }
-      const payload = (await response.json()) as PromptLibraryResponse;
-      updatePrompts(Array.isArray(payload.prompts) ? payload.prompts : [], selectedPrompt.id);
-      setStatus('Prompt saved.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to save prompt.');
-    } finally {
-      setSaving(false);
-    }
+    dispatch(appActions.savePromptEditorPrompt(selectedPrompt.id, {
+      name: draftName,
+      template: draftTemplate
+    }));
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedPrompt || selectedPrompt.builtIn) {
       return;
     }
-    setSaving(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const response = await fetch(`/api/chapter-text-prompts/${encodeURIComponent(selectedPrompt.id)}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response));
-      }
-      const payload = (await response.json()) as PromptLibraryResponse;
-      updatePrompts(Array.isArray(payload.prompts) ? payload.prompts : []);
-      setStatus('Prompt deleted.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to delete prompt.');
-    } finally {
-      setSaving(false);
-    }
+    dispatch(appActions.deletePromptEditorPrompt(selectedPrompt.id));
   };
 
   if (!open) {
@@ -246,7 +122,7 @@ export default function PromptEditorModal() {
                 key={prompt.id}
                 type="button"
                 className={`prompt-editor-list-item ${prompt.id === selectedPrompt?.id ? 'prompt-editor-list-item-active' : ''}`}
-                onClick={() => setSelectedId(prompt.id)}
+                onClick={() => dispatch(appActions.setPromptEditorSelectedId(prompt.id))}
                 disabled={saving}
               >
                 <span>{prompt.name}</span>

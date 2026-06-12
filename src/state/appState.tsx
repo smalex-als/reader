@@ -20,6 +20,7 @@ import type {
   BookCard,
   BookCardUpdate,
   ChapterMemoryCard,
+  ChapterTextPromptDraft,
   ChapterTextPrompt,
   ChapterTextVersion,
   ChapterVocabulary,
@@ -360,6 +361,25 @@ export interface BookCardWorkflowState {
   };
 }
 
+export type PromptEditorCommandRequest = {
+  id: number;
+} & (
+  | { kind: 'create'; draft: ChapterTextPromptDraft }
+  | { kind: 'save'; promptId: string; draft: ChapterTextPromptDraft }
+  | { kind: 'delete'; promptId: string }
+);
+
+export interface PromptEditorWorkflowState {
+  prompts: ChapterTextPrompt[];
+  selectedId: string;
+  loading: boolean;
+  saving: boolean;
+  error: string | null;
+  status: string | null;
+  loadRequestId: number;
+  commandRequest: PromptEditorCommandRequest | null;
+}
+
 export interface ViewerWorkflowState {
   settings: AppSettings;
   metrics: ViewerMetrics | null;
@@ -423,6 +443,7 @@ export interface CentralAppState {
   pageTextWorkflow: PageTextWorkflowState;
   imagePreviewWorkflow: ImagePreviewWorkflowState;
   bookCardWorkflow: BookCardWorkflowState;
+  promptEditorWorkflow: PromptEditorWorkflowState;
   jobWorkerWorkflow: JobWorkerWorkflowState;
   listeningDashboardWorkflow: ListeningDashboardWorkflowState;
   viewerWorkflow: ViewerWorkflowState;
@@ -621,6 +642,16 @@ export type AppAction =
   | { type: 'bookCardWorkflow/setEditorSaving'; saving: boolean }
   | { type: 'bookCardWorkflow/setEditorError'; error: string | null }
   | { type: 'bookCardWorkflow/saveEditorCard'; bookId: string; card: BookCardUpdate }
+  | { type: 'promptEditorWorkflow/load' }
+  | { type: 'promptEditorWorkflow/setPrompts'; prompts: ChapterTextPrompt[]; selectedId?: string }
+  | { type: 'promptEditorWorkflow/setSelectedId'; selectedId: string }
+  | { type: 'promptEditorWorkflow/setLoading'; loading: boolean }
+  | { type: 'promptEditorWorkflow/setSaving'; saving: boolean }
+  | { type: 'promptEditorWorkflow/setError'; error: string | null }
+  | { type: 'promptEditorWorkflow/setStatus'; status: string | null }
+  | { type: 'promptEditorWorkflow/create'; draft: ChapterTextPromptDraft }
+  | { type: 'promptEditorWorkflow/save'; promptId: string; draft: ChapterTextPromptDraft }
+  | { type: 'promptEditorWorkflow/delete'; promptId: string }
   | { type: 'jobWorkerWorkflow/loadJobs' }
   | { type: 'jobWorkerWorkflow/setJobs'; jobs: JobWorkerJob[] }
   | { type: 'jobWorkerWorkflow/setLoading'; loading: boolean }
@@ -885,6 +916,16 @@ const initialAppState: CentralAppState = {
       loadRequest: null,
       saveRequest: null
     }
+  },
+  promptEditorWorkflow: {
+    prompts: [],
+    selectedId: '',
+    loading: false,
+    saving: false,
+    error: null,
+    status: null,
+    loadRequestId: 0,
+    commandRequest: null
   },
   jobWorkerWorkflow: {
     jobs: [],
@@ -1447,6 +1488,45 @@ export const appActions = {
     type: 'bookCardWorkflow/saveEditorCard',
     bookId,
     card
+  }),
+  loadPromptEditorPrompts: (): AppAction => ({ type: 'promptEditorWorkflow/load' }),
+  setPromptEditorPrompts: (prompts: ChapterTextPrompt[], selectedId?: string): AppAction => ({
+    type: 'promptEditorWorkflow/setPrompts',
+    prompts,
+    selectedId
+  }),
+  setPromptEditorSelectedId: (selectedId: string): AppAction => ({
+    type: 'promptEditorWorkflow/setSelectedId',
+    selectedId
+  }),
+  setPromptEditorLoading: (loading: boolean): AppAction => ({
+    type: 'promptEditorWorkflow/setLoading',
+    loading
+  }),
+  setPromptEditorSaving: (saving: boolean): AppAction => ({
+    type: 'promptEditorWorkflow/setSaving',
+    saving
+  }),
+  setPromptEditorError: (error: string | null): AppAction => ({
+    type: 'promptEditorWorkflow/setError',
+    error
+  }),
+  setPromptEditorStatus: (status: string | null): AppAction => ({
+    type: 'promptEditorWorkflow/setStatus',
+    status
+  }),
+  createPromptEditorPrompt: (draft: ChapterTextPromptDraft): AppAction => ({
+    type: 'promptEditorWorkflow/create',
+    draft
+  }),
+  savePromptEditorPrompt: (promptId: string, draft: ChapterTextPromptDraft): AppAction => ({
+    type: 'promptEditorWorkflow/save',
+    promptId,
+    draft
+  }),
+  deletePromptEditorPrompt: (promptId: string): AppAction => ({
+    type: 'promptEditorWorkflow/delete',
+    promptId
   }),
   loadJobWorkerJobs: (): AppAction => ({ type: 'jobWorkerWorkflow/loadJobs' }),
   setJobWorkerJobs: (jobs: JobWorkerJob[]): AppAction => ({
@@ -2971,6 +3051,116 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           }
         }
       };
+    case 'promptEditorWorkflow/load':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          loadRequestId: state.promptEditorWorkflow.loadRequestId + 1,
+          status: null,
+          error: null
+        }
+      };
+    case 'promptEditorWorkflow/setPrompts': {
+      const selectedId =
+        action.selectedId && action.prompts.some((prompt) => prompt.id === action.selectedId)
+          ? action.selectedId
+          : state.promptEditorWorkflow.selectedId &&
+            action.prompts.some((prompt) => prompt.id === state.promptEditorWorkflow.selectedId)
+          ? state.promptEditorWorkflow.selectedId
+          : action.prompts[0]?.id ?? '';
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          prompts: action.prompts,
+          selectedId
+        }
+      };
+    }
+    case 'promptEditorWorkflow/setSelectedId':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          selectedId: action.selectedId
+        }
+      };
+    case 'promptEditorWorkflow/setLoading':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          loading: action.loading
+        }
+      };
+    case 'promptEditorWorkflow/setSaving':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          saving: action.saving
+        }
+      };
+    case 'promptEditorWorkflow/setError':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          error: action.error
+        }
+      };
+    case 'promptEditorWorkflow/setStatus':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          status: action.status
+        }
+      };
+    case 'promptEditorWorkflow/create':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          commandRequest: {
+            id: (state.promptEditorWorkflow.commandRequest?.id ?? 0) + 1,
+            kind: 'create',
+            draft: action.draft
+          },
+          error: null,
+          status: null
+        }
+      };
+    case 'promptEditorWorkflow/save':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          commandRequest: {
+            id: (state.promptEditorWorkflow.commandRequest?.id ?? 0) + 1,
+            kind: 'save',
+            promptId: action.promptId,
+            draft: action.draft
+          },
+          error: null,
+          status: null
+        }
+      };
+    case 'promptEditorWorkflow/delete':
+      return {
+        ...state,
+        promptEditorWorkflow: {
+          ...state.promptEditorWorkflow,
+          commandRequest: {
+            id: (state.promptEditorWorkflow.commandRequest?.id ?? 0) + 1,
+            kind: 'delete',
+            promptId: action.promptId
+          },
+          error: null,
+          status: null
+        }
+      };
     case 'jobWorkerWorkflow/loadJobs':
       return {
         ...state,
@@ -3160,6 +3350,7 @@ export const selectMemoryCardWorkflow = (state: CentralAppState) => state.memory
 export const selectPageTextWorkflow = (state: CentralAppState) => state.pageTextWorkflow;
 export const selectImagePreviewWorkflow = (state: CentralAppState) => state.imagePreviewWorkflow;
 export const selectBookCardWorkflow = (state: CentralAppState) => state.bookCardWorkflow;
+export const selectPromptEditorWorkflow = (state: CentralAppState) => state.promptEditorWorkflow;
 export const selectJobWorkerWorkflow = (state: CentralAppState) => state.jobWorkerWorkflow;
 export const selectListeningDashboardWorkflow = (state: CentralAppState) => state.listeningDashboardWorkflow;
 export const selectViewerWorkflow = (state: CentralAppState) => state.viewerWorkflow;
