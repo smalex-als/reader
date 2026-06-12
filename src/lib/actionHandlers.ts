@@ -47,6 +47,7 @@ export async function runRequest<Result>(options: {
   setStatus?: (status: string | null) => void;
   fallbackError: string;
   successStatus?: string | null;
+  isActive?: () => boolean;
   request: () => Promise<Result>;
   onSuccess: (result: Result) => void | Promise<void>;
   onError?: (error: unknown) => void | Promise<void>;
@@ -57,6 +58,7 @@ export async function runRequest<Result>(options: {
     setStatus,
     fallbackError,
     successStatus,
+    isActive,
     request,
     onSuccess,
     onError
@@ -68,14 +70,22 @@ export async function runRequest<Result>(options: {
 
   try {
     const result = await request();
+    if (isActive && !isActive()) {
+      return;
+    }
     await onSuccess(result);
     if (successStatus !== undefined) {
       setStatus?.(successStatus);
     }
   } catch (error) {
+    if (isActive && !isActive()) {
+      return;
+    }
     await onError?.(error);
     setError(getErrorMessage(error, fallbackError));
   } finally {
-    setBusy(false);
+    if (!isActive || isActive()) {
+      setBusy(false);
+    }
   }
 }
