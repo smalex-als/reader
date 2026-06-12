@@ -1,29 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useJobWorkerActions } from '@/hooks/useJobWorkerActions';
 import {
   appActions,
+  selectJobWorkerWorkflow,
   selectModalOpen,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-
-type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
-
-interface JobWorkerJob {
-  id: string;
-  type: string;
-  status: JobStatus;
-  attempts: number;
-  createdAt: string;
-  startedAt: string | null;
-  completedAt: string | null;
-  updatedAt: string | null;
-  error: string | null;
-  errorDetails: unknown;
-  result: unknown;
-  logs: Array<{ timestamp: string; message: string; details: unknown }>;
-  payload: Record<string, unknown>;
-}
+import type { JobWorkerJob, JobWorkerStatus } from '@/types/app';
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -57,7 +42,7 @@ function stringifyLog(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
 
-function getStatusLabel(status: JobStatus) {
+function getStatusLabel(status: JobWorkerStatus) {
   switch (status) {
     case 'queued':
       return 'Queued';
@@ -73,40 +58,24 @@ function getStatusLabel(status: JobStatus) {
 }
 
 export default function JobWorkerModal() {
+  useJobWorkerActions();
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('jobWorker'));
-  const [jobs, setJobs] = useState<JobWorkerJob[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { jobs, loading, error } = useAppSelector(selectJobWorkerWorkflow);
   const handleClose = () => {
     dispatch(appActions.closeModal('jobWorker'));
   };
 
-  const loadJobs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/jobs');
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(payload.error || `Failed to load jobs: HTTP ${response.status}`);
-      }
-      setJobs(Array.isArray(payload.jobs) ? payload.jobs : []);
-      setError(null);
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadJobs = useCallback(() => {
+    dispatch(appActions.loadJobWorkerJobs());
+  }, [dispatch]);
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    void loadJobs();
-    const timer = window.setInterval(() => {
-      void loadJobs();
-    }, 2000);
+    loadJobs();
+    const timer = window.setInterval(loadJobs, 2000);
     return () => window.clearInterval(timer);
   }, [loadJobs, open]);
 
@@ -120,7 +89,7 @@ export default function JobWorkerModal() {
     [jobs]
   );
   const visibleJobs = useMemo(() => {
-    const statusRank: Record<JobStatus, number> = {
+    const statusRank: Record<JobWorkerStatus, number> = {
       running: 0,
       queued: 1,
       failed: 2,
@@ -162,7 +131,7 @@ export default function JobWorkerModal() {
         </header>
         <section className="modal-body job-worker-body">
           <div className="modal-toolbar">
-            <button type="button" className="button" onClick={() => void loadJobs()} disabled={loading}>
+            <button type="button" className="button" onClick={loadJobs} disabled={loading}>
               Refresh
             </button>
             <span className="toolbar-readout">

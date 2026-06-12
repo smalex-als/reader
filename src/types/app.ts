@@ -37,6 +37,30 @@ export interface OcrQueueState {
   paused: boolean;
 }
 
+export type JobWorkerStatus = 'queued' | 'running' | 'completed' | 'failed';
+
+export interface JobWorkerLog {
+  timestamp: string;
+  message: string;
+  details: unknown;
+}
+
+export interface JobWorkerJob {
+  id: string;
+  type: string;
+  status: JobWorkerStatus;
+  attempts: number;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string | null;
+  error: string | null;
+  errorDetails: unknown;
+  result: unknown;
+  logs: JobWorkerLog[];
+  payload: Record<string, unknown>;
+}
+
 export interface Bookmark {
   page: number;
   image: string;

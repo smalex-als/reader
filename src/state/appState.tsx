@@ -22,6 +22,8 @@ import type {
   ChapterTextVersion,
   ChapterVocabulary,
   ImagePreviewTarget,
+  JobWorkerJob,
+  ListeningDashboardData,
   OcrJob,
   OcrQueueState,
   PageText,
@@ -327,6 +329,20 @@ export interface ImagePreviewWorkflowState {
   error: string | null;
 }
 
+export interface JobWorkerWorkflowState {
+  jobs: JobWorkerJob[];
+  loading: boolean;
+  error: string | null;
+  refreshRequestId: number;
+}
+
+export interface ListeningDashboardWorkflowState {
+  data: ListeningDashboardData | null;
+  loading: boolean;
+  error: string | null;
+  refreshRequestId: number;
+}
+
 export interface ViewerWorkflowState {
   settings: AppSettings;
   metrics: ViewerMetrics | null;
@@ -389,6 +405,8 @@ export interface CentralAppState {
   memoryCardWorkflow: MemoryCardWorkflowState;
   pageTextWorkflow: PageTextWorkflowState;
   imagePreviewWorkflow: ImagePreviewWorkflowState;
+  jobWorkerWorkflow: JobWorkerWorkflowState;
+  listeningDashboardWorkflow: ListeningDashboardWorkflowState;
   viewerWorkflow: ViewerWorkflowState;
   voiceWorkflow: VoiceWorkflowState;
   textVersionModalWorkflow: TextVersionModalWorkflowState;
@@ -575,6 +593,14 @@ export type AppAction =
   | { type: 'imagePreviewWorkflow/setEnhancedUrl'; key: string; url: string | null }
   | { type: 'imagePreviewWorkflow/setEnhancing'; enhancing: boolean }
   | { type: 'imagePreviewWorkflow/setError'; error: string | null }
+  | { type: 'jobWorkerWorkflow/loadJobs' }
+  | { type: 'jobWorkerWorkflow/setJobs'; jobs: JobWorkerJob[] }
+  | { type: 'jobWorkerWorkflow/setLoading'; loading: boolean }
+  | { type: 'jobWorkerWorkflow/setError'; error: string | null }
+  | { type: 'listeningDashboardWorkflow/load' }
+  | { type: 'listeningDashboardWorkflow/setData'; data: ListeningDashboardData | null }
+  | { type: 'listeningDashboardWorkflow/setLoading'; loading: boolean }
+  | { type: 'listeningDashboardWorkflow/setError'; error: string | null }
   | { type: 'viewerWorkflow/setSettings'; settings: AppSettings }
   | { type: 'viewerWorkflow/setMetrics'; metrics: ViewerMetrics | null }
   | { type: 'voiceWorkflow/setVoiceOptions'; options: StreamVoiceOption[]; defaultVoice: StreamVoice }
@@ -805,6 +831,18 @@ const initialAppState: CentralAppState = {
     enhancedUrls: {},
     enhancing: false,
     error: null
+  },
+  jobWorkerWorkflow: {
+    jobs: [],
+    loading: false,
+    error: null,
+    refreshRequestId: 0
+  },
+  listeningDashboardWorkflow: {
+    data: null,
+    loading: false,
+    error: null,
+    refreshRequestId: 0
   },
   viewerWorkflow: {
     settings: createDefaultSettings(),
@@ -1316,6 +1354,32 @@ export const appActions = {
   }),
   setImagePreviewError: (error: string | null): AppAction => ({
     type: 'imagePreviewWorkflow/setError',
+    error
+  }),
+  loadJobWorkerJobs: (): AppAction => ({ type: 'jobWorkerWorkflow/loadJobs' }),
+  setJobWorkerJobs: (jobs: JobWorkerJob[]): AppAction => ({
+    type: 'jobWorkerWorkflow/setJobs',
+    jobs
+  }),
+  setJobWorkerLoading: (loading: boolean): AppAction => ({
+    type: 'jobWorkerWorkflow/setLoading',
+    loading
+  }),
+  setJobWorkerError: (error: string | null): AppAction => ({
+    type: 'jobWorkerWorkflow/setError',
+    error
+  }),
+  loadListeningDashboard: (): AppAction => ({ type: 'listeningDashboardWorkflow/load' }),
+  setListeningDashboardData: (data: ListeningDashboardData | null): AppAction => ({
+    type: 'listeningDashboardWorkflow/setData',
+    data
+  }),
+  setListeningDashboardLoading: (loading: boolean): AppAction => ({
+    type: 'listeningDashboardWorkflow/setLoading',
+    loading
+  }),
+  setListeningDashboardError: (error: string | null): AppAction => ({
+    type: 'listeningDashboardWorkflow/setError',
     error
   }),
   setViewerSettings: (settings: AppSettings): AppAction => ({
@@ -2708,6 +2772,70 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           error: action.error
         }
       };
+    case 'jobWorkerWorkflow/loadJobs':
+      return {
+        ...state,
+        jobWorkerWorkflow: {
+          ...state.jobWorkerWorkflow,
+          refreshRequestId: state.jobWorkerWorkflow.refreshRequestId + 1
+        }
+      };
+    case 'jobWorkerWorkflow/setJobs':
+      return {
+        ...state,
+        jobWorkerWorkflow: {
+          ...state.jobWorkerWorkflow,
+          jobs: action.jobs
+        }
+      };
+    case 'jobWorkerWorkflow/setLoading':
+      return {
+        ...state,
+        jobWorkerWorkflow: {
+          ...state.jobWorkerWorkflow,
+          loading: action.loading
+        }
+      };
+    case 'jobWorkerWorkflow/setError':
+      return {
+        ...state,
+        jobWorkerWorkflow: {
+          ...state.jobWorkerWorkflow,
+          error: action.error
+        }
+      };
+    case 'listeningDashboardWorkflow/load':
+      return {
+        ...state,
+        listeningDashboardWorkflow: {
+          ...state.listeningDashboardWorkflow,
+          refreshRequestId: state.listeningDashboardWorkflow.refreshRequestId + 1
+        }
+      };
+    case 'listeningDashboardWorkflow/setData':
+      return {
+        ...state,
+        listeningDashboardWorkflow: {
+          ...state.listeningDashboardWorkflow,
+          data: action.data
+        }
+      };
+    case 'listeningDashboardWorkflow/setLoading':
+      return {
+        ...state,
+        listeningDashboardWorkflow: {
+          ...state.listeningDashboardWorkflow,
+          loading: action.loading
+        }
+      };
+    case 'listeningDashboardWorkflow/setError':
+      return {
+        ...state,
+        listeningDashboardWorkflow: {
+          ...state.listeningDashboardWorkflow,
+          error: action.error
+        }
+      };
     case 'viewerWorkflow/setSettings':
       return {
         ...state,
@@ -2832,6 +2960,8 @@ export const selectVocabularyWorkflow = (state: CentralAppState) => state.vocabu
 export const selectMemoryCardWorkflow = (state: CentralAppState) => state.memoryCardWorkflow;
 export const selectPageTextWorkflow = (state: CentralAppState) => state.pageTextWorkflow;
 export const selectImagePreviewWorkflow = (state: CentralAppState) => state.imagePreviewWorkflow;
+export const selectJobWorkerWorkflow = (state: CentralAppState) => state.jobWorkerWorkflow;
+export const selectListeningDashboardWorkflow = (state: CentralAppState) => state.listeningDashboardWorkflow;
 export const selectViewerWorkflow = (state: CentralAppState) => state.viewerWorkflow;
 export const selectVoiceWorkflow = (state: CentralAppState) => state.voiceWorkflow;
 export const selectTextVersionModalWorkflow = (state: CentralAppState) => state.textVersionModalWorkflow;

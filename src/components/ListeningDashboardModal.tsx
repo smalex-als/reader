@@ -1,20 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useListeningDashboardActions } from '@/hooks/useListeningDashboardActions';
 import {
   appActions,
+  selectListeningDashboardWorkflow,
   selectModalOpen,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { ListeningDashboardData } from '@/types/app';
-
-async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-  return (await response.json()) as T;
-}
 
 function formatDuration(totalSeconds: number) {
   const seconds = Math.max(0, Math.round(totalSeconds));
@@ -49,11 +42,10 @@ function formatDay(value: string) {
 }
 
 export default function ListeningDashboardModal() {
+  useListeningDashboardActions();
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('listeningDashboard'));
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<ListeningDashboardData | null>(null);
+  const { data, loading, error } = useAppSelector(selectListeningDashboardWorkflow);
   const handleClose = useCallback(() => {
     dispatch(appActions.closeModal('listeningDashboard'));
   }, [dispatch]);
@@ -77,29 +69,8 @@ export default function ListeningDashboardModal() {
     if (!open) {
       return;
     }
-    let canceled = false;
-    setLoading(true);
-    setError(null);
-    void fetchJson<ListeningDashboardData>('/api/stream-history/dashboard')
-      .then((payload) => {
-        if (!canceled) {
-          setData(payload);
-        }
-      })
-      .catch((fetchError) => {
-        if (!canceled) {
-          setError(fetchError instanceof Error ? fetchError.message : 'Unable to load listening dashboard.');
-        }
-      })
-      .finally(() => {
-        if (!canceled) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      canceled = true;
-    };
-  }, [open]);
+    dispatch(appActions.loadListeningDashboard());
+  }, [dispatch, open]);
 
   const maxDaySeconds = useMemo(
     () => Math.max(1, ...((data?.byDay ?? []).map((entry) => entry.totalSeconds))),
