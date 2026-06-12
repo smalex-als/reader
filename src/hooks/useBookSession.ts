@@ -4,7 +4,7 @@ import {
   createBookSessionActions,
   type BookSessionActions
 } from '@/hooks/bookSessionActions';
-import { createDefaultSettings, type ViewMode } from '@/lib/appConstants';
+import type { ViewMode } from '@/lib/appConstants';
 import { useToast } from '@/hooks/useToast';
 import { clamp } from '@/lib/math';
 import {
@@ -16,17 +16,14 @@ import {
   selectBookType,
   selectNavigationState,
   selectReaderSession,
-  selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import {
   loadLastPage,
   loadLibraryStateFromServer,
-  loadSettingsForBook,
   markBookOpened,
-  saveLastBook,
-  saveSettingsForBook
+  saveLastBook
 } from '@/lib/storage';
 
 function getBookFromLocation(): string | null {
@@ -74,7 +71,6 @@ export function useBookSession() {
   const dispatch = useAppDispatch();
   const { mainView } = useAppSelector(selectNavigationState);
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const { settings } = useAppSelector(selectViewerWorkflow);
   const books = useAppSelector(selectBookIds);
   const manifest = useAppSelector(selectBookManifest);
   const bookType = useAppSelector(selectBookType);
@@ -305,16 +301,6 @@ export function useBookSession() {
       setChapterCount(0);
       return;
     }
-    const baseSettings = createDefaultSettings();
-    const storedSettings = loadSettingsForBook(bookId);
-    const nextSettings = storedSettings
-      ? {
-          ...baseSettings,
-          ...storedSettings,
-          pan: { ...baseSettings.pan, ...storedSettings.pan }
-        }
-      : baseSettings;
-    dispatch(appActions.setViewerSettings(nextSettings));
     pendingPageRef.current = loadLastPage(bookId);
     setLoading(true);
     dispatch(appActions.setViewerMetrics(null));
@@ -332,18 +318,7 @@ export function useBookSession() {
     });
   }, [
     bookId,
-    createDefaultSettings,
     libraryStateReady,
     dispatch
   ]);
-
-  useEffect(() => {
-    if (!bookId) {
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      saveSettingsForBook(bookId, settings);
-    }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [bookId, settings]);
 }

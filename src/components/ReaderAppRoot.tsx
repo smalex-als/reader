@@ -4,11 +4,13 @@ import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useOcrEditMode } from '@/hooks/useOcrEditMode';
 import { useReaderAudioControls } from '@/hooks/useReaderAudioControls';
+import { useViewerSettingsSession } from '@/hooks/useViewerSettingsSession';
 import { useShareLink } from '@/hooks/useShareLink';
 import { useUnitsRouteSync } from '@/hooks/useUnitsRoute';
 
 export default function ReaderAppRoot() {
   useBookSession();
+  useViewerSettingsSession();
   useUnitsRouteSync();
   useOcrEditMode();
   useDashboardNavigation();
