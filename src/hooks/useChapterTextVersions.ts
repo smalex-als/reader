@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
-import type { ChapterTextVersionsResult } from '@/api/chapterTextVersions';
 import {
   chapterTextVersionHandlers,
   type AudioJobStatus,
   type ChapterTextVersionActions
 } from '@/hooks/chapterTextVersionActions';
+import {
+  getChapterAudioProvider,
+  getChapterTextVersionDisplayState,
+  normalizeVersionSelection,
+  selectChapterTextVersion
+} from '@/hooks/chapterTextVersionState';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import {
   appActions,
@@ -16,10 +21,6 @@ import {
 } from '@/state/appState';
 import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
-
-function normalizeVersionSelection(result: ChapterTextVersionsResult, fallback = 'base') {
-  return result.createdVersionId ?? result.latestVersionId ?? result.versions[result.versions.length - 1]?.id ?? fallback;
-}
 
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
@@ -105,7 +106,7 @@ export function useChapterTextVersions() {
   );
 
   const selectedVersion = useMemo(
-    () => versions.find((version) => version.id === selectedVersionId) ?? versions[0] ?? null,
+    () => selectChapterTextVersion(versions, selectedVersionId),
     [selectedVersionId, versions]
   );
 
@@ -378,22 +379,19 @@ export function useChapterTextVersions() {
     audioPollRef.current = pollAudioJobStatus;
   }, [pollAudioJobStatus]);
 
-  const derivedTextPending = Boolean(
-    bookId &&
-      chapterNumber &&
-      selectedVersionId !== 'base' &&
-      selectedVersion &&
-      selectedTextVersionId !== selectedVersionId &&
-      !versionError
-  );
-  const displayText =
-    selectedVersionId === 'base'
-      ? chapterText
-      : selectedTextVersionId === selectedVersionId
-        ? selectedText
-        : '';
-  const displayLoading = loading || versionLoading || derivedTextPending;
-  const displayError = error || versionError;
+  const { displayText, displayLoading, displayError } = getChapterTextVersionDisplayState({
+    bookId,
+    chapterNumber,
+    selectedVersionId,
+    selectedVersion,
+    selectedTextVersionId,
+    chapterText,
+    selectedText,
+    loading,
+    versionLoading,
+    error,
+    versionError
+  });
   const canGenerate = Boolean(bookId && chapterNumber && chapterRange);
   const canCreateVersion = Boolean(bookId && chapterNumber && chapterText && !missingFile && !loading);
   const canGenerateAudio = Boolean(bookId && chapterNumber && displayText && !displayLoading);
@@ -445,8 +443,7 @@ export function useChapterTextVersions() {
   ]);
 
   const handleGenerateAudio = useCallback(() => {
-    const provider = mp3Voice.startsWith('xai_') ? 'xai' : mp3Voice.startsWith('yandex_') ? 'yandex' : 'default';
-    return handleGenerateAudioWithProvider(provider);
+    return handleGenerateAudioWithProvider(getChapterAudioProvider(mp3Voice));
   }, [handleGenerateAudioWithProvider, mp3Voice]);
 
   const handleCreateVersion = useCallback(async () => {
