@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import {
+  fetchAllToc,
+  generateChapterText,
+  generateToc,
+  saveToc
+} from '@/api/toc';
+import {
   appActions,
   selectBookSessionWorkflow,
   selectModalOpen,
@@ -10,19 +16,175 @@ import {
   type TocVariant
 } from '@/state/appState';
 import { useToast } from '@/hooks/useToast';
+import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 import type { TocEntry } from '@/types/app';
-
-async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-  return (await response.json()) as T;
-}
 
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
 }
+
+type TocPayloads = {
+  loadToc: {
+    bookId: string | null;
+  };
+  generateToc: {
+    bookId: string | null;
+    variant: TocVariant;
+  };
+  saveToc: {
+    bookId: string | null;
+    variant: TocVariant;
+    toc: TocEntry[];
+  };
+  generateChapter: {
+    bookId: string | null;
+    index: number;
+    pageStart: number;
+    pageEnd: number;
+    chapterNumber: number;
+  };
+};
+
+type TocActions = {
+  setEntries: (entries: TocEntry[]) => void;
+  setDetailedEntries: (entries: TocEntry[]) => void;
+  setVariant: (variant: TocVariant) => void;
+  setLoading: (loading: boolean) => void;
+  setGenerating: (generating: boolean) => void;
+  setSaving: (saving: boolean) => void;
+  setChapterGeneratingIndex: (index: number | null) => void;
+  setError: (error: string | null) => void;
+  showError: (message: string) => void;
+  showSuccess: (message: string) => void;
+};
+
+const tocHandlers = createActionHandlerRegistry<unknown, TocActions, TocPayloads>();
+const { addActionHandler } = tocHandlers;
+
+function applyAllToc(actions: TocActions, toc: { main: TocEntry[]; detailed: TocEntry[] }) {
+  actions.setEntries(toc.main);
+  actions.setDetailedEntries(toc.detailed);
+}
+
+async function reloadAllToc(bookId: string, actions: TocActions) {
+  try {
+    applyAllToc(actions, await fetchAllToc(bookId));
+  } catch (error) {
+    console.error(error);
+    actions.showError('Unable to load table of contents');
+  }
+}
+
+addActionHandler('loadToc', async (_state, actions, payload): Promise<void> => {
+  if (!payload.bookId) {
+    return;
+  }
+  await runRequest({
+    setBusy: actions.setLoading,
+    setError: actions.setError,
+    fallbackError: 'Unable to load table of contents',
+    request: () => fetchAllToc(payload.bookId!),
+    onSuccess: (toc) => applyAllToc(actions, toc),
+    onError: (error) => {
+      console.error(error);
+      actions.showError('Unable to load table of contents');
+    }
+  });
+});
+
+addActionHandler('generateToc', async (_state, actions, payload): Promise<void> => {
+  if (!payload.bookId) {
+    return;
+  }
+  await runRequest({
+    setBusy: actions.setGenerating,
+    setError: actions.setError,
+    fallbackError:
+      payload.variant === 'detailed'
+        ? 'Unable to generate detailed table of contents'
+        : 'Unable to generate table of contents',
+    request: () => generateToc(payload.bookId!, payload.variant),
+    onSuccess: async (toc) => {
+      if (payload.variant === 'detailed') {
+        actions.setDetailedEntries(toc);
+        actions.setVariant('detailed');
+        actions.showSuccess('Detailed table of contents generated');
+      } else {
+        actions.setEntries(toc);
+        actions.setVariant('main');
+        actions.showSuccess('Table of contents generated');
+      }
+      await reloadAllToc(payload.bookId!, actions);
+    },
+    onError: (error) => {
+      console.error(error);
+      actions.showError(
+        payload.variant === 'detailed'
+          ? 'Unable to generate detailed table of contents'
+          : 'Unable to generate table of contents'
+      );
+    }
+  });
+});
+
+addActionHandler('saveToc', async (_state, actions, payload): Promise<void> => {
+  if (!payload.bookId) {
+    return;
+  }
+  await runRequest({
+    setBusy: actions.setSaving,
+    setError: actions.setError,
+    fallbackError:
+      payload.variant === 'detailed'
+        ? 'Unable to save detailed table of contents'
+        : 'Unable to save table of contents',
+    request: () =>
+      saveToc({
+        bookId: payload.bookId!,
+        variant: payload.variant,
+        toc: payload.toc
+      }),
+    onSuccess: async (toc) => {
+      if (payload.variant === 'detailed') {
+        actions.setDetailedEntries(toc);
+        actions.showSuccess('Detailed table of contents saved');
+      } else {
+        actions.setEntries(toc);
+        actions.showSuccess('Table of contents saved');
+      }
+      await reloadAllToc(payload.bookId!, actions);
+    },
+    onError: (error) => {
+      console.error(error);
+      actions.showError(
+        payload.variant === 'detailed'
+          ? 'Unable to save detailed table of contents'
+          : 'Unable to save table of contents'
+      );
+    }
+  });
+});
+
+addActionHandler('generateChapter', async (_state, actions, payload): Promise<void> => {
+  if (!payload.bookId) {
+    return;
+  }
+  actions.setChapterGeneratingIndex(payload.index);
+  try {
+    const result = await generateChapterText({
+      bookId: payload.bookId,
+      pageStart: payload.pageStart,
+      pageEnd: payload.pageEnd,
+      chapterNumber: payload.chapterNumber
+    });
+    actions.showSuccess(`Chapter text saved: ${result.file}`);
+  } catch (error) {
+    console.error(error);
+    actions.showError('Unable to generate chapter text');
+  } finally {
+    actions.setChapterGeneratingIndex(null);
+  }
+});
 
 export function useTocManager() {
   const dispatch = useAppDispatch();
@@ -41,6 +203,27 @@ export function useTocManager() {
     chapterGeneratingIndex
   } = useAppSelector(selectTocWorkflow);
   const manifestLength = bookType === 'text' ? chapterCount : manifest.length;
+  const tocActions = useMemo<TocActions>(
+    () => ({
+      setEntries: (entries) => dispatch(appActions.setTocEntries(entries)),
+      setDetailedEntries: (entries) => dispatch(appActions.setDetailedTocEntries(entries)),
+      setVariant: (variant) => dispatch(appActions.setTocVariant(variant)),
+      setLoading: (loading) => dispatch(appActions.setTocLoading(loading)),
+      setGenerating: (generating) => dispatch(appActions.setTocGenerating(generating)),
+      setSaving: (saving) => dispatch(appActions.setTocSaving(saving)),
+      setChapterGeneratingIndex: (index) => dispatch(appActions.setTocChapterGeneratingIndex(index)),
+      setError: () => undefined,
+      showError: (message) => showToast(message, 'error'),
+      showSuccess: (message) => showToast(message, 'success')
+    }),
+    [dispatch, showToast]
+  );
+  const runTocAction = useCallback(
+    async <T extends keyof TocPayloads>(action: T, payload: TocPayloads[T]) => {
+      await tocHandlers.runAction(action, undefined, tocActions, payload);
+    },
+    [tocActions]
+  );
 
   const setTocEntries: Dispatch<SetStateAction<TocEntry[]>> = useCallback(
     (next) => {
@@ -89,100 +272,20 @@ export function useTocManager() {
   );
 
   const loadToc = useCallback(async () => {
-    if (!bookId) {
-      return;
-    }
-    dispatch(appActions.setTocLoading(true));
-    try {
-      const [mainData, detailedData] = await Promise.all([
-        fetchJson<{ toc: TocEntry[] }>(
-          `/api/books/${encodeURIComponent(bookId)}/toc?includeStats=1`
-        ),
-        fetchJson<{ toc: TocEntry[] }>(
-          `/api/books/${encodeURIComponent(bookId)}/toc?variant=detailed&includeStats=1`
-        )
-      ]);
-      dispatch(appActions.setTocEntries(Array.isArray(mainData.toc) ? mainData.toc : []));
-      dispatch(appActions.setDetailedTocEntries(Array.isArray(detailedData.toc) ? detailedData.toc : []));
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to load table of contents', 'error');
-    } finally {
-      dispatch(appActions.setTocLoading(false));
-    }
-  }, [bookId, dispatch, showToast]);
+    await runTocAction('loadToc', { bookId });
+  }, [bookId, runTocAction]);
 
   const handleGenerateToc = useCallback(async (variant: 'main' | 'detailed' = 'main') => {
-    if (!bookId) {
-      return;
-    }
-    dispatch(appActions.setTocGenerating(true));
-    try {
-      const response = await fetchJson<{ toc: TocEntry[] }>(
-        `/api/books/${encodeURIComponent(bookId)}/toc/generate?variant=${variant}${
-          variant === 'detailed' ? '&detailLevel=detailed' : ''
-        }`,
-        { method: 'POST' }
-      );
-      if (variant === 'detailed') {
-        dispatch(appActions.setDetailedTocEntries(Array.isArray(response.toc) ? response.toc : []));
-        dispatch(appActions.setTocVariant('detailed'));
-        showToast('Detailed table of contents generated', 'success');
-      } else {
-        dispatch(appActions.setTocEntries(Array.isArray(response.toc) ? response.toc : []));
-        dispatch(appActions.setTocVariant('main'));
-        showToast('Table of contents generated', 'success');
-      }
-      await loadToc();
-    } catch (error) {
-      console.error(error);
-      showToast(
-        variant === 'detailed'
-          ? 'Unable to generate detailed table of contents'
-          : 'Unable to generate table of contents',
-        'error'
-      );
-    } finally {
-      dispatch(appActions.setTocGenerating(false));
-    }
-  }, [bookId, dispatch, loadToc, showToast]);
+    await runTocAction('generateToc', { bookId, variant });
+  }, [bookId, runTocAction]);
 
   const handleSaveToc = useCallback(async (variant: 'main' | 'detailed' = 'main') => {
-    if (!bookId) {
-      return;
-    }
-    dispatch(appActions.setTocSaving(true));
-    try {
-      const response = await fetchJson<{ toc: TocEntry[] }>(
-        `/api/books/${encodeURIComponent(bookId)}/toc${
-          variant === 'detailed' ? '?variant=detailed' : ''
-        }`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ toc: variant === 'detailed' ? detailedTocEntries : tocEntries })
-        }
-      );
-      if (variant === 'detailed') {
-        dispatch(appActions.setDetailedTocEntries(Array.isArray(response.toc) ? response.toc : []));
-        showToast('Detailed table of contents saved', 'success');
-      } else {
-        dispatch(appActions.setTocEntries(Array.isArray(response.toc) ? response.toc : []));
-        showToast('Table of contents saved', 'success');
-      }
-      await loadToc();
-    } catch (error) {
-      console.error(error);
-      showToast(
-        variant === 'detailed'
-          ? 'Unable to save detailed table of contents'
-          : 'Unable to save table of contents',
-        'error'
-      );
-    } finally {
-      dispatch(appActions.setTocSaving(false));
-    }
-  }, [bookId, detailedTocEntries, dispatch, loadToc, showToast, tocEntries]);
+    await runTocAction('saveToc', {
+      bookId,
+      variant,
+      toc: variant === 'detailed' ? detailedTocEntries : tocEntries
+    });
+  }, [bookId, detailedTocEntries, runTocAction, tocEntries]);
 
   const handleAddTocEntry = useCallback((currentPage: number, variant: 'main' | 'detailed' = 'main') => {
     if (variant === 'detailed') {
@@ -243,29 +346,15 @@ export function useTocManager() {
         return;
       }
 
-      dispatch(appActions.setTocChapterGeneratingIndex(index));
-      try {
-        const result = await fetchJson<{ file: string }>(
-          `/api/books/${encodeURIComponent(bookId)}/chapters/generate`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pageStart,
-              pageEnd,
-              chapterNumber
-            })
-          }
-        );
-        showToast(`Chapter text saved: ${result.file}`, 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Unable to generate chapter text', 'error');
-      } finally {
-        dispatch(appActions.setTocChapterGeneratingIndex(null));
-      }
+      await runTocAction('generateChapter', {
+        bookId,
+        index,
+        pageStart,
+        pageEnd,
+        chapterNumber
+      });
     },
-    [bookId, dispatch, manifestLength, showToast, tocEntries]
+    [bookId, manifestLength, runTocAction, showToast, tocEntries]
   );
 
   useEffect(() => {
