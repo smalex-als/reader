@@ -11,6 +11,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useChapterActions } from '@/hooks/useBookSession';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
@@ -42,6 +43,7 @@ export default function Toolbar() {
   const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz();
   const { openVocabulary } = useChapterVocabulary();
   const { openMemoryCard } = useChapterMemoryCard();
+  const { handleCreateChapter } = useChapterActions();
   const { settings, metrics } = useAppSelector(selectViewerWorkflow);
   const {
     invert,
@@ -414,7 +416,7 @@ export default function Toolbar() {
           <button
             type="button"
             className="button"
-            onClick={() => dispatch(appActions.requestToolbarCreateChapter())}
+            onClick={() => void handleCreateChapter({ bookName: '', chapterTitle: '' })}
             disabled={controlsDisabled || !disableImageActions}
           >
             New Chapter

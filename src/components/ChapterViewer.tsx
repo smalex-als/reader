@@ -6,6 +6,7 @@ import AddIcon from '@/components/AddIcon';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
+import { useChapterActions } from '@/hooks/useBookSession';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useUnitActions } from '@/hooks/useUnitActions';
@@ -153,6 +154,7 @@ function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
 
 export default function ChapterViewer() {
   const dispatch = useAppDispatch();
+  const { handleCreateChapter, handleDeleteChapter } = useChapterActions();
   const { settings } = useAppSelector(selectViewerWorkflow);
   const streamState = useAppSelector(selectStreamRuntime);
   const { loading: tocLoading } = useAppSelector(selectTocWorkflow);
@@ -814,7 +816,7 @@ export default function ChapterViewer() {
                     <button
                       type="button"
                       className="button button-ghost modal-icon-button"
-                      onClick={() => dispatch(appActions.requestChapterCreate())}
+                      onClick={() => void handleCreateChapter({ bookName: '', chapterTitle: '' })}
                       disabled={chapterCreating}
                       aria-label="Create chapter"
                       title="Create chapter"
@@ -825,7 +827,7 @@ export default function ChapterViewer() {
                       <button
                         type="button"
                         className="button button-ghost modal-icon-button"
-                        onClick={() => dispatch(appActions.requestChapterDelete(chapterNumber))}
+                        onClick={() => void handleDeleteChapter(chapterNumber)}
                         disabled={chapterDeleting || displayLoading}
                         aria-label="Delete chapter"
                         title="Delete chapter"

@@ -23,7 +23,6 @@ import {useDashboardNavigation} from '@/hooks/useDashboardNavigation';
 import {useFloatingAudio} from '@/hooks/useFloatingAudio';
 import {useFullscreen} from '@/hooks/useFullscreen';
 import {useHotkeys} from '@/hooks/useHotkeys';
-import {useToast} from '@/hooks/useToast';
 import {useTocManager} from '@/hooks/useTocManager';
 import {useWakeLock} from '@/hooks/useWakeLock';
 import {useZoom} from '@/hooks/useZoom';
@@ -32,7 +31,6 @@ import {makeStreamLocator} from '@/lib/streamLocator';
 import {normalizeTextFontSize, normalizeTextTheme} from '@/lib/appConstants';
 import {
   appActions,
-  selectChapterCommandRequest,
   selectOcrBlockCommandRequest,
   selectOcrQueueCommandRequest,
   selectStudyAudioCommandRequest,
@@ -45,7 +43,6 @@ import {
 
 export default function App() {
   const dispatch = useAppDispatch();
-  const chapterCommandRequest = useAppSelector(selectChapterCommandRequest);
   const ocrBlockCommandRequest = useAppSelector(selectOcrBlockCommandRequest);
   const ocrQueueCommandRequest = useAppSelector(selectOcrQueueCommandRequest);
   const studyAudioCommandRequest = useAppSelector(selectStudyAudioCommandRequest);
@@ -65,7 +62,6 @@ export default function App() {
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const gotoInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { showToast } = useToast();
   const fullscreenControls = useFullscreen(viewerShellRef);
   const { isFullscreen, toggleFullscreen } = fullscreenControls;
 
@@ -78,9 +74,7 @@ export default function App() {
     chapterCount,
     currentPage,
     viewMode,
-    loading,
-    handleCreateChapter,
-    handleDeleteChapter
+    loading
   } = useBookSession();
 
   useUnitsRouteSync();
@@ -439,33 +433,6 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    if (!chapterCommandRequest) {
-      return;
-    }
-
-    if (!isTextBook) {
-      showToast('Select a text book to manage chapters', 'error');
-      dispatch(appActions.clearChapterCommandRequest());
-      return;
-    }
-
-    if (chapterCommandRequest.kind === 'create') {
-      void handleCreateChapter({ bookName: '', chapterTitle: '' });
-    } else {
-      void handleDeleteChapter(chapterCommandRequest.chapterNumber);
-    }
-
-    dispatch(appActions.clearChapterCommandRequest());
-  }, [
-    chapterCommandRequest,
-    dispatch,
-    handleCreateChapter,
-    handleDeleteChapter,
-    isTextBook,
-    showToast
-  ]);
-
-  useEffect(() => {
     if (!tocCommandRequest) {
       return;
     }
@@ -519,22 +486,13 @@ export default function App() {
       void handleToggleOcrEditMode();
     } else if (toolbarCommandRequest.kind === 'toggleFullscreen') {
       void toggleFullscreen();
-    } else if (toolbarCommandRequest.kind === 'createChapter') {
-      if (!isTextBook) {
-        showToast('Select a text book to add chapters', 'error');
-      } else {
-        void handleCreateChapter({ bookName: '', chapterTitle: '' });
-      }
     }
 
     dispatch(appActions.clearToolbarCommandRequest());
   }, [
     applyZoomModeWithAlign,
     dispatch,
-    handleCreateChapter,
     handleToggleOcrEditMode,
-    isTextBook,
-    showToast,
     toggleFullscreen,
     toolbarCommandRequest
   ]);

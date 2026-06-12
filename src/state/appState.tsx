@@ -128,7 +128,6 @@ export type ToolbarCommandRequest = {
   | { kind: 'fitHeight' }
   | { kind: 'toggleOcrEditMode' }
   | { kind: 'toggleFullscreen' }
-  | { kind: 'createChapter' }
 );
 
 export interface StudyModeToggleRequest {
@@ -164,13 +163,6 @@ export type StudyAudioCommandRequest = {
   | { kind: 'memoryCard'; text: string; chapterNumber: number }
   | { kind: 'unitTopicParagraph'; fullText: string; startIndex: number; key: string }
   | { kind: 'chapterParagraph'; fullText: string; startIndex: number; key: string }
-);
-
-export type ChapterCommandRequest = {
-  id: number;
-} & (
-  | { kind: 'create' }
-  | { kind: 'delete'; chapterNumber: number }
 );
 
 export type TocCommandRequest = {
@@ -407,7 +399,6 @@ export interface CentralAppState {
   ocrBlockCommandRequest: OcrBlockCommandRequest | null;
   ocrQueueCommandRequest: OcrQueueCommandRequest | null;
   studyAudioCommandRequest: StudyAudioCommandRequest | null;
-  chapterCommandRequest: ChapterCommandRequest | null;
   tocCommandRequest: TocCommandRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
@@ -488,7 +479,6 @@ export type AppAction =
   | { type: 'toolbarCommand/requestFitHeight' }
   | { type: 'toolbarCommand/requestToggleOcrEditMode' }
   | { type: 'toolbarCommand/requestToggleFullscreen' }
-  | { type: 'toolbarCommand/requestCreateChapter' }
   | { type: 'toolbarCommand/clear' }
   | { type: 'studyMode/requestToggle' }
   | { type: 'studyMode/clearToggleRequest' }
@@ -517,9 +507,6 @@ export type AppAction =
   | { type: 'studyAudioCommand/requestUnitTopicParagraph'; fullText: string; startIndex: number; key: string }
   | { type: 'studyAudioCommand/requestChapterParagraph'; fullText: string; startIndex: number; key: string }
   | { type: 'studyAudioCommand/clearRequest' }
-  | { type: 'chapterCommand/requestCreate' }
-  | { type: 'chapterCommand/requestDelete'; chapterNumber: number }
-  | { type: 'chapterCommand/clearRequest' }
   | { type: 'tocCommand/requestGenerate'; variant: TocVariant }
   | { type: 'tocCommand/requestSave'; variant: TocVariant }
   | { type: 'tocCommand/requestAddEntry'; pageIndex: number; variant: TocVariant }
@@ -793,7 +780,6 @@ const initialAppState: CentralAppState = {
   ocrBlockCommandRequest: null,
   ocrQueueCommandRequest: null,
   studyAudioCommandRequest: null,
-  chapterCommandRequest: null,
   tocCommandRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
@@ -1029,7 +1015,6 @@ export const appActions = {
   requestToolbarFitHeight: (): AppAction => ({ type: 'toolbarCommand/requestFitHeight' }),
   requestToolbarOcrEditToggle: (): AppAction => ({ type: 'toolbarCommand/requestToggleOcrEditMode' }),
   requestToolbarFullscreenToggle: (): AppAction => ({ type: 'toolbarCommand/requestToggleFullscreen' }),
-  requestToolbarCreateChapter: (): AppAction => ({ type: 'toolbarCommand/requestCreateChapter' }),
   clearToolbarCommandRequest: (): AppAction => ({ type: 'toolbarCommand/clear' }),
   requestStudyModeToggle: (): AppAction => ({ type: 'studyMode/requestToggle' }),
   clearStudyModeToggleRequest: (): AppAction => ({ type: 'studyMode/clearToggleRequest' }),
@@ -1103,12 +1088,6 @@ export const appActions = {
     ...payload
   }),
   clearStudyAudioCommandRequest: (): AppAction => ({ type: 'studyAudioCommand/clearRequest' }),
-  requestChapterCreate: (): AppAction => ({ type: 'chapterCommand/requestCreate' }),
-  requestChapterDelete: (chapterNumber: number): AppAction => ({
-    type: 'chapterCommand/requestDelete',
-    chapterNumber
-  }),
-  clearChapterCommandRequest: (): AppAction => ({ type: 'chapterCommand/clearRequest' }),
   requestTocGenerate: (variant: TocVariant): AppAction => ({
     type: 'tocCommand/requestGenerate',
     variant
@@ -1909,14 +1888,6 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           kind: 'toggleFullscreen'
         }
       };
-    case 'toolbarCommand/requestCreateChapter':
-      return {
-        ...state,
-        toolbarCommandRequest: {
-          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
-          kind: 'createChapter'
-        }
-      };
     case 'toolbarCommand/clear':
       return {
         ...state,
@@ -2106,28 +2077,6 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
       return {
         ...state,
         studyAudioCommandRequest: null
-      };
-    case 'chapterCommand/requestCreate':
-      return {
-        ...state,
-        chapterCommandRequest: {
-          id: (state.chapterCommandRequest?.id ?? 0) + 1,
-          kind: 'create'
-        }
-      };
-    case 'chapterCommand/requestDelete':
-      return {
-        ...state,
-        chapterCommandRequest: {
-          id: (state.chapterCommandRequest?.id ?? 0) + 1,
-          kind: 'delete',
-          chapterNumber: action.chapterNumber
-        }
-      };
-    case 'chapterCommand/clearRequest':
-      return {
-        ...state,
-        chapterCommandRequest: null
       };
     case 'tocCommand/requestGenerate':
       return {
@@ -3240,7 +3189,6 @@ export const selectStudyModeToggleRequest = (state: CentralAppState) => state.st
 export const selectOcrBlockCommandRequest = (state: CentralAppState) => state.ocrBlockCommandRequest;
 export const selectOcrQueueCommandRequest = (state: CentralAppState) => state.ocrQueueCommandRequest;
 export const selectStudyAudioCommandRequest = (state: CentralAppState) => state.studyAudioCommandRequest;
-export const selectChapterCommandRequest = (state: CentralAppState) => state.chapterCommandRequest;
 export const selectTocCommandRequest = (state: CentralAppState) => state.tocCommandRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
