@@ -61,7 +61,7 @@ addActionHandler('processJob', async (_state, actions, payload): Promise<void> =
 export function useOcrQueue() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
-  const { currentPage } = useAppSelector(selectReaderSession);
+  const { bookId, currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const [jobs, setJobs] = useState<OcrJob[]>([]);
   const [paused, setPaused] = useState(false);
@@ -124,6 +124,11 @@ export function useOcrQueue() {
   const resetQueue = useCallback(() => {
     clearQueue();
   }, [clearQueue]);
+
+  useEffect(() => {
+    resetQueue();
+    dispatch(appActions.closeModal('ocrQueue'));
+  }, [bookId, dispatch, resetQueue]);
 
   const retryFailed = useCallback(() => {
     setJobs((prev) =>

@@ -155,7 +155,6 @@ export default function App() {
     forceUpdateAllPages,
     queueRemainingPages,
     clearQueue,
-    resetQueue,
     retryFailed,
     togglePause
   } = useOcrQueue();
@@ -192,11 +191,6 @@ export default function App() {
     stopAfterCurrentStream,
     streamState.status
   ]);
-
-  useEffect(() => {
-    resetQueue();
-    dispatch(appActions.closeModal('ocrQueue'));
-  }, [bookId, dispatch, resetQueue]);
 
   useShareLink();
 
