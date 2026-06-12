@@ -1,41 +1,35 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {useCallback, useEffect, useMemo, useRef} from 'react';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
 import ReaderSidebar from '@/components/ReaderSidebar';
-import { useAudioController } from '@/hooks/useAudioController';
-import { useBookSession } from '@/hooks/useBookSession';
-import { useBookmarks } from '@/hooks/useBookmarks';
-import { useChapterQuiz } from '@/hooks/useChapterQuiz';
-import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
-import { useUnitActions } from '@/hooks/useUnitActions';
-import { useNavigation } from '@/hooks/useNavigation';
-import { usePageText } from '@/hooks/usePageText';
-import { useOcrQueue } from '@/hooks/useOcrQueue';
-import { useStreamSequence } from '@/hooks/useStreamSequence';
-import { useStreamingAudio } from '@/hooks/useStreamingAudio';
-import { useStreamControls } from '@/hooks/useStreamControls';
-import { useMp3Voice, useStreamVoices } from '@/hooks/useStreamVoices';
-import { useUnitsRouteSync } from '@/hooks/useUnitsRoute';
-import { useStreamHistoryLogger } from '@/hooks/useStreamHistoryLogger';
-import { useOcrEditMode } from '@/hooks/useOcrEditMode';
-import { useShareLink } from '@/hooks/useShareLink';
-import { useDashboardNavigation } from '@/hooks/useDashboardNavigation';
-import { useFloatingAudio } from '@/hooks/useFloatingAudio';
-import { useFullscreen } from '@/hooks/useFullscreen';
-import { useHotkeys } from '@/hooks/useHotkeys';
-import { useToast } from '@/hooks/useToast';
-import { useTocManager } from '@/hooks/useTocManager';
-import { useWakeLock } from '@/hooks/useWakeLock';
-import { useZoom } from '@/hooks/useZoom';
-import { clampPan } from '@/lib/math';
-import { trackEvent } from '@/lib/analytics';
-import { makeStreamLocator } from '@/lib/streamLocator';
-import {
-  getMainViewFromLocation,
-  normalizeTextFontSize,
-  normalizeTextTheme,
-  type MainView
-} from '@/lib/appConstants';
+import {useAudioController} from '@/hooks/useAudioController';
+import {useBookSession} from '@/hooks/useBookSession';
+import {useBookmarks} from '@/hooks/useBookmarks';
+import {useChapterQuiz} from '@/hooks/useChapterQuiz';
+import {useUnitTopicQuiz} from '@/hooks/useUnitTopicQuiz';
+import {useUnitActions} from '@/hooks/useUnitActions';
+import {useNavigation} from '@/hooks/useNavigation';
+import {usePageText} from '@/hooks/usePageText';
+import {useOcrQueue} from '@/hooks/useOcrQueue';
+import {useStreamSequence} from '@/hooks/useStreamSequence';
+import {useStreamingAudio} from '@/hooks/useStreamingAudio';
+import {useStreamControls} from '@/hooks/useStreamControls';
+import {useMp3Voice, useStreamVoices} from '@/hooks/useStreamVoices';
+import {useUnitsRouteSync} from '@/hooks/useUnitsRoute';
+import {useStreamHistoryLogger} from '@/hooks/useStreamHistoryLogger';
+import {useOcrEditMode} from '@/hooks/useOcrEditMode';
+import {useShareLink} from '@/hooks/useShareLink';
+import {useDashboardNavigation} from '@/hooks/useDashboardNavigation';
+import {useFloatingAudio} from '@/hooks/useFloatingAudio';
+import {useFullscreen} from '@/hooks/useFullscreen';
+import {useHotkeys} from '@/hooks/useHotkeys';
+import {useToast} from '@/hooks/useToast';
+import {useTocManager} from '@/hooks/useTocManager';
+import {useWakeLock} from '@/hooks/useWakeLock';
+import {useZoom} from '@/hooks/useZoom';
+import {clampPan} from '@/lib/math';
+import {makeStreamLocator} from '@/lib/streamLocator';
+import {normalizeTextFontSize, normalizeTextTheme} from '@/lib/appConstants';
 import {
   appActions,
   selectChapterCommandRequest,
@@ -43,8 +37,8 @@ import {
   selectOcrQueueCommandRequest,
   selectStudyAudioCommandRequest,
   selectStudyModeToggleRequest,
-  selectToolbarCommandRequest,
   selectTocCommandRequest,
+  selectToolbarCommandRequest,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
