@@ -1,76 +1,91 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { loadChapterVocabulary } from '@/api/chapterStudyArtifacts';
+import type { ChapterArtifactTarget } from '@/api/chapterStudyArtifacts';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 import {
   appActions,
   useAppDispatch
 } from '@/state/appState';
 import type { ChapterVocabulary } from '@/types/app';
 
+type VocabularyPayloads = {
+  loadVocabulary: {
+    target: ChapterArtifactTarget | null;
+    force: boolean;
+  };
+};
+
+type VocabularyActions = {
+  openModal: () => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  setVocabulary: (vocabulary: ChapterVocabulary | null) => void;
+};
+
+const vocabularyHandlers = createActionHandlerRegistry<
+  unknown,
+  VocabularyActions,
+  VocabularyPayloads
+>();
+const { addActionHandler } = vocabularyHandlers;
+
+addActionHandler('loadVocabulary', async (_state, actions, payload): Promise<void> => {
+  if (!payload.target) {
+    actions.setError('Move to a page inside a known chapter to open vocabulary.');
+    actions.setVocabulary(null);
+    actions.setLoading(false);
+    actions.openModal();
+    return;
+  }
+
+  actions.openModal();
+  await runRequest({
+    setBusy: actions.setLoading,
+    setError: actions.setError,
+    fallbackError: 'Unable to load vocabulary.',
+    request: () => loadChapterVocabulary(payload.target!, payload.force),
+    onSuccess: actions.setVocabulary,
+    onError: () => {
+      actions.setVocabulary(null);
+    }
+  });
+});
+
 export function useChapterVocabulary() {
   const dispatch = useAppDispatch();
   const { bookId, chapterNumber, pageRange: chapterRange } = useCurrentChapterContext();
+  const target = useMemo(
+    () =>
+      bookId && chapterNumber
+        ? {
+            bookId,
+            chapterNumber,
+            pageRange: chapterRange
+          }
+        : null,
+    [bookId, chapterNumber, chapterRange]
+  );
+  const runAction = useCallback(
+    async <T extends keyof VocabularyPayloads>(action: T, payload: VocabularyPayloads[T]) => {
+      const actions: VocabularyActions = {
+        openModal: () => dispatch(appActions.openModal('vocabulary')),
+        setLoading: (loading) => dispatch(appActions.setVocabularyLoading(loading)),
+        setError: (error) => dispatch(appActions.setVocabularyError(error)),
+        setVocabulary: (vocabulary) => dispatch(appActions.setVocabulary(vocabulary))
+      };
+      await vocabularyHandlers.runAction(action, undefined, actions, payload);
+    },
+    [dispatch]
+  );
 
   useEffect(() => {
     dispatch(appActions.resetVocabulary());
   }, [bookId, chapterNumber, dispatch]);
 
   const loadVocabulary = useCallback(async (force = false) => {
-    if (!bookId || !chapterNumber) {
-      dispatch(appActions.setVocabularyError('Move to a page inside a known chapter to open vocabulary.'));
-      dispatch(appActions.setVocabulary(null));
-      dispatch(appActions.openModal('vocabulary'));
-      return;
-    }
-
-    dispatch(appActions.openModal('vocabulary'));
-    dispatch(appActions.setVocabularyLoading(true));
-    dispatch(appActions.setVocabularyError(null));
-
-    try {
-      const baseUrl = `/api/books/${encodeURIComponent(bookId)}/chapters/${chapterNumber}/vocabulary`;
-      let response = await fetch(baseUrl);
-      if (response.status === 404 || force) {
-        response = await fetch(baseUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            force,
-            ...(chapterRange
-              ? {
-                  pageStart: chapterRange.start,
-                  pageEnd: chapterRange.end
-                }
-              : {})
-          })
-        });
-      }
-      if (!response.ok) {
-        throw new Error(`Vocabulary request failed: ${response.status}`);
-      }
-
-      const payload = (await response.json()) as {
-        title: string;
-        items: ChapterVocabulary['items'];
-        source: ChapterVocabulary['source'];
-        chapterNumber: number;
-        file?: string;
-      };
-
-      dispatch(appActions.setVocabulary({
-        chapterNumber: payload.chapterNumber,
-        title: payload.title,
-        items: Array.isArray(payload.items) ? payload.items : [],
-        source: payload.source,
-        file: payload.file
-      }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to load vocabulary.';
-      dispatch(appActions.setVocabularyError(message));
-      dispatch(appActions.setVocabulary(null));
-    } finally {
-      dispatch(appActions.setVocabularyLoading(false));
-    }
-  }, [bookId, chapterNumber, chapterRange, dispatch]);
+    await runAction('loadVocabulary', { target, force });
+  }, [runAction, target]);
 
   const openVocabulary = useCallback(async () => {
     await loadVocabulary(false);
