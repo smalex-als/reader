@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { useToast } from '@/hooks/useToast';
 import { copyToClipboard } from '@/lib/clipboard';
 import ReactMarkdown from 'react-markdown';
@@ -17,6 +18,7 @@ import {
 
 export default function MemoryCardModal() {
   const dispatch = useAppDispatch();
+  const { stopStudyAudio, playStudyAudioMemoryCard } = useReaderCommands();
   const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('memoryCard'));
   const streamState = useAppSelector(selectStreamRuntime);
@@ -31,7 +33,7 @@ export default function MemoryCardModal() {
   } = useCurrentChapterContext();
   const { regenerateMemoryCard } = useChapterMemoryCard();
   const handleClose = () => {
-    dispatch(appActions.requestStudyAudioStop());
+    stopStudyAudio();
     dispatch(appActions.closeModal('memoryCard'));
   };
   const handleCopyText = async () => {
@@ -87,13 +89,13 @@ export default function MemoryCardModal() {
                   return;
                 }
                 if (isStreaming) {
-                  dispatch(appActions.requestStudyAudioStop());
+                  stopStudyAudio();
                   return;
                 }
-                dispatch(appActions.requestStudyAudioMemoryCard({
+                playStudyAudioMemoryCard({
                   text: memoryCard.text,
                   chapterNumber: memoryCard.chapterNumber
-                }));
+                });
               }}
               disabled={!memoryCard || loading}
               aria-label={isStreaming ? 'Stop audio' : 'Play audio'}

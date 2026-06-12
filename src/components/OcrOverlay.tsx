@@ -1,8 +1,8 @@
 import { useId, useMemo } from 'react';
 import { useImagePreview } from '@/hooks/useImagePreview';
+import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { parseStreamLocator } from '@/lib/streamLocator';
 import {
-  appActions,
   selectBookSessionWorkflow,
   selectOcrEdit,
   selectPageTextWorkflow,
@@ -10,7 +10,6 @@ import {
   selectStreamRuntime,
   selectStreamUiControls,
   selectViewerWorkflow,
-  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 
@@ -23,7 +22,7 @@ const NON_INTERACTIVE_BLOCK_KINDS = new Set(['image', 'table']);
 const PREVIEWABLE_BLOCK_KINDS = new Set(['image', 'image_caption']);
 
 export default function OcrOverlay({ imageUrl }: OcrOverlayProps) {
-  const dispatch = useAppDispatch();
+  const { playOcrBlock, toggleOcrBlockSpeech } = useReaderCommands();
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
@@ -272,15 +271,15 @@ export default function OcrOverlay({ imageUrl }: OcrOverlayProps) {
             onClick={(event) => {
               event.stopPropagation();
               if (editMode) {
-                dispatch(appActions.requestOcrBlockSpeechToggle(block.id));
+                toggleOcrBlockSpeech(block.id);
                 return;
               }
               if (block.streamStartIndex !== null) {
-                dispatch(appActions.requestOcrBlockPlay({
+                playOcrBlock({
                   imageUrl,
                   startIndex: block.streamStartIndex,
                   blockId: block.id
-                }));
+                });
               }
             }}
           />

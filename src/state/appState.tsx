@@ -121,61 +121,6 @@ export type StreamControlRequest = {
   | { kind: 'setVoice'; voice: string }
 );
 
-export type ToolbarCommandRequest = {
-  id: number;
-} & (
-  | { kind: 'fitWidth' }
-  | { kind: 'fitHeight' }
-  | { kind: 'toggleOcrEditMode' }
-  | { kind: 'toggleFullscreen' }
-);
-
-export interface StudyModeToggleRequest {
-  id: number;
-}
-
-export type OcrBlockCommandRequest = {
-  id: number;
-} & (
-  | { kind: 'playBlock'; imageUrl: string; startIndex: number; blockId: string }
-  | { kind: 'toggleSpeechBlock'; blockId: string }
-);
-
-export type OcrQueueCommandRequest = {
-  id: number;
-} & (
-  | { kind: 'togglePause' }
-  | { kind: 'queueAll' }
-  | { kind: 'forceUpdateAll' }
-  | { kind: 'queueRemaining' }
-  | { kind: 'retryFailed' }
-  | { kind: 'clear' }
-);
-
-export type StudyAudioCommandRequest = {
-  id: number;
-} & (
-  | { kind: 'stop' }
-  | { kind: 'quizQuestion'; text: string; questionIndex: number; contextKey: string }
-  | { kind: 'quizAnswer'; text: string; questionIndex: number; contextKey: string }
-  | { kind: 'quizRegenerate'; modal: QuizModal }
-  | { kind: 'vocabulary'; text: string; chapterNumber: number }
-  | { kind: 'memoryCard'; text: string; chapterNumber: number }
-  | { kind: 'unitTopicParagraph'; fullText: string; startIndex: number; key: string }
-  | { kind: 'chapterParagraph'; fullText: string; startIndex: number; key: string }
-);
-
-export type TocCommandRequest = {
-  id: number;
-} & (
-  | { kind: 'generate'; variant: TocVariant }
-  | { kind: 'save'; variant: TocVariant }
-  | { kind: 'addEntry'; pageIndex: number; variant: TocVariant }
-  | { kind: 'removeEntry'; index: number; variant: TocVariant }
-  | { kind: 'updateEntry'; index: number; entry: TocEntry; variant: TocVariant }
-  | { kind: 'generateChapter'; index: number }
-);
-
 export interface ReaderSessionState {
   bookId: string | null;
   currentPage: number;
@@ -394,12 +339,6 @@ export interface CentralAppState {
   pageNavigationRequest: PageNavigationRequest | null;
   dashboardNavigationRequest: DashboardNavigationRequest | null;
   streamControlRequest: StreamControlRequest | null;
-  toolbarCommandRequest: ToolbarCommandRequest | null;
-  studyModeToggleRequest: StudyModeToggleRequest | null;
-  ocrBlockCommandRequest: OcrBlockCommandRequest | null;
-  ocrQueueCommandRequest: OcrQueueCommandRequest | null;
-  studyAudioCommandRequest: StudyAudioCommandRequest | null;
-  tocCommandRequest: TocCommandRequest | null;
   readerSession: ReaderSessionState;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
@@ -475,45 +414,12 @@ export type AppAction =
   | { type: 'streamControl/requestTogglePause' }
   | { type: 'streamControl/requestSetVoice'; voice: string }
   | { type: 'streamControl/clear' }
-  | { type: 'toolbarCommand/requestFitWidth' }
-  | { type: 'toolbarCommand/requestFitHeight' }
-  | { type: 'toolbarCommand/requestToggleOcrEditMode' }
-  | { type: 'toolbarCommand/requestToggleFullscreen' }
-  | { type: 'toolbarCommand/clear' }
-  | { type: 'studyMode/requestToggle' }
-  | { type: 'studyMode/clearToggleRequest' }
-  | { type: 'ocrBlockCommand/requestPlayBlock'; imageUrl: string; startIndex: number; blockId: string }
-  | { type: 'ocrBlockCommand/requestToggleSpeechBlock'; blockId: string }
-  | { type: 'ocrBlockCommand/clear' }
-  | { type: 'ocrQueueCommand/requestTogglePause' }
-  | { type: 'ocrQueueCommand/requestQueueAll' }
-  | { type: 'ocrQueueCommand/requestForceUpdateAll' }
-  | { type: 'ocrQueueCommand/requestQueueRemaining' }
-  | { type: 'ocrQueueCommand/requestRetryFailed' }
-  | { type: 'ocrQueueCommand/requestClear' }
-  | { type: 'ocrQueueCommand/clearRequest' }
   | {
       type: 'ocrQueueWorkflow/setSnapshot';
       jobs: OcrJob[];
       paused: boolean;
       queueState: OcrQueueState;
     }
-  | { type: 'studyAudioCommand/requestStop' }
-  | { type: 'studyAudioCommand/requestQuizQuestion'; text: string; questionIndex: number; contextKey: string }
-  | { type: 'studyAudioCommand/requestQuizAnswer'; text: string; questionIndex: number; contextKey: string }
-  | { type: 'studyAudioCommand/requestQuizRegenerate'; modal: QuizModal }
-  | { type: 'studyAudioCommand/requestVocabulary'; text: string; chapterNumber: number }
-  | { type: 'studyAudioCommand/requestMemoryCard'; text: string; chapterNumber: number }
-  | { type: 'studyAudioCommand/requestUnitTopicParagraph'; fullText: string; startIndex: number; key: string }
-  | { type: 'studyAudioCommand/requestChapterParagraph'; fullText: string; startIndex: number; key: string }
-  | { type: 'studyAudioCommand/clearRequest' }
-  | { type: 'tocCommand/requestGenerate'; variant: TocVariant }
-  | { type: 'tocCommand/requestSave'; variant: TocVariant }
-  | { type: 'tocCommand/requestAddEntry'; pageIndex: number; variant: TocVariant }
-  | { type: 'tocCommand/requestRemoveEntry'; index: number; variant: TocVariant }
-  | { type: 'tocCommand/requestUpdateEntry'; index: number; entry: TocEntry; variant: TocVariant }
-  | { type: 'tocCommand/requestGenerateChapter'; index: number }
-  | { type: 'tocCommand/clearRequest' }
   | { type: 'readerSession/setBookId'; bookId: string | null }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
@@ -775,12 +681,6 @@ const initialAppState: CentralAppState = {
   pageNavigationRequest: null,
   dashboardNavigationRequest: null,
   streamControlRequest: null,
-  toolbarCommandRequest: null,
-  studyModeToggleRequest: null,
-  ocrBlockCommandRequest: null,
-  ocrQueueCommandRequest: null,
-  studyAudioCommandRequest: null,
-  tocCommandRequest: null,
   readerSession: getInitialReaderSession(),
   bookSessionWorkflow: {
     books: [],
@@ -1011,29 +911,6 @@ export const appActions = {
     voice
   }),
   clearStreamControlRequest: (): AppAction => ({ type: 'streamControl/clear' }),
-  requestToolbarFitWidth: (): AppAction => ({ type: 'toolbarCommand/requestFitWidth' }),
-  requestToolbarFitHeight: (): AppAction => ({ type: 'toolbarCommand/requestFitHeight' }),
-  requestToolbarOcrEditToggle: (): AppAction => ({ type: 'toolbarCommand/requestToggleOcrEditMode' }),
-  requestToolbarFullscreenToggle: (): AppAction => ({ type: 'toolbarCommand/requestToggleFullscreen' }),
-  clearToolbarCommandRequest: (): AppAction => ({ type: 'toolbarCommand/clear' }),
-  requestStudyModeToggle: (): AppAction => ({ type: 'studyMode/requestToggle' }),
-  clearStudyModeToggleRequest: (): AppAction => ({ type: 'studyMode/clearToggleRequest' }),
-  requestOcrBlockPlay: (payload: { imageUrl: string; startIndex: number; blockId: string }): AppAction => ({
-    type: 'ocrBlockCommand/requestPlayBlock',
-    ...payload
-  }),
-  requestOcrBlockSpeechToggle: (blockId: string): AppAction => ({
-    type: 'ocrBlockCommand/requestToggleSpeechBlock',
-    blockId
-  }),
-  clearOcrBlockCommandRequest: (): AppAction => ({ type: 'ocrBlockCommand/clear' }),
-  requestOcrQueuePauseToggle: (): AppAction => ({ type: 'ocrQueueCommand/requestTogglePause' }),
-  requestOcrQueueAll: (): AppAction => ({ type: 'ocrQueueCommand/requestQueueAll' }),
-  requestOcrQueueForceUpdateAll: (): AppAction => ({ type: 'ocrQueueCommand/requestForceUpdateAll' }),
-  requestOcrQueueRemaining: (): AppAction => ({ type: 'ocrQueueCommand/requestQueueRemaining' }),
-  requestOcrQueueRetryFailed: (): AppAction => ({ type: 'ocrQueueCommand/requestRetryFailed' }),
-  requestOcrQueueClear: (): AppAction => ({ type: 'ocrQueueCommand/requestClear' }),
-  clearOcrQueueCommandRequest: (): AppAction => ({ type: 'ocrQueueCommand/clearRequest' }),
   setOcrQueueSnapshot: (payload: {
     jobs: OcrJob[];
     paused: boolean;
@@ -1042,81 +919,6 @@ export const appActions = {
     type: 'ocrQueueWorkflow/setSnapshot',
     ...payload
   }),
-  requestStudyAudioStop: (): AppAction => ({ type: 'studyAudioCommand/requestStop' }),
-  requestStudyAudioQuizQuestion: (payload: {
-    text: string;
-    questionIndex: number;
-    contextKey: string;
-  }): AppAction => ({
-    type: 'studyAudioCommand/requestQuizQuestion',
-    ...payload
-  }),
-  requestStudyAudioQuizAnswer: (payload: {
-    text: string;
-    questionIndex: number;
-    contextKey: string;
-  }): AppAction => ({
-    type: 'studyAudioCommand/requestQuizAnswer',
-    ...payload
-  }),
-  requestStudyAudioQuizRegenerate: (modal: QuizModal): AppAction => ({
-    type: 'studyAudioCommand/requestQuizRegenerate',
-    modal
-  }),
-  requestStudyAudioVocabulary: (payload: { text: string; chapterNumber: number }): AppAction => ({
-    type: 'studyAudioCommand/requestVocabulary',
-    ...payload
-  }),
-  requestStudyAudioMemoryCard: (payload: { text: string; chapterNumber: number }): AppAction => ({
-    type: 'studyAudioCommand/requestMemoryCard',
-    ...payload
-  }),
-  requestStudyAudioUnitTopicParagraph: (payload: {
-    fullText: string;
-    startIndex: number;
-    key: string;
-  }): AppAction => ({
-    type: 'studyAudioCommand/requestUnitTopicParagraph',
-    ...payload
-  }),
-  requestStudyAudioChapterParagraph: (payload: {
-    fullText: string;
-    startIndex: number;
-    key: string;
-  }): AppAction => ({
-    type: 'studyAudioCommand/requestChapterParagraph',
-    ...payload
-  }),
-  clearStudyAudioCommandRequest: (): AppAction => ({ type: 'studyAudioCommand/clearRequest' }),
-  requestTocGenerate: (variant: TocVariant): AppAction => ({
-    type: 'tocCommand/requestGenerate',
-    variant
-  }),
-  requestTocSave: (variant: TocVariant): AppAction => ({
-    type: 'tocCommand/requestSave',
-    variant
-  }),
-  requestTocAddEntry: (pageIndex: number, variant: TocVariant): AppAction => ({
-    type: 'tocCommand/requestAddEntry',
-    pageIndex,
-    variant
-  }),
-  requestTocRemoveEntry: (index: number, variant: TocVariant): AppAction => ({
-    type: 'tocCommand/requestRemoveEntry',
-    index,
-    variant
-  }),
-  requestTocUpdateEntry: (index: number, entry: TocEntry, variant: TocVariant): AppAction => ({
-    type: 'tocCommand/requestUpdateEntry',
-    index,
-    entry,
-    variant
-  }),
-  requestTocGenerateChapter: (index: number): AppAction => ({
-    type: 'tocCommand/requestGenerateChapter',
-    index
-  }),
-  clearTocCommandRequest: (): AppAction => ({ type: 'tocCommand/clearRequest' }),
   setStreamRuntime: (streamState: StreamRuntimeState): AppAction => ({
     type: 'streamRuntime/set',
     streamState
@@ -1856,133 +1658,6 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         ...state,
         streamControlRequest: null
       };
-    case 'toolbarCommand/requestFitWidth':
-      return {
-        ...state,
-        toolbarCommandRequest: {
-          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
-          kind: 'fitWidth'
-        }
-      };
-    case 'toolbarCommand/requestFitHeight':
-      return {
-        ...state,
-        toolbarCommandRequest: {
-          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
-          kind: 'fitHeight'
-        }
-      };
-    case 'toolbarCommand/requestToggleOcrEditMode':
-      return {
-        ...state,
-        toolbarCommandRequest: {
-          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
-          kind: 'toggleOcrEditMode'
-        }
-      };
-    case 'toolbarCommand/requestToggleFullscreen':
-      return {
-        ...state,
-        toolbarCommandRequest: {
-          id: (state.toolbarCommandRequest?.id ?? 0) + 1,
-          kind: 'toggleFullscreen'
-        }
-      };
-    case 'toolbarCommand/clear':
-      return {
-        ...state,
-        toolbarCommandRequest: null
-      };
-    case 'studyMode/requestToggle':
-      return {
-        ...state,
-        studyModeToggleRequest: {
-          id: (state.studyModeToggleRequest?.id ?? 0) + 1
-        }
-      };
-    case 'studyMode/clearToggleRequest':
-      return {
-        ...state,
-        studyModeToggleRequest: null
-      };
-    case 'ocrBlockCommand/requestPlayBlock':
-      return {
-        ...state,
-        ocrBlockCommandRequest: {
-          id: (state.ocrBlockCommandRequest?.id ?? 0) + 1,
-          kind: 'playBlock',
-          imageUrl: action.imageUrl,
-          startIndex: action.startIndex,
-          blockId: action.blockId
-        }
-      };
-    case 'ocrBlockCommand/requestToggleSpeechBlock':
-      return {
-        ...state,
-        ocrBlockCommandRequest: {
-          id: (state.ocrBlockCommandRequest?.id ?? 0) + 1,
-          kind: 'toggleSpeechBlock',
-          blockId: action.blockId
-        }
-      };
-    case 'ocrBlockCommand/clear':
-      return {
-        ...state,
-        ocrBlockCommandRequest: null
-      };
-    case 'ocrQueueCommand/requestTogglePause':
-      return {
-        ...state,
-        ocrQueueCommandRequest: {
-          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
-          kind: 'togglePause'
-        }
-      };
-    case 'ocrQueueCommand/requestQueueAll':
-      return {
-        ...state,
-        ocrQueueCommandRequest: {
-          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
-          kind: 'queueAll'
-        }
-      };
-    case 'ocrQueueCommand/requestForceUpdateAll':
-      return {
-        ...state,
-        ocrQueueCommandRequest: {
-          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
-          kind: 'forceUpdateAll'
-        }
-      };
-    case 'ocrQueueCommand/requestQueueRemaining':
-      return {
-        ...state,
-        ocrQueueCommandRequest: {
-          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
-          kind: 'queueRemaining'
-        }
-      };
-    case 'ocrQueueCommand/requestRetryFailed':
-      return {
-        ...state,
-        ocrQueueCommandRequest: {
-          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
-          kind: 'retryFailed'
-        }
-      };
-    case 'ocrQueueCommand/requestClear':
-      return {
-        ...state,
-        ocrQueueCommandRequest: {
-          id: (state.ocrQueueCommandRequest?.id ?? 0) + 1,
-          kind: 'clear'
-        }
-      };
-    case 'ocrQueueCommand/clearRequest':
-      return {
-        ...state,
-        ocrQueueCommandRequest: null
-      };
     case 'ocrQueueWorkflow/setSnapshot':
       return {
         ...state,
@@ -1991,155 +1666,6 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           paused: action.paused,
           queueState: action.queueState
         }
-      };
-    case 'studyAudioCommand/requestStop':
-      return {
-        ...state,
-        studyAudioCommandRequest: {
-          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
-          kind: 'stop'
-        }
-      };
-    case 'studyAudioCommand/requestQuizQuestion':
-      return {
-        ...state,
-        studyAudioCommandRequest: {
-          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
-          kind: 'quizQuestion',
-          text: action.text,
-          questionIndex: action.questionIndex,
-          contextKey: action.contextKey
-        }
-      };
-    case 'studyAudioCommand/requestQuizAnswer':
-      return {
-        ...state,
-        studyAudioCommandRequest: {
-          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
-          kind: 'quizAnswer',
-          text: action.text,
-          questionIndex: action.questionIndex,
-          contextKey: action.contextKey
-        }
-      };
-    case 'studyAudioCommand/requestQuizRegenerate':
-      return {
-        ...state,
-        studyAudioCommandRequest: {
-          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
-          kind: 'quizRegenerate',
-          modal: action.modal
-        }
-      };
-    case 'studyAudioCommand/requestVocabulary':
-      return {
-        ...state,
-        studyAudioCommandRequest: {
-          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
-          kind: 'vocabulary',
-          text: action.text,
-          chapterNumber: action.chapterNumber
-        }
-      };
-    case 'studyAudioCommand/requestMemoryCard':
-      return {
-        ...state,
-        studyAudioCommandRequest: {
-          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
-          kind: 'memoryCard',
-          text: action.text,
-          chapterNumber: action.chapterNumber
-        }
-      };
-    case 'studyAudioCommand/requestUnitTopicParagraph':
-      return {
-        ...state,
-        studyAudioCommandRequest: {
-          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
-          kind: 'unitTopicParagraph',
-          fullText: action.fullText,
-          startIndex: action.startIndex,
-          key: action.key
-        }
-      };
-    case 'studyAudioCommand/requestChapterParagraph':
-      return {
-        ...state,
-        studyAudioCommandRequest: {
-          id: (state.studyAudioCommandRequest?.id ?? 0) + 1,
-          kind: 'chapterParagraph',
-          fullText: action.fullText,
-          startIndex: action.startIndex,
-          key: action.key
-        }
-      };
-    case 'studyAudioCommand/clearRequest':
-      return {
-        ...state,
-        studyAudioCommandRequest: null
-      };
-    case 'tocCommand/requestGenerate':
-      return {
-        ...state,
-        tocCommandRequest: {
-          id: (state.tocCommandRequest?.id ?? 0) + 1,
-          kind: 'generate',
-          variant: action.variant
-        }
-      };
-    case 'tocCommand/requestSave':
-      return {
-        ...state,
-        tocCommandRequest: {
-          id: (state.tocCommandRequest?.id ?? 0) + 1,
-          kind: 'save',
-          variant: action.variant
-        }
-      };
-    case 'tocCommand/requestAddEntry':
-      return {
-        ...state,
-        tocCommandRequest: {
-          id: (state.tocCommandRequest?.id ?? 0) + 1,
-          kind: 'addEntry',
-          pageIndex: action.pageIndex,
-          variant: action.variant
-        }
-      };
-    case 'tocCommand/requestRemoveEntry':
-      return {
-        ...state,
-        tocCommandRequest: {
-          id: (state.tocCommandRequest?.id ?? 0) + 1,
-          kind: 'removeEntry',
-          index: action.index,
-          variant: action.variant
-        }
-      };
-    case 'tocCommand/requestUpdateEntry':
-      return {
-        ...state,
-        tocCommandRequest: {
-          id: (state.tocCommandRequest?.id ?? 0) + 1,
-          kind: 'updateEntry',
-          index: action.index,
-          entry: action.entry,
-          variant: action.variant
-        }
-      };
-    case 'tocCommand/requestGenerateChapter':
-      return {
-        ...state,
-        tocCommandRequest: {
-          id: (state.tocCommandRequest?.id ?? 0) + 1,
-          kind: 'generateChapter',
-          index: action.index
-        }
-      };
-    case 'tocCommand/clearRequest':
-      return {
-        ...state,
-        tocCommandRequest: null
       };
     case 'readerSession/setBookId':
       return {
@@ -3184,12 +2710,6 @@ export const selectNavigationState = (state: CentralAppState) => state.navigatio
 export const selectPageNavigationRequest = (state: CentralAppState) => state.pageNavigationRequest;
 export const selectDashboardNavigationRequest = (state: CentralAppState) => state.dashboardNavigationRequest;
 export const selectStreamControlRequest = (state: CentralAppState) => state.streamControlRequest;
-export const selectToolbarCommandRequest = (state: CentralAppState) => state.toolbarCommandRequest;
-export const selectStudyModeToggleRequest = (state: CentralAppState) => state.studyModeToggleRequest;
-export const selectOcrBlockCommandRequest = (state: CentralAppState) => state.ocrBlockCommandRequest;
-export const selectOcrQueueCommandRequest = (state: CentralAppState) => state.ocrQueueCommandRequest;
-export const selectStudyAudioCommandRequest = (state: CentralAppState) => state.studyAudioCommandRequest;
-export const selectTocCommandRequest = (state: CentralAppState) => state.tocCommandRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
 export const selectAudioState = (state: CentralAppState) => state.audio;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { useStreamUi } from '@/hooks/useStreamUi';
 import {
   appActions,
@@ -13,6 +14,7 @@ import {
 
 export default function StreamBubble() {
   const dispatch = useAppDispatch();
+  const { toggleStudyMode } = useReaderCommands();
   const { viewMode } = useAppSelector(selectReaderSession);
   const streamState = useAppSelector(selectStreamRuntime);
   const { autoFollowStream } = useAppSelector(selectStreamUiControls);
@@ -111,7 +113,7 @@ export default function StreamBubble() {
         <input
           type="checkbox"
           checked={studyMode}
-          onChange={() => dispatch(appActions.requestStudyModeToggle())}
+          onChange={toggleStudyMode}
           aria-label="Study mode"
         />
         <span>Study</span>

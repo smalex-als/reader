@@ -20,6 +20,10 @@ import {
 
 type HotkeysOptions = {
   gotoInputRef: RefObject<HTMLInputElement>;
+  fitWidth: () => void;
+  fitHeight: () => void;
+  toggleOcrEditMode: () => void;
+  toggleFullscreen: () => void;
 };
 
 function isTextInput(element: EventTarget | null) {
@@ -31,7 +35,11 @@ function isTextInput(element: EventTarget | null) {
 }
 
 export function useHotkeys({
-  gotoInputRef
+  gotoInputRef,
+  fitWidth,
+  fitHeight,
+  toggleOcrEditMode,
+  toggleFullscreen
 }: HotkeysOptions) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
@@ -213,14 +221,14 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          dispatch(appActions.requestToolbarFitWidth());
+          fitWidth();
           break;
         case 'h':
           if (viewMode !== 'pages' || !currentImage) {
             return;
           }
           event.preventDefault();
-          dispatch(appActions.requestToolbarFitHeight());
+          fitHeight();
           break;
         case 'r':
           event.preventDefault();
@@ -304,7 +312,7 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          dispatch(appActions.requestToolbarOcrEditToggle());
+          toggleOcrEditMode();
           break;
         case 'c':
           if (event.metaKey || event.ctrlKey) {
@@ -333,7 +341,7 @@ export function useHotkeys({
             return;
           }
           event.preventDefault();
-          dispatch(appActions.requestToolbarFullscreenToggle());
+          toggleFullscreen();
           break;
         case 'escape':
           if (textModalOpen) {
@@ -381,6 +389,8 @@ export function useHotkeys({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     applyFilters,
+    fitHeight,
+    fitWidth,
     updatePan,
     settings.invert,
     settings.pan.x,
@@ -415,7 +425,9 @@ export function useHotkeys({
     openVocabularyModal,
     toggleTextModal,
     triggerBackgroundOcr,
-    gotoInputRef
+    gotoInputRef,
+    toggleFullscreen,
+    toggleOcrEditMode
   ]);
 
 }

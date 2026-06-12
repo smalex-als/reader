@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
+import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { useUnitsViewActions } from '@/hooks/useUnitsViewActions';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import {
@@ -136,6 +137,10 @@ function ReadStatusIcon({ read }: { read: boolean }) {
 
 export default function UnitsView() {
   const dispatch = useAppDispatch();
+  const {
+    stopStudyAudio,
+    playStudyAudioUnitTopicParagraph
+  } = useReaderCommands();
   const { selectedUnitSetId: selectedSetId, selectedUnitTopicId: selectedTopicId } =
     useAppSelector(selectNavigationState);
   const streamState = useAppSelector(selectStreamRuntime);
@@ -353,11 +358,11 @@ export default function UnitsView() {
       );
     };
     const playTextBlock = (textValue: string, startIndex: number) => {
-      dispatch(appActions.requestStudyAudioUnitTopicParagraph({
+      playStudyAudioUnitTopicParagraph({
         fullText: topicText,
         startIndex,
         key: unitStreamBaseKey
-      }));
+      });
     };
     const markdownComponents = {
       p: ({ children, node }: { children?: ReactNode; node?: any }) => {
@@ -472,14 +477,14 @@ export default function UnitsView() {
               className="button button-secondary"
               onClick={() => {
                 if (topicStreamActive) {
-                  dispatch(appActions.requestStudyAudioStop());
+                  stopStudyAudio();
                   return;
                 }
-                dispatch(appActions.requestStudyAudioUnitTopicParagraph({
+                playStudyAudioUnitTopicParagraph({
                   fullText: topicSpeechText,
                   startIndex: 0,
                   key: unitStreamBaseKey
-                }));
+                });
               }}
               disabled={!topicStreamActive && !topicSpeechText.trim()}
             >

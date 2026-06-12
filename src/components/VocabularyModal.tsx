@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { useToast } from '@/hooks/useToast';
 import { copyToClipboard } from '@/lib/clipboard';
 import {
@@ -15,6 +16,7 @@ import {
 
 export default function VocabularyModal() {
   const dispatch = useAppDispatch();
+  const { stopStudyAudio, playStudyAudioVocabulary } = useReaderCommands();
   const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('vocabulary'));
   const streamState = useAppSelector(selectStreamRuntime);
@@ -94,13 +96,13 @@ export default function VocabularyModal() {
                   return;
                 }
                 if (isStreaming) {
-                  dispatch(appActions.requestStudyAudioStop());
+                  stopStudyAudio();
                   return;
                 }
-                dispatch(appActions.requestStudyAudioVocabulary({
+                playStudyAudioVocabulary({
                   text: spokenText,
                   chapterNumber: vocabulary.chapterNumber
-                }));
+                });
               }}
               disabled={!vocabulary || loading}
               aria-label={isStreaming ? 'Stop audio' : 'Play audio'}

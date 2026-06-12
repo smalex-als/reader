@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import { useReaderCommands } from '@/hooks/useReaderCommands';
 import {
   appActions,
   selectModalOpen,
@@ -23,6 +24,14 @@ function getStatusLabel(status: OcrJob['status']) {
 
 export default function OcrQueueModal() {
   const dispatch = useAppDispatch();
+  const {
+    queueRemainingOcrPages,
+    queueAllOcrPages,
+    forceUpdateAllOcrPages,
+    retryFailedOcrPages,
+    clearOcrQueue,
+    toggleOcrQueuePause
+  } = useReaderCommands();
   const open = useAppSelector(selectModalOpen('ocrQueue'));
   const { jobs, paused } = useAppSelector(selectOcrQueueWorkflow);
   const handleClose = () => {
@@ -70,19 +79,19 @@ export default function OcrQueueModal() {
         </header>
         <section className="modal-body">
           <div className="modal-toolbar">
-            <button type="button" className="button" onClick={() => dispatch(appActions.requestOcrQueueRemaining())}>
+            <button type="button" className="button" onClick={queueRemainingOcrPages}>
               Queue Remaining
             </button>
-            <button type="button" className="button" onClick={() => dispatch(appActions.requestOcrQueueAll())}>
+            <button type="button" className="button" onClick={queueAllOcrPages}>
               Queue All
             </button>
-            <button type="button" className="button" onClick={() => dispatch(appActions.requestOcrQueueForceUpdateAll())}>
+            <button type="button" className="button" onClick={forceUpdateAllOcrPages}>
               Force Update All
             </button>
             <button
               type="button"
               className="button"
-              onClick={() => dispatch(appActions.requestOcrQueueRetryFailed())}
+              onClick={retryFailedOcrPages}
               disabled={failed === 0}
             >
               Retry Failed
@@ -90,7 +99,7 @@ export default function OcrQueueModal() {
             <button
               type="button"
               className="button button-ghost"
-              onClick={() => dispatch(appActions.requestOcrQueueClear())}
+              onClick={clearOcrQueue}
               disabled={total === 0}
             >
               Clear
@@ -136,7 +145,7 @@ export default function OcrQueueModal() {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => dispatch(appActions.requestOcrQueuePauseToggle())}
+            onClick={toggleOcrQueuePause}
             disabled={total === 0 && !paused}
           >
             {paused ? 'Resume' : 'Pause'}

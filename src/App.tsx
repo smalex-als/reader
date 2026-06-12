@@ -23,6 +23,7 @@ import {useDashboardNavigation} from '@/hooks/useDashboardNavigation';
 import {useFloatingAudio} from '@/hooks/useFloatingAudio';
 import {useFullscreen} from '@/hooks/useFullscreen';
 import {useHotkeys} from '@/hooks/useHotkeys';
+import {ReaderCommandProvider, type ReaderCommands} from '@/hooks/useReaderCommands';
 import {useTocManager} from '@/hooks/useTocManager';
 import {useWakeLock} from '@/hooks/useWakeLock';
 import {useZoom} from '@/hooks/useZoom';
@@ -31,24 +32,11 @@ import {makeStreamLocator} from '@/lib/streamLocator';
 import {normalizeTextFontSize, normalizeTextTheme} from '@/lib/appConstants';
 import {
   appActions,
-  selectOcrBlockCommandRequest,
-  selectOcrQueueCommandRequest,
-  selectStudyAudioCommandRequest,
-  selectStudyModeToggleRequest,
-  selectTocCommandRequest,
-  selectToolbarCommandRequest,
-  useAppDispatch,
-  useAppSelector
+  useAppDispatch
 } from '@/state/appState';
 
 export default function App() {
   const dispatch = useAppDispatch();
-  const ocrBlockCommandRequest = useAppSelector(selectOcrBlockCommandRequest);
-  const ocrQueueCommandRequest = useAppSelector(selectOcrQueueCommandRequest);
-  const studyAudioCommandRequest = useAppSelector(selectStudyAudioCommandRequest);
-  const studyModeToggleRequest = useAppSelector(selectStudyModeToggleRequest);
-  const toolbarCommandRequest = useAppSelector(selectToolbarCommandRequest);
-  const tocCommandRequest = useAppSelector(selectTocCommandRequest);
   const pendingAlignTopRef = useRef(false);
   const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
@@ -83,8 +71,6 @@ export default function App() {
   const navigationCount = isTextBook ? chapterCount : manifest.length;
   const currentImage = manifest[currentPage] ?? null;
   const {
-    tocOpen,
-    tocEntries,
     sortedTocEntries,
     handleGenerateToc,
     handleSaveToc,
@@ -191,31 +177,20 @@ export default function App() {
     toggleSpeechBlock: handleToggleSpeechBlock
   } = useOcrEditMode();
 
-  useEffect(() => {
-    if (!ocrBlockCommandRequest) {
-      return;
-    }
-
-    if (ocrBlockCommandRequest.kind === 'playBlock') {
-      const payload = {
-        imageUrl: ocrBlockCommandRequest.imageUrl,
-        startIndex: ocrBlockCommandRequest.startIndex,
-        blockId: ocrBlockCommandRequest.blockId
-      };
+  const handlePlayOcrBlock = useCallback(
+    (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
       setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));
       void handlePlayPageBlock(payload);
-    } else {
-      void handleToggleSpeechBlock(ocrBlockCommandRequest.blockId);
-    }
+    },
+    [handlePlayPageBlock, setSelectedStreamBlockKey]
+  );
 
-    dispatch(appActions.clearOcrBlockCommandRequest());
-  }, [
-    dispatch,
-    handlePlayPageBlock,
-    handleToggleSpeechBlock,
-    ocrBlockCommandRequest,
-    setSelectedStreamBlockKey
-  ]);
+  const handleToggleOcrBlockSpeech = useCallback(
+    (blockId: string) => {
+      void handleToggleSpeechBlock(blockId);
+    },
+    [handleToggleSpeechBlock]
+  );
 
   useEffect(() => {
     if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage || currentText) {
@@ -232,37 +207,6 @@ export default function App() {
     retryFailed,
     togglePause
   } = useOcrQueue();
-
-  useEffect(() => {
-    if (!ocrQueueCommandRequest) {
-      return;
-    }
-
-    if (ocrQueueCommandRequest.kind === 'togglePause') {
-      togglePause();
-    } else if (ocrQueueCommandRequest.kind === 'queueAll') {
-      queueAllPages();
-    } else if (ocrQueueCommandRequest.kind === 'forceUpdateAll') {
-      forceUpdateAllPages();
-    } else if (ocrQueueCommandRequest.kind === 'queueRemaining') {
-      queueRemainingPages();
-    } else if (ocrQueueCommandRequest.kind === 'retryFailed') {
-      retryFailed();
-    } else {
-      clearQueue();
-    }
-
-    dispatch(appActions.clearOcrQueueCommandRequest());
-  }, [
-    clearQueue,
-    dispatch,
-    forceUpdateAllPages,
-    ocrQueueCommandRequest,
-    queueAllPages,
-    queueRemainingPages,
-    retryFailed,
-    togglePause
-  ]);
 
   useEffect(() => {
     if (
@@ -339,11 +283,7 @@ export default function App() {
     handleOpenAudioLibrary
   } = useDashboardNavigation();
 
-  useEffect(() => {
-    if (!studyModeToggleRequest) {
-      return;
-    }
-
+  const handleToggleStudyMode = useCallback(() => {
     const enablingStudyMode = !settings.studyMode;
     setSettings((prev) => ({ ...prev, studyMode: !prev.studyMode }));
     if (
@@ -352,14 +292,11 @@ export default function App() {
     ) {
       stopAfterCurrentStream();
     }
-    dispatch(appActions.clearStudyModeToggleRequest());
   }, [
-    dispatch,
     setSettings,
     settings.studyMode,
     stopAfterCurrentStream,
-    streamState.status,
-    studyModeToggleRequest
+    streamState.status
   ]);
 
   useEffect(() => {
@@ -373,95 +310,67 @@ export default function App() {
     refreshUnits
   } = useUnitActions();
 
-  useEffect(() => {
-    if (!studyAudioCommandRequest) {
-      return;
-    }
+  const handlePlayStudyAudioQuizQuestion = useCallback(
+    (payload: { text: string; questionIndex: number; contextKey: string }) => {
+      void handlePlaySingleStream({
+        text: payload.text,
+        pageKey: `${payload.contextKey}::question-${payload.questionIndex + 1}`
+      });
+    },
+    [handlePlaySingleStream]
+  );
 
-    if (studyAudioCommandRequest.kind === 'stop') {
-      handleStopStream();
-    } else if (studyAudioCommandRequest.kind === 'quizQuestion') {
+  const handlePlayStudyAudioQuizAnswer = useCallback(
+    (payload: { text: string; questionIndex: number; contextKey: string }) => {
       void handlePlaySingleStream({
-        text: studyAudioCommandRequest.text,
-        pageKey: `${studyAudioCommandRequest.contextKey}::question-${studyAudioCommandRequest.questionIndex + 1}`
+        text: payload.text,
+        pageKey: `${payload.contextKey}::question-${payload.questionIndex + 1}::answer`
       });
-    } else if (studyAudioCommandRequest.kind === 'quizAnswer') {
-      void handlePlaySingleStream({
-        text: studyAudioCommandRequest.text,
-        pageKey: `${studyAudioCommandRequest.contextKey}::question-${studyAudioCommandRequest.questionIndex + 1}::answer`
-      });
-    } else if (studyAudioCommandRequest.kind === 'quizRegenerate') {
-      if (studyAudioCommandRequest.modal === 'unitQuiz') {
+    },
+    [handlePlaySingleStream]
+  );
+
+  const handleRegenerateStudyAudioQuiz = useCallback(
+    (modal: 'unitQuiz' | 'chapterQuiz') => {
+      if (modal === 'unitQuiz') {
         void handleRegenerateUnitTopicQuiz().then(refreshUnits);
       } else {
         void handleRegenerateQuiz();
       }
-    } else if (studyAudioCommandRequest.kind === 'vocabulary') {
+    },
+    [handleRegenerateQuiz, handleRegenerateUnitTopicQuiz, refreshUnits]
+  );
+
+  const handlePlayStudyAudioVocabulary = useCallback(
+    (payload: { text: string; chapterNumber: number }) => {
       void handlePlaySingleStream({
-        text: studyAudioCommandRequest.text,
-        pageKey: `vocabulary::chapter-${studyAudioCommandRequest.chapterNumber}`
+        text: payload.text,
+        pageKey: `vocabulary::chapter-${payload.chapterNumber}`
       });
-    } else if (studyAudioCommandRequest.kind === 'memoryCard') {
+    },
+    [handlePlaySingleStream]
+  );
+
+  const handlePlayStudyAudioMemoryCard = useCallback(
+    (payload: { text: string; chapterNumber: number }) => {
       void handlePlaySingleStream({
-        text: studyAudioCommandRequest.text,
-        pageKey: `memory-card::chapter-${studyAudioCommandRequest.chapterNumber}`
+        text: payload.text,
+        pageKey: `memory-card::chapter-${payload.chapterNumber}`
       });
-    } else if (studyAudioCommandRequest.kind === 'unitTopicParagraph') {
+    },
+    [handlePlaySingleStream]
+  );
+
+  const handlePlayStudyAudioParagraph = useCallback(
+    (payload: { fullText: string; startIndex: number; key: string }) => {
       void handlePlayChapterParagraph({
-        fullText: studyAudioCommandRequest.fullText,
-        startIndex: studyAudioCommandRequest.startIndex,
-        key: studyAudioCommandRequest.key
+        fullText: payload.fullText,
+        startIndex: payload.startIndex,
+        key: payload.key
       });
-    } else {
-      void handlePlayChapterParagraph({
-        fullText: studyAudioCommandRequest.fullText,
-        startIndex: studyAudioCommandRequest.startIndex,
-        key: studyAudioCommandRequest.key
-      });
-    }
-
-    dispatch(appActions.clearStudyAudioCommandRequest());
-  }, [
-    dispatch,
-    handlePlayChapterParagraph,
-    handlePlaySingleStream,
-    handleRegenerateQuiz,
-    handleRegenerateUnitTopicQuiz,
-    handleStopStream,
-    refreshUnits,
-    studyAudioCommandRequest
-  ]);
-
-  useEffect(() => {
-    if (!tocCommandRequest) {
-      return;
-    }
-
-    if (tocCommandRequest.kind === 'generate') {
-      void handleGenerateToc(tocCommandRequest.variant);
-    } else if (tocCommandRequest.kind === 'save') {
-      void handleSaveToc(tocCommandRequest.variant);
-    } else if (tocCommandRequest.kind === 'addEntry') {
-      handleAddTocEntry(tocCommandRequest.pageIndex, tocCommandRequest.variant);
-    } else if (tocCommandRequest.kind === 'removeEntry') {
-      handleRemoveTocEntry(tocCommandRequest.index, tocCommandRequest.variant);
-    } else if (tocCommandRequest.kind === 'updateEntry') {
-      handleUpdateTocEntry(tocCommandRequest.index, tocCommandRequest.entry, tocCommandRequest.variant);
-    } else {
-      void handleGenerateChapter(tocCommandRequest.index);
-    }
-
-    dispatch(appActions.clearTocCommandRequest());
-  }, [
-    dispatch,
-    handleAddTocEntry,
-    handleGenerateChapter,
-    handleGenerateToc,
-    handleRemoveTocEntry,
-    handleSaveToc,
-    handleUpdateTocEntry,
-    tocCommandRequest
-  ]);
+    },
+    [handlePlayChapterParagraph]
+  );
 
   const applyZoomModeWithAlign = useCallback(
     (mode: 'fit-width' | 'fit-height') => {
@@ -473,33 +382,89 @@ export default function App() {
     [applyZoomMode, viewMode]
   );
 
-  useEffect(() => {
-    if (!toolbarCommandRequest) {
-      return;
-    }
+  const handleFitWidth = useCallback(() => {
+    applyZoomModeWithAlign('fit-width');
+  }, [applyZoomModeWithAlign]);
 
-    if (toolbarCommandRequest.kind === 'fitWidth') {
-      applyZoomModeWithAlign('fit-width');
-    } else if (toolbarCommandRequest.kind === 'fitHeight') {
-      applyZoomModeWithAlign('fit-height');
-    } else if (toolbarCommandRequest.kind === 'toggleOcrEditMode') {
-      void handleToggleOcrEditMode();
-    } else if (toolbarCommandRequest.kind === 'toggleFullscreen') {
-      void toggleFullscreen();
-    }
+  const handleFitHeight = useCallback(() => {
+    applyZoomModeWithAlign('fit-height');
+  }, [applyZoomModeWithAlign]);
 
-    dispatch(appActions.clearToolbarCommandRequest());
-  }, [
-    applyZoomModeWithAlign,
-    dispatch,
-    handleToggleOcrEditMode,
-    toggleFullscreen,
-    toolbarCommandRequest
-  ]);
+  const handleToggleOcrEditModeCommand = useCallback(() => {
+    void handleToggleOcrEditMode();
+  }, [handleToggleOcrEditMode]);
+
+  const handleToggleFullscreenCommand = useCallback(() => {
+    void toggleFullscreen();
+  }, [toggleFullscreen]);
 
   useHotkeys({
-    gotoInputRef
+    gotoInputRef,
+    fitWidth: handleFitWidth,
+    fitHeight: handleFitHeight,
+    toggleOcrEditMode: handleToggleOcrEditModeCommand,
+    toggleFullscreen: handleToggleFullscreenCommand
   });
+
+  const readerCommands = useMemo<ReaderCommands>(
+    () => ({
+      fitWidth: handleFitWidth,
+      fitHeight: handleFitHeight,
+      toggleOcrEditMode: handleToggleOcrEditModeCommand,
+      toggleFullscreen: handleToggleFullscreenCommand,
+      toggleStudyMode: handleToggleStudyMode,
+      playOcrBlock: handlePlayOcrBlock,
+      toggleOcrBlockSpeech: handleToggleOcrBlockSpeech,
+      queueRemainingOcrPages: queueRemainingPages,
+      queueAllOcrPages: queueAllPages,
+      forceUpdateAllOcrPages: forceUpdateAllPages,
+      retryFailedOcrPages: retryFailed,
+      clearOcrQueue: clearQueue,
+      toggleOcrQueuePause: togglePause,
+      stopStudyAudio: handleStopStream,
+      playStudyAudioQuizQuestion: handlePlayStudyAudioQuizQuestion,
+      playStudyAudioQuizAnswer: handlePlayStudyAudioQuizAnswer,
+      regenerateStudyAudioQuiz: handleRegenerateStudyAudioQuiz,
+      playStudyAudioVocabulary: handlePlayStudyAudioVocabulary,
+      playStudyAudioMemoryCard: handlePlayStudyAudioMemoryCard,
+      playStudyAudioUnitTopicParagraph: handlePlayStudyAudioParagraph,
+      playStudyAudioChapterParagraph: handlePlayStudyAudioParagraph,
+      generateToc: (variant) => void handleGenerateToc(variant),
+      saveToc: (variant) => void handleSaveToc(variant),
+      addTocEntry: handleAddTocEntry,
+      removeTocEntry: handleRemoveTocEntry,
+      updateTocEntry: handleUpdateTocEntry,
+      generateChapterText: (index) => void handleGenerateChapter(index)
+    }),
+    [
+      clearQueue,
+      forceUpdateAllPages,
+      handleAddTocEntry,
+      handleFitHeight,
+      handleFitWidth,
+      handleGenerateChapter,
+      handleGenerateToc,
+      handlePlayOcrBlock,
+      handlePlayStudyAudioMemoryCard,
+      handlePlayStudyAudioParagraph,
+      handlePlayStudyAudioQuizAnswer,
+      handlePlayStudyAudioQuizQuestion,
+      handlePlayStudyAudioVocabulary,
+      handleRegenerateStudyAudioQuiz,
+      handleRemoveTocEntry,
+      handleSaveToc,
+      handleStopStream,
+      handleToggleFullscreenCommand,
+      handleToggleOcrBlockSpeech,
+      handleToggleOcrEditModeCommand,
+      handleToggleStudyMode,
+      handleUpdateTocEntry,
+      queueAllPages,
+      queueRemainingPages,
+      retryFailed,
+      togglePause
+    ]
+  );
 
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null
@@ -512,9 +477,11 @@ export default function App() {
 
   return (
     <div className={`app-shell ${isFullscreen ? 'is-fullscreen' : ''}`}>
-      <ReaderSidebar />
-      <ReaderMainContent {...mainContentProps} />
-      <ReaderModalLayer {...modalProps} />
+      <ReaderCommandProvider value={readerCommands}>
+        <ReaderSidebar />
+        <ReaderMainContent {...mainContentProps} />
+        <ReaderModalLayer {...modalProps} />
+      </ReaderCommandProvider>
     </div>
   );
 }

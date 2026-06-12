@@ -9,6 +9,7 @@ import TrashIcon from '@/components/TrashIcon';
 import { useChapterActions } from '@/hooks/useBookSession';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
@@ -154,6 +155,7 @@ function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
 
 export default function ChapterViewer() {
   const dispatch = useAppDispatch();
+  const { playStudyAudioChapterParagraph } = useReaderCommands();
   const { handleCreateChapter, handleDeleteChapter } = useChapterActions();
   const { settings } = useAppSelector(selectViewerWorkflow);
   const streamState = useAppSelector(selectStreamRuntime);
@@ -581,11 +583,11 @@ export default function ChapterViewer() {
     };
 
     const playTextBlock = (startIndex: number, paragraphKey: string) => {
-      dispatch(appActions.requestStudyAudioChapterParagraph({
+      playStudyAudioChapterParagraph({
         fullText: currentDisplayText,
         startIndex,
         key: paragraphKey
-      }));
+      });
     };
 
     const renderBlock = (Tag: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
@@ -658,11 +660,11 @@ export default function ChapterViewer() {
     };
   }, [
     chapterNumber,
-    dispatch,
     displayText,
     outlineByOffset,
     playingParagraphMode,
     playingParagraphStart,
+    playStudyAudioChapterParagraph,
     selectedVersionId
   ]);
 
