@@ -51,3 +51,5 @@ export function useReaderShellControls() {
     viewerShellRef
   };
 }
+
+export type ReaderShellControls = ReturnType<typeof useReaderShellControls>;

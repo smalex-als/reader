@@ -1,8 +1,13 @@
 import AppModals from '@/components/AppModals';
-import { useReaderShell } from '@/hooks/useReaderShellContext';
+import type { ReaderShellControls } from '@/hooks/useReaderShellControls';
 
-export default function ReaderModalLayer() {
-  const { isFullscreen, modalHostRef } = useReaderShell();
+type ReaderModalLayerProps = {
+  shellControls: Pick<ReaderShellControls, 'isFullscreen' | 'modalHostRef'>;
+};
 
+export default function ReaderModalLayer({
+  shellControls
+}: ReaderModalLayerProps) {
+  const { isFullscreen, modalHostRef } = shellControls;
   return <AppModals portalTarget={isFullscreen ? modalHostRef.current : null} />;
 }

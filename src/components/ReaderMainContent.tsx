@@ -7,7 +7,7 @@ import StreamBubble from '@/components/StreamBubble';
 import ScrollViewer from '@/components/ScrollViewer';
 import UnitsView from '@/components/UnitsView';
 import Viewer from '@/components/Viewer';
-import { useReaderShell } from '@/hooks/useReaderShellContext';
+import type { ReaderShellControls } from '@/hooks/useReaderShellControls';
 import {
   selectBookSessionWorkflow,
   selectEditorState,
@@ -17,8 +17,14 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-export default function ReaderMainContent() {
-  const { viewerShellRef, modalHostRef } = useReaderShell();
+type ReaderMainContentProps = {
+  shellControls: Pick<ReaderShellControls, 'viewerShellRef' | 'modalHostRef'>;
+};
+
+export default function ReaderMainContent({
+  shellControls
+}: ReaderMainContentProps) {
+  const { viewerShellRef, modalHostRef } = shellControls;
   const { mainView } = useAppSelector(selectNavigationState);
   const { currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { books, loading, manifest } = useAppSelector(selectBookSessionWorkflow);
