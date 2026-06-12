@@ -9,7 +9,6 @@ import {useChapterQuiz} from '@/hooks/useChapterQuiz';
 import {useUnitTopicQuiz} from '@/hooks/useUnitTopicQuiz';
 import {useUnitActions} from '@/hooks/useUnitActions';
 import {useNavigation} from '@/hooks/useNavigation';
-import {usePageText} from '@/hooks/usePageText';
 import {useOcrQueue} from '@/hooks/useOcrQueue';
 import {useStreamSequence} from '@/hooks/useStreamSequence';
 import {useStreamingAudio} from '@/hooks/useStreamingAudio';
@@ -131,12 +130,6 @@ export default function App() {
     streamState.status === 'streaming' ||
     floatingAudioPlaybackState === 'playing';
   useWakeLock(isListening);
-  const {
-    currentText,
-    fetchPageText,
-    resetTextState,
-    textLoading
-  } = usePageText();
   useEffect(() => {
     dispatch(appActions.setDisplayedChapterText(null));
   }, [bookId, chapterNumber, dispatch]);
@@ -192,12 +185,6 @@ export default function App() {
     [handleToggleSpeechBlock]
   );
 
-  useEffect(() => {
-    if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage || currentText) {
-      return;
-    }
-    void fetchPageText({ silent: true });
-  }, [currentImage, currentText, fetchPageText, viewMode]);
   const {
     queueAllPages,
     forceUpdateAllPages,
@@ -272,12 +259,13 @@ export default function App() {
   useEffect(() => {
     closeBookmarks();
     dispatch(appActions.closeModal('search'));
+    dispatch(appActions.closeModal('text'));
     dispatch(appActions.closeBookCard());
-    resetTextState();
+    dispatch(appActions.resetPageText());
     resetAudioCache();
     stopAudio();
     stopStream();
-  }, [bookId, closeBookmarks, dispatch, resetAudioCache, resetTextState, stopAudio, stopStream]);
+  }, [bookId, closeBookmarks, dispatch, resetAudioCache, stopAudio, stopStream]);
 
   const {
     handleOpenAudioLibrary

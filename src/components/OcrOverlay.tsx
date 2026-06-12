@@ -1,11 +1,11 @@
-import { useId, useMemo } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import { useImagePreview } from '@/hooks/useImagePreview';
+import { usePageText } from '@/hooks/usePageText';
 import { useReaderCommands } from '@/hooks/useReaderCommands';
 import { parseStreamLocator } from '@/lib/streamLocator';
 import {
   selectBookSessionWorkflow,
   selectOcrEdit,
-  selectPageTextWorkflow,
   selectReaderSession,
   selectStreamRuntime,
   selectStreamUiControls,
@@ -25,13 +25,12 @@ export default function OcrOverlay({ imageUrl }: OcrOverlayProps) {
   const { playOcrBlock, toggleOcrBlockSpeech } = useReaderCommands();
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
-  const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
+  const { currentText: pageText, fetchPageText } = usePageText(imageUrl);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { editMode: globalEditMode } = useAppSelector(selectOcrEdit);
   const streamState = useAppSelector(selectStreamRuntime);
   const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
   const { handleOpenImagePreview } = useImagePreview();
-  const pageText = textCache[imageUrl] ?? null;
   const currentImage = manifest[currentPage] ?? null;
   const editMode = globalEditMode && imageUrl === currentImage;
   const {
@@ -52,6 +51,13 @@ export default function OcrOverlay({ imageUrl }: OcrOverlayProps) {
   const activeStreamLocator = playingStreamLocator ?? selectedStreamLocator;
   const currentBlockId = activeStreamLocator?.imageUrl === imageUrl ? activeStreamLocator.blockId : null;
   const playingBlockId = playingStreamLocator?.imageUrl === imageUrl ? playingStreamLocator.blockId : null;
+
+  useEffect(() => {
+    if (pageText) {
+      return;
+    }
+    void fetchPageText({ silent: true });
+  }, [fetchPageText, pageText]);
 
   const coordinateBlocks = useMemo(() => {
     return (pageText?.blocks ?? []).filter((block) => {
