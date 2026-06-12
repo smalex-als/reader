@@ -18,8 +18,7 @@ export default function QuizModal() {
   const dispatch = useAppDispatch();
   const {
     stopStudyAudio,
-    playStudyAudioQuizQuestion,
-    playStudyAudioQuizAnswer,
+    playStudyAudioSingle,
     regenerateStudyAudioQuiz
   } = useReaderCommands();
   const unitQuizOpen = useAppSelector(selectModalOpen('unitQuiz'));
@@ -103,12 +102,11 @@ export default function QuizModal() {
       'Answer choices.',
       ...currentQuestion.options.map((option, optionIndex) => `${String.fromCharCode(65 + optionIndex)}. ${option}`)
     ].join('\n\n');
-    playStudyAudioQuizQuestion({
+    playStudyAudioSingle({
       text: spokenText,
-      questionIndex: currentIndex,
-      contextKey: quiz.contextKey
+      pageKey: `${quiz.contextKey}::question-${currentIndex + 1}`
     });
-  }, [autoPlayEnabled, currentIndex, currentQuestion, currentQuestionAnswered, open, playStudyAudioQuizQuestion, quiz]);
+  }, [autoPlayEnabled, currentIndex, currentQuestion, currentQuestionAnswered, open, playStudyAudioSingle, quiz]);
 
   if (!open) {
     return null;
@@ -192,10 +190,9 @@ export default function QuizModal() {
                       ]
                         .filter(Boolean)
                         .join('\n\n');
-                      playStudyAudioQuizQuestion({
+                      playStudyAudioSingle({
                         text: spokenText,
-                        questionIndex: currentIndex,
-                        contextKey: quiz.contextKey
+                        pageKey: `${quiz.contextKey}::question-${currentIndex + 1}`
                       });
                     }}
                     aria-label={isCurrentQuestionStreaming ? 'Stop audio' : 'Play audio'}
@@ -249,10 +246,9 @@ export default function QuizModal() {
                             .join('\n\n');
                           setAnswers((prev) => ({ ...prev, [currentQuestion.id]: optionIndex }));
                           if (autoPlayEnabled) {
-                            playStudyAudioQuizAnswer({
+                            playStudyAudioSingle({
                               text: answerFeedback,
-                              questionIndex: currentIndex,
-                              contextKey: quiz.contextKey
+                              pageKey: `${quiz.contextKey}::question-${currentIndex + 1}::answer`
                             });
                           }
                         }}

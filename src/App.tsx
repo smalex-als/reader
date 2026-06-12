@@ -310,26 +310,6 @@ export default function App() {
     refreshUnits
   } = useUnitActions();
 
-  const handlePlayStudyAudioQuizQuestion = useCallback(
-    (payload: { text: string; questionIndex: number; contextKey: string }) => {
-      void handlePlaySingleStream({
-        text: payload.text,
-        pageKey: `${payload.contextKey}::question-${payload.questionIndex + 1}`
-      });
-    },
-    [handlePlaySingleStream]
-  );
-
-  const handlePlayStudyAudioQuizAnswer = useCallback(
-    (payload: { text: string; questionIndex: number; contextKey: string }) => {
-      void handlePlaySingleStream({
-        text: payload.text,
-        pageKey: `${payload.contextKey}::question-${payload.questionIndex + 1}::answer`
-      });
-    },
-    [handlePlaySingleStream]
-  );
-
   const handleRegenerateStudyAudioQuiz = useCallback(
     (modal: 'unitQuiz' | 'chapterQuiz') => {
       if (modal === 'unitQuiz') {
@@ -339,26 +319,6 @@ export default function App() {
       }
     },
     [handleRegenerateQuiz, handleRegenerateUnitTopicQuiz, refreshUnits]
-  );
-
-  const handlePlayStudyAudioVocabulary = useCallback(
-    (payload: { text: string; chapterNumber: number }) => {
-      void handlePlaySingleStream({
-        text: payload.text,
-        pageKey: `vocabulary::chapter-${payload.chapterNumber}`
-      });
-    },
-    [handlePlaySingleStream]
-  );
-
-  const handlePlayStudyAudioMemoryCard = useCallback(
-    (payload: { text: string; chapterNumber: number }) => {
-      void handlePlaySingleStream({
-        text: payload.text,
-        pageKey: `memory-card::chapter-${payload.chapterNumber}`
-      });
-    },
-    [handlePlaySingleStream]
   );
 
   const handlePlayStudyAudioParagraph = useCallback(
@@ -422,11 +382,8 @@ export default function App() {
       clearOcrQueue: clearQueue,
       toggleOcrQueuePause: togglePause,
       stopStudyAudio: handleStopStream,
-      playStudyAudioQuizQuestion: handlePlayStudyAudioQuizQuestion,
-      playStudyAudioQuizAnswer: handlePlayStudyAudioQuizAnswer,
+      playStudyAudioSingle: (payload) => void handlePlaySingleStream(payload),
       regenerateStudyAudioQuiz: handleRegenerateStudyAudioQuiz,
-      playStudyAudioVocabulary: handlePlayStudyAudioVocabulary,
-      playStudyAudioMemoryCard: handlePlayStudyAudioMemoryCard,
       playStudyAudioUnitTopicParagraph: handlePlayStudyAudioParagraph,
       playStudyAudioChapterParagraph: handlePlayStudyAudioParagraph,
       generateToc: (variant) => void handleGenerateToc(variant),
@@ -445,11 +402,8 @@ export default function App() {
       handleGenerateChapter,
       handleGenerateToc,
       handlePlayOcrBlock,
-      handlePlayStudyAudioMemoryCard,
       handlePlayStudyAudioParagraph,
-      handlePlayStudyAudioQuizAnswer,
-      handlePlayStudyAudioQuizQuestion,
-      handlePlayStudyAudioVocabulary,
+      handlePlaySingleStream,
       handleRegenerateStudyAudioQuiz,
       handleRemoveTocEntry,
       handleSaveToc,

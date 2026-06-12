@@ -8,12 +8,6 @@ export type StudyAudioParagraphPayload = {
   key: string;
 };
 
-export type StudyAudioQuizPayload = {
-  text: string;
-  questionIndex: number;
-  contextKey: string;
-};
-
 export type ReaderCommands = {
   fitWidth: () => void;
   fitHeight: () => void;
@@ -29,11 +23,8 @@ export type ReaderCommands = {
   clearOcrQueue: () => void;
   toggleOcrQueuePause: () => void;
   stopStudyAudio: () => void;
-  playStudyAudioQuizQuestion: (payload: StudyAudioQuizPayload) => void;
-  playStudyAudioQuizAnswer: (payload: StudyAudioQuizPayload) => void;
+  playStudyAudioSingle: (payload: { text: string; pageKey: string }) => void;
   regenerateStudyAudioQuiz: (modal: QuizModal) => void;
-  playStudyAudioVocabulary: (payload: { text: string; chapterNumber: number }) => void;
-  playStudyAudioMemoryCard: (payload: { text: string; chapterNumber: number }) => void;
   playStudyAudioUnitTopicParagraph: (payload: StudyAudioParagraphPayload) => void;
   playStudyAudioChapterParagraph: (payload: StudyAudioParagraphPayload) => void;
   generateToc: (variant: TocVariant) => void;

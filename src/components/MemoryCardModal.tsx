@@ -18,7 +18,7 @@ import {
 
 export default function MemoryCardModal() {
   const dispatch = useAppDispatch();
-  const { stopStudyAudio, playStudyAudioMemoryCard } = useReaderCommands();
+  const { stopStudyAudio, playStudyAudioSingle } = useReaderCommands();
   const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('memoryCard'));
   const streamState = useAppSelector(selectStreamRuntime);
@@ -92,9 +92,9 @@ export default function MemoryCardModal() {
                   stopStudyAudio();
                   return;
                 }
-                playStudyAudioMemoryCard({
+                playStudyAudioSingle({
                   text: memoryCard.text,
-                  chapterNumber: memoryCard.chapterNumber
+                  pageKey: `memory-card::chapter-${memoryCard.chapterNumber}`
                 });
               }}
               disabled={!memoryCard || loading}

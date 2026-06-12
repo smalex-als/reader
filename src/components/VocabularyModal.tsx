@@ -16,7 +16,7 @@ import {
 
 export default function VocabularyModal() {
   const dispatch = useAppDispatch();
-  const { stopStudyAudio, playStudyAudioVocabulary } = useReaderCommands();
+  const { stopStudyAudio, playStudyAudioSingle } = useReaderCommands();
   const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('vocabulary'));
   const streamState = useAppSelector(selectStreamRuntime);
@@ -99,9 +99,9 @@ export default function VocabularyModal() {
                   stopStudyAudio();
                   return;
                 }
-                playStudyAudioVocabulary({
+                playStudyAudioSingle({
                   text: spokenText,
-                  chapterNumber: vocabulary.chapterNumber
+                  pageKey: `vocabulary::chapter-${vocabulary.chapterNumber}`
                 });
               }}
               disabled={!vocabulary || loading}
