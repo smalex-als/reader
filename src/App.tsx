@@ -237,9 +237,6 @@ export default function App() {
     void fetchPageText({ silent: true });
   }, [currentImage, currentText, fetchPageText, viewMode]);
   const {
-    jobs: ocrJobs,
-    paused: ocrPaused,
-    queueState: ocrQueueState,
     queueAllPages,
     forceUpdateAllPages,
     queueRemainingPages,
@@ -248,14 +245,6 @@ export default function App() {
     retryFailed,
     togglePause
   } = useOcrQueue();
-
-  useEffect(() => {
-    dispatch(appActions.setOcrQueueSnapshot({
-      jobs: ocrJobs,
-      paused: ocrPaused,
-      queueState: ocrQueueState
-    }));
-  }, [dispatch, ocrJobs, ocrPaused, ocrQueueState]);
 
   useEffect(() => {
     if (!ocrQueueCommandRequest) {

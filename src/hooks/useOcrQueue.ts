@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 import {
+  appActions,
   selectBookSessionWorkflow,
   selectReaderSession,
+  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { OcrJob, OcrQueueState } from '@/types/app';
@@ -32,6 +34,7 @@ async function requestPageText(imageUrl: string, options: { signal?: AbortSignal
 }
 
 export function useOcrQueue() {
+  const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
@@ -150,6 +153,14 @@ export function useOcrQueue() {
     }),
     [paused, progress]
   );
+
+  useEffect(() => {
+    dispatch(appActions.setOcrQueueSnapshot({
+      jobs,
+      paused,
+      queueState
+    }));
+  }, [dispatch, jobs, paused, queueState]);
 
   useEffect(() => {
     const busy = progress.pending > 0 || progress.running;
