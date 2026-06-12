@@ -5,16 +5,17 @@ import {
   type BookSessionActions
 } from '@/hooks/bookSessionActions';
 import type { ViewMode } from '@/lib/appConstants';
+import {
+  getBookFromLocation,
+  getPageFromLocation,
+  getViewModeFromLocation
+} from '@/lib/bookUrl';
 import { useToast } from '@/hooks/useToast';
 import { clamp } from '@/lib/math';
 import {
   appActions,
-  selectBookChapterCount,
   selectBookIds,
   selectBookLibraryStateReady,
-  selectBookManifest,
-  selectBookType,
-  selectNavigationState,
   selectReaderSession,
   useAppDispatch,
   useAppSelector
@@ -22,45 +23,8 @@ import {
 import {
   loadLastPage,
   loadLibraryStateFromServer,
-  markBookOpened,
   saveLastBook
 } from '@/lib/storage';
-
-function getBookFromLocation(): string | null {
-  const params = new URLSearchParams(window.location.search);
-  const book = params.get('book')?.trim();
-  return book ? book : null;
-}
-
-function getPageFromLocation(expectedBookId: string | null): number | null {
-  const params = new URLSearchParams(window.location.search);
-  const locationBook = params.get('book')?.trim() || null;
-  if (!expectedBookId || locationBook !== expectedBookId) {
-    return null;
-  }
-  const rawPage = params.get('page');
-  if (!rawPage) {
-    return null;
-  }
-  const parsed = Number.parseInt(rawPage, 10);
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    return null;
-  }
-  return parsed - 1;
-}
-
-function getViewModeFromLocation(expectedBookId: string | null): ViewMode | null {
-  const params = new URLSearchParams(window.location.search);
-  const locationBook = params.get('book')?.trim() || null;
-  if (!expectedBookId || locationBook !== expectedBookId) {
-    return null;
-  }
-  const rawView = params.get('view');
-  if (rawView === 'pages' || rawView === 'scroll' || rawView === 'text' || rawView === 'audio') {
-    return rawView;
-  }
-  return null;
-}
 
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
@@ -69,16 +33,10 @@ function resolveNext<T>(next: SetStateAction<T>, current: T) {
 export function useBookSession() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
-  const { mainView } = useAppSelector(selectNavigationState);
-  const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { bookId } = useAppSelector(selectReaderSession);
   const books = useAppSelector(selectBookIds);
-  const manifest = useAppSelector(selectBookManifest);
-  const bookType = useAppSelector(selectBookType);
-  const chapterCount = useAppSelector(selectBookChapterCount);
   const libraryStateReady = useAppSelector(selectBookLibraryStateReady);
   const pendingPageRef = useRef<number | null>(null);
-  const shouldUseLocationPositionRef = useRef(true);
-  const urlSyncPaused = mainView === 'units';
 
   const setBooks: Dispatch<SetStateAction<string[]>> = useCallback(
     (next) => {
@@ -103,8 +61,7 @@ export function useBookSession() {
     dispatch(appActions.setBookSessionLoading(nextLoading));
   }, [dispatch]);
 
-  const setBookId = useCallback((nextBookId: string | null, options?: { preferLocationPosition?: boolean }) => {
-    shouldUseLocationPositionRef.current = options?.preferLocationPosition ?? false;
+  const setBookId = useCallback((nextBookId: string | null) => {
     dispatch(appActions.setReaderBookId(nextBookId));
   }, [dispatch]);
 
@@ -232,66 +189,6 @@ export function useBookSession() {
   }, [bookId, libraryStateReady]);
 
   useEffect(() => {
-    if (bookId) {
-      saveLastBook(bookId);
-      markBookOpened(bookId);
-    }
-  }, [bookId]);
-
-  useEffect(() => {
-    if (urlSyncPaused) {
-      return;
-    }
-    const params = new URLSearchParams(window.location.search);
-    const currentParam = params.get('book');
-    const currentPageParam = params.get('page');
-    const currentViewParam = params.get('view');
-    const navCount = bookType === 'text' ? chapterCount : manifest.length;
-    const shouldSyncPosition = Boolean(bookId) && navCount > 0;
-    const nextPageParam = shouldSyncPosition ? String(currentPage + 1) : null;
-    const nextViewParam = shouldSyncPosition ? viewMode : null;
-    if (
-      (bookId ?? '') === (currentParam ?? '') &&
-      (!shouldSyncPosition || (nextPageParam ?? '') === (currentPageParam ?? '')) &&
-      (!shouldSyncPosition || (nextViewParam ?? '') === (currentViewParam ?? ''))
-    ) {
-      return;
-    }
-    if (bookId) {
-      params.set('book', bookId);
-    } else {
-      params.delete('book');
-    }
-    if (nextPageParam) {
-      params.set('page', nextPageParam);
-    } else if (!bookId) {
-      params.delete('page');
-    }
-    if (nextViewParam) {
-      params.set('view', nextViewParam);
-    } else if (!bookId) {
-      params.delete('view');
-    }
-    const nextSearch = params.toString();
-    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${
-      window.location.hash
-    }`;
-    window.history.replaceState(null, '', nextUrl);
-  }, [bookId, bookType, chapterCount, currentPage, manifest.length, urlSyncPaused, viewMode]);
-
-  useEffect(() => {
-    const handleLocationChange = () => {
-      setBookId(getBookFromLocation(), { preferLocationPosition: true });
-    };
-    window.addEventListener('popstate', handleLocationChange);
-    window.addEventListener('hashchange', handleLocationChange);
-    return () => {
-      window.removeEventListener('popstate', handleLocationChange);
-      window.removeEventListener('hashchange', handleLocationChange);
-    };
-  }, [setBookId]);
-
-  useEffect(() => {
     if (!libraryStateReady) {
       return;
     }
@@ -307,9 +204,8 @@ export function useBookSession() {
     setManifest([]);
     setCurrentPage(0);
 
-    const requestedPageFromLocation = shouldUseLocationPositionRef.current ? getPageFromLocation(bookId) : null;
-    const requestedViewFromLocation = shouldUseLocationPositionRef.current ? getViewModeFromLocation(bookId) : null;
-    shouldUseLocationPositionRef.current = false;
+    const requestedPageFromLocation = getPageFromLocation(bookId);
+    const requestedViewFromLocation = getViewModeFromLocation(bookId);
     void bookSessionHandlers.runAction('loadBookManifest', null, bookSessionActionsRef.current, {
       bookId,
       pendingPage: pendingPageRef.current,
