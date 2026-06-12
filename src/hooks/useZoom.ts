@@ -196,6 +196,39 @@ export function useZoom({
   }, [currentImage, pendingAlignTopRef, viewMode]);
 
   useEffect(() => {
+    if (
+      !pendingAlignTopRef?.current ||
+      !metrics ||
+      viewMode !== 'pages' ||
+      metrics.naturalHeight === 0 ||
+      metrics.scale !== settings.zoom
+    ) {
+      return;
+    }
+    const scaledHeight = metrics.naturalHeight * metrics.scale;
+    const limitY = Math.max(0, (scaledHeight - metrics.containerHeight) / 2);
+    const targetPan = clampPan({ x: 0, y: limitY }, metrics);
+    if (settings.pan.x !== targetPan.x || settings.pan.y !== targetPan.y) {
+      setSettings((prev) => {
+        if (prev.pan.x === targetPan.x && prev.pan.y === targetPan.y) {
+          return prev;
+        }
+        return { ...prev, pan: targetPan };
+      });
+      return;
+    }
+    pendingAlignTopRef.current = false;
+  }, [
+    metrics,
+    pendingAlignTopRef,
+    setSettings,
+    settings.pan.x,
+    settings.pan.y,
+    settings.zoom,
+    viewMode
+  ]);
+
+  useEffect(() => {
     if (!metrics) {
       return;
     }
