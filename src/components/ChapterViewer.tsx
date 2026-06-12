@@ -7,6 +7,7 @@ import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
 import { useChapterActions } from '@/hooks/useBookMutations';
+import { useChapterTextVersionModalRuntime } from '@/hooks/useChapterTextVersionModalRuntime';
 import { useChapterTextOutline } from '@/hooks/useChapterTextOutline';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { useChapterVersionSelectionNavigation } from '@/hooks/useChapterVersionNavigation';
@@ -19,7 +20,6 @@ import {
   selectBookType,
   selectBookUploadingChapter,
   selectStreamRuntime,
-  selectTextVersionModalWorkflow,
   selectTocWorkflow,
   selectViewerWorkflow,
   selectVoiceWorkflow,
@@ -64,10 +64,6 @@ export default function ChapterViewer() {
   const bookType = useAppSelector(selectBookType);
   const chapterCreating = useAppSelector(selectBookUploadingChapter);
   const chapterDeleting = useAppSelector(selectBookDeletingChapter);
-  const {
-    open: versionModalOpen,
-    createRequestId: textVersionCreateRequestId
-  } = useAppSelector(selectTextVersionModalWorkflow);
   const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
   const { textFontSize } = settings;
   const streamPositionActive =
@@ -176,6 +172,11 @@ export default function ChapterViewer() {
     selectedVersionId,
     setSelectedVersionId
   });
+  const { openVersionModal } = useChapterTextVersionModalRuntime({
+    selectedVersionId,
+    versionSaving,
+    handleCreateVersion
+  });
 
   const handleToolsToggle = useCallback(() => {
     setToolsOpen((current) => {
@@ -221,47 +222,6 @@ export default function ChapterViewer() {
       versionId: selectedVersionId
     }));
   }, [chapterNumber, chapterTitle, dispatch, displayText, selectedVersion?.label, selectedVersionId]);
-
-  const closeVersionModal = useCallback(() => {
-    if (versionSaving) {
-      return;
-    }
-    dispatch(appActions.closeTextVersionModal());
-  }, [dispatch, versionSaving]);
-
-  const openVersionModal = useCallback(() => {
-    dispatch(appActions.openTextVersionModal(selectedVersionId || 'base'));
-  }, [dispatch, selectedVersionId]);
-
-  const handledTextVersionCreateRequestRef = useRef(0);
-  useEffect(() => {
-    if (
-      textVersionCreateRequestId === 0 ||
-      handledTextVersionCreateRequestRef.current === textVersionCreateRequestId
-    ) {
-      return;
-    }
-    handledTextVersionCreateRequestRef.current = textVersionCreateRequestId;
-    void handleCreateVersion().then((created) => {
-      if (created) {
-        dispatch(appActions.closeTextVersionModal());
-      }
-    });
-  }, [dispatch, handleCreateVersion, textVersionCreateRequestId]);
-
-  useEffect(() => {
-    if (!versionModalOpen) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeVersionModal();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [closeVersionModal, versionModalOpen]);
 
   const pageMeta = useMemo(() => {
     if (!pageRange) {
