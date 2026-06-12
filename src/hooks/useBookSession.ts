@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   bookSessionHandlers,
   createBookSessionActions,
@@ -6,7 +6,6 @@ import {
 } from '@/hooks/bookSessionActions';
 import type { ViewMode } from '@/lib/appConstants';
 import {
-  getBookFromLocation,
   getPageFromLocation,
   getViewModeFromLocation
 } from '@/lib/bookUrl';
@@ -14,7 +13,6 @@ import { useToast } from '@/hooks/useToast';
 import { clamp } from '@/lib/math';
 import {
   appActions,
-  selectBookIds,
   selectBookLibraryStateReady,
   selectNavigationState,
   selectReaderSession,
@@ -22,30 +20,16 @@ import {
   useAppSelector
 } from '@/state/appState';
 import {
-  loadLastPage,
-  loadLibraryStateFromServer,
-  saveLastBook
+  loadLastPage
 } from '@/lib/storage';
-
-function resolveNext<T>(next: SetStateAction<T>, current: T) {
-  return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
-}
 
 export function useBookSession() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const { mainView } = useAppSelector(selectNavigationState);
   const { bookId } = useAppSelector(selectReaderSession);
-  const books = useAppSelector(selectBookIds);
   const libraryStateReady = useAppSelector(selectBookLibraryStateReady);
   const pendingPageRef = useRef<number | null>(null);
-
-  const setBooks: Dispatch<SetStateAction<string[]>> = useCallback(
-    (next) => {
-      dispatch(appActions.setBookSessionBooks(resolveNext(next, books)));
-    },
-    [books, dispatch]
-  );
 
   const setManifest = useCallback((nextManifest: string[]) => {
     dispatch(appActions.setBookSessionManifest(nextManifest));
@@ -63,10 +47,6 @@ export function useBookSession() {
     dispatch(appActions.setBookSessionLoading(nextLoading));
   }, [dispatch]);
 
-  const setBookId = useCallback((nextBookId: string | null) => {
-    dispatch(appActions.setReaderBookId(nextBookId));
-  }, [dispatch]);
-
   const setCurrentPage = useCallback(
     (page: number) => {
       dispatch(appActions.setReaderCurrentPage(page));
@@ -81,33 +61,8 @@ export function useBookSession() {
     [dispatch]
   );
 
-  const setBookModalOpen = useCallback(
-    (open: boolean) => {
-      dispatch(appActions.setModalOpen('bookSelect', open));
-    },
-    [dispatch]
-  );
-
   const bookSessionActions = useMemo<BookSessionActions>(
     () => createBookSessionActions({
-      applyLoadedBooks: (loadedBooks, currentBookId) => {
-        setBooks(loadedBooks);
-        if (loadedBooks.length === 0) {
-          setBookId(null);
-          showToast('No books found. Add files to /data to begin.', 'info');
-          return;
-        }
-        if (currentBookId && loadedBooks.includes(currentBookId)) {
-          return;
-        }
-        if (!currentBookId) {
-          setBookModalOpen(true);
-          return;
-        }
-        const fallback = loadedBooks[0];
-        setBookId(fallback);
-        saveLastBook(fallback);
-      },
       applyLoadedManifest: (data, options) => {
         setBookType(data.bookType);
         setChapterCount(data.chapterCount);
@@ -142,9 +97,6 @@ export function useBookSession() {
       showError: (message) => showToast(message, 'error')
     }),
     [
-      setBookId,
-      setBookModalOpen,
-      setBooks,
       setBookType,
       setChapterCount,
       setCurrentPage,
@@ -159,36 +111,6 @@ export function useBookSession() {
   useEffect(() => {
     bookSessionActionsRef.current = bookSessionActions;
   }, [bookSessionActions]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void loadLibraryStateFromServer()
-      .then((state) => {
-        if (cancelled) {
-          return;
-        }
-        if (!getBookFromLocation() && state.lastBook) {
-          setBookId(state.lastBook);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          dispatch(appActions.setBookSessionLibraryStateReady(true));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, setBookId]);
-
-  useEffect(() => {
-    if (!libraryStateReady) {
-      return;
-    }
-    void bookSessionHandlers.runAction('loadBooks', null, bookSessionActionsRef.current, {
-      currentBookId: bookId
-    });
-  }, [bookId, libraryStateReady]);
 
   useEffect(() => {
     if (!libraryStateReady) {
