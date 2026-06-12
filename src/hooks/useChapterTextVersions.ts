@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import {
-  chapterTextVersionHandlers,
   type AudioJobStatus,
   type ChapterTextVersionActions
 } from '@/hooks/chapterTextVersionActions';
 import {
-  getChapterAudioProvider,
   getChapterTextVersionDisplayState,
   selectChapterTextVersion
 } from '@/hooks/chapterTextVersionState';
 import { useChapterAudioPolling } from '@/hooks/useChapterAudioPolling';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useChapterTextVersionActionBridge } from '@/hooks/useChapterTextVersionActionBridge';
+import { useChapterTextVersionCommands } from '@/hooks/useChapterTextVersionCommands';
+import { useChapterTextVersionLoadEffects } from '@/hooks/useChapterTextVersionLoadEffects';
 import { useChapterTextVersionRefs } from '@/hooks/useChapterTextVersionRefs';
 import {
   appActions,
@@ -156,146 +156,47 @@ export function useChapterTextVersions() {
     chapterTextVersionActionsRef.current = chapterTextVersionActions;
   }, [chapterTextVersionActions]);
 
-  const loadChapterAudioStatus = useCallback(async () => {
-    if (!bookId || !chapterNumber) {
-      setChapterAudioReady(false);
-      setChapterAudioVersionId(null);
-      setChapterAudioUrl(null);
-      setChapterAudioSubchapters([]);
-      return;
+  useChapterTextVersionLoadEffects({
+    bookId,
+    chapterNumber,
+    selectedVersionId,
+    selectedVersion,
+    chapterText,
+    missingFile,
+    refreshToken,
+    localRefreshToken,
+    actions: chapterTextVersionActions,
+    setSourceVersionId,
+    setSelectedPromptId,
+    text: {
+      setChapterText,
+      setSelectedText,
+      setSelectedTextVersionId
+    },
+    versions: {
+      setVersions,
+      setPromptLibrary,
+      setSelectedVersionId
+    },
+    status: {
+      setLoading,
+      setVersionLoading,
+      setError,
+      setMissingFile,
+      setVersionError,
+      setAudioGenerating,
+      setAudioError,
+      setVersionSaving,
+      setVersionStatus
+    },
+    audio: {
+      setChapterAudioReady,
+      setChapterAudioVersionId,
+      setChapterAudioUrl,
+      setChapterAudioSubchapters,
+      setAudioJob
     }
-    await chapterTextVersionHandlers.runAction('loadAudioStatus', null, chapterTextVersionActions, {
-      bookId,
-      chapterNumber,
-      versionId: selectedVersionId || 'base'
-    });
-  }, [bookId, chapterNumber, chapterTextVersionActions, selectedVersionId]);
-
-  const loadTextVersions = useCallback(async () => {
-    if (!bookId || !chapterNumber) {
-      setVersions([]);
-      setPromptLibrary([]);
-      setSelectedVersionId('base');
-      setSourceVersionId('base');
-      setSelectedPromptId('');
-      setVersionError(null);
-      setVersionLoading(false);
-      return;
-    }
-    await chapterTextVersionHandlers.runAction('loadTextVersions', null, chapterTextVersionActions, {
-      bookId,
-      chapterNumber
-    });
-  }, [bookId, chapterNumber, chapterTextVersionActions, setSelectedPromptId, setSourceVersionId]);
-
-  useEffect(() => {
-    if (!bookId || !chapterNumber) {
-      setChapterText('');
-      setSelectedText('');
-      setSelectedTextVersionId(null);
-      setVersions([]);
-      setPromptLibrary([]);
-      setSelectedVersionId('base');
-      setSourceVersionId('base');
-      setSelectedPromptId('');
-      setError(null);
-      setMissingFile(null);
-      setLoading(false);
-      setVersionLoading(false);
-      setVersionError(null);
-      setAudioGenerating(false);
-      setAudioError(null);
-      setVersionSaving(false);
-      setVersionStatus(null);
-      setChapterAudioReady(false);
-      setChapterAudioVersionId(null);
-      setChapterAudioUrl(null);
-      setAudioJob(null);
-      return;
-    }
-
-    let canceled = false;
-    setChapterText('');
-    setSelectedText('');
-    setSelectedTextVersionId(null);
-    setVersionStatus(null);
-
-    const scopedActions: ChapterTextVersionActions = {
-      ...chapterTextVersionActions,
-      setChapterLoading: (value) => {
-        if (!canceled) setLoading(value);
-      },
-      setError: (value) => {
-        if (!canceled) setError(value);
-      },
-      setMissingFile: (value) => {
-        if (!canceled) setMissingFile(value);
-      },
-      setChapterText: (value) => {
-        if (!canceled) setChapterText(value);
-      }
-    };
-    void chapterTextVersionHandlers.runAction('loadChapterText', null, scopedActions, {
-      bookId,
-      chapterNumber
-    });
-
-    return () => {
-      canceled = true;
-    };
-  }, [bookId, chapterNumber, chapterTextVersionActions, refreshToken, localRefreshToken]);
-
-  useEffect(() => {
-    if (!bookId || !chapterNumber || missingFile) {
-      setVersions([]);
-      setPromptLibrary([]);
-      setSelectedVersionId('base');
-      setSourceVersionId('base');
-      setSelectedPromptId('');
-      return;
-    }
-    void loadTextVersions();
-  }, [bookId, chapterNumber, loadTextVersions, localRefreshToken, missingFile, refreshToken]);
-
-  useEffect(() => {
-    if (!bookId || !chapterNumber || !selectedVersion) {
-      setSelectedText('');
-      setSelectedTextVersionId(null);
-      return;
-    }
-    if (selectedVersion.id === 'base') {
-      setSelectedText(chapterText);
-      setSelectedTextVersionId('base');
-      return;
-    }
-    let canceled = false;
-    const scopedActions: ChapterTextVersionActions = {
-      ...chapterTextVersionActions,
-      setVersionLoading: (value) => {
-        if (!canceled) setVersionLoading(value);
-      },
-      setVersionError: (value) => {
-        if (!canceled) setVersionError(value);
-      },
-      setSelectedText: (value) => {
-        if (!canceled) setSelectedText(value);
-      },
-      setSelectedTextVersionId: (value) => {
-        if (!canceled) setSelectedTextVersionId(value);
-      }
-    };
-    void chapterTextVersionHandlers.runAction('loadVersionText', null, scopedActions, {
-      file: selectedVersion.file,
-      versionId: selectedVersion.id
-    });
-    return () => {
-      canceled = true;
-    };
-  }, [bookId, chapterNumber, chapterText, chapterTextVersionActions, selectedVersion]);
-
-  useEffect(() => {
-    void loadChapterAudioStatus();
-  }, [loadChapterAudioStatus]);
+  });
 
   const { displayText, displayLoading, displayError } = getChapterTextVersionDisplayState({
     bookId,
@@ -324,136 +225,39 @@ export function useChapterTextVersions() {
     }));
   }, [canCreateVersion, dispatch, promptLibrary, versionSaving, versions]);
 
-  const handleGenerate = useCallback(async () => {
-    if (!canGenerate || !bookId || !chapterNumber || !chapterRange || generating) {
-      return;
-    }
-    await chapterTextVersionHandlers.runAction('generateChapterText', null, chapterTextVersionActions, {
-      bookId,
-      chapterNumber,
-      pageStart: chapterRange.start,
-      pageEnd: chapterRange.end
-    });
-  }, [bookId, canGenerate, chapterNumber, chapterRange, chapterTextVersionActions, generating]);
-
-  const handleGenerateAudioWithProvider = useCallback(async (provider: 'default' | 'xai' | 'yandex') => {
-    if (!canGenerateAudio || !bookId || !chapterNumber || audioGenerating) {
-      return;
-    }
-    await chapterTextVersionHandlers.runAction('generateAudio', null, chapterTextVersionActions, {
-      bookId,
-      chapterNumber,
-      voice: mp3Voice,
-      versionId: selectedVersionId,
-      provider,
-      force: chapterAudioReady && chapterAudioVersionId === selectedVersionId
-    });
-  }, [
-    audioGenerating,
+  const {
+    handleGenerate,
+    handleGenerateAudio,
+    handleDeleteAudio,
+    handleCreateVersion,
+    handleDeleteVersion,
+    handleCancelAudioJob
+  } = useChapterTextVersionCommands({
     bookId,
+    chapterNumber,
+    chapterRange,
+    canGenerate,
+    generating,
     canGenerateAudio,
+    audioGenerating,
+    audioDeleting,
+    isAudioJobActive,
+    mp3Voice,
+    selectedVersionId,
+    selectedVersion,
     chapterAudioReady,
     chapterAudioVersionId,
-    chapterTextVersionActions,
-    chapterNumber,
-    mp3Voice,
-    selectedVersionId
-  ]);
-
-  const handleGenerateAudio = useCallback(() => {
-    return handleGenerateAudioWithProvider(getChapterAudioProvider(mp3Voice));
-  }, [handleGenerateAudioWithProvider, mp3Voice]);
-
-  const handleCreateVersion = useCallback(async () => {
-    if (!canCreateVersion || !bookId || !chapterNumber || versionSaving) {
-      return;
-    }
-    let created = false;
-    await chapterTextVersionHandlers.runAction(
-      'createVersion',
-      null,
-      {
-        ...chapterTextVersionActions,
-        setCreateVersionSucceeded: (succeeded) => {
-          created = succeeded;
-        }
-      },
-      {
-        bookId,
-        chapterNumber,
-        promptId: selectedPromptId || null,
-        sourceVersionId,
-        model: versionModel,
-        customPrompt,
-        addToLibrary: savePromptToLibrary,
-        promptName
-      }
-    );
-    return created;
-  }, [
-    bookId,
+    chapterAudioUrl,
     canCreateVersion,
-    chapterTextVersionActions,
-    chapterNumber,
-    customPrompt,
-    promptName,
-    savePromptToLibrary,
+    versionSaving,
     selectedPromptId,
     sourceVersionId,
     versionModel,
-    versionSaving
-  ]);
-
-  const handleDeleteVersion = useCallback(async () => {
-    if (!bookId || !chapterNumber || !selectedVersion || !selectedVersion.deletable || versionSaving) {
-      return;
-    }
-    const confirmed = window.confirm(`Delete ${selectedVersion.label}?`);
-    if (!confirmed) {
-      return;
-    }
-    await chapterTextVersionHandlers.runAction('deleteVersion', null, chapterTextVersionActions, {
-      bookId,
-      chapterNumber,
-      versionId: selectedVersion.id
-    });
-  }, [bookId, chapterNumber, chapterTextVersionActions, selectedVersion, versionSaving]);
-
-  const handleCancelAudioJob = useCallback(async () => {
-    if (!bookId || !chapterNumber) {
-      return;
-    }
-    await chapterTextVersionHandlers.runAction('cancelAudioJob', null, chapterTextVersionActions, {
-      bookId,
-      chapterNumber,
-      versionId: selectedVersionId
-    });
-  }, [bookId, chapterNumber, chapterTextVersionActions, selectedVersionId]);
-
-  const handleDeleteAudio = useCallback(async () => {
-    if (!bookId || !chapterNumber || !chapterAudioUrl || audioDeleting || isAudioJobActive) {
-      return;
-    }
-    const targetVersionId = chapterAudioVersionId || selectedVersionId || 'base';
-    const confirmed = window.confirm('Delete generated MP3 for this chapter?');
-    if (!confirmed) {
-      return;
-    }
-    await chapterTextVersionHandlers.runAction('deleteAudio', null, chapterTextVersionActions, {
-      bookId,
-      chapterNumber,
-      versionId: targetVersionId
-    });
-  }, [
-    audioDeleting,
-    bookId,
-    chapterAudioUrl,
-    chapterAudioVersionId,
-    chapterTextVersionActions,
-    chapterNumber,
-    isAudioJobActive,
-    selectedVersionId
-  ]);
+    customPrompt,
+    savePromptToLibrary,
+    promptName,
+    actions: chapterTextVersionActions
+  });
 
   return {
     chapterText,
