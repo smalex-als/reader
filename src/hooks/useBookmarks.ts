@@ -1,7 +1,12 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import type { Bookmark } from '@/types/app';
-import { fetchJson } from '@/lib/fetchJson';
+import {
+  deleteBookBookmark,
+  fetchBookBookmarks,
+  saveBookBookmark
+} from '@/api/bookmarks';
 import { useToast } from '@/hooks/useToast';
+import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 import {
   appActions,
   selectBookmarkWorkflow,
@@ -10,6 +15,127 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+
+type BookmarkPayloads = {
+  fetchBookmarks: {
+    bookId: string | null;
+  };
+  addBookmark: {
+    bookId: string | null;
+    page: number;
+    image: string | null;
+  };
+  removeBookmark: {
+    bookId: string | null;
+    page: number;
+  };
+};
+
+type BookmarkActions = {
+  resetBookmarks: () => void;
+  setBookmarks: (items: Bookmark[]) => void;
+  setLoading: (loading: boolean) => void;
+  setLoadError: (error: string | null) => void;
+  showError: (message: string) => void;
+  showSuccess: (message: string) => void;
+};
+
+const bookmarkHandlers = createActionHandlerRegistry<
+  unknown,
+  BookmarkActions,
+  BookmarkPayloads
+>();
+const { addActionHandler } = bookmarkHandlers;
+
+addActionHandler('fetchBookmarks', async (_state, actions, payload): Promise<void> => {
+  if (!payload.bookId) {
+    actions.resetBookmarks();
+    return;
+  }
+
+  await runRequest({
+    setBusy: actions.setLoading,
+    setError: actions.setLoadError,
+    fallbackError: 'Unable to load bookmarks',
+    request: () => fetchBookBookmarks(payload.bookId!),
+    onSuccess: actions.setBookmarks,
+    onError: (error) => {
+      console.error(error);
+      actions.setBookmarks([]);
+      actions.showError('Unable to load bookmarks');
+    }
+  });
+});
+
+addActionHandler('addBookmark', async (_state, actions, payload): Promise<void> => {
+  if (!payload.bookId || !payload.image) {
+    return;
+  }
+
+  await runRequest({
+    setBusy: actions.setLoading,
+    setError: actions.setLoadError,
+    fallbackError: 'Unable to save bookmark',
+    request: () =>
+      saveBookBookmark({
+        bookId: payload.bookId!,
+        page: payload.page,
+        image: payload.image!
+      }),
+    onSuccess: (bookmarks) => {
+      actions.setBookmarks(bookmarks);
+      actions.showSuccess('Bookmark saved');
+    },
+    onError: (error) => {
+      console.error(error);
+      actions.showError('Unable to save bookmark');
+    }
+  });
+});
+
+addActionHandler('removeBookmark', async (_state, actions, payload): Promise<void> => {
+  if (!payload.bookId || payload.page < 0) {
+    return;
+  }
+
+  await runRequest({
+    setBusy: actions.setLoading,
+    setError: actions.setLoadError,
+    fallbackError: 'Unable to remove bookmark',
+    request: () => deleteBookBookmark(payload.bookId!, payload.page),
+    onSuccess: (bookmarks) => {
+      actions.setBookmarks(bookmarks);
+      actions.showSuccess('Bookmark removed');
+    },
+    onError: (error) => {
+      console.error(error);
+      actions.showError('Unable to remove bookmark');
+    }
+  });
+});
+
+function useBookmarkActions() {
+  const dispatch = useAppDispatch();
+  const { showToast } = useToast();
+  const actions = useMemo<BookmarkActions>(
+    () => ({
+      resetBookmarks: () => dispatch(appActions.resetBookmarks()),
+      setBookmarks: (items) => dispatch(appActions.setBookmarks(items)),
+      setLoading: (loading) => dispatch(appActions.setBookmarksLoading(loading)),
+      setLoadError: () => undefined,
+      showError: (message) => showToast(message, 'error'),
+      showSuccess: (message) => showToast(message, 'success')
+    }),
+    [dispatch, showToast]
+  );
+
+  return useCallback(
+    async <T extends keyof BookmarkPayloads>(action: T, payload: BookmarkPayloads[T]) => {
+      await bookmarkHandlers.runAction(action, undefined, actions, payload);
+    },
+    [actions]
+  );
+}
 
 export function useBookmarks() {
   const dispatch = useAppDispatch();
@@ -42,37 +168,16 @@ export function useBookmarks() {
 export function useAddBookmark() {
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
-  const { showToast } = useToast();
-  const dispatch = useAppDispatch();
+  const runBookmarkAction = useBookmarkActions();
   const currentImage = manifest[currentPage] ?? null;
 
   return useCallback(async () => {
-    if (!bookId || !currentImage) {
-      return;
-    }
-    try {
-      dispatch(appActions.setBookmarksLoading(true));
-      const response = await fetch(`/api/books/${encodeURIComponent(bookId)}/bookmarks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          page: currentPage,
-          image: currentImage
-        })
-      });
-      if (!response.ok) {
-        throw new Error('Failed to save bookmark');
-      }
-      const data = (await response.json()) as { bookmarks: Bookmark[] };
-      dispatch(appActions.setBookmarks(data.bookmarks ?? []));
-      showToast('Bookmark saved', 'success');
-    } catch (error) {
-      console.error(error);
-      showToast('Unable to save bookmark', 'error');
-    } finally {
-      dispatch(appActions.setBookmarksLoading(false));
-    }
-  }, [bookId, currentImage, currentPage, dispatch, showToast]);
+    await runBookmarkAction('addBookmark', {
+      bookId,
+      page: currentPage,
+      image: currentImage
+    });
+  }, [bookId, currentImage, currentPage, runBookmarkAction]);
 }
 
 export function useToggleBookmark() {
@@ -93,8 +198,8 @@ export function useToggleBookmark() {
 
 export function useFetchBookmarks() {
   const { bookId } = useAppSelector(selectReaderSession);
-  const { showToast } = useToast();
   const dispatch = useAppDispatch();
+  const runBookmarkAction = useBookmarkActions();
 
   return useCallback(
     async (targetBookId: string | null = bookId) => {
@@ -102,21 +207,11 @@ export function useFetchBookmarks() {
         dispatch(appActions.resetBookmarks());
         return;
       }
-      dispatch(appActions.setBookmarksLoading(true));
-      try {
-        const data = await fetchJson<{ book: string; bookmarks: Bookmark[] }>(
-          `/api/books/${encodeURIComponent(targetBookId)}/bookmarks`
-        );
-        dispatch(appActions.setBookmarks(data.bookmarks ?? []));
-      } catch (error) {
-        console.error(error);
-        dispatch(appActions.setBookmarks([]));
-        showToast('Unable to load bookmarks', 'error');
-      } finally {
-        dispatch(appActions.setBookmarksLoading(false));
-      }
+      await runBookmarkAction('fetchBookmarks', {
+        bookId: targetBookId
+      });
     },
-    [bookId, dispatch, showToast]
+    [bookId, dispatch, runBookmarkAction]
   );
 }
 
@@ -136,37 +231,16 @@ export function useShowBookmarks() {
 
 export function useRemoveBookmark() {
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
-  const { showToast } = useToast();
-  const dispatch = useAppDispatch();
+  const runBookmarkAction = useBookmarkActions();
 
   return useCallback(
     async (pageIndex?: number) => {
-      if (!bookId) {
-        return;
-      }
       const targetPage = typeof pageIndex === 'number' ? pageIndex : currentPage;
-      if (targetPage < 0) {
-        return;
-      }
-      try {
-        dispatch(appActions.setBookmarksLoading(true));
-        const response = await fetch(
-          `/api/books/${encodeURIComponent(bookId)}/bookmarks?page=${encodeURIComponent(targetPage)}`,
-          { method: 'DELETE' }
-        );
-        if (!response.ok) {
-          throw new Error('Failed to remove bookmark');
-        }
-        const data = (await response.json()) as { bookmarks: Bookmark[] };
-        dispatch(appActions.setBookmarks(data.bookmarks ?? []));
-        showToast('Bookmark removed', 'success');
-      } catch (error) {
-        console.error(error);
-        showToast('Unable to remove bookmark', 'error');
-      } finally {
-        dispatch(appActions.setBookmarksLoading(false));
-      }
+      await runBookmarkAction('removeBookmark', {
+        bookId,
+        page: targetPage
+      });
     },
-    [bookId, currentPage, dispatch, showToast]
+    [bookId, currentPage, runBookmarkAction]
   );
 }
