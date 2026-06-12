@@ -34,7 +34,6 @@ import {
 export default function App() {
   const dispatch = useAppDispatch();
   const pendingAlignTopRef = useRef(false);
-  const lastImageRef = useRef<string | null>(null);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
 
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
@@ -53,6 +52,7 @@ export default function App() {
     loading
   } = useBookSession();
   const { chapterNumber } = useCurrentChapterContext();
+  const currentImage = manifest[currentPage] ?? null;
   const {
     settings,
     setSettings,
@@ -61,12 +61,12 @@ export default function App() {
     fitHeight
   } = useZoom({
     pendingAlignTopRef,
-    viewMode
+    viewMode,
+    currentImage
   });
 
   useUnitsRouteSync();
 
-  const currentImage = manifest[currentPage] ?? null;
   const {
     handleGenerateToc,
     handleSaveToc,
@@ -195,17 +195,6 @@ export default function App() {
     }
     pendingAlignTopRef.current = false;
   }, [metrics, setSettings, settings.pan.x, settings.pan.y, settings.zoom, viewMode]);
-
-  useEffect(() => {
-    if (viewMode !== 'pages') {
-      lastImageRef.current = currentImage;
-      return;
-    }
-    if (currentImage && lastImageRef.current !== currentImage) {
-      pendingAlignTopRef.current = true;
-    }
-    lastImageRef.current = currentImage;
-  }, [currentImage, viewMode]);
 
   const { closeBookmarks } = useBookmarks();
 

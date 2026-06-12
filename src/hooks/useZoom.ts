@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { clamp, clampPan } from '@/lib/math';
 import {
   appActions,
@@ -14,6 +14,7 @@ const ZOOM_MAX = 6;
 type UseZoomOptions = {
   pendingAlignTopRef?: MutableRefObject<boolean>;
   viewMode?: 'pages' | 'scroll' | 'text' | 'audio';
+  currentImage?: string | null;
 };
 
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
@@ -146,8 +147,10 @@ export function useViewerTransformControls() {
 
 export function useZoom({
   pendingAlignTopRef,
-  viewMode
+  viewMode,
+  currentImage = null
 }: UseZoomOptions = {}) {
+  const lastImageRef = useRef<string | null>(null);
   const {
     settings,
     setSettings,
@@ -177,6 +180,20 @@ export function useZoom({
   const fitHeight = useCallback(() => {
     applyZoomModeWithAlign('fit-height');
   }, [applyZoomModeWithAlign]);
+
+  useEffect(() => {
+    if (!pendingAlignTopRef) {
+      return;
+    }
+    if (viewMode !== 'pages') {
+      lastImageRef.current = currentImage;
+      return;
+    }
+    if (currentImage && lastImageRef.current !== currentImage) {
+      pendingAlignTopRef.current = true;
+    }
+    lastImageRef.current = currentImage;
+  }, [currentImage, pendingAlignTopRef, viewMode]);
 
   useEffect(() => {
     if (!metrics) {
