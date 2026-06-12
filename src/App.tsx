@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef} from 'react';
+import {useEffect, useRef} from 'react';
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
 import ReaderSidebar from '@/components/ReaderSidebar';
@@ -20,11 +20,11 @@ import {useFloatingAudio} from '@/hooks/useFloatingAudio';
 import {useFullscreen} from '@/hooks/useFullscreen';
 import {useHotkeys} from '@/hooks/useHotkeys';
 import {useCurrentChapterContext} from '@/hooks/useCurrentChapterLabel';
-import {ReaderCommandProvider, type ReaderCommands} from '@/hooks/useReaderCommands';
+import {ReaderCommandProvider} from '@/hooks/useReaderCommands';
+import {useReaderCommandBindings} from '@/hooks/useReaderCommandBindings';
 import {useTocManager} from '@/hooks/useTocManager';
 import {usePlaybackWakeLock} from '@/hooks/useWakeLock';
 import {useZoom} from '@/hooks/useZoom';
-import {makeStreamLocator} from '@/lib/streamLocator';
 import {
   appActions,
   useAppDispatch
@@ -125,24 +125,9 @@ export default function App() {
   useStreamHistoryLogger();
 
   const {
-    toggleOcrEditMode: handleToggleOcrEditMode,
-    toggleSpeechBlock: handleToggleSpeechBlock
+    toggleOcrEditMode,
+    toggleSpeechBlock
   } = useOcrEditMode();
-
-  const handlePlayOcrBlock = useCallback(
-    (payload: { imageUrl: string; startIndex: number; blockId: string }) => {
-      setSelectedStreamBlockKey(makeStreamLocator(payload.imageUrl, payload.blockId));
-      void handlePlayPageBlock(payload);
-    },
-    [handlePlayPageBlock, setSelectedStreamBlockKey]
-  );
-
-  const handleToggleOcrBlockSpeech = useCallback(
-    (blockId: string) => {
-      void handleToggleSpeechBlock(blockId);
-    },
-    [handleToggleSpeechBlock]
-  );
 
   const {
     queueAllPages,
@@ -166,88 +151,42 @@ export default function App() {
     stopStream();
   }, [bookId, closeBookmarks, dispatch, resetAudioCache, stopAudio, stopStream]);
 
-  const {
-    handleOpenAudioLibrary
-  } = useDashboardNavigation();
+  useDashboardNavigation();
 
   useShareLink();
 
-  const handlePlayStudyAudioParagraph = useCallback(
-    (payload: { fullText: string; startIndex: number; key: string }) => {
-      void handlePlayChapterParagraph({
-        fullText: payload.fullText,
-        startIndex: payload.startIndex,
-        key: payload.key
-      });
-    },
-    [handlePlayChapterParagraph]
-  );
-
-  const handleToggleOcrEditModeCommand = useCallback(() => {
-    void handleToggleOcrEditMode();
-  }, [handleToggleOcrEditMode]);
-
-  const handleToggleFullscreenCommand = useCallback(() => {
-    void toggleFullscreen();
-  }, [toggleFullscreen]);
+  const readerCommands = useReaderCommandBindings({
+    fitWidth,
+    fitHeight,
+    toggleOcrEditMode,
+    toggleFullscreen,
+    playOcrBlock: handlePlayPageBlock,
+    toggleOcrBlockSpeech: toggleSpeechBlock,
+    setSelectedStreamBlockKey,
+    queueRemainingOcrPages: queueRemainingPages,
+    queueAllOcrPages: queueAllPages,
+    forceUpdateAllOcrPages: forceUpdateAllPages,
+    retryFailedOcrPages: retryFailed,
+    clearOcrQueue: clearQueue,
+    toggleOcrQueuePause: togglePause,
+    stopStudyAudio: handleStopStream,
+    playStudyAudioSingle: handlePlaySingleStream,
+    playStudyAudioParagraph: handlePlayChapterParagraph,
+    generateToc: handleGenerateToc,
+    saveToc: handleSaveToc,
+    addTocEntry: handleAddTocEntry,
+    removeTocEntry: handleRemoveTocEntry,
+    updateTocEntry: handleUpdateTocEntry,
+    generateChapterText: handleGenerateChapter
+  });
 
   useHotkeys({
     gotoInputRef,
     fitWidth,
     fitHeight,
-    toggleOcrEditMode: handleToggleOcrEditModeCommand,
-    toggleFullscreen: handleToggleFullscreenCommand
+    toggleOcrEditMode: readerCommands.toggleOcrEditMode,
+    toggleFullscreen: readerCommands.toggleFullscreen
   });
-
-  const readerCommands = useMemo<ReaderCommands>(
-    () => ({
-      fitWidth,
-      fitHeight,
-      toggleOcrEditMode: handleToggleOcrEditModeCommand,
-      toggleFullscreen: handleToggleFullscreenCommand,
-      playOcrBlock: handlePlayOcrBlock,
-      toggleOcrBlockSpeech: handleToggleOcrBlockSpeech,
-      queueRemainingOcrPages: queueRemainingPages,
-      queueAllOcrPages: queueAllPages,
-      forceUpdateAllOcrPages: forceUpdateAllPages,
-      retryFailedOcrPages: retryFailed,
-      clearOcrQueue: clearQueue,
-      toggleOcrQueuePause: togglePause,
-      stopStudyAudio: handleStopStream,
-      playStudyAudioSingle: (payload) => void handlePlaySingleStream(payload),
-      playStudyAudioUnitTopicParagraph: handlePlayStudyAudioParagraph,
-      playStudyAudioChapterParagraph: handlePlayStudyAudioParagraph,
-      generateToc: (variant) => void handleGenerateToc(variant),
-      saveToc: (variant) => void handleSaveToc(variant),
-      addTocEntry: handleAddTocEntry,
-      removeTocEntry: handleRemoveTocEntry,
-      updateTocEntry: handleUpdateTocEntry,
-      generateChapterText: (index) => void handleGenerateChapter(index)
-    }),
-    [
-      clearQueue,
-      fitHeight,
-      fitWidth,
-      forceUpdateAllPages,
-      handleAddTocEntry,
-      handleGenerateChapter,
-      handleGenerateToc,
-      handlePlayOcrBlock,
-      handlePlayStudyAudioParagraph,
-      handlePlaySingleStream,
-      handleRemoveTocEntry,
-      handleSaveToc,
-      handleStopStream,
-      handleToggleFullscreenCommand,
-      handleToggleOcrBlockSpeech,
-      handleToggleOcrEditModeCommand,
-      handleUpdateTocEntry,
-      queueAllPages,
-      queueRemainingPages,
-      retryFailed,
-      togglePause
-    ]
-  );
 
   const modalProps = {
     portalTarget: isFullscreen ? modalHostRef.current : null
