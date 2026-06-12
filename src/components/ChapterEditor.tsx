@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useChapterEditorActions } from '@/hooks/useChapterEditorActions';
 import {
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookType,
   selectEditorState,
   selectReaderSession,
   selectTocWorkflow,
@@ -10,7 +11,8 @@ import {
 
 export default function ChapterEditor() {
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
-  const { bookType, chapterCount } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
   const { chapterNumber: editorChapterNumber, textVersion } = useAppSelector(selectEditorState);
   const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
   const sortedTocEntries = useMemo(

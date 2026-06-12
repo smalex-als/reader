@@ -9,7 +9,9 @@ import UnitsView from '@/components/UnitsView';
 import Viewer from '@/components/Viewer';
 import type { ReaderShellControls } from '@/hooks/useReaderShellControls';
 import {
-  selectBookSessionWorkflow,
+  selectBookIds,
+  selectBookManifest,
+  selectBookSessionLoading,
   selectEditorState,
   selectNavigationState,
   selectReaderSession,
@@ -27,7 +29,9 @@ export default function ReaderMainContent({
   const { viewerShellRef, modalHostRef } = shellControls;
   const { mainView } = useAppSelector(selectNavigationState);
   const { currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const { books, loading, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const books = useAppSelector(selectBookIds);
+  const loading = useAppSelector(selectBookSessionLoading);
+  const manifest = useAppSelector(selectBookManifest);
   const { open: editorOpen } = useAppSelector(selectEditorState);
   const {
     settings: { textTheme }

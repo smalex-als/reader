@@ -6,7 +6,9 @@ import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
 import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectChapterTextContext,
   selectReaderSession,
   selectStreamRuntime,
@@ -153,7 +155,9 @@ export function useStreamSequence({
   const { stopAudio } = useAudioController();
   const dispatch = useAppDispatch();
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const { firstChapterParagraph } = useAppSelector(selectChapterTextContext);
   const streamState = useAppSelector(selectStreamRuntime);
   const { settings } = useAppSelector(selectViewerWorkflow);

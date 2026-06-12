@@ -4,7 +4,7 @@ import { useNavigation } from '@/hooks/useNavigation';
 import { useZoom } from '@/hooks/useZoom';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectReaderSession,
   selectShellControlRequest,
   useAppDispatch,
@@ -17,7 +17,7 @@ export function useReaderShellControls() {
   const modalHostRef = useRef<HTMLDivElement | null>(null);
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
   const { currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const shellControlRequest = useAppSelector(selectShellControlRequest);
   const currentImage = manifest[currentPage] ?? null;
 

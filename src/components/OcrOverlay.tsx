@@ -4,7 +4,7 @@ import { usePageText } from '@/hooks/usePageText';
 import { parseStreamLocator } from '@/lib/streamLocator';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectOcrEdit,
   selectReaderSession,
   selectStreamRuntime,
@@ -25,7 +25,7 @@ const PREVIEWABLE_BLOCK_KINDS = new Set(['image', 'image_caption']);
 export default function OcrOverlay({ imageUrl }: OcrOverlayProps) {
   const dispatch = useAppDispatch();
   const { currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const { currentText: pageText, fetchPageText } = usePageText(imageUrl);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { editMode: globalEditMode } = useAppSelector(selectOcrEdit);

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { logStreamHistory } from '@/lib/analytics';
 import {
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectReaderSession,
   selectStreamRuntime,
   selectTocWorkflow,
@@ -28,7 +30,9 @@ function parseUnitStreamPageKey(pageKey: string | null) {
 
 export function useStreamHistoryLogger() {
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
-  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const { entries: tocEntries, detailedEntries: detailedTocEntries } = useAppSelector(selectTocWorkflow);
   const streamState = useAppSelector(selectStreamRuntime);
   const sortedTocEntries = useMemo(() => {

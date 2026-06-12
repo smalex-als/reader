@@ -3,7 +3,9 @@ import { useToast } from '@/hooks/useToast';
 import { trackEvent } from '@/lib/analytics';
 import { copyToClipboard } from '@/lib/clipboard';
 import {
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectReaderSession,
   useAppSelector
 } from '@/state/appState';
@@ -15,7 +17,9 @@ interface UseShareLinkOptions {
 export function useShareLink(options: UseShareLinkOptions = {}) {
   const { trackOpened = true } = options;
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const { showToast } = useToast();
   const shareOpenedTrackedRef = useRef(false);
   const navigationCount = bookType === 'text' ? chapterCount : manifest.length;

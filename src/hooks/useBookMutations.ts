@@ -9,7 +9,8 @@ import { clamp } from '@/lib/math';
 import { saveLastBook, saveLastPage } from '@/lib/storage';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookIds,
+  selectBookType,
   selectReaderSession,
   useAppDispatch,
   useAppSelector
@@ -19,7 +20,8 @@ export function useChapterActions() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const { bookId } = useAppSelector(selectReaderSession);
-  const { books, bookType } = useAppSelector(selectBookSessionWorkflow);
+  const books = useAppSelector(selectBookIds);
+  const bookType = useAppSelector(selectBookType);
   const actions = useMemo(
     () =>
       createBookSessionActions({
@@ -168,7 +170,7 @@ export function useDeleteBook() {
 export function useUploadPdf() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
-  const { books } = useAppSelector(selectBookSessionWorkflow);
+  const books = useAppSelector(selectBookIds);
   const actions = useMemo(
     () =>
       createBookSessionActions({
@@ -204,7 +206,8 @@ export function useUploadChapter() {
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const { bookId } = useAppSelector(selectReaderSession);
-  const { books, bookType } = useAppSelector(selectBookSessionWorkflow);
+  const books = useAppSelector(selectBookIds);
+  const bookType = useAppSelector(selectBookType);
   const actions = useMemo(
     () =>
       createBookSessionActions({

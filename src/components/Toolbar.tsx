@@ -1,6 +1,8 @@
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectFullscreen,
   selectNavigationState,
   selectOcrEdit,
@@ -33,7 +35,9 @@ export default function Toolbar() {
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
   const settingsToolbarTab = useAppSelector(selectSettingsToolbarTab);
-  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const fullscreen = useAppSelector(selectFullscreen);
   const { editMode: ocrEditMode, saving: ocrEditSaving } = useAppSelector(selectOcrEdit);
   const { queueState: ocrQueueState } = useAppSelector(selectOcrQueueWorkflow);

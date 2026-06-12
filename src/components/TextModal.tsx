@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/useToast';
 import { copyToClipboard } from '@/lib/clipboard';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectModalOpen,
   selectPageTextWorkflow,
   selectReaderPreferences,
@@ -19,7 +19,7 @@ export default function TextModal() {
   const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('text'));
   const { currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const {
     cache: textCache,
     loading,

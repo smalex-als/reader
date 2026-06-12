@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry } from '@/lib/actionHandlers';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectReaderSession,
   useAppDispatch,
   useAppSelector
@@ -62,7 +62,7 @@ export function useOcrQueue() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const [jobs, setJobs] = useState<OcrJob[]>([]);
   const [paused, setPaused] = useState(false);
   const idCounterRef = useRef(0);

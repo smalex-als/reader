@@ -5,7 +5,7 @@ import { parseOcrLayout, serializeOcrLayout } from '@/lib/ocrLayout';
 import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectModalOpen,
   selectPageTextWorkflow,
   selectReaderSession,
@@ -109,7 +109,7 @@ export function usePageText(imageOverride?: string | null) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const textModalOpen = useAppSelector(selectModalOpen('text'));
   const {
     cache: textCache,

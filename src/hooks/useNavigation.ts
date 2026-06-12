@@ -5,7 +5,9 @@ import { clamp } from '@/lib/math';
 import { saveLastPage } from '@/lib/storage';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectPageNavigationRequest,
   selectReaderSession,
   selectTocWorkflow,
@@ -24,7 +26,9 @@ export function useNavigation({
   const { resetAudio } = useAudioController();
   const pageNavigationRequest = useAppSelector(selectPageNavigationRequest);
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
   const isTextBook = bookType === 'text';
   const navigationCount = isTextBook ? chapterCount : manifest.length;

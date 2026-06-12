@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import {
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectReaderSession,
   selectTocWorkflow,
   useAppSelector
@@ -8,7 +10,9 @@ import {
 
 export function useCurrentChapterContext() {
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
-  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
   const sortedTocEntries = useMemo(
     () =>

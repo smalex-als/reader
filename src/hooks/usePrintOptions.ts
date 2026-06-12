@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { createBookPrintPdf } from '@/api/print';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectPrintWorkflow,
   selectReaderSession,
   useAppDispatch,
@@ -71,7 +71,7 @@ export function usePrintOptions() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const { selection: printSelection } = useAppSelector(selectPrintWorkflow);
 
   const printOptions = useMemo(() => {

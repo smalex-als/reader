@@ -5,7 +5,9 @@ import { useDeleteBook, useUploadChapter, useUploadPdf } from '@/hooks/useBookMu
 import {
   appActions,
   selectBookCardWorkflow,
-  selectBookSessionWorkflow,
+  selectBookIds,
+  selectBookUploadingChapter,
+  selectBookUploadingPdf,
   selectModalOpen,
   selectReaderSession,
   selectRefreshTokens,
@@ -29,7 +31,9 @@ export default function BookSelectModal() {
   const uploadPdf = useUploadPdf();
   const open = useAppSelector(selectModalOpen('bookSelect'));
   const { bookId: currentBook } = useAppSelector(selectReaderSession);
-  const { books, uploadingChapter, uploadingPdf } = useAppSelector(selectBookSessionWorkflow);
+  const books = useAppSelector(selectBookIds);
+  const uploadingChapter = useAppSelector(selectBookUploadingChapter);
+  const uploadingPdf = useAppSelector(selectBookUploadingPdf);
   const { bookCards: cardRefreshToken } = useAppSelector(selectRefreshTokens);
   const {
     cardsByBook: bookCards,

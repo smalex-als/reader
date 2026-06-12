@@ -6,7 +6,7 @@ import { saveLastPage } from '@/lib/storage';
 import { parseStreamLocator } from '@/lib/streamLocator';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectPageTextWorkflow,
   selectReaderSession,
   selectStreamRuntime,
@@ -56,7 +56,7 @@ function scrollBlockIntoReadingZone(scroller: HTMLDivElement, block: HTMLElement
 export default function ScrollViewer() {
   const dispatch = useAppDispatch();
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
   const streamState = useAppSelector(selectStreamRuntime);

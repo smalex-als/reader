@@ -3,7 +3,8 @@ import { usePageText } from '@/hooks/usePageText';
 import { useToast } from '@/hooks/useToast';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
+  selectBookType,
   selectOcrEdit,
   selectOcrEditRequest,
   selectPageTextWorkflow,
@@ -16,7 +17,8 @@ export function useOcrEditMode() {
   const { showToast } = useToast();
   const { fetchPageText, savePageText, updatePageTextBlocks } = usePageText();
   const { currentPage } = useAppSelector(selectReaderSession);
-  const { bookType, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const manifest = useAppSelector(selectBookManifest);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
   const { editMode: ocrEditMode } = useAppSelector(selectOcrEdit);
   const ocrEditRequest = useAppSelector(selectOcrEditRequest);

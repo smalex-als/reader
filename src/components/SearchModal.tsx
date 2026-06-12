@@ -3,7 +3,7 @@ import CloseIcon from '@/components/CloseIcon';
 import { useBookSearch } from '@/hooks/useBookSearch';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookType,
   selectModalOpen,
   selectReaderSession,
   useAppDispatch,
@@ -14,7 +14,7 @@ export default function SearchModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectModalOpen('search'));
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const { bookType } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
   const {
     searchQuery: query,
     setSearchQuery,

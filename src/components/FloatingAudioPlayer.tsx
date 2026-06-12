@@ -4,7 +4,7 @@ import { PLAYBACK_RATE_OPTIONS, normalizePlaybackRate } from '@/lib/appConstants
 import { emitFloatingAudioSubchapterSelect, emitFloatingAudioTime } from '@/lib/floatingAudioEvents';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectFloatingAudio,
   selectReaderSession,
   selectStreamUiControls,
@@ -34,7 +34,7 @@ export default function FloatingAudioPlayer() {
   const dispatch = useAppDispatch();
   const { track } = useAppSelector(selectFloatingAudio);
   const { currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const { playbackRate } = useAppSelector(selectStreamUiControls);
   const currentImage = manifest[currentPage] ?? null;
   const audioRef = useRef<HTMLAudioElement | null>(null);

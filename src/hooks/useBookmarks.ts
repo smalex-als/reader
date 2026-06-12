@@ -10,7 +10,7 @@ import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 import {
   appActions,
   selectBookmarkWorkflow,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectReaderSession,
   useAppDispatch,
   useAppSelector
@@ -167,7 +167,7 @@ export function useBookmarks() {
 
 export function useAddBookmark() {
   const { bookId, currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const runBookmarkAction = useBookmarkActions();
   const currentImage = manifest[currentPage] ?? null;
 

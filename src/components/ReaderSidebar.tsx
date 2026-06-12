@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import {
   appActions,
   selectBookmarkWorkflow,
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectNavigationState,
   selectReaderSession,
   selectStreamRuntime,
@@ -64,7 +66,9 @@ export default function ReaderSidebar() {
   const toggleBookmark = useToggleBookmark();
   const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { mainView } = useAppSelector(selectNavigationState);
-  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
   const streamState = useAppSelector(selectStreamRuntime);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);

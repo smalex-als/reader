@@ -5,7 +5,7 @@ import { clampPan } from '@/lib/math';
 import OcrOverlay from '@/components/OcrOverlay';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectReaderSession,
   selectViewerWorkflow,
   useAppDispatch,
@@ -26,7 +26,7 @@ const ZOOM_MAX = 6;
 export default function Viewer() {
   const dispatch = useAppDispatch();
   const { currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const imageUrl = manifest[currentPage] ?? null;
   const rotation = settings.rotation;

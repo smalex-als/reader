@@ -7,7 +7,9 @@ import {
 } from '@/api/toc';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectModalOpen,
   selectReaderSession,
   selectTocWorkflow,
@@ -190,7 +192,9 @@ export function useTocManager() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { bookId } = useAppSelector(selectReaderSession);
-  const { bookType, chapterCount, manifest } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const tocOpen = useAppSelector(selectModalOpen('tocNav'));
   const tocManageOpen = useAppSelector(selectModalOpen('tocManage'));
   const {

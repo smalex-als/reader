@@ -8,8 +8,9 @@ import { useViewerTransformControls } from '@/hooks/useZoom';
 import { PAN_PAGE_STEP, PAN_STEP, ZOOM_STEP } from '@/lib/hotkeys';
 import {
   appActions,
-  selectBookSessionWorkflow,
   selectBookCardOpen,
+  selectBookManifest,
+  selectBookType,
   selectModalOpen,
   selectNavigationState,
   selectReaderSession,
@@ -31,7 +32,8 @@ export function useHotkeys() {
   const { showToast } = useToast();
   const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
   const { currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const { manifest, bookType } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
+  const bookType = useAppSelector(selectBookType);
   const {
     settings,
     updatePan,

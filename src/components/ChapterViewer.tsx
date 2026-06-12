@@ -14,7 +14,9 @@ import { onFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import { formatListeningTime } from '@/lib/listeningTime';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookDeletingChapter,
+  selectBookType,
+  selectBookUploadingChapter,
   selectChapterVersionNavigationRequest,
   selectStreamRuntime,
   selectTextVersionModalWorkflow,
@@ -158,11 +160,9 @@ export default function ChapterViewer() {
   const { settings } = useAppSelector(selectViewerWorkflow);
   const streamState = useAppSelector(selectStreamRuntime);
   const { loading: tocLoading } = useAppSelector(selectTocWorkflow);
-  const {
-    bookType,
-    uploadingChapter: chapterCreating,
-    deletingChapter: chapterDeleting
-  } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCreating = useAppSelector(selectBookUploadingChapter);
+  const chapterDeleting = useAppSelector(selectBookDeletingChapter);
   const versionNavigationRequest = useAppSelector(selectChapterVersionNavigationRequest);
   const {
     open: versionModalOpen,

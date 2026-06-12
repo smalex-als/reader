@@ -3,7 +3,7 @@ import { usePageText } from '@/hooks/usePageText';
 import { useToast } from '@/hooks/useToast';
 import { copyToClipboard } from '@/lib/clipboard';
 import {
-  selectBookSessionWorkflow,
+  selectBookManifest,
   selectReaderSession,
   useAppSelector
 } from '@/state/appState';
@@ -11,7 +11,7 @@ import {
 export function useCopyActions() {
   const { showToast } = useToast();
   const { currentPage } = useAppSelector(selectReaderSession);
-  const { manifest } = useAppSelector(selectBookSessionWorkflow);
+  const manifest = useAppSelector(selectBookManifest);
   const currentImage = manifest[currentPage] ?? null;
   const { currentText, fetchPageText } = usePageText();
 

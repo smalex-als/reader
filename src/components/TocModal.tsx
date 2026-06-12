@@ -3,7 +3,9 @@ import { useTocManager } from '@/hooks/useTocManager';
 import { getDetailedTocLevel } from '@/lib/toc';
 import {
   appActions,
-  selectBookSessionWorkflow,
+  selectBookChapterCount,
+  selectBookManifest,
+  selectBookType,
   selectModalOpen,
   selectReaderSession,
   selectTocWorkflow,
@@ -23,11 +25,9 @@ export default function TocModal() {
   } = useTocManager();
   const open = useAppSelector(selectModalOpen('tocManage'));
   const { currentPage } = useAppSelector(selectReaderSession);
-  const {
-    bookType,
-    chapterCount,
-    manifest
-  } = useAppSelector(selectBookSessionWorkflow);
+  const bookType = useAppSelector(selectBookType);
+  const chapterCount = useAppSelector(selectBookChapterCount);
+  const manifest = useAppSelector(selectBookManifest);
   const {
     variant,
     entries: tocEntries,

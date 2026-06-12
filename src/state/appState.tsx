@@ -2868,6 +2868,18 @@ export const selectShellControlRequest = (state: CentralAppState) => state.shell
 export const selectOcrEditRequest = (state: CentralAppState) => state.ocrEditRequest;
 export const selectReaderSession = (state: CentralAppState) => state.readerSession;
 export const selectBookSessionWorkflow = (state: CentralAppState) => state.bookSessionWorkflow;
+export const selectBookIds = (state: CentralAppState) => state.bookSessionWorkflow.books;
+export const selectBookManifest = (state: CentralAppState) => state.bookSessionWorkflow.manifest;
+export const selectBookType = (state: CentralAppState) => state.bookSessionWorkflow.bookType;
+export const selectBookChapterCount = (state: CentralAppState) => state.bookSessionWorkflow.chapterCount;
+export const selectBookSessionLoading = (state: CentralAppState) => state.bookSessionWorkflow.loading;
+export const selectBookUploadingChapter = (state: CentralAppState) =>
+  state.bookSessionWorkflow.uploadingChapter;
+export const selectBookDeletingChapter = (state: CentralAppState) =>
+  state.bookSessionWorkflow.deletingChapter;
+export const selectBookUploadingPdf = (state: CentralAppState) => state.bookSessionWorkflow.uploadingPdf;
+export const selectBookLibraryStateReady = (state: CentralAppState) =>
+  state.bookSessionWorkflow.libraryStateReady;
 export const selectAudioState = (state: CentralAppState) => state.audio;
 export const selectChapterVersionNavigationRequest = (state: CentralAppState) =>
   state.chapterVersionNavigationRequest;
