@@ -1,4 +1,3 @@
-import type { RefObject } from 'react';
 import ChapterEditor from '@/components/ChapterEditor';
 import AudioLibraryView from '@/components/AudioLibraryView';
 import AudioView from '@/components/AudioView';
@@ -8,6 +7,7 @@ import StreamBubble from '@/components/StreamBubble';
 import ScrollViewer from '@/components/ScrollViewer';
 import UnitsView from '@/components/UnitsView';
 import Viewer from '@/components/Viewer';
+import { useReaderShell } from '@/hooks/useReaderShellContext';
 import {
   selectBookSessionWorkflow,
   selectEditorState,
@@ -17,15 +17,8 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-interface ReaderMainContentProps {
-  viewerShellRef: RefObject<HTMLDivElement>;
-  modalHostRef: RefObject<HTMLDivElement>;
-}
-
-export default function ReaderMainContent({
-  viewerShellRef,
-  modalHostRef
-}: ReaderMainContentProps) {
+export default function ReaderMainContent() {
+  const { viewerShellRef, modalHostRef } = useReaderShell();
   const { mainView } = useAppSelector(selectNavigationState);
   const { currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { books, loading, manifest } = useAppSelector(selectBookSessionWorkflow);
