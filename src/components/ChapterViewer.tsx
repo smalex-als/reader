@@ -9,6 +9,7 @@ import TrashIcon from '@/components/TrashIcon';
 import { useChapterActions } from '@/hooks/useBookMutations';
 import { useChapterTextOutline } from '@/hooks/useChapterTextOutline';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
+import { useChapterVersionSelectionNavigation } from '@/hooks/useChapterVersionNavigation';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { formatListeningTime } from '@/lib/listeningTime';
@@ -17,7 +18,6 @@ import {
   selectBookDeletingChapter,
   selectBookType,
   selectBookUploadingChapter,
-  selectChapterVersionNavigationRequest,
   selectStreamRuntime,
   selectTextVersionModalWorkflow,
   selectTocWorkflow,
@@ -64,7 +64,6 @@ export default function ChapterViewer() {
   const bookType = useAppSelector(selectBookType);
   const chapterCreating = useAppSelector(selectBookUploadingChapter);
   const chapterDeleting = useAppSelector(selectBookDeletingChapter);
-  const versionNavigationRequest = useAppSelector(selectChapterVersionNavigationRequest);
   const {
     open: versionModalOpen,
     createRequestId: textVersionCreateRequestId
@@ -102,10 +101,8 @@ export default function ChapterViewer() {
     handleCreateUnit
   } = useUnitActions();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [urlVersionReady, setUrlVersionReady] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const textViewerRef = useRef<HTMLDivElement | null>(null);
-  const appliedVersionNavigationRequestRef = useRef<number | null>(null);
 
   const {
     displayText,
@@ -172,18 +169,13 @@ export default function ChapterViewer() {
     displayLoading,
     textViewerRef
   });
-
-  const handleVersionChange = useCallback(
-    (nextVersionId: string) => {
-      if (nextVersionId === selectedVersionId) {
-        return;
-      }
-      dispatch(appActions.setFirstChapterParagraph(null));
-      dispatch(appActions.setDisplayedChapterText(null));
-      setSelectedVersionId(nextVersionId);
-    },
-    [dispatch, selectedVersionId, setSelectedVersionId]
-  );
+  const { handleVersionChange } = useChapterVersionSelectionNavigation({
+    bookId,
+    chapterNumber,
+    versions,
+    selectedVersionId,
+    setSelectedVersionId
+  });
 
   const handleToolsToggle = useCallback(() => {
     setToolsOpen((current) => {
@@ -194,73 +186,6 @@ export default function ChapterViewer() {
       return next;
     });
   }, []);
-
-  useEffect(() => {
-    setUrlVersionReady(false);
-  }, [bookId, chapterNumber]);
-
-  useEffect(() => {
-    if (!versionNavigationRequest) {
-      return;
-    }
-    if (appliedVersionNavigationRequestRef.current === versionNavigationRequest.id) {
-      return;
-    }
-    if (chapterNumber !== versionNavigationRequest.chapterNumber) {
-      return;
-    }
-    if (!versions.some((version) => version.id === versionNavigationRequest.versionId)) {
-      return;
-    }
-    appliedVersionNavigationRequestRef.current = versionNavigationRequest.id;
-    handleVersionChange(versionNavigationRequest.versionId);
-    setUrlVersionReady(true);
-  }, [chapterNumber, handleVersionChange, versionNavigationRequest, versions]);
-
-  useEffect(() => {
-    if (urlVersionReady || !chapterNumber || versions.length === 0) {
-      return;
-    }
-    const requestedNavigationVersion =
-      versionNavigationRequest?.chapterNumber === chapterNumber &&
-      versions.some((version) => version.id === versionNavigationRequest.versionId)
-        ? versionNavigationRequest.versionId
-        : null;
-    if (requestedNavigationVersion) {
-      return;
-    }
-    const params = new URLSearchParams(window.location.search);
-    const requestedVersionId = params.get('version')?.trim() || '';
-    if (requestedVersionId && versions.some((version) => version.id === requestedVersionId)) {
-      if (requestedVersionId !== selectedVersionId) {
-        handleVersionChange(requestedVersionId);
-        return;
-      }
-    }
-    setUrlVersionReady(true);
-  }, [
-    chapterNumber,
-    handleVersionChange,
-    selectedVersionId,
-    urlVersionReady,
-    versionNavigationRequest,
-    versions
-  ]);
-
-  useEffect(() => {
-    if (!urlVersionReady || !chapterNumber) {
-      return;
-    }
-    const params = new URLSearchParams(window.location.search);
-    const nextVersionId = selectedVersionId || 'base';
-    if (params.get('version') === nextVersionId) {
-      return;
-    }
-    params.set('version', nextVersionId);
-    const nextSearch = params.toString();
-    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
-    window.history.replaceState(null, '', nextUrl);
-  }, [chapterNumber, selectedVersionId, urlVersionReady]);
 
   useEffect(() => {
     if (!displayText || !chapterNumber) {
