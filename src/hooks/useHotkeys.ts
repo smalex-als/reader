@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type RefObject } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { usePageText } from '@/hooks/usePageText';
@@ -18,10 +18,6 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-type HotkeysOptions = {
-  gotoInputRef: RefObject<HTMLInputElement>;
-};
-
 function isTextInput(element: EventTarget | null) {
   if (!(element instanceof HTMLElement)) {
     return false;
@@ -30,9 +26,7 @@ function isTextInput(element: EventTarget | null) {
   return tag === 'input' || tag === 'textarea' || tag === 'select' || element.isContentEditable;
 }
 
-export function useHotkeys({
-  gotoInputRef
-}: HotkeysOptions) {
+export function useHotkeys() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const { mainView, selectedUnitSetId, selectedUnitTopicId } = useAppSelector(selectNavigationState);
@@ -281,10 +275,6 @@ export function useHotkeys({
           event.preventDefault();
           dispatch(appActions.requestPlayNextStudyBlock());
           break;
-        case 'g':
-          event.preventDefault();
-          gotoInputRef.current?.focus();
-          break;
         case 't':
           if ((viewMode !== 'pages' && viewMode !== 'scroll') || !currentImage) {
             return;
@@ -414,8 +404,7 @@ export function useHotkeys({
     openQuiz,
     openVocabularyModal,
     toggleTextModal,
-    triggerBackgroundOcr,
-    gotoInputRef
+    triggerBackgroundOcr
   ]);
 
 }

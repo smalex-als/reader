@@ -16,7 +16,6 @@ export function useReaderShellControls() {
   const pendingAlignTopRef = useRef(false);
   const modalHostRef = useRef<HTMLDivElement | null>(null);
   const viewerShellRef = useRef<HTMLDivElement | null>(null);
-  const gotoInputRef = useRef<HTMLInputElement | null>(null);
   const { currentPage, viewMode } = useAppSelector(selectReaderSession);
   const { manifest } = useAppSelector(selectBookSessionWorkflow);
   const shellControlRequest = useAppSelector(selectShellControlRequest);
@@ -47,7 +46,6 @@ export function useReaderShellControls() {
   }, [dispatch, fitHeight, fitWidth, shellControlRequest, toggleFullscreen]);
 
   return {
-    gotoInputRef,
     isFullscreen,
     modalHostRef,
     viewerShellRef

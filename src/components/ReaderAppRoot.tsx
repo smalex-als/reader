@@ -8,9 +8,7 @@ import { ReaderShellProvider, useReaderShell } from '@/hooks/useReaderShellConte
 
 export default function ReaderAppRoot() {
   const shellControls = useReaderShellControls();
-  useReaderFeatureRuntime({
-    gotoInputRef: shellControls.gotoInputRef
-  });
+  useReaderFeatureRuntime();
   useReaderAudioControls();
 
   return (
