@@ -17,6 +17,8 @@ import type {
   AppSettings,
   AudioState,
   Bookmark,
+  BookCard,
+  BookCardUpdate,
   ChapterMemoryCard,
   ChapterTextPrompt,
   ChapterTextVersion,
@@ -343,6 +345,21 @@ export interface ListeningDashboardWorkflowState {
   refreshRequestId: number;
 }
 
+export interface BookCardWorkflowState {
+  cardsByBook: Record<string, BookCard>;
+  cardsLoading: boolean;
+  cardsError: string | null;
+  cardsRefreshRequestId: number;
+  editor: {
+    card: BookCard | null;
+    loading: boolean;
+    saving: boolean;
+    error: string | null;
+    loadRequest: { id: number; bookId: string } | null;
+    saveRequest: { id: number; bookId: string; card: BookCardUpdate } | null;
+  };
+}
+
 export interface ViewerWorkflowState {
   settings: AppSettings;
   metrics: ViewerMetrics | null;
@@ -405,6 +422,7 @@ export interface CentralAppState {
   memoryCardWorkflow: MemoryCardWorkflowState;
   pageTextWorkflow: PageTextWorkflowState;
   imagePreviewWorkflow: ImagePreviewWorkflowState;
+  bookCardWorkflow: BookCardWorkflowState;
   jobWorkerWorkflow: JobWorkerWorkflowState;
   listeningDashboardWorkflow: ListeningDashboardWorkflowState;
   viewerWorkflow: ViewerWorkflowState;
@@ -593,6 +611,16 @@ export type AppAction =
   | { type: 'imagePreviewWorkflow/setEnhancedUrl'; key: string; url: string | null }
   | { type: 'imagePreviewWorkflow/setEnhancing'; enhancing: boolean }
   | { type: 'imagePreviewWorkflow/setError'; error: string | null }
+  | { type: 'bookCardWorkflow/loadCards' }
+  | { type: 'bookCardWorkflow/setCards'; cardsByBook: Record<string, BookCard> }
+  | { type: 'bookCardWorkflow/setCardsLoading'; loading: boolean }
+  | { type: 'bookCardWorkflow/setCardsError'; error: string | null }
+  | { type: 'bookCardWorkflow/loadEditorCard'; bookId: string }
+  | { type: 'bookCardWorkflow/setEditorCard'; card: BookCard | null }
+  | { type: 'bookCardWorkflow/setEditorLoading'; loading: boolean }
+  | { type: 'bookCardWorkflow/setEditorSaving'; saving: boolean }
+  | { type: 'bookCardWorkflow/setEditorError'; error: string | null }
+  | { type: 'bookCardWorkflow/saveEditorCard'; bookId: string; card: BookCardUpdate }
   | { type: 'jobWorkerWorkflow/loadJobs' }
   | { type: 'jobWorkerWorkflow/setJobs'; jobs: JobWorkerJob[] }
   | { type: 'jobWorkerWorkflow/setLoading'; loading: boolean }
@@ -692,6 +720,18 @@ const initialTextVersionModalWorkflowState: TextVersionModalWorkflowState = {
   canCreateVersion: false,
   createRequestId: 0
 };
+
+function createDefaultEditorBookCard(bookId: string): BookCard {
+  return {
+    book: bookId,
+    title: bookId,
+    author: '',
+    category: '',
+    coverImage: null,
+    defaultCoverImage: null,
+    bookType: 'image'
+  };
+}
 
 const initialAppState: CentralAppState = {
   ui: {
@@ -831,6 +871,20 @@ const initialAppState: CentralAppState = {
     enhancedUrls: {},
     enhancing: false,
     error: null
+  },
+  bookCardWorkflow: {
+    cardsByBook: {},
+    cardsLoading: false,
+    cardsError: null,
+    cardsRefreshRequestId: 0,
+    editor: {
+      card: null,
+      loading: false,
+      saving: false,
+      error: null,
+      loadRequest: null,
+      saveRequest: null
+    }
   },
   jobWorkerWorkflow: {
     jobs: [],
@@ -1355,6 +1409,44 @@ export const appActions = {
   setImagePreviewError: (error: string | null): AppAction => ({
     type: 'imagePreviewWorkflow/setError',
     error
+  }),
+  loadBookCards: (): AppAction => ({ type: 'bookCardWorkflow/loadCards' }),
+  setBookCards: (cardsByBook: Record<string, BookCard>): AppAction => ({
+    type: 'bookCardWorkflow/setCards',
+    cardsByBook
+  }),
+  setBookCardsLoading: (loading: boolean): AppAction => ({
+    type: 'bookCardWorkflow/setCardsLoading',
+    loading
+  }),
+  setBookCardsError: (error: string | null): AppAction => ({
+    type: 'bookCardWorkflow/setCardsError',
+    error
+  }),
+  loadBookCardEditor: (bookId: string): AppAction => ({
+    type: 'bookCardWorkflow/loadEditorCard',
+    bookId
+  }),
+  setBookCardEditorCard: (card: BookCard | null): AppAction => ({
+    type: 'bookCardWorkflow/setEditorCard',
+    card
+  }),
+  setBookCardEditorLoading: (loading: boolean): AppAction => ({
+    type: 'bookCardWorkflow/setEditorLoading',
+    loading
+  }),
+  setBookCardEditorSaving: (saving: boolean): AppAction => ({
+    type: 'bookCardWorkflow/setEditorSaving',
+    saving
+  }),
+  setBookCardEditorError: (error: string | null): AppAction => ({
+    type: 'bookCardWorkflow/setEditorError',
+    error
+  }),
+  saveBookCardEditor: (bookId: string, card: BookCardUpdate): AppAction => ({
+    type: 'bookCardWorkflow/saveEditorCard',
+    bookId,
+    card
   }),
   loadJobWorkerJobs: (): AppAction => ({ type: 'jobWorkerWorkflow/loadJobs' }),
   setJobWorkerJobs: (jobs: JobWorkerJob[]): AppAction => ({
@@ -2772,6 +2864,113 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           error: action.error
         }
       };
+    case 'bookCardWorkflow/loadCards':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          cardsRefreshRequestId: state.bookCardWorkflow.cardsRefreshRequestId + 1
+        }
+      };
+    case 'bookCardWorkflow/setCards':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          cardsByBook: action.cardsByBook
+        }
+      };
+    case 'bookCardWorkflow/setCardsLoading':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          cardsLoading: action.loading
+        }
+      };
+    case 'bookCardWorkflow/setCardsError':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          cardsError: action.error
+        }
+      };
+    case 'bookCardWorkflow/loadEditorCard':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          editor: {
+            ...state.bookCardWorkflow.editor,
+            card: createDefaultEditorBookCard(action.bookId),
+            error: null,
+            loadRequest: {
+              id: (state.bookCardWorkflow.editor.loadRequest?.id ?? 0) + 1,
+              bookId: action.bookId
+            }
+          }
+        }
+      };
+    case 'bookCardWorkflow/setEditorCard':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          editor: {
+            ...state.bookCardWorkflow.editor,
+            card: action.card
+          }
+        }
+      };
+    case 'bookCardWorkflow/setEditorLoading':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          editor: {
+            ...state.bookCardWorkflow.editor,
+            loading: action.loading
+          }
+        }
+      };
+    case 'bookCardWorkflow/setEditorSaving':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          editor: {
+            ...state.bookCardWorkflow.editor,
+            saving: action.saving
+          }
+        }
+      };
+    case 'bookCardWorkflow/setEditorError':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          editor: {
+            ...state.bookCardWorkflow.editor,
+            error: action.error
+          }
+        }
+      };
+    case 'bookCardWorkflow/saveEditorCard':
+      return {
+        ...state,
+        bookCardWorkflow: {
+          ...state.bookCardWorkflow,
+          editor: {
+            ...state.bookCardWorkflow.editor,
+            saveRequest: {
+              id: (state.bookCardWorkflow.editor.saveRequest?.id ?? 0) + 1,
+              bookId: action.bookId,
+              card: action.card
+            }
+          }
+        }
+      };
     case 'jobWorkerWorkflow/loadJobs':
       return {
         ...state,
@@ -2960,6 +3159,7 @@ export const selectVocabularyWorkflow = (state: CentralAppState) => state.vocabu
 export const selectMemoryCardWorkflow = (state: CentralAppState) => state.memoryCardWorkflow;
 export const selectPageTextWorkflow = (state: CentralAppState) => state.pageTextWorkflow;
 export const selectImagePreviewWorkflow = (state: CentralAppState) => state.imagePreviewWorkflow;
+export const selectBookCardWorkflow = (state: CentralAppState) => state.bookCardWorkflow;
 export const selectJobWorkerWorkflow = (state: CentralAppState) => state.jobWorkerWorkflow;
 export const selectListeningDashboardWorkflow = (state: CentralAppState) => state.listeningDashboardWorkflow;
 export const selectViewerWorkflow = (state: CentralAppState) => state.viewerWorkflow;

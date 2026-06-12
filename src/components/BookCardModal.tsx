@@ -3,11 +3,11 @@ import CloseIcon from '@/components/CloseIcon';
 import {
   appActions,
   selectBookCardBookId,
+  selectBookCardWorkflow,
   selectBookCardOpen,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import type { BookCard } from '@/types/app';
 
 const CATEGORY_SUGGESTIONS = [
   'Fiction',
@@ -19,22 +19,14 @@ const CATEGORY_SUGGESTIONS = [
   'Other'
 ] as const;
 
-async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-  return (await response.json()) as T;
-}
-
 export default function BookCardModal() {
   const dispatch = useAppDispatch();
   const open = useAppSelector(selectBookCardOpen);
   const bookId = useAppSelector(selectBookCardBookId);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [card, setCard] = useState<BookCard | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    editor: { card, loading, saving, error: loadError }
+  } = useAppSelector(selectBookCardWorkflow);
+  const activeCard = card?.book === bookId ? card : null;
   const [draft, setDraft] = useState({
     title: '',
     author: '',
@@ -50,54 +42,21 @@ export default function BookCardModal() {
     if (!open || !bookId) {
       return;
     }
-    let cancelled = false;
-    setCard({
-      book: bookId,
-      title: bookId,
-      author: '',
-      category: '',
-      coverImage: null,
-      defaultCoverImage: null,
-      bookType: 'image'
-    });
+    dispatch(appActions.loadBookCardEditor(bookId));
+  }, [bookId, dispatch, open]);
+
+  useEffect(() => {
+    if (!activeCard) {
+      return;
+    }
     setDraft({
-      title: bookId,
-      author: '',
-      category: '',
-      coverImage: '',
-      defaultCoverImage: ''
+      title: activeCard.title ?? activeCard.book,
+      author: activeCard.author ?? '',
+      category: activeCard.category ?? '',
+      coverImage: activeCard.coverImage ?? '',
+      defaultCoverImage: activeCard.defaultCoverImage ?? ''
     });
-    setLoadError(null);
-    setLoading(true);
-    void fetchJson<BookCard>(`/api/books/${encodeURIComponent(bookId)}/meta`)
-      .then((nextCard) => {
-        if (cancelled) {
-          return;
-        }
-        setCard(nextCard);
-        setDraft({
-          title: nextCard.title ?? bookId,
-          author: nextCard.author ?? '',
-          category: nextCard.category ?? '',
-          coverImage: nextCard.coverImage ?? '',
-          defaultCoverImage: nextCard.defaultCoverImage ?? ''
-        });
-      })
-      .catch((error) => {
-        console.error(error);
-        if (!cancelled) {
-          setLoadError('Unable to load saved book card data');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [bookId, open]);
+  }, [activeCard]);
 
   if (!open || !bookId) {
     return null;
@@ -121,7 +80,7 @@ export default function BookCardModal() {
         <section className="modal-body">
           {loading ? <p className="modal-status">Loading book card…</p> : null}
           {loadError ? <p className="modal-status">{loadError}</p> : null}
-          {card ? (
+          {activeCard ? (
             <div className="book-card-editor book-card-editor-modal">
               <div className="book-card-editor-grid">
                 <label className="book-upload-field">
@@ -172,7 +131,7 @@ export default function BookCardModal() {
                       />
                     ) : (
                       <span className="book-select-cover-placeholder">
-                        {card.bookType === 'text' ? 'TXT' : 'IMG'}
+                        {activeCard.bookType === 'text' ? 'TXT' : 'IMG'}
                       </span>
                     )}
                   </div>
@@ -221,32 +180,17 @@ export default function BookCardModal() {
           <button
             type="button"
             className="button"
-            disabled={saving || !card}
+            disabled={saving || !activeCard}
             onClick={() => {
-              if (!card) {
+              if (!activeCard) {
                 return;
               }
-              setSaving(true);
-              void fetchJson<BookCard>(`/api/books/${encodeURIComponent(bookId)}/meta`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  title: draft.title,
-                  author: draft.author,
-                  category: draft.category,
-                  coverImage: draft.coverImage
-                })
-              })
-                .then(() => {
-                  dispatch(appActions.refreshBookCards());
-                  handleClose();
-                })
-                .catch((error) => {
-                  console.error(error);
-                })
-                .finally(() => {
-                  setSaving(false);
-                });
+              dispatch(appActions.saveBookCardEditor(bookId, {
+                title: draft.title,
+                author: draft.author,
+                category: draft.category,
+                coverImage: draft.coverImage
+              }));
             }}
           >
             {saving ? 'Saving…' : 'Save Card'}

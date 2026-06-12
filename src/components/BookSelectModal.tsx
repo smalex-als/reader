@@ -4,6 +4,7 @@ import CloseIcon from '@/components/CloseIcon';
 import { useDeleteBook, useUploadChapter, useUploadPdf } from '@/hooks/useBookSession';
 import {
   appActions,
+  selectBookCardWorkflow,
   selectBookSessionWorkflow,
   selectModalOpen,
   selectReaderSession,
@@ -18,17 +19,8 @@ import {
   saveBookSortMode,
   setBookDeferred
 } from '@/lib/storage';
-import type { BookCard } from '@/types/app';
 
 type BookSortMode = 'alphabetical' | 'recent' | 'deferred';
-
-async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
-  }
-  return (await response.json()) as T;
-}
 
 export default function BookSelectModal() {
   const dispatch = useAppDispatch();
@@ -39,14 +31,17 @@ export default function BookSelectModal() {
   const { bookId: currentBook } = useAppSelector(selectReaderSession);
   const { books, uploadingChapter, uploadingPdf } = useAppSelector(selectBookSessionWorkflow);
   const { bookCards: cardRefreshToken } = useAppSelector(selectRefreshTokens);
+  const {
+    cardsByBook: bookCards,
+    cardsLoading,
+    cardsError
+  } = useAppSelector(selectBookCardWorkflow);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [chapterBook, setChapterBook] = useState('');
   const [chapterTitle, setChapterTitle] = useState('');
   const [sortMode, setSortMode] = useState<BookSortMode>(() => loadBookSortMode());
   const [bookMeta, setBookMeta] = useState(() => loadBookMeta());
-  const [bookCards, setBookCards] = useState<Record<string, BookCard>>({});
-  const [cardsLoading, setCardsLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -77,30 +72,8 @@ export default function BookSelectModal() {
     if (!open) {
       return;
     }
-    let cancelled = false;
-    setCardsLoading(true);
-    void fetchJson<{ books: BookCard[] }>('/api/books/cards')
-      .then((data) => {
-        if (cancelled) {
-          return;
-        }
-        const nextCards = Object.fromEntries(
-          (Array.isArray(data.books) ? data.books : []).map((book) => [book.book, book])
-        );
-        setBookCards(nextCards);
-      })
-      .catch((error) => {
-        console.error(error);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setCardsLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [books, cardRefreshToken, open]);
+    dispatch(appActions.loadBookCards());
+  }, [books, cardRefreshToken, dispatch, open]);
 
   useEffect(() => {
     saveBookSortMode(sortMode);
@@ -336,6 +309,7 @@ export default function BookSelectModal() {
             </ul>
           )}
           {cardsLoading ? <p className="modal-status">Loading book cards…</p> : null}
+          {cardsError ? <p className="modal-status">{cardsError}</p> : null}
           <div className="book-upload">
             <div className="book-upload-header">
               <span className="book-upload-title">Text chapters</span>

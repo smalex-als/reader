@@ -233,6 +233,13 @@ export interface BookCard {
   bookType: 'image' | 'text';
 }
 
+export interface BookCardUpdate {
+  title: string;
+  author: string;
+  category: string;
+  coverImage: string;
+}
+
 export interface ViewerPan {
   x: number;
   y: number;

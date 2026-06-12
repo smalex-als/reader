@@ -19,6 +19,7 @@ import ListeningDashboardModal from '@/components/ListeningDashboardModal';
 import MemoryCardModal from '@/components/MemoryCardModal';
 import PromptEditorModal from '@/components/PromptEditorModal';
 import JobWorkerModal from '@/components/JobWorkerModal';
+import { useBookCardActions } from '@/hooks/useBookCardActions';
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
@@ -34,6 +35,8 @@ function renderInPortal(content: ReactNode, portalTarget?: HTMLElement | null) {
 export default function AppModals({
   portalTarget
 }: AppModalsProps) {
+  useBookCardActions();
+
   return (
     <>
       <Toast />
