@@ -12,8 +12,10 @@ import { useChapterTextOutline } from '@/hooks/useChapterTextOutline';
 import { useChapterTextVersions } from '@/hooks/useChapterTextVersions';
 import { useChapterVersionSelectionNavigation } from '@/hooks/useChapterVersionNavigation';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useDisplayedChapterText } from '@/hooks/useDisplayedChapterText';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { formatListeningTime } from '@/lib/listeningTime';
+import { hashText } from '@/lib/textHash';
 import {
   appActions,
   selectBookDeletingChapter,
@@ -38,15 +40,6 @@ function extractTextFromNode(node: ReactNode): string {
     return extractTextFromNode(node.props.children);
   }
   return '';
-}
-
-function hashText(input: string) {
-  let hash = 0;
-  for (let index = 0; index < input.length; index += 1) {
-    hash = (hash << 5) - hash + input.charCodeAt(index);
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36);
 }
 
 function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
@@ -177,6 +170,13 @@ export default function ChapterViewer() {
     versionSaving,
     handleCreateVersion
   });
+  useDisplayedChapterText({
+    chapterNumber,
+    chapterTitle,
+    displayText: displayText ?? '',
+    selectedVersionId,
+    selectedVersionLabel: selectedVersion?.label ?? null
+  });
 
   const handleToolsToggle = useCallback(() => {
     setToolsOpen((current) => {
@@ -188,48 +188,13 @@ export default function ChapterViewer() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!displayText || !chapterNumber) {
-      dispatch(appActions.setFirstChapterParagraph(null));
-      return;
-    }
-    const paragraphs = displayText
-      .split(/\n\s*\n/)
-      .map((value) => value.trim())
-      .filter(Boolean);
-    if (paragraphs.length === 0) {
-      dispatch(appActions.setFirstChapterParagraph(null));
-      return;
-    }
-    const firstParagraph = paragraphs[0];
-    const startIndex = displayText.indexOf(firstParagraph);
-    dispatch(appActions.setFirstChapterParagraph({
-      fullText: displayText,
-      startIndex: Math.max(0, startIndex),
-      key: `chapter-${chapterNumber}-${selectedVersionId}-${hashText(firstParagraph)}-${startIndex}`
-    }));
-  }, [chapterNumber, dispatch, displayText, selectedVersionId]);
-
-  useEffect(() => {
-    if (!displayText || !chapterNumber) {
-      dispatch(appActions.setDisplayedChapterText(null));
-      return;
-    }
-    dispatch(appActions.setDisplayedChapterText({
-      text: displayText,
-      chapterTitle,
-      versionLabel: selectedVersion?.label ?? null,
-      versionId: selectedVersionId
-    }));
-  }, [chapterNumber, chapterTitle, dispatch, displayText, selectedVersion?.label, selectedVersionId]);
-
   const pageMeta = useMemo(() => {
     if (!pageRange) {
       return null;
     }
     const start = pageRange.start + 1;
     const end = Math.max(start, pageRange.end);
-      return `Pages ${start}-${end}`;
+    return `Pages ${start}-${end}`;
   }, [pageRange]);
 
   useEffect(() => {
