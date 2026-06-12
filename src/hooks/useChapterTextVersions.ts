@@ -10,6 +10,7 @@ import {
   normalizeVersionSelection,
   selectChapterTextVersion
 } from '@/hooks/chapterTextVersionState';
+import { useChapterAudioPolling } from '@/hooks/useChapterAudioPolling';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import {
   appActions,
@@ -62,9 +63,6 @@ export function useChapterTextVersions() {
   const [chapterAudioUrl, setChapterAudioUrl] = useState<string | null>(null);
   const [chapterAudioSubchapters, setChapterAudioSubchapters] = useState<FloatingAudioSubchapter[]>([]);
   const [audioJob, setAudioJob] = useState<AudioJobStatus | null>(null);
-  const audioPollTimers = useRef<Map<number, number>>(new Map());
-  const audioPollAttempts = useRef<Map<number, number>>(new Map());
-  const audioPollRef = useRef<(chapterNumber: number) => void>();
   const bookIdRef = useRef(bookId);
   const chapterNumberRef = useRef(chapterNumber);
   const sourceVersionIdRef = useRef(sourceVersionId);
@@ -109,22 +107,15 @@ export function useChapterTextVersions() {
     () => selectChapterTextVersion(versions, selectedVersionId),
     [selectedVersionId, versions]
   );
-
-  const clearAudioPoll = useCallback(() => {
-    audioPollTimers.current.forEach((timer) => window.clearTimeout(timer));
-    audioPollTimers.current.clear();
-    audioPollAttempts.current.clear();
+  const resetAudioJob = useCallback(() => {
+    setAudioJob(null);
   }, []);
-
-  const scheduleAudioPoll = useCallback((currentChapter: number) => {
-    const attempt = (audioPollAttempts.current.get(currentChapter) ?? 0) + 1;
-    audioPollAttempts.current.set(currentChapter, attempt);
-    const delay = Math.min(1000 * 2 ** (attempt - 1), 10000);
-    const timer = window.setTimeout(() => {
-      audioPollRef.current?.(currentChapter);
-    }, delay);
-    audioPollTimers.current.set(currentChapter, timer);
-  }, []);
+  const { clearAudioPoll, scheduleAudioPoll } = useChapterAudioPolling({
+    bookId,
+    chapterNumber,
+    actionsRef: chapterTextVersionActionsRef,
+    resetAudioJob
+  });
 
   const chapterTextVersionActions = useMemo<ChapterTextVersionActions>(
     () => ({
@@ -204,9 +195,7 @@ export function useChapterTextVersions() {
       setCreateVersionSucceeded: () => {}
     }),
     [
-      clearAudioPoll,
       dispatch,
-      scheduleAudioPoll,
       setSelectedPromptId,
       setSourceVersionId
     ]
@@ -356,28 +345,6 @@ export function useChapterTextVersions() {
   useEffect(() => {
     void loadChapterAudioStatus();
   }, [loadChapterAudioStatus]);
-
-  useEffect(() => {
-    setAudioJob(null);
-    clearAudioPoll();
-  }, [bookId, chapterNumber, clearAudioPoll]);
-
-  const pollAudioJobStatus = useCallback(
-    async (currentChapter: number) => {
-      if (!bookId || !currentChapter) {
-        return;
-      }
-      await chapterTextVersionHandlers.runAction('pollAudioJobStatus', null, chapterTextVersionActions, {
-        bookId,
-        chapterNumber: currentChapter
-      });
-    },
-    [bookId, chapterTextVersionActions]
-  );
-
-  useEffect(() => {
-    audioPollRef.current = pollAudioJobStatus;
-  }, [pollAudioJobStatus]);
 
   const { displayText, displayLoading, displayError } = getChapterTextVersionDisplayState({
     bookId,
