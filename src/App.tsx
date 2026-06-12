@@ -1,30 +1,21 @@
 import ReaderMainContent from '@/components/ReaderMainContent';
 import ReaderModalLayer from '@/components/ReaderModalLayer';
 import ReaderSidebar from '@/components/ReaderSidebar';
-import {useAudioController} from '@/hooks/useAudioController';
 import {useBookSession} from '@/hooks/useBookSession';
 import {useOcrQueue} from '@/hooks/useOcrQueue';
-import {useStreamSequence} from '@/hooks/useStreamSequence';
-import {useStreamingAudio} from '@/hooks/useStreamingAudio';
-import {useStreamControls} from '@/hooks/useStreamControls';
-import {useMp3Voice, useStreamVoices} from '@/hooks/useStreamVoices';
 import {useUnitsRouteSync} from '@/hooks/useUnitsRoute';
-import {useStreamHistoryLogger} from '@/hooks/useStreamHistoryLogger';
 import {useOcrEditMode} from '@/hooks/useOcrEditMode';
 import {useShareLink} from '@/hooks/useShareLink';
 import {useDashboardNavigation} from '@/hooks/useDashboardNavigation';
-import {useFloatingAudio} from '@/hooks/useFloatingAudio';
 import {useHotkeys} from '@/hooks/useHotkeys';
 import {useCurrentChapterContext} from '@/hooks/useCurrentChapterLabel';
 import {ReaderCommandProvider} from '@/hooks/useReaderCommands';
+import {useReaderAudioControls} from '@/hooks/useReaderAudioControls';
 import {useReaderCommandBindings} from '@/hooks/useReaderCommandBindings';
-import {useReaderLifecycleEffects} from '@/hooks/useReaderLifecycleEffects';
 import {useReaderShellControls} from '@/hooks/useReaderShellControls';
 import {useTocManager} from '@/hooks/useTocManager';
-import {usePlaybackWakeLock} from '@/hooks/useWakeLock';
 
 export default function App() {
-  useStreamVoices();
   const {
     bookId,
     setBookId,
@@ -58,59 +49,16 @@ export default function App() {
     handleUpdateTocEntry,
     handleGenerateChapter
   } = useTocManager();
-  useMp3Voice();
   const {
-    resetAudioCache,
-    stopAudio
-  } = useAudioController();
-  const {
-    startStream,
-    enqueueStream,
-    pauseStream,
-    resumeStream,
-    stopStream,
-    stopAfterCurrentStream,
-    pauseStreamAtStart
-  } = useStreamingAudio();
-
-  useFloatingAudio();
-  usePlaybackWakeLock();
-  useReaderLifecycleEffects({
+    playOcrBlock,
+    playStudyAudioParagraph,
+    playStudyAudioSingle,
+    setSelectedStreamBlockKey,
+    stopStudyAudio
+  } = useReaderAudioControls({
     bookId,
-    chapterNumber,
-    resetAudioCache,
-    stopAudio,
-    stopStream
+    chapterNumber
   });
-
-  const {
-    startStreamSequence,
-    handlePlayPageBlock,
-    handlePlayChapterParagraph,
-    handlePlaySingleStream,
-    handleStopStream,
-    handleToggleStreamPause,
-    handlePlayNextStudyBlock,
-    restartStreamFromPageKey
-  } = useStreamSequence({
-    startStream,
-    enqueueStream,
-    stopStream,
-    pauseStream,
-    resumeStream,
-    pauseStreamAtStart
-  });
-  const { setSelectedStreamBlockKey } = useStreamControls({
-    startStreamSequence,
-    handlePlayChapterParagraph,
-    restartStreamFromPageKey,
-    handleStopStream,
-    handleStopAfterCurrentStream: stopAfterCurrentStream,
-    handleToggleStreamPause,
-    handlePlayNextStudyBlock
-  });
-
-  useStreamHistoryLogger();
 
   const {
     toggleOcrEditMode,
@@ -135,7 +83,7 @@ export default function App() {
     fitHeight,
     toggleOcrEditMode,
     toggleFullscreen,
-    playOcrBlock: handlePlayPageBlock,
+    playOcrBlock,
     toggleOcrBlockSpeech: toggleSpeechBlock,
     setSelectedStreamBlockKey,
     queueRemainingOcrPages: queueRemainingPages,
@@ -144,9 +92,9 @@ export default function App() {
     retryFailedOcrPages: retryFailed,
     clearOcrQueue: clearQueue,
     toggleOcrQueuePause: togglePause,
-    stopStudyAudio: handleStopStream,
-    playStudyAudioSingle: handlePlaySingleStream,
-    playStudyAudioParagraph: handlePlayChapterParagraph,
+    stopStudyAudio,
+    playStudyAudioSingle,
+    playStudyAudioParagraph,
     generateToc: handleGenerateToc,
     saveToc: handleSaveToc,
     addTocEntry: handleAddTocEntry,
