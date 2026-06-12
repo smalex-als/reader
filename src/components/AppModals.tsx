@@ -20,7 +20,6 @@ import MemoryCardModal from '@/components/MemoryCardModal';
 import PromptEditorModal from '@/components/PromptEditorModal';
 import JobWorkerModal from '@/components/JobWorkerModal';
 import { useBookCardActions } from '@/hooks/useBookCardActions';
-import { usePromptEditorActions } from '@/hooks/usePromptEditorActions';
 
 interface AppModalsProps {
   portalTarget?: HTMLElement | null;
@@ -37,7 +36,6 @@ export default function AppModals({
   portalTarget
 }: AppModalsProps) {
   useBookCardActions();
-  usePromptEditorActions();
 
   return (
     <>

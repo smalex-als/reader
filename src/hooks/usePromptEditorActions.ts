@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  createPrompt,
-  deletePrompt,
+  createPrompt as createPromptApi,
+  deletePrompt as deletePromptApi,
   fetchPromptLibrary,
   updatePrompt,
   type PromptLibraryResult
@@ -10,128 +10,220 @@ import {
   appActions,
   selectPromptEditorWorkflow,
   useAppDispatch,
-  useAppSelector
+  useAppSelector,
+  type PromptEditorWorkflowState
 } from '@/state/appState';
+import type { ChapterTextPromptDraft } from '@/types/app';
 
-function getCommandStatus(kind: 'create' | 'save' | 'delete') {
+type PromptEditorActionPayloads = {
+  loadPrompts: undefined;
+  createPrompt: ChapterTextPromptDraft;
+  savePrompt: {
+    promptId: string;
+    draft: ChapterTextPromptDraft;
+  };
+  deletePrompt: {
+    promptId: string;
+  };
+};
+
+type PromptEditorActions = {
+  applyPromptResult: (result: PromptLibraryResult) => void;
+  setLoading: (loading: boolean) => void;
+  setSaving: (saving: boolean) => void;
+  setError: (error: string | null) => void;
+  setStatus: (status: string | null) => void;
+  setPrompts: (result: PromptLibraryResult) => void;
+};
+
+type PromptEditorActionHandler<T extends keyof PromptEditorActionPayloads> = (
+  global: PromptEditorWorkflowState,
+  actions: PromptEditorActions,
+  payload: PromptEditorActionPayloads[T]
+) => Promise<void>;
+
+const actionHandlers: Partial<Record<keyof PromptEditorActionPayloads, unknown>> = {};
+
+function addActionHandler<T extends keyof PromptEditorActionPayloads>(
+  action: T,
+  handler: PromptEditorActionHandler<T>
+) {
+  actionHandlers[action] = handler;
+}
+
+function getCommandStatus(kind: 'createPrompt' | 'savePrompt' | 'deletePrompt') {
   switch (kind) {
-    case 'create':
+    case 'createPrompt':
       return 'Prompt created.';
-    case 'save':
+    case 'savePrompt':
       return 'Prompt saved.';
-    case 'delete':
+    case 'deletePrompt':
       return 'Prompt deleted.';
     default:
       return null;
   }
 }
 
-function getCommandFallbackError(kind: 'create' | 'save' | 'delete') {
+function getCommandFallbackError(kind: 'createPrompt' | 'savePrompt' | 'deletePrompt') {
   switch (kind) {
-    case 'create':
+    case 'createPrompt':
       return 'Unable to create prompt.';
-    case 'save':
+    case 'savePrompt':
       return 'Unable to save prompt.';
-    case 'delete':
+    case 'deletePrompt':
       return 'Unable to delete prompt.';
     default:
       return 'Unable to update prompts.';
   }
 }
 
-function applyPromptResult(dispatch: ReturnType<typeof useAppDispatch>, result: PromptLibraryResult) {
-  dispatch(appActions.setPromptEditorPrompts(result.prompts, result.selectedPromptId));
-  dispatch(appActions.refreshChapterView());
-}
+addActionHandler('loadPrompts', async (_global, actions): Promise<void> => {
+  actions.setLoading(true);
+  actions.setError(null);
+  actions.setStatus(null);
+
+  try {
+    const result = await fetchPromptLibrary();
+    actions.setPrompts(result);
+  } catch (error) {
+    actions.setPrompts({ prompts: [] });
+    actions.setError(error instanceof Error ? error.message : 'Unable to load prompts.');
+  } finally {
+    actions.setLoading(false);
+  }
+});
+
+addActionHandler('createPrompt', async (_global, actions, draft): Promise<void> => {
+  actions.setSaving(true);
+  actions.setError(null);
+  actions.setStatus(null);
+
+  try {
+    const result = await createPromptApi(draft);
+    actions.applyPromptResult(result);
+    actions.setStatus(getCommandStatus('createPrompt'));
+  } catch (error) {
+    actions.setError(error instanceof Error ? error.message : getCommandFallbackError('createPrompt'));
+  } finally {
+    actions.setSaving(false);
+  }
+});
+
+addActionHandler('savePrompt', async (global, actions, payload): Promise<void> => {
+  const prompt = global.prompts.find((item) => item.id === payload.promptId);
+  if (!prompt) {
+    return;
+  }
+
+  actions.setSaving(true);
+  actions.setError(null);
+  actions.setStatus(null);
+
+  try {
+    const result = await updatePrompt(payload.promptId, payload.draft);
+    actions.applyPromptResult(result);
+    actions.setStatus(getCommandStatus('savePrompt'));
+  } catch (error) {
+    actions.setError(error instanceof Error ? error.message : getCommandFallbackError('savePrompt'));
+  } finally {
+    actions.setSaving(false);
+  }
+});
+
+addActionHandler('deletePrompt', async (global, actions, payload): Promise<void> => {
+  const prompt = global.prompts.find((item) => item.id === payload.promptId);
+  if (!prompt || prompt.builtIn) {
+    return;
+  }
+
+  actions.setSaving(true);
+  actions.setError(null);
+  actions.setStatus(null);
+
+  try {
+    const result = await deletePromptApi(payload.promptId);
+    actions.applyPromptResult(result);
+    actions.setStatus(getCommandStatus('deletePrompt'));
+  } catch (error) {
+    actions.setError(error instanceof Error ? error.message : getCommandFallbackError('deletePrompt'));
+  } finally {
+    actions.setSaving(false);
+  }
+});
 
 export function usePromptEditorActions() {
   const dispatch = useAppDispatch();
-  const { loadRequestId, commandRequest } = useAppSelector(selectPromptEditorWorkflow);
-  const handledLoadRequestRef = useRef(0);
-  const handledCommandRequestRef = useRef(0);
+  const promptEditor = useAppSelector(selectPromptEditorWorkflow);
+  const globalRef = useRef(promptEditor);
 
   useEffect(() => {
-    if (loadRequestId === 0 || handledLoadRequestRef.current === loadRequestId) {
-      return;
-    }
+    globalRef.current = promptEditor;
+  }, [promptEditor]);
 
-    handledLoadRequestRef.current = loadRequestId;
-    let cancelled = false;
-
-    dispatch(appActions.setPromptEditorLoading(true));
-    dispatch(appActions.setPromptEditorError(null));
-    dispatch(appActions.setPromptEditorStatus(null));
-
-    fetchPromptLibrary()
-      .then((result) => {
-        if (cancelled) {
-          return;
-        }
+  const actions = useMemo<PromptEditorActions>(
+    () => ({
+      applyPromptResult: (result) => {
         dispatch(appActions.setPromptEditorPrompts(result.prompts, result.selectedPromptId));
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        dispatch(appActions.setPromptEditorPrompts([]));
-        dispatch(appActions.setPromptEditorError(error instanceof Error ? error.message : 'Unable to load prompts.'));
-      })
-      .finally(() => {
-        if (!cancelled) {
-          dispatch(appActions.setPromptEditorLoading(false));
-        }
-      });
+        dispatch(appActions.refreshChapterView());
+      },
+      setLoading: (loading) => {
+        dispatch(appActions.setPromptEditorLoading(loading));
+      },
+      setSaving: (saving) => {
+        dispatch(appActions.setPromptEditorSaving(saving));
+      },
+      setError: (error) => {
+        dispatch(appActions.setPromptEditorError(error));
+      },
+      setStatus: (status) => {
+        dispatch(appActions.setPromptEditorStatus(status));
+      },
+      setPrompts: (result) => {
+        dispatch(appActions.setPromptEditorPrompts(result.prompts, result.selectedPromptId));
+      }
+    }),
+    [dispatch]
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, loadRequestId]);
+  const runAction = useCallback(
+    async <T extends keyof PromptEditorActionPayloads>(
+      action: T,
+      payload: PromptEditorActionPayloads[T]
+    ) => {
+      const handler = actionHandlers[action] as PromptEditorActionHandler<T> | undefined;
+      if (!handler) {
+        return;
+      }
+      await handler(globalRef.current, actions, payload);
+    },
+    [actions]
+  );
 
-  useEffect(() => {
-    if (!commandRequest || handledCommandRequestRef.current === commandRequest.id) {
-      return;
-    }
+  const loadPrompts = useCallback(() => runAction('loadPrompts', undefined), [runAction]);
+  const createPrompt = useCallback(
+    (draft: ChapterTextPromptDraft) => runAction('createPrompt', draft),
+    [runAction]
+  );
+  const savePrompt = useCallback(
+    (promptId: string, draft: ChapterTextPromptDraft) => runAction('savePrompt', { promptId, draft }),
+    [runAction]
+  );
+  const deletePrompt = useCallback(
+    (promptId: string) => runAction('deletePrompt', { promptId }),
+    [runAction]
+  );
+  const selectPrompt = useCallback(
+    (promptId: string) => {
+      dispatch(appActions.setPromptEditorSelectedId(promptId));
+    },
+    [dispatch]
+  );
 
-    handledCommandRequestRef.current = commandRequest.id;
-    let cancelled = false;
-
-    dispatch(appActions.setPromptEditorSaving(true));
-    dispatch(appActions.setPromptEditorError(null));
-    dispatch(appActions.setPromptEditorStatus(null));
-
-    const request =
-      commandRequest.kind === 'create'
-        ? createPrompt(commandRequest.draft)
-        : commandRequest.kind === 'save'
-        ? updatePrompt(commandRequest.promptId, commandRequest.draft)
-        : deletePrompt(commandRequest.promptId);
-
-    request
-      .then((result) => {
-        if (cancelled) {
-          return;
-        }
-        applyPromptResult(dispatch, result);
-        dispatch(appActions.setPromptEditorStatus(getCommandStatus(commandRequest.kind)));
-      })
-      .catch((error: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        dispatch(
-          appActions.setPromptEditorError(
-            error instanceof Error ? error.message : getCommandFallbackError(commandRequest.kind)
-          )
-        );
-      })
-      .finally(() => {
-        if (!cancelled) {
-          dispatch(appActions.setPromptEditorSaving(false));
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [commandRequest, dispatch]);
+  return {
+    loadPrompts,
+    createPrompt,
+    savePrompt,
+    deletePrompt,
+    selectPrompt
+  };
 }

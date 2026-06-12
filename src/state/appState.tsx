@@ -20,7 +20,6 @@ import type {
   BookCard,
   BookCardUpdate,
   ChapterMemoryCard,
-  ChapterTextPromptDraft,
   ChapterTextPrompt,
   ChapterTextVersion,
   ChapterVocabulary,
@@ -361,14 +360,6 @@ export interface BookCardWorkflowState {
   };
 }
 
-export type PromptEditorCommandRequest = {
-  id: number;
-} & (
-  | { kind: 'create'; draft: ChapterTextPromptDraft }
-  | { kind: 'save'; promptId: string; draft: ChapterTextPromptDraft }
-  | { kind: 'delete'; promptId: string }
-);
-
 export interface PromptEditorWorkflowState {
   prompts: ChapterTextPrompt[];
   selectedId: string;
@@ -376,8 +367,6 @@ export interface PromptEditorWorkflowState {
   saving: boolean;
   error: string | null;
   status: string | null;
-  loadRequestId: number;
-  commandRequest: PromptEditorCommandRequest | null;
 }
 
 export interface ViewerWorkflowState {
@@ -642,16 +631,12 @@ export type AppAction =
   | { type: 'bookCardWorkflow/setEditorSaving'; saving: boolean }
   | { type: 'bookCardWorkflow/setEditorError'; error: string | null }
   | { type: 'bookCardWorkflow/saveEditorCard'; bookId: string; card: BookCardUpdate }
-  | { type: 'promptEditorWorkflow/load' }
   | { type: 'promptEditorWorkflow/setPrompts'; prompts: ChapterTextPrompt[]; selectedId?: string }
   | { type: 'promptEditorWorkflow/setSelectedId'; selectedId: string }
   | { type: 'promptEditorWorkflow/setLoading'; loading: boolean }
   | { type: 'promptEditorWorkflow/setSaving'; saving: boolean }
   | { type: 'promptEditorWorkflow/setError'; error: string | null }
   | { type: 'promptEditorWorkflow/setStatus'; status: string | null }
-  | { type: 'promptEditorWorkflow/create'; draft: ChapterTextPromptDraft }
-  | { type: 'promptEditorWorkflow/save'; promptId: string; draft: ChapterTextPromptDraft }
-  | { type: 'promptEditorWorkflow/delete'; promptId: string }
   | { type: 'jobWorkerWorkflow/loadJobs' }
   | { type: 'jobWorkerWorkflow/setJobs'; jobs: JobWorkerJob[] }
   | { type: 'jobWorkerWorkflow/setLoading'; loading: boolean }
@@ -923,9 +908,7 @@ const initialAppState: CentralAppState = {
     loading: false,
     saving: false,
     error: null,
-    status: null,
-    loadRequestId: 0,
-    commandRequest: null
+    status: null
   },
   jobWorkerWorkflow: {
     jobs: [],
@@ -1489,7 +1472,6 @@ export const appActions = {
     bookId,
     card
   }),
-  loadPromptEditorPrompts: (): AppAction => ({ type: 'promptEditorWorkflow/load' }),
   setPromptEditorPrompts: (prompts: ChapterTextPrompt[], selectedId?: string): AppAction => ({
     type: 'promptEditorWorkflow/setPrompts',
     prompts,
@@ -1514,19 +1496,6 @@ export const appActions = {
   setPromptEditorStatus: (status: string | null): AppAction => ({
     type: 'promptEditorWorkflow/setStatus',
     status
-  }),
-  createPromptEditorPrompt: (draft: ChapterTextPromptDraft): AppAction => ({
-    type: 'promptEditorWorkflow/create',
-    draft
-  }),
-  savePromptEditorPrompt: (promptId: string, draft: ChapterTextPromptDraft): AppAction => ({
-    type: 'promptEditorWorkflow/save',
-    promptId,
-    draft
-  }),
-  deletePromptEditorPrompt: (promptId: string): AppAction => ({
-    type: 'promptEditorWorkflow/delete',
-    promptId
   }),
   loadJobWorkerJobs: (): AppAction => ({ type: 'jobWorkerWorkflow/loadJobs' }),
   setJobWorkerJobs: (jobs: JobWorkerJob[]): AppAction => ({
@@ -3051,16 +3020,6 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           }
         }
       };
-    case 'promptEditorWorkflow/load':
-      return {
-        ...state,
-        promptEditorWorkflow: {
-          ...state.promptEditorWorkflow,
-          loadRequestId: state.promptEditorWorkflow.loadRequestId + 1,
-          status: null,
-          error: null
-        }
-      };
     case 'promptEditorWorkflow/setPrompts': {
       const selectedId =
         action.selectedId && action.prompts.some((prompt) => prompt.id === action.selectedId)
@@ -3116,49 +3075,6 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
         promptEditorWorkflow: {
           ...state.promptEditorWorkflow,
           status: action.status
-        }
-      };
-    case 'promptEditorWorkflow/create':
-      return {
-        ...state,
-        promptEditorWorkflow: {
-          ...state.promptEditorWorkflow,
-          commandRequest: {
-            id: (state.promptEditorWorkflow.commandRequest?.id ?? 0) + 1,
-            kind: 'create',
-            draft: action.draft
-          },
-          error: null,
-          status: null
-        }
-      };
-    case 'promptEditorWorkflow/save':
-      return {
-        ...state,
-        promptEditorWorkflow: {
-          ...state.promptEditorWorkflow,
-          commandRequest: {
-            id: (state.promptEditorWorkflow.commandRequest?.id ?? 0) + 1,
-            kind: 'save',
-            promptId: action.promptId,
-            draft: action.draft
-          },
-          error: null,
-          status: null
-        }
-      };
-    case 'promptEditorWorkflow/delete':
-      return {
-        ...state,
-        promptEditorWorkflow: {
-          ...state.promptEditorWorkflow,
-          commandRequest: {
-            id: (state.promptEditorWorkflow.commandRequest?.id ?? 0) + 1,
-            kind: 'delete',
-            promptId: action.promptId
-          },
-          error: null,
-          status: null
         }
       };
     case 'jobWorkerWorkflow/loadJobs':

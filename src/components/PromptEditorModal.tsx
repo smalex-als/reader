@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { usePromptEditorActions } from '@/hooks/usePromptEditorActions';
 import {
   appActions,
   selectModalOpen,
@@ -25,6 +26,13 @@ Source:
 
 export default function PromptEditorModal() {
   const dispatch = useAppDispatch();
+  const {
+    loadPrompts,
+    createPrompt,
+    savePrompt,
+    deletePrompt,
+    selectPrompt
+  } = usePromptEditorActions();
   const open = useAppSelector(selectModalOpen('promptEditor'));
   const { prompts, selectedId, loading, saving, error, status } = useAppSelector(selectPromptEditorWorkflow);
   const [draftName, setDraftName] = useState('');
@@ -46,8 +54,8 @@ export default function PromptEditorModal() {
     if (!open) {
       return;
     }
-    dispatch(appActions.loadPromptEditorPrompts());
-  }, [dispatch, open]);
+    void loadPrompts();
+  }, [loadPrompts, open]);
 
   useEffect(() => {
     if (!selectedPrompt) {
@@ -60,27 +68,27 @@ export default function PromptEditorModal() {
   }, [selectedPrompt]);
 
   const handleCreate = () => {
-    dispatch(appActions.createPromptEditorPrompt({
+    void createPrompt({
       name: 'New article version prompt',
       template: NEW_PROMPT_TEMPLATE
-    }));
+    });
   };
 
   const handleSave = () => {
     if (!selectedPrompt || !canSave) {
       return;
     }
-    dispatch(appActions.savePromptEditorPrompt(selectedPrompt.id, {
+    void savePrompt(selectedPrompt.id, {
       name: draftName,
       template: draftTemplate
-    }));
+    });
   };
 
   const handleDelete = () => {
     if (!selectedPrompt || selectedPrompt.builtIn) {
       return;
     }
-    dispatch(appActions.deletePromptEditorPrompt(selectedPrompt.id));
+    void deletePrompt(selectedPrompt.id);
   };
 
   if (!open) {
@@ -122,7 +130,7 @@ export default function PromptEditorModal() {
                 key={prompt.id}
                 type="button"
                 className={`prompt-editor-list-item ${prompt.id === selectedPrompt?.id ? 'prompt-editor-list-item-active' : ''}`}
-                onClick={() => dispatch(appActions.setPromptEditorSelectedId(prompt.id))}
+                onClick={() => selectPrompt(prompt.id)}
                 disabled={saving}
               >
                 <span>{prompt.name}</span>
