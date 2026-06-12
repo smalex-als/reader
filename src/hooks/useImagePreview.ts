@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { makeImagePreviewKey } from '@/lib/imagePreview';
 import {
   appActions,
   selectImagePreviewWorkflow,
@@ -6,15 +7,6 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-
-function makePreviewKey(
-  bookId: string,
-  imageFilename: string,
-  bounds: [number, number, number, number]
-) {
-  const [left, top, right, bottom] = bounds;
-  return `${bookId}:${imageFilename}:${left}:${top}:${right}:${bottom}`;
-}
 
 export function useImagePreview() {
   const dispatch = useAppDispatch();
@@ -38,7 +30,7 @@ export function useImagePreview() {
         right: String(right),
         bottom: String(bottom)
       });
-      const previewKey = makePreviewKey(bookId, imageFilename, payload.bounds);
+      const previewKey = makeImagePreviewKey(bookId, imageFilename, payload.bounds);
       dispatch(appActions.openImagePreview({
         bookId,
         imageFilename,

@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import { useImagePreviewActions } from '@/hooks/useImagePreviewActions';
+import { normalizeImageCaption } from '@/lib/imagePreview';
 import {
   appActions,
   selectImagePreview,
@@ -8,36 +10,14 @@ import {
   useAppSelector
 } from '@/state/appState';
 
-function normalizeCaption(caption: string | null | undefined) {
-  const input = typeof caption === 'string' ? caption : '';
-  const stripped = input.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  return stripped || null;
-}
-
-function makePreviewKey(
-  bookId: string,
-  imageFilename: string,
-  bounds: [number, number, number, number]
-) {
-  const [left, top, right, bottom] = bounds;
-  return `${bookId}:${imageFilename}:${left}:${top}:${right}:${bottom}`;
-}
-
 export default function ImagePreviewModal() {
   const dispatch = useAppDispatch();
+  const { enhancePreview, showOriginal } = useImagePreviewActions();
   const preview = useAppSelector(selectImagePreview);
   const { enhancing, error } = useAppSelector(selectImagePreviewWorkflow);
   const open = preview !== null;
   const handleClose = () => {
     dispatch(appActions.closeImagePreview());
-  };
-  const handleEnhancedUrl = (url: string | null) => {
-    if (!preview) {
-      return;
-    }
-    const previewKey = makePreviewKey(preview.bookId, preview.imageFilename, preview.bounds);
-    dispatch(appActions.setImagePreviewCachedEnhancedUrl(previewKey, url));
-    dispatch(appActions.setImagePreviewEnhancedUrl(url));
   };
 
   useEffect(() => {
@@ -63,7 +43,7 @@ export default function ImagePreviewModal() {
     return null;
   }
 
-  const caption = normalizeCaption(preview.caption);
+  const caption = normalizeImageCaption(preview.caption);
   const displayUrl = preview.enhancedUrl ?? preview.cropUrl;
 
   return (
@@ -75,40 +55,11 @@ export default function ImagePreviewModal() {
             <button
               type="button"
               className="button button-secondary"
-              onClick={async () => {
+              onClick={() => {
                 if (enhancing) {
                   return;
                 }
-                dispatch(appActions.setImagePreviewEnhancing(true));
-                dispatch(appActions.setImagePreviewError(null));
-                try {
-                  const response = await fetch(
-                    `/api/books/${encodeURIComponent(preview.bookId)}/image-preview/enhance`,
-                    {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        image: preview.imageFilename,
-                        bounds: preview.bounds,
-                        caption: caption ?? preview.caption ?? null
-                      })
-                    }
-                  );
-                  if (!response.ok) {
-                    throw new Error(`Enhancement failed (${response.status})`);
-                  }
-                  const payload = (await response.json()) as { url?: string };
-                  if (!payload.url) {
-                    throw new Error('Enhanced image URL is missing');
-                  }
-                  handleEnhancedUrl(payload.url);
-                } catch (fetchError) {
-                  dispatch(appActions.setImagePreviewError(
-                    fetchError instanceof Error ? fetchError.message : 'Unable to enhance image.'
-                  ));
-                } finally {
-                  dispatch(appActions.setImagePreviewEnhancing(false));
-                }
+                void enhancePreview(preview);
               }}
               disabled={enhancing}
             >
@@ -119,7 +70,7 @@ export default function ImagePreviewModal() {
                 type="button"
                 className="button button-secondary"
                 onClick={() => {
-                  handleEnhancedUrl(null);
+                  void showOriginal(preview);
                 }}
               >
                 Show Original
