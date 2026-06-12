@@ -19,6 +19,7 @@ import {useDashboardNavigation} from '@/hooks/useDashboardNavigation';
 import {useFloatingAudio} from '@/hooks/useFloatingAudio';
 import {useFullscreen} from '@/hooks/useFullscreen';
 import {useHotkeys} from '@/hooks/useHotkeys';
+import {useCurrentChapterContext} from '@/hooks/useCurrentChapterLabel';
 import {ReaderCommandProvider, type ReaderCommands} from '@/hooks/useReaderCommands';
 import {useTocManager} from '@/hooks/useTocManager';
 import {useWakeLock} from '@/hooks/useWakeLock';
@@ -47,12 +48,11 @@ export default function App() {
     bookId,
     setBookId,
     manifest,
-    bookType,
-    chapterCount,
     currentPage,
     viewMode,
     loading
   } = useBookSession();
+  const { chapterNumber } = useCurrentChapterContext();
   const {
     settings,
     setSettings,
@@ -66,11 +66,8 @@ export default function App() {
 
   useUnitsRouteSync();
 
-  const isTextBook = bookType === 'text';
-  const navigationCount = isTextBook ? chapterCount : manifest.length;
   const currentImage = manifest[currentPage] ?? null;
   const {
-    sortedTocEntries,
     handleGenerateToc,
     handleSaveToc,
     handleAddTocEntry,
@@ -79,20 +76,6 @@ export default function App() {
     handleGenerateChapter
   } = useTocManager();
   useMp3Voice();
-  const currentChapterIndex = useMemo(() => {
-    if (isTextBook) {
-      return navigationCount > 0 ? currentPage : null;
-    }
-    if (sortedTocEntries.length === 0) {
-      return null;
-    }
-    const nextIndex = sortedTocEntries.findIndex((entry) => entry.page > currentPage);
-    if (nextIndex === -1) {
-      return sortedTocEntries.length - 1;
-    }
-    return Math.max(0, nextIndex - 1);
-  }, [currentPage, isTextBook, navigationCount, sortedTocEntries]);
-  const chapterNumber = currentChapterIndex !== null ? currentChapterIndex + 1 : null;
   const {
     audioState,
     resetAudio,
