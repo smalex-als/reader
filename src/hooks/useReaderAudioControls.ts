@@ -1,4 +1,5 @@
 import { useAudioController } from '@/hooks/useAudioController';
+import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useFloatingAudio } from '@/hooks/useFloatingAudio';
 import { useReaderLifecycleEffects } from '@/hooks/useReaderLifecycleEffects';
 import { useStreamControls } from '@/hooks/useStreamControls';
@@ -8,15 +9,9 @@ import { useStreamingAudio } from '@/hooks/useStreamingAudio';
 import { useMp3Voice, useStreamVoices } from '@/hooks/useStreamVoices';
 import { usePlaybackWakeLock } from '@/hooks/useWakeLock';
 
-type UseReaderAudioControlsOptions = {
-  bookId: string | null;
-  chapterNumber: number | null;
-};
+export function useReaderAudioControls() {
+  const { bookId, chapterNumber } = useCurrentChapterContext();
 
-export function useReaderAudioControls({
-  bookId,
-  chapterNumber
-}: UseReaderAudioControlsOptions) {
   useStreamVoices();
   useMp3Voice();
 
