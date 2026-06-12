@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { openStreamPcmReader } from '@/api/streamingAudio';
 import { useToast } from '@/hooks/useToast';
+import { createActionHandlerRegistry } from '@/lib/actionHandlers';
 import type { StreamState } from '@/types/app';
 import { stripMarkdown } from '@/lib/streamText';
 
@@ -24,6 +26,30 @@ type CachedStreamChunk = {
   samples: Float32Array;
   pageKey: string | null;
 };
+
+type StreamingAudioPayloads = {
+  openPcmStream: {
+    text: string;
+    voice: string;
+    signal: AbortSignal;
+  };
+};
+
+type StreamingAudioActions = {
+  setReader: (reader: ReadableStreamDefaultReader<Uint8Array>) => void;
+};
+
+const streamingAudioHandlers = createActionHandlerRegistry<
+  null,
+  StreamingAudioActions,
+  StreamingAudioPayloads
+>();
+const { addActionHandler } = streamingAudioHandlers;
+
+addActionHandler('openPcmStream', async (_state, actions, payload): Promise<void> => {
+  const reader = await openStreamPcmReader(payload);
+  actions.setReader(reader);
+});
 
 const INITIAL_STREAM_STATE: StreamState = {
   status: 'idle',
@@ -421,6 +447,29 @@ export function useStreamingAudio() {
     appendAudio(silenceChunk, null);
   }, [appendAudio, createSilenceChunk]);
 
+  const openPcmStream = useCallback(
+    async (
+      payload: StreamingAudioPayloads['openPcmStream']
+    ): Promise<ReadableStreamDefaultReader<Uint8Array>> => {
+      await streamingAudioHandlers.runAction(
+        'openPcmStream',
+        null,
+        {
+          setReader: (reader) => {
+            readerRef.current = reader;
+          }
+        },
+        payload
+      );
+      const streamReader = readerRef.current;
+      if (!streamReader) {
+        throw new Error('Streaming request failed');
+      }
+      return streamReader;
+    },
+    []
+  );
+
   const startQueuedRequest = useCallback(
     async (sessionId: number) => {
       if (sessionRef.current !== sessionId || stopRequestedRef.current) {
@@ -493,20 +542,11 @@ export function useStreamingAudio() {
         const segmentChunks: CachedStreamChunk[] = [];
         const abortController = new AbortController();
         requestAbortRef.current = abortController;
-        const response = await fetch('/api/stream-audio/pcm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: nextItem.text,
-            voice: nextItem.voice || DEFAULT_STREAM_VOICE
-          }),
+        const reader = await openPcmStream({
+          text: nextItem.text,
+          voice: nextItem.voice || DEFAULT_STREAM_VOICE,
           signal: abortController.signal
         });
-        if (!response.ok || !response.body) {
-          throw new Error('Streaming request failed');
-        }
-        const reader = response.body.getReader();
-        readerRef.current = reader;
         requestInFlightRef.current = false;
         await resumePlaybackContext(sessionId);
 
@@ -604,7 +644,7 @@ export function useStreamingAudio() {
         finalizeStream('error', 'Unable to start stream');
       }
     },
-    [appendAudio, appendSilence, clearQueue, finalizeStream]
+    [appendAudio, appendSilence, clearQueue, finalizeStream, openPcmStream, resumePlaybackContext]
   );
 
   const startStream = useCallback(
