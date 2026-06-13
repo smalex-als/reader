@@ -1,18 +1,14 @@
-import { useCallback, useMemo } from 'react';
 import { useAudioViewActions } from '@/hooks/useAudioViewActions';
+import { useAudioViewRuntimeActions } from '@/hooks/useAudioViewRuntimeActions';
 import {
-  appActions,
   selectReaderSession,
   selectTocWorkflow,
   selectVoiceWorkflow,
-  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import TrashIcon from '@/components/TrashIcon';
-import type { ChapterAudioProvider } from '@/types/app';
 
 export default function AudioView() {
-  const dispatch = useAppDispatch();
   const { bookId } = useAppSelector(selectReaderSession);
   const { entries: tocEntries, loading: tocLoading } = useAppSelector(selectTocWorkflow);
   const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
@@ -32,59 +28,19 @@ export default function AudioView() {
     canLoadAudioStatus: tocEntries.length > 0,
     mp3Voice
   });
-  const mp3VoiceOptions = useMemo(
-    () =>
-      streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'
-      ),
-    [streamVoiceOptions]
-  );
-  const handleMp3VoiceChange = useCallback(
-    (voice: string) => {
-      dispatch(appActions.setMp3Voice(voice));
-    },
-    [dispatch]
-  );
-  const handleOpenChapterText = useCallback(
-    (pageIndex: number, versionId?: string, chapterNumber?: number) => {
-      if (versionId && chapterNumber) {
-        dispatch(appActions.requestChapterVersionNavigation(chapterNumber, versionId));
-      } else {
-        dispatch(appActions.clearChapterVersionNavigation());
-      }
-      dispatch(appActions.setReaderViewMode('text'));
-      dispatch(appActions.requestPageNavigation(pageIndex));
-    },
-    [dispatch]
-  );
-
-  const handleGenerateAudio = useCallback(
-    async (chapterNumber: number, versionId: string, provider: ChapterAudioProvider = 'default') => {
-      await generateAudio({ chapterNumber, versionId, provider });
-    },
-    [generateAudio]
-  );
-
-  const handleCancelAudioJob = useCallback(
-    async (chapterNumber: number) => {
-      await cancelAudioJob(chapterNumber);
-    },
-    [cancelAudioJob]
-  );
-
-  const handleDeleteAudio = useCallback(
-    async (chapterNumber: number, versionId: string) => {
-      if (audioDeleting[chapterNumber]) {
-        return;
-      }
-      const confirmed = window.confirm(`Delete generated MP3 for chapter ${chapterNumber}?`);
-      if (!confirmed) {
-        return;
-      }
-      await deleteAudio({ chapterNumber, versionId });
-    },
-    [audioDeleting, deleteAudio]
-  );
+  const {
+    confirmDeleteAudio,
+    handleMp3VoiceChange,
+    mp3VoiceOptions,
+    openChapterText,
+    playChapterAudio,
+    selectedMp3Provider
+  } = useAudioViewRuntimeActions({
+    audioDeleting,
+    deleteAudio,
+    mp3Voice,
+    streamVoiceOptions
+  });
 
   return (
     <div className="audio-viewer">
@@ -144,11 +100,6 @@ export default function AudioView() {
                 : 'Generate audio';
               const actionDisabled =
                 audioBusy[entry.chapterNumber] || audioDeleting[entry.chapterNumber] || isAudioJobActive;
-              const selectedMp3Provider = mp3Voice.startsWith('xai_')
-                ? 'xai'
-                : mp3Voice.startsWith('yandex_')
-                  ? 'yandex'
-                  : 'default';
               const generateLabel = isAudioJobActive
                 ? actionLabel
                 : selectedMp3Provider === 'yandex'
@@ -164,7 +115,7 @@ export default function AudioView() {
                       <button
                         type="button"
                         className="audio-row-title-link audio-row-link"
-                        onClick={() => handleOpenChapterText(entry.page)}
+                        onClick={() => openChapterText(entry.page)}
                       >
                         {entry.title}
                       </button>
@@ -179,7 +130,7 @@ export default function AudioView() {
                               key={version.id}
                               type="button"
                               className={`audio-version-chip ${isLatest ? 'audio-version-chip-active' : ''}`}
-                              onClick={() => handleOpenChapterText(entry.page, version.id, entry.chapterNumber)}
+                              onClick={() => openChapterText(entry.page, version.id, entry.chapterNumber)}
                               title={version.promptName ? `${version.label} · ${version.promptName}` : version.label}
                             >
                               <span>{version.label}</span>
@@ -197,11 +148,11 @@ export default function AudioView() {
                           type="button"
                           className="button"
                           onClick={() =>
-                            void handleGenerateAudio(
-                              entry.chapterNumber,
-                              latestVersionId,
-                              selectedMp3Provider
-                            )
+                            void generateAudio({
+                              chapterNumber: entry.chapterNumber,
+                              versionId: latestVersionId,
+                              provider: selectedMp3Provider
+                            })
                           }
                           disabled={actionDisabled}
                         >
@@ -213,7 +164,7 @@ export default function AudioView() {
                       <button
                         type="button"
                         className="button button-secondary"
-                        onClick={() => handleCancelAudioJob(entry.chapterNumber)}
+                        onClick={() => void cancelAudioJob(entry.chapterNumber)}
                       >
                         Cancel
                       </button>
@@ -223,17 +174,7 @@ export default function AudioView() {
                         <button
                           type="button"
                           className="button audio-native-play"
-                          onClick={() =>
-                            dispatch(appActions.playFloatingAudio({
-                              title: entry.title,
-                              subtitle: `Chapter ${entry.chapterNumber}`,
-                              url: entry.audio.url,
-                              srtUrl: entry.audio.srtUrl ?? null,
-                              chapterNumber: entry.chapterNumber,
-                              versionId: latestVersionId,
-                              subchapters: entry.audio.subchapters ?? []
-                            }))
-                          }
+                          onClick={() => playChapterAudio(entry, latestVersionId)}
                           disabled={audioDeleting[entry.chapterNumber]}
                         >
                           ▶ Play
@@ -250,7 +191,7 @@ export default function AudioView() {
                         <button
                           type="button"
                           className="button button-secondary audio-delete"
-                          onClick={() => void handleDeleteAudio(entry.chapterNumber, latestVersionId)}
+                          onClick={() => void confirmDeleteAudio(entry.chapterNumber, latestVersionId)}
                           disabled={audioDeleting[entry.chapterNumber]}
                           aria-label="Delete MP3 file"
                           title="Delete MP3 file"
