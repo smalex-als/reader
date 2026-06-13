@@ -42,6 +42,7 @@ type StreamSource =
 type PageStreamSegment = {
   text: string;
   pageKey: string;
+  pageIndex: number | null;
 };
 
 type ParagraphStreamSegment = {
@@ -113,14 +114,14 @@ function createParagraphStreamSegments(fullText: string, startIndex: number, bas
   return segments;
 }
 
-function getPageStreamSegments(pageText: PageText, imageUrl: string): PageStreamSegment[] {
+function getPageStreamSegments(pageText: PageText, imageUrl: string, pageIndex: number | null = null): PageStreamSegment[] {
   const orderedBlocks = [...pageText.blocks]
     .filter((block) => block.startIndex !== null && !block.excludedFromSpeech)
     .sort((left, right) => (left.startIndex ?? 0) - (right.startIndex ?? 0));
 
   if (orderedBlocks.length === 0) {
     const text = pageText.plainText.trim();
-    return text ? [{ text, pageKey: `${imageUrl}::page` }] : [];
+    return text ? [{ text, pageKey: `${imageUrl}::page`, pageIndex }] : [];
   }
 
   const segments: PageStreamSegment[] = [];
@@ -135,7 +136,8 @@ function getPageStreamSegments(pageText: PageText, imageUrl: string): PageStream
     }
     segments.push({
       text,
-      pageKey: `${imageUrl}::${block.id}`
+      pageKey: `${imageUrl}::${block.id}`,
+      pageIndex
     });
   }
 
@@ -183,8 +185,8 @@ export function useStreamSequence({
     runId: number;
     nextPageIndex: number;
     pendingSegments: PageStreamSegment[];
-    queuedAhead: number;
-    lastActivePageKey: string | null;
+    queuedAheadPages: number;
+    lastActivePageIndex: number | null;
     filling: boolean;
   } | null>(null);
   const paragraphBufferRef = useRef<{
@@ -330,40 +332,50 @@ export function useStreamSequence({
       }
       buffer.filling = true;
       try {
-        while (sequenceRunIdRef.current === runId && buffer.queuedAhead < SCROLL_STREAM_LOOKAHEAD) {
-          if (buffer.pendingSegments.length === 0) {
-            if (buffer.nextPageIndex >= manifest.length) {
-              break;
-            }
-            const image = manifest[buffer.nextPageIndex];
-            buffer.nextPageIndex += 1;
-            if (!image) {
-              continue;
-            }
-            const nextPageText = await fetchPageTextByImage(image, {
-              silent: true,
-              updateCurrentState: false
-            });
-            if (sequenceRunIdRef.current !== runId) {
-              return;
-            }
-            if (!nextPageText) {
-              continue;
-            }
-            buffer.pendingSegments.push(...getPageStreamSegments(nextPageText, image));
+        while (buffer.pendingSegments.length > 0) {
+          const nextSegment = buffer.pendingSegments.shift();
+          if (!nextSegment) {
+            continue;
           }
-          while (buffer.pendingSegments.length > 0) {
-            const nextSegment = buffer.pendingSegments.shift();
-            if (!nextSegment) {
-              continue;
-            }
+          enqueueStream({
+            text: nextSegment.text,
+            pageKey: nextSegment.pageKey,
+            voice
+          });
+        }
+
+        while (sequenceRunIdRef.current === runId && buffer.queuedAheadPages < SCROLL_STREAM_LOOKAHEAD) {
+          if (buffer.nextPageIndex >= manifest.length) {
+            break;
+          }
+          const pageIndex = buffer.nextPageIndex;
+          const image = manifest[pageIndex];
+          buffer.nextPageIndex += 1;
+          if (!image) {
+            continue;
+          }
+          const nextPageText = await fetchPageTextByImage(image, {
+            silent: true,
+            updateCurrentState: false
+          });
+          if (sequenceRunIdRef.current !== runId) {
+            return;
+          }
+          if (!nextPageText) {
+            continue;
+          }
+          const pageSegments = getPageStreamSegments(nextPageText, image, pageIndex);
+          if (pageSegments.length === 0) {
+            continue;
+          }
+          pageSegments.forEach((segment) => {
             enqueueStream({
-              text: nextSegment.text,
-              pageKey: nextSegment.pageKey,
+              text: segment.text,
+              pageKey: segment.pageKey,
               voice
             });
-            buffer.queuedAhead += 1;
-          }
+          });
+          buffer.queuedAheadPages += 1;
         }
       } finally {
         const latest = scrollBufferRef.current;
@@ -384,7 +396,8 @@ export function useStreamSequence({
       voiceOverride?: string
     ) => {
       const voice = voiceOverride ?? streamVoice;
-      const allSegments = getPageStreamSegments(pageText, imageUrl);
+      const imagePageIndex = manifest.findIndex((entry) => entry === imageUrl);
+      const allSegments = getPageStreamSegments(pageText, imageUrl, imagePageIndex >= 0 ? imagePageIndex : null);
       if (allSegments.length === 0) {
         showToast('No page text available to stream', 'error');
         return;
@@ -424,23 +437,22 @@ export function useStreamSequence({
       }
       const runId = sequenceRunIdRef.current + 1;
       sequenceRunIdRef.current = runId;
-      const imagePageIndex = manifest.findIndex((entry) => entry === imageUrl);
       const pendingSegments = studyMode ? [] : segments.slice(1);
       scrollBufferRef.current = continueAcrossPages && !studyMode
         ? {
             runId,
             nextPageIndex: imagePageIndex >= 0 ? imagePageIndex + 1 : currentPage + 1,
             pendingSegments,
-            queuedAhead: 0,
-            lastActivePageKey: segments[0].pageKey,
+            queuedAheadPages: 0,
+            lastActivePageIndex: segments[0].pageIndex,
             filling: false
           }
         : {
             runId,
             nextPageIndex: manifest.length,
             pendingSegments,
-            queuedAhead: 0,
-            lastActivePageKey: segments[0].pageKey,
+            queuedAheadPages: 0,
+            lastActivePageIndex: segments[0].pageIndex,
             filling: false
           };
       streamSequenceRef.current = { source: 'page', baseKey: imageUrl };
@@ -804,7 +816,8 @@ export function useStreamSequence({
     if (!pageText) {
       return;
     }
-    const segments = getPageStreamSegments(pageText, locator.imageUrl);
+    const locatorPageIndex = manifest.indexOf(locator.imageUrl);
+    const segments = getPageStreamSegments(pageText, locator.imageUrl, locatorPageIndex >= 0 ? locatorPageIndex : null);
     const currentIndex = segments.findIndex((segment) => segment.pageKey === pageKey);
     const nextSegment = currentIndex >= 0 ? segments[currentIndex + 1] : null;
     const nextLocator = parseStreamLocator(nextSegment?.pageKey ?? null);
@@ -842,10 +855,14 @@ export function useStreamSequence({
 
   const handleStreamSegmentStart = useCallback((pageKey: string) => {
     const buffer = scrollBufferRef.current;
-    if (buffer && pageKey !== buffer.lastActivePageKey) {
-      buffer.lastActivePageKey = pageKey;
-      buffer.queuedAhead = Math.max(0, buffer.queuedAhead - 1);
-      void fillScrollBuffer(buffer.runId);
+    if (buffer) {
+      const locator = parseStreamLocator(pageKey);
+      const activePageIndex = locator?.imageUrl ? manifest.indexOf(locator.imageUrl) : -1;
+      if (activePageIndex >= 0 && activePageIndex !== buffer.lastActivePageIndex) {
+        buffer.lastActivePageIndex = activePageIndex;
+        buffer.queuedAheadPages = Math.max(0, buffer.queuedAheadPages - 1);
+        void fillScrollBuffer(buffer.runId);
+      }
     }
 
     const paragraphBuffer = paragraphBufferRef.current;
@@ -854,7 +871,7 @@ export function useStreamSequence({
       paragraphBuffer.queuedAhead = Math.max(0, paragraphBuffer.queuedAhead - 1);
       fillParagraphBuffer(paragraphBuffer.runId);
     }
-  }, [fillParagraphBuffer, fillScrollBuffer]);
+  }, [fillParagraphBuffer, fillScrollBuffer, manifest]);
 
   useEffect(() => {
     if (
