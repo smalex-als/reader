@@ -744,7 +744,7 @@ export function useStreamingAudio() {
         voice: voice || DEFAULT_STREAM_VOICE,
         pauseAfterMs: getInterSegmentPauseMs(cleaned)
       });
-      if (!readerRef.current && !requestInFlightRef.current) {
+      if (workletRef.current && !readerRef.current && !requestInFlightRef.current) {
         void startQueuedRequest(sessionRef.current);
       }
     },

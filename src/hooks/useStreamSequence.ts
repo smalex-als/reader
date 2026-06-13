@@ -439,7 +439,7 @@ export function useStreamSequence({
           };
       streamSequenceRef.current = { source: 'page', baseKey: imageUrl };
       setStreamSequenceActive(true);
-      await startStream({
+      const startPromise = startStream({
         text: segments[0].text,
         pageKey: segments[0].pageKey,
         voice,
@@ -447,6 +447,7 @@ export function useStreamSequence({
         replaceCurrent: replacingPausedStudyStream
       });
       void fillScrollBuffer(runId, voice);
+      await startPromise;
     },
     [
       currentPage,
@@ -507,7 +508,7 @@ export function useStreamSequence({
           queuedAhead: 0,
           lastActivePageKey: paragraphSegments[0].pageKey
         };
-        await startStream({
+        const startPromise = startStream({
           text: paragraphSegments[0].text,
           pageKey: paragraphSegments[0].pageKey,
           voice,
@@ -515,6 +516,7 @@ export function useStreamSequence({
           replaceCurrent: replacingPausedStudyStream
         });
         fillParagraphBuffer(runId, voice);
+        await startPromise;
         return;
       }
       const chunks = splitStreamChunks(fullText, startIndex);
@@ -522,7 +524,7 @@ export function useStreamSequence({
         showToast('No text available to stream', 'error');
         return;
       }
-      await startStream({
+      const startPromise = startStream({
         text: chunks[0],
         pageKey: `${baseKey}#chunk-0`,
         voice,
@@ -532,6 +534,7 @@ export function useStreamSequence({
       if (!studyMode) {
         enqueueChunks(fullText, startIndex, baseKey, voice);
       }
+      await startPromise;
     },
     [
       enqueueChunks,
