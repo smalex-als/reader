@@ -1,21 +1,21 @@
-import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
+import UnitTopicMarkdown from '@/components/UnitTopicMarkdown';
+import { useUnitTopicPlayback } from '@/hooks/useUnitTopicPlayback';
 import { useUnitsViewActions } from '@/hooks/useUnitsViewActions';
 import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import {
   appActions,
   selectNavigationState,
-  selectStreamRuntime,
   selectUnitWorkflow,
   selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { UnitItem, UnitSet } from '@/types/app';
+import { getUnitTopicText } from '@/lib/unitTopicText';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -39,33 +39,6 @@ function getSourceLabel(item: UnitSet) {
   return item.sourceBookId || sourceTitle || 'Standalone';
 }
 
-function extractTextFromNode(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-  if (Array.isArray(node)) {
-    return node.map(extractTextFromNode).join('');
-  }
-  if (isValidElement(node)) {
-    return extractTextFromNode(node.props.children);
-  }
-  return '';
-}
-
-const CONTENT_LABELS_EN = {
-  learningGoal: 'Learning goal',
-  summary: 'Summary',
-  keyPoints: 'Key points',
-  selfCheckQuestions: 'Self-check questions'
-};
-
-const CONTENT_LABELS_RU = {
-  learningGoal: 'Цель',
-  summary: 'Краткое содержание',
-  keyPoints: 'Главное',
-  selfCheckQuestions: 'Вопросы для самопроверки'
-};
-
 const UNIT_UI_LABELS = {
   selfCheck: 'Self-check',
   selfCheckQuestions: 'Self-check questions',
@@ -87,27 +60,6 @@ const UNIT_UI_LABELS = {
   playTts: 'Play TTS',
   stopTts: 'Stop TTS'
 };
-
-function isMostlyRussianText(value: string) {
-  const cyrillicMatches = value.match(/[А-Яа-яЁё]/g)?.length ?? 0;
-  if (cyrillicMatches === 0) {
-    return false;
-  }
-  const latinMatches = value.match(/[A-Za-z]/g)?.length ?? 0;
-  return cyrillicMatches >= latinMatches;
-}
-
-function getContentLabels(unit: UnitItem) {
-  const text = [
-    unit.title,
-    unit.summary,
-    unit.learningGoal,
-    unit.content,
-    ...unit.keyPoints,
-    ...unit.selfCheckQuestions
-  ].join('\n');
-  return isMostlyRussianText(text) ? CONTENT_LABELS_RU : CONTENT_LABELS_EN;
-}
 
 function ReadStatusIcon({ read }: { read: boolean }) {
   return (
@@ -138,7 +90,6 @@ export default function UnitsView() {
   const dispatch = useAppDispatch();
   const { selectedUnitSetId: selectedSetId, selectedUnitTopicId: selectedTopicId } =
     useAppSelector(selectNavigationState);
-  const streamState = useAppSelector(selectStreamRuntime);
   const { refreshToken } = useAppSelector(selectUnitWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
@@ -199,6 +150,21 @@ export default function UnitsView() {
     }
     return selectedSet.units.find((unit) => unit.id === selectedTopicId) ?? null;
   }, [selectedSet, selectedTopicId]);
+  const { topicText, topicSpeechText } = useMemo(
+    () => (selectedUnit ? getUnitTopicText(selectedUnit) : { topicText: '', topicSpeechText: '' }),
+    [selectedUnit]
+  );
+  const {
+    activeParagraphStart,
+    topicStreamActive,
+    playTextBlock,
+    toggleTopicSpeech
+  } = useUnitTopicPlayback({
+    unitSetId: selectedSet?.id ?? '',
+    topicId: selectedUnit?.id ?? '',
+    topicText,
+    topicSpeechText
+  });
 
   const handleSelectSet = useCallback(
     (unitSetId: string | null) => {
@@ -252,32 +218,7 @@ export default function UnitsView() {
   if (selectedSet && selectedUnit) {
     const selectedUnitIndex = selectedSet.units.findIndex((unit) => unit.id === selectedUnit.id);
     const selectedUnitNumber = selectedUnitIndex >= 0 ? selectedUnitIndex + 1 : selectedUnit.order;
-    const unitStreamBaseKey = `unit::${encodeURIComponent(selectedSet.id)}::${encodeURIComponent(selectedUnit.id)}`;
-    const unitParagraphPrefix = `${unitStreamBaseKey}::paragraph-start-`;
-    const topicStreamActive =
-      typeof streamState.pageKey === 'string' &&
-      streamState.pageKey.startsWith(unitParagraphPrefix) &&
-      (streamState.status === 'connecting' ||
-        streamState.status === 'streaming' ||
-        streamState.status === 'paused');
     const labels = UNIT_UI_LABELS;
-    const contentLabels = getContentLabels(selectedUnit);
-    const topicText = [
-      selectedUnit.learningGoal ? `**${contentLabels.learningGoal}:** ${selectedUnit.learningGoal}` : '',
-      selectedUnit.summary ? `**${contentLabels.summary}:** ${selectedUnit.summary}` : '',
-      selectedUnit.keyPoints.length > 0
-        ? `**${contentLabels.keyPoints}:**\n${selectedUnit.keyPoints.map((point) => `- ${point}`).join('\n')}`
-        : '',
-      selectedUnit.content,
-      selectedUnit.selfCheckQuestions.length > 0
-        ? `**${contentLabels.selfCheckQuestions}:**\n${selectedUnit.selfCheckQuestions
-            .map((question) => `- ${question}`)
-            .join('\n')}`
-        : ''
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-    const topicSpeechText = [selectedUnit.title, topicText].filter(Boolean).join('\n\n');
     const selfCheckQuestions = selectedUnit.selfCheckQuestions;
     const currentSelfCheckQuestion = selfCheckQuestions[selfCheckIndex] ?? null;
     const closeSelfCheck = () => {
@@ -308,118 +249,6 @@ export default function UnitsView() {
         question: currentSelfCheckQuestion,
         answer: selfCheckAnswer
       });
-    };
-    const activeParagraphStart = (() => {
-      if (!topicStreamActive || typeof streamState.pageKey !== 'string') {
-        return null;
-      }
-      if (!streamState.pageKey.startsWith(unitParagraphPrefix)) {
-        return null;
-      }
-      return Number.parseInt(streamState.pageKey.slice(unitParagraphPrefix.length), 10);
-    })();
-    const shouldIgnoreBlockClick = (event: ReactMouseEvent<HTMLElement>) => {
-      const target = event.target;
-      if (!(target instanceof Element)) {
-        return false;
-      }
-      if (target.closest('a, button, input, select, textarea, [role="button"], [contenteditable="true"]')) {
-        return true;
-      }
-      return Boolean(window.getSelection()?.toString().trim());
-    };
-    const resolveTextRange = (textValue: string, node?: any) => {
-      const nodeOffset = node?.position?.start?.offset;
-      if (typeof nodeOffset === 'number') {
-        const start = Math.max(0, topicText.lastIndexOf('\n', nodeOffset - 1) + 1);
-        const nodeEnd = node?.position?.end?.offset;
-        const end = typeof nodeEnd === 'number' && nodeEnd > start ? nodeEnd : start + textValue.length;
-        return { start, end };
-      }
-      if (textValue) {
-        const foundIndex = topicText.indexOf(textValue);
-        if (foundIndex !== -1) {
-          const start = Math.max(0, topicText.lastIndexOf('\n', foundIndex - 1) + 1);
-          return { start, end: foundIndex + textValue.length };
-        }
-      }
-      return { start: 0, end: 0 };
-    };
-    const isPlayingRange = (startIndex: number, endIndex: number) => {
-      return (
-        activeParagraphStart !== null &&
-        activeParagraphStart >= startIndex &&
-        activeParagraphStart < Math.max(endIndex, startIndex + 1)
-      );
-    };
-    const playTextBlock = (textValue: string, startIndex: number) => {
-      dispatch(appActions.requestPlayStudyAudioParagraph({
-        fullText: topicText,
-        startIndex,
-        key: unitStreamBaseKey
-      }));
-    };
-    const markdownComponents = {
-      p: ({ children, node }: { children?: ReactNode; node?: any }) => {
-        const textValue = extractTextFromNode(children ?? '').trim();
-        const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
-        return (
-          <p
-            className="text-viewer-block"
-            data-playing={isPlayingRange(startIndex, endIndex) ? 'true' : 'false'}
-            data-streamable={textValue ? 'true' : undefined}
-            data-paragraph-start={startIndex}
-            onClick={(event: ReactMouseEvent<HTMLParagraphElement>) => {
-              if (!textValue || shouldIgnoreBlockClick(event)) {
-                return;
-              }
-              playTextBlock(textValue, startIndex);
-            }}
-          >
-            {children}
-          </p>
-        );
-      },
-      ul: ({ children, node, ...props }: any) => {
-        const textValue = extractTextFromNode(children ?? '').trim();
-        const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
-        return (
-          <div
-            className="text-viewer-block text-viewer-list-block"
-            data-playing={isPlayingRange(startIndex, endIndex) ? 'true' : 'false'}
-            data-streamable={textValue ? 'true' : undefined}
-            data-paragraph-start={startIndex}
-            onClick={(event: ReactMouseEvent<HTMLDivElement>) => {
-              if (!textValue || shouldIgnoreBlockClick(event)) {
-                return;
-              }
-              playTextBlock(textValue, startIndex);
-            }}
-          >
-            <ul {...props}>{children}</ul>
-          </div>
-        );
-      },
-      ol: ({ children, node, ...props }: any) => {
-        const textValue = extractTextFromNode(children ?? '').trim();
-        const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
-        return (
-          <div
-            className="text-viewer-block text-viewer-list-block"
-            data-playing={isPlayingRange(startIndex, endIndex) ? 'true' : 'false'}
-            data-streamable={textValue ? 'true' : undefined}
-            data-paragraph-start={startIndex}
-            onClick={(event: ReactMouseEvent<HTMLDivElement>) => {
-              if (!textValue || shouldIgnoreBlockClick(event)) {
-                return;
-              }
-              playTextBlock(textValue, startIndex);
-            }}
-          >
-            <ol {...props}>{children}</ol>
-          </div>
-        );
-      }
     };
     return (
       <div ref={detailRef} className="audio-library unit-library unit-library-detail">
@@ -470,17 +299,7 @@ export default function UnitsView() {
             <button
               type="button"
               className="button button-secondary"
-              onClick={() => {
-                if (topicStreamActive) {
-                  dispatch(appActions.requestStopStream());
-                  return;
-                }
-                dispatch(appActions.requestPlayStudyAudioParagraph({
-                  fullText: topicSpeechText,
-                  startIndex: 0,
-                  key: unitStreamBaseKey
-                }));
-              }}
+              onClick={toggleTopicSpeech}
               disabled={!topicStreamActive && !topicSpeechText.trim()}
             >
               {topicStreamActive ? labels.stopTts : labels.playTts}
@@ -506,9 +325,11 @@ export default function UnitsView() {
 
         <article className="unit-library-unit-panel">
           <div className="text-viewer-markdown unit-library-markdown" style={textStyle}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {topicText}
-            </ReactMarkdown>
+            <UnitTopicMarkdown
+              activeParagraphStart={activeParagraphStart}
+              playTextBlock={playTextBlock}
+              text={topicText}
+            />
           </div>
         </article>
         {selfCheckOpen ? (
