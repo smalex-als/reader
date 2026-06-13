@@ -688,6 +688,12 @@ export function useStreamingAudio() {
       stopAfterCurrentPageKeyRef.current = null;
       pauseAtStartPageKeyRef.current = pauseAtStartOnComplete ? pageKey : null;
       clearQueue();
+      queueRef.current.push({
+        text: cleaned,
+        pageKey,
+        voice: voice || DEFAULT_STREAM_VOICE,
+        pauseAfterMs: getInterSegmentPauseMs(cleaned)
+      });
       const nextState: StreamState = {
         status: 'connecting',
         pageKey,
@@ -709,12 +715,6 @@ export function useStreamingAudio() {
         return;
       }
       try {
-        queueRef.current.push({
-          text: cleaned,
-          pageKey,
-          voice: voice || DEFAULT_STREAM_VOICE,
-          pauseAfterMs: getInterSegmentPauseMs(cleaned)
-        });
         await startQueuedRequest(sessionId);
       } catch (error) {
         console.error('Unable to start stream', error);
