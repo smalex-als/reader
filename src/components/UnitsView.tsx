@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useCallback, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import UnitTopicMarkdown from '@/components/UnitTopicMarkdown';
@@ -7,13 +6,13 @@ import { useUnitSelfCheckRuntime } from '@/hooks/useUnitSelfCheckRuntime';
 import { useUnitTopicPlayback } from '@/hooks/useUnitTopicPlayback';
 import { useUnitsNavigationActions } from '@/hooks/useUnitsNavigationActions';
 import { useUnitsViewActions } from '@/hooks/useUnitsViewActions';
+import { useUnitsViewModel } from '@/hooks/useUnitsViewModel';
 import {
   selectUnitWorkflow,
   selectViewerWorkflow,
   useAppSelector
 } from '@/state/appState';
-import type { UnitItem, UnitSet } from '@/types/app';
-import { getUnitTopicText } from '@/lib/unitTopicText';
+import type { UnitSet } from '@/types/app';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -110,49 +109,22 @@ export default function UnitsView() {
   } = useUnitsViewActions();
   const [query, setQuery] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const textStyle = useMemo(
-    () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
-    [textFontSize]
-  );
-
-  useEffect(() => {
-    void loadItems();
-  }, [loadItems, refreshToken]);
-
-  const filteredItems = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return items;
-    }
-    return items.filter((item) =>
-      [
-        item.title,
-        item.summary,
-        item.sourceBookId,
-        item.sourceChapterTitle,
-        item.sourceVersionId,
-        item.source,
-        ...item.units.flatMap((unit) => [unit.title, unit.summary, unit.learningGoal])
-      ]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(normalized))
-    );
-  }, [items, query]);
-
-  const selectedSet = useMemo(
-    () => items.find((item) => item.id === selectedSetId) ?? null,
-    [items, selectedSetId]
-  );
-  const selectedUnit = useMemo<UnitItem | null>(() => {
-    if (!selectedSet) {
-      return null;
-    }
-    return selectedSet.units.find((unit) => unit.id === selectedTopicId) ?? null;
-  }, [selectedSet, selectedTopicId]);
-  const { topicText, topicSpeechText } = useMemo(
-    () => (selectedUnit ? getUnitTopicText(selectedUnit) : { topicText: '', topicSpeechText: '' }),
-    [selectedUnit]
-  );
+  const {
+    filteredItems,
+    selectedSet,
+    selectedUnit,
+    textStyle,
+    topicSpeechText,
+    topicText
+  } = useUnitsViewModel({
+    items,
+    loadItems,
+    query,
+    refreshToken,
+    selectedSetId,
+    selectedTopicId,
+    textFontSize
+  });
   const {
     activeParagraphStart,
     topicStreamActive,
