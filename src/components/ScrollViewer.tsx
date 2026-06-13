@@ -23,6 +23,7 @@ const BLOCK_READING_ZONE_TOP = 48;
 const BLOCK_READING_ZONE_HEIGHT_RATIO = 0.66;
 const BLOCK_SCROLL_TARGET_OFFSET = 88;
 const VIEWPORT_PREFETCH_PADDING = 1;
+const STREAM_TEXT_PREFETCH_AHEAD = 3;
 
 const ScrollScroller = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function ScrollScroller(props, ref) {
@@ -74,6 +75,7 @@ export default function ScrollViewer() {
   const internalPageRef = useRef(currentPage);
   const hasMountedRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
+  const pendingTextPrefetchRef = useRef<Set<string>>(new Set());
   const virtuosoComponents = useMemo(
     () => ({
       Scroller: forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
@@ -115,6 +117,18 @@ export default function ScrollViewer() {
       }
     },
     [bookId, dispatch]
+  );
+  const prefetchPageText = useCallback(
+    (image: string | null | undefined) => {
+      if (!image || textCache[image] || pendingTextPrefetchRef.current.has(image)) {
+        return;
+      }
+      pendingTextPrefetchRef.current.add(image);
+      void fetchPageTextByImage(image, { silent: true, updateCurrentState: false }).finally(() => {
+        pendingTextPrefetchRef.current.delete(image);
+      });
+    },
+    [fetchPageTextByImage, textCache]
   );
 
   const isPageSufficientlyVisible = (pageIndex: number) => {
@@ -201,6 +215,23 @@ export default function ScrollViewer() {
     });
   }, [autoFollowEnabled, currentPage, manifest, setCurrentPageFromScroll, streamPageKey]);
 
+  useEffect(() => {
+    if (!streamPositionActive || manifest.length === 0) {
+      return;
+    }
+    const locator = parseStreamLocator(streamPageKey);
+    const activePageIndex = locator?.imageUrl
+      ? manifest.findIndex((imageUrl) => imageUrl === locator.imageUrl)
+      : currentPage;
+    if (activePageIndex < 0) {
+      return;
+    }
+    const end = Math.min(manifest.length - 1, activePageIndex + STREAM_TEXT_PREFETCH_AHEAD);
+    for (let index = activePageIndex; index <= end; index += 1) {
+      prefetchPageText(manifest[index]);
+    }
+  }, [currentPage, manifest, prefetchPageText, streamPageKey, streamPositionActive]);
+
   const updateCurrentPageFromViewport = () => {
     const scroller = scrollerRef.current;
     if (!hasMountedRef.current || manifest.length === 0 || !scroller) {
@@ -247,10 +278,7 @@ export default function ScrollViewer() {
     const end = Math.min(manifest.length - 1, range.endIndex + VIEWPORT_PREFETCH_PADDING);
     for (let index = start; index <= end; index += 1) {
       const image = manifest[index];
-      if (!image || textCache[image]) {
-        continue;
-      }
-      void fetchPageTextByImage(image, { silent: true, updateCurrentState: false });
+      prefetchPageText(image);
     }
   };
 

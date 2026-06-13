@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioController } from '@/hooks/useAudioController';
-import { usePageText } from '@/hooks/usePageText';
 import { useToast } from '@/hooks/useToast';
-import { makeStreamLocator, parseStreamLocator } from '@/lib/streamLocator';
+import { parseStreamLocator } from '@/lib/streamLocator';
 import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
 import {
   appActions,
@@ -10,6 +9,7 @@ import {
   selectBookManifest,
   selectBookType,
   selectChapterTextContext,
+  selectPageTextWorkflow,
   selectReaderSession,
   selectStreamRuntime,
   selectViewerWorkflow,
@@ -153,7 +153,6 @@ export function useStreamSequence({
   pauseStreamAtStart
 }: StreamSequenceOptions) {
   const { showToast } = useToast();
-  const { currentText, fetchPageText, fetchPageTextByImage } = usePageText();
   const { stopAudio } = useAudioController();
   const dispatch = useAppDispatch();
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
@@ -164,8 +163,10 @@ export function useStreamSequence({
   const streamState = useAppSelector(selectStreamRuntime);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { streamVoice } = useAppSelector(selectVoiceWorkflow);
+  const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
   const isTextBook = bookType === 'text';
   const currentImage = manifest[currentPage] ?? null;
+  const currentText = currentImage ? textCache[currentImage] ?? null : null;
   const studyMode = settings.studyMode;
   const streamSequenceRef = useRef<{
     source: 'page' | 'chapter' | 'paragraph';
@@ -198,7 +199,6 @@ export function useStreamSequence({
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
   const autoAdvanceRef = useRef(false);
   const pendingRestartTimerRef = useRef<number | null>(null);
-  const pendingScrollContinuationRef = useRef<number | null>(null);
   const studyReplayPageKeyRef = useRef<string | null>(null);
   const studyPausedAtStartRef = useRef(false);
 
@@ -212,7 +212,6 @@ export function useStreamSequence({
   const stopStreamSequence = useCallback(() => {
     clearPendingRestartTimer();
     sequenceRunIdRef.current += 1;
-    pendingScrollContinuationRef.current = null;
     scrollBufferRef.current = null;
     paragraphBufferRef.current = null;
     streamSequenceRef.current = null;
@@ -220,19 +219,10 @@ export function useStreamSequence({
   }, [clearPendingRestartTimer]);
 
   const handleSequenceComplete = useCallback(
-    (source: 'page' | 'chapter') => {
-      if (source === 'page' && viewMode === 'pages') {
-        const nextImage = manifest[currentPage + 1] ?? null;
-        if (nextImage) {
-          void fetchPageTextByImage(nextImage, { silent: true, updateCurrentState: false }).finally(() => {
-            dispatch(appActions.requestNextPageNavigation());
-          });
-          return;
-        }
-      }
+    (_source: 'page' | 'chapter') => {
       dispatch(appActions.requestNextPageNavigation());
     },
-    [currentPage, dispatch, fetchPageTextByImage, manifest, viewMode]
+    [dispatch]
   );
 
   const isStreamBusy = useCallback(
@@ -269,16 +259,13 @@ export function useStreamSequence({
   }, [streamState.pageKey, studyMode]);
 
   const getPageTextForImage = useCallback(
-    async (imageUrl: string, preferCurrentState = false) => {
+    (imageUrl: string) => {
       if (!imageUrl) {
         return null;
       }
-      if (preferCurrentState && imageUrl === currentImage) {
-        return currentText ?? (await fetchPageText({ silent: true }));
-      }
-      return fetchPageTextByImage(imageUrl, { silent: true, updateCurrentState: false });
+      return textCache[imageUrl] ?? null;
     },
-    [currentImage, currentText, fetchPageText, fetchPageTextByImage]
+    [textCache]
   );
 
   const enqueueChunks = useCallback(
@@ -352,20 +339,15 @@ export function useStreamSequence({
           }
           const pageIndex = buffer.nextPageIndex;
           const image = manifest[pageIndex];
-          buffer.nextPageIndex += 1;
           if (!image) {
+            buffer.nextPageIndex += 1;
             continue;
           }
-          const nextPageText = await fetchPageTextByImage(image, {
-            silent: true,
-            updateCurrentState: false
-          });
-          if (sequenceRunIdRef.current !== runId) {
-            return;
-          }
+          const nextPageText = textCache[image] ?? null;
           if (!nextPageText) {
-            continue;
+            break;
           }
+          buffer.nextPageIndex += 1;
           const pageSegments = getPageStreamSegments(nextPageText, image, pageIndex);
           if (pageSegments.length === 0) {
             continue;
@@ -386,8 +368,16 @@ export function useStreamSequence({
         }
       }
     },
-    [enqueueStream, fetchPageTextByImage, manifest, streamVoice]
+    [enqueueStream, manifest, streamVoice, textCache]
   );
+
+  useEffect(() => {
+    const buffer = scrollBufferRef.current;
+    if (!buffer || studyMode || streamState.status === 'idle') {
+      return;
+    }
+    void fillScrollBuffer(buffer.runId);
+  }, [fillScrollBuffer, streamState.status, studyMode]);
 
   const startScrollPageSequence = useCallback(
     async (
@@ -439,7 +429,6 @@ export function useStreamSequence({
       }
       const runId = sequenceRunIdRef.current + 1;
       sequenceRunIdRef.current = runId;
-      pendingScrollContinuationRef.current = null;
       const pendingSegments = studyMode ? [] : segments.slice(1);
       scrollBufferRef.current = continueAcrossPages && !studyMode
         ? {
@@ -595,7 +584,7 @@ export function useStreamSequence({
     if (!currentImage) {
       return;
     }
-    const pageText = currentText ?? (await fetchPageText());
+    const pageText = currentText;
     const textValue = pageText?.plainText || '';
     if (!textValue) {
       showToast('No page text available to stream', 'error');
@@ -610,11 +599,9 @@ export function useStreamSequence({
     isTextBook,
     bookId,
     chapterCount,
-    currentPage,
     firstChapterParagraph,
     currentImage,
     currentText,
-    fetchPageText,
     showToast,
     startScrollPageSequence,
     startStreamSequenceFromText,
@@ -680,30 +667,17 @@ export function useStreamSequence({
       if (!payload.imageUrl) {
         return;
       }
-      const pageText = await getPageTextForImage(payload.imageUrl, true);
-      const textValue = pageText?.plainText || '';
-      if (!textValue) {
+      const pageText = getPageTextForImage(payload.imageUrl);
+      if (!pageText?.plainText) {
         showToast('No page text available to stream', 'error');
         return;
       }
-      if (pageText) {
-        await startScrollPageSequence(payload.imageUrl, pageText, payload.blockId, viewMode === 'scroll', voiceOverride);
-        return;
-      }
-      await startStreamSequenceFromText(
-        textValue,
-        payload.startIndex,
-        makeStreamLocator(payload.imageUrl, payload.blockId),
-        'page',
-        voiceOverride
-      );
+      await startScrollPageSequence(payload.imageUrl, pageText, payload.blockId, viewMode === 'scroll', voiceOverride);
     },
     [
-      currentImage,
       getPageTextForImage,
       showToast,
       startScrollPageSequence,
-      startStreamSequenceFromText,
       viewMode
     ]
   );
@@ -815,7 +789,7 @@ export function useStreamSequence({
     if (!locator?.imageUrl || !locator.blockId) {
       return;
     }
-    const pageText = await getPageTextForImage(locator.imageUrl, locator.imageUrl === currentImage);
+    const pageText = getPageTextForImage(locator.imageUrl);
     if (!pageText) {
       return;
     }
@@ -830,7 +804,6 @@ export function useStreamSequence({
     }
     await startScrollPageSequence(locator.imageUrl, pageText, nextLocator.blockId, false, streamVoice);
   }, [
-    currentImage,
     firstChapterParagraph,
     getPageTextForImage,
     showToast,
@@ -911,46 +884,6 @@ export function useStreamSequence({
       stopStreamSequence();
       return;
     }
-    if (sequence.source === 'page' && viewMode === 'scroll') {
-      const buffer = scrollBufferRef.current;
-      const activePageIndex = buffer?.lastActivePageIndex ?? manifest.indexOf(sequence.baseKey);
-      const nextPageIndex = activePageIndex >= 0 ? activePageIndex + 1 : currentPage + 1;
-      const nextImage = manifest[nextPageIndex] ?? null;
-      if (nextImage) {
-        const runId = sequenceRunIdRef.current;
-        if (pendingScrollContinuationRef.current === runId) {
-          return;
-        }
-        pendingScrollContinuationRef.current = runId;
-        void (async () => {
-          try {
-            for (let pageIndex = nextPageIndex; pageIndex < manifest.length; pageIndex += 1) {
-              if (sequenceRunIdRef.current !== runId) {
-                return;
-              }
-              const imageUrl = manifest[pageIndex];
-              const pageText = await fetchPageTextByImage(imageUrl, { silent: true, updateCurrentState: false });
-              if (!pageText || getPageStreamSegments(pageText, imageUrl, pageIndex).length === 0) {
-                continue;
-              }
-              if (sequenceRunIdRef.current !== runId) {
-                return;
-              }
-              pendingScrollContinuationRef.current = null;
-              void startScrollPageSequence(imageUrl, pageText, undefined, true);
-              return;
-            }
-          } catch {
-            // Fall through to the same cleanup path as reaching the end of the manifest.
-          }
-          if (sequenceRunIdRef.current === runId) {
-            pendingScrollContinuationRef.current = null;
-            stopStreamSequence();
-          }
-        })();
-        return;
-      }
-    }
     if (autoAdvanceRef.current) {
       const source = lastStreamSourceRef.current;
       if (source && (source.type === 'page' || source.type === 'chapter')) {
@@ -961,17 +894,12 @@ export function useStreamSequence({
     }
     stopStreamSequence();
   }, [
-    currentPage,
-    fetchPageTextByImage,
     handleSequenceComplete,
-    manifest,
     pauseStreamAtStart,
-    startScrollPageSequence,
     stopStreamSequence,
     streamSequenceActive,
     streamState.status,
-    studyMode,
-    viewMode
+    studyMode
   ]);
 
   useEffect(() => {
