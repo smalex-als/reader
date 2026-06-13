@@ -301,16 +301,21 @@ export function useStreamSequence({
         return;
       }
       while (sequenceRunIdRef.current === runId && buffer.queuedAhead < PARAGRAPH_STREAM_LOOKAHEAD) {
-        const nextSegment = buffer.pendingSegments.shift();
-        if (!nextSegment) {
+        if (buffer.pendingSegments.length === 0) {
           break;
         }
-        enqueueStream({
-          text: nextSegment.text,
-          pageKey: nextSegment.pageKey,
-          voice
-        });
-        buffer.queuedAhead += 1;
+        while (buffer.pendingSegments.length > 0) {
+          const nextSegment = buffer.pendingSegments.shift();
+          if (!nextSegment) {
+            continue;
+          }
+          enqueueStream({
+            text: nextSegment.text,
+            pageKey: nextSegment.pageKey,
+            voice
+          });
+          buffer.queuedAhead += 1;
+        }
       }
     },
     [enqueueStream, streamVoice]
@@ -346,18 +351,19 @@ export function useStreamSequence({
               continue;
             }
             buffer.pendingSegments.push(...getPageStreamSegments(nextPageText, image));
-            continue;
           }
-          const nextSegment = buffer.pendingSegments.shift();
-          if (!nextSegment) {
-            continue;
+          while (buffer.pendingSegments.length > 0) {
+            const nextSegment = buffer.pendingSegments.shift();
+            if (!nextSegment) {
+              continue;
+            }
+            enqueueStream({
+              text: nextSegment.text,
+              pageKey: nextSegment.pageKey,
+              voice
+            });
+            buffer.queuedAhead += 1;
           }
-          enqueueStream({
-            text: nextSegment.text,
-            pageKey: nextSegment.pageKey,
-            voice
-          });
-          buffer.queuedAhead += 1;
         }
       } finally {
         const latest = scrollBufferRef.current;
