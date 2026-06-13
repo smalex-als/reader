@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import UnitTopicMarkdown from '@/components/UnitTopicMarkdown';
+import { useUnitSelfCheckRuntime } from '@/hooks/useUnitSelfCheckRuntime';
 import { useUnitTopicPlayback } from '@/hooks/useUnitTopicPlayback';
 import { useUnitsNavigationActions } from '@/hooks/useUnitsNavigationActions';
 import { useUnitsViewActions } from '@/hooks/useUnitsViewActions';
@@ -108,11 +109,7 @@ export default function UnitsView() {
     evaluateSelfCheck
   } = useUnitsViewActions();
   const [query, setQuery] = useState('');
-  const [selfCheckOpen, setSelfCheckOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [selfCheckIndex, setSelfCheckIndex] = useState(0);
-  const [selfCheckAnswer, setSelfCheckAnswer] = useState('');
-  const detailRef = useRef<HTMLDivElement | null>(null);
   const textStyle = useMemo(
     () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
     [textFontSize]
@@ -167,6 +164,27 @@ export default function UnitsView() {
     topicText,
     topicSpeechText
   });
+  const {
+    currentSelfCheckQuestion,
+    detailRef,
+    selfCheckAnswer,
+    selfCheckIndex,
+    selfCheckOpen,
+    selfCheckQuestions,
+    closeSelfCheck,
+    goToNextSelfCheckQuestion,
+    openSelfCheck,
+    selectSelfCheckQuestion,
+    submitSelfCheckAnswer,
+    updateSelfCheckAnswer
+  } = useUnitSelfCheckRuntime({
+    clearSelfCheckFeedback,
+    evaluateSelfCheck,
+    selectedSet,
+    selectedTopicId,
+    selectedUnit,
+    selfCheckLoading
+  });
 
   const handleToggleTopicRead = useCallback(
     async (unitSetId: string, topicId: string, read: boolean) => {
@@ -175,52 +193,10 @@ export default function UnitsView() {
     [toggleTopicRead]
   );
 
-  useEffect(() => {
-    if (!selectedTopicId) {
-      return;
-    }
-    detailRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-    setSelfCheckOpen(false);
-    setSelfCheckIndex(0);
-    setSelfCheckAnswer('');
-    clearSelfCheckFeedback();
-  }, [clearSelfCheckFeedback, selectedTopicId]);
-
   if (selectedSet && selectedUnit) {
     const selectedUnitIndex = selectedSet.units.findIndex((unit) => unit.id === selectedUnit.id);
     const selectedUnitNumber = selectedUnitIndex >= 0 ? selectedUnitIndex + 1 : selectedUnit.order;
     const labels = UNIT_UI_LABELS;
-    const selfCheckQuestions = selectedUnit.selfCheckQuestions;
-    const currentSelfCheckQuestion = selfCheckQuestions[selfCheckIndex] ?? null;
-    const closeSelfCheck = () => {
-      if (selfCheckLoading) {
-        return;
-      }
-      setSelfCheckOpen(false);
-    };
-    const selectSelfCheckQuestion = (index: number) => {
-      setSelfCheckIndex(index);
-      setSelfCheckAnswer('');
-      clearSelfCheckFeedback();
-    };
-    const goToNextSelfCheckQuestion = () => {
-      if (selfCheckIndex >= selfCheckQuestions.length - 1) {
-        closeSelfCheck();
-        return;
-      }
-      selectSelfCheckQuestion(selfCheckIndex + 1);
-    };
-    const submitSelfCheckAnswer = async () => {
-      if (!selectedSet || !selectedUnit || !currentSelfCheckQuestion || !selfCheckAnswer.trim()) {
-        return;
-      }
-      await evaluateSelfCheck({
-        unitSetId: selectedSet.id,
-        topicId: selectedUnit.id,
-        question: currentSelfCheckQuestion,
-        answer: selfCheckAnswer
-      });
-    };
     return (
       <div ref={detailRef} className="audio-library unit-library unit-library-detail">
         <header className="audio-library-detail-header">
@@ -248,12 +224,7 @@ export default function UnitsView() {
             <button
               type="button"
               className="button button-secondary"
-              onClick={() => {
-                setSelfCheckOpen(true);
-                setSelfCheckIndex(0);
-                setSelfCheckAnswer('');
-                clearSelfCheckFeedback();
-              }}
+              onClick={openSelfCheck}
               disabled={selfCheckQuestions.length === 0}
             >
               {labels.selfCheck}
@@ -354,10 +325,7 @@ export default function UnitsView() {
                         value={selfCheckAnswer}
                         placeholder={labels.answerPlaceholder}
                         disabled={selfCheckLoading}
-                        onChange={(event) => {
-                          setSelfCheckAnswer(event.currentTarget.value);
-                          clearSelfCheckFeedback();
-                        }}
+                        onChange={(event) => updateSelfCheckAnswer(event.currentTarget.value)}
                       />
                     </label>
                     {selfCheckError ? <p className="modal-status">{selfCheckError}</p> : null}
