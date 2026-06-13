@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';
 import { once } from 'node:events';
 import { setImmediate as waitImmediate } from 'node:timers/promises';
-import { createBufferedPcmStream } from './streamAudio.js';
+import { createBufferedPcmStream, estimatePcmInitialBufferSeconds } from './streamAudio.js';
 import { splitTextForStreaming } from './streamAudioText.js';
 
 test('secondary stream splitting preserves word boundaries with collapsed whitespace', () => {
@@ -57,4 +57,41 @@ test('initial pcm buffer flushes short streams on end', async () => {
   source.end(Buffer.from([4, 5]));
 
   assert.deepEqual([...(await collected)], [1, 2, 3, 4, 5]);
+});
+
+test('automatic pcm buffer grows with estimated text duration', () => {
+  const text = Array.from({ length: 150 }, (_, index) => `word${index}`).join(' ');
+
+  const seconds = estimatePcmInitialBufferSeconds(text, {
+    minimumSeconds: 5,
+    generationRealtimeFactor: 1.5,
+    speechWordsPerMinute: 150,
+    maxSeconds: 45
+  });
+
+  assert.equal(seconds, 20);
+});
+
+test('automatic pcm buffer respects min and max bounds', () => {
+  const shortText = 'short text';
+  const longText = Array.from({ length: 1000 }, (_, index) => `word${index}`).join(' ');
+
+  assert.equal(
+    estimatePcmInitialBufferSeconds(shortText, {
+      minimumSeconds: 5,
+      generationRealtimeFactor: 1.5,
+      speechWordsPerMinute: 150,
+      maxSeconds: 45
+    }),
+    5
+  );
+  assert.equal(
+    estimatePcmInitialBufferSeconds(longText, {
+      minimumSeconds: 5,
+      generationRealtimeFactor: 1.5,
+      speechWordsPerMinute: 150,
+      maxSeconds: 45
+    }),
+    45
+  );
 });

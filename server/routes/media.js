@@ -29,6 +29,7 @@ import {
   createBufferedPcmStream,
   createTextPcmStream,
   createTextWavStream,
+  estimatePcmInitialBufferSeconds,
   PCM_STREAM_BIT_DEPTH,
   PCM_STREAM_CHANNEL_COUNT,
   PCM_STREAM_MIME_TYPE,
@@ -393,7 +394,9 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
       abortController.signal,
       requestId
     );
-    const bufferedPcmStream = createBufferedPcmStream(pcmStream);
+    const bufferedPcmStream = createBufferedPcmStream(pcmStream, {
+      initialBufferSeconds: estimatePcmInitialBufferSeconds(text)
+    });
     const responseBytes = await writeStreamResponse(bufferedPcmStream, res, () => setPcmStreamHeaders(res));
     await log.finish({ status: 'ok', source: 'streaming', responseBytes });
   } catch (error) {

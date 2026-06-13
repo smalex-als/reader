@@ -19,14 +19,33 @@ export const SEARCH_INDEX_FILENAME = 'search.index.json';
 export const DEFAULT_VOICE = 'santa';
 export const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
+const parsePositiveNumber = (value, fallback) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+const parseNonNegativeNumber = (value, fallback) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
 export const STREAM_SERVER =
   process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'http://192.168.1.174:3005';
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
-const streamPcmInitialBufferSeconds = Number.parseFloat(process.env.STREAM_PCM_INITIAL_BUFFER_SECONDS || '5');
-export const STREAM_PCM_INITIAL_BUFFER_SECONDS =
-  Number.isFinite(streamPcmInitialBufferSeconds) && streamPcmInitialBufferSeconds > 0
-    ? streamPcmInitialBufferSeconds
-    : 0;
+export const STREAM_PCM_INITIAL_BUFFER_SECONDS = parseNonNegativeNumber(
+  process.env.STREAM_PCM_INITIAL_BUFFER_SECONDS,
+  5
+);
+export const STREAM_PCM_GENERATION_REALTIME_FACTOR = Math.max(
+  1,
+  parsePositiveNumber(process.env.STREAM_PCM_GENERATION_REALTIME_FACTOR, 1.5)
+);
+export const STREAM_PCM_SPEECH_WORDS_PER_MINUTE = parsePositiveNumber(
+  process.env.STREAM_PCM_SPEECH_WORDS_PER_MINUTE,
+  150
+);
+export const STREAM_PCM_MAX_INITIAL_BUFFER_SECONDS = parseNonNegativeNumber(
+  process.env.STREAM_PCM_MAX_INITIAL_BUFFER_SECONDS,
+  45
+);
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
 export const YANDEX_API_KEY = process.env.YANDEX_API_KEY || '';
 export const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID || '';

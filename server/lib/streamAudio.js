@@ -7,7 +7,14 @@ import { PassThrough, Transform } from 'node:stream';
 import { promisify } from 'node:util';
 import { pipeline } from 'node:stream/promises';
 import { Agent, WebSocket } from 'undici';
-import { STREAM_PCM_INITIAL_BUFFER_SECONDS, STREAM_SERVER, STREAM_VOICE } from '../config.js';
+import {
+  STREAM_PCM_GENERATION_REALTIME_FACTOR,
+  STREAM_PCM_INITIAL_BUFFER_SECONDS,
+  STREAM_PCM_MAX_INITIAL_BUFFER_SECONDS,
+  STREAM_PCM_SPEECH_WORDS_PER_MINUTE,
+  STREAM_SERVER,
+  STREAM_VOICE
+} from '../config.js';
 import { assertBookDirectory } from './books.js';
 import { getChapterTextVersionText } from './chapterTextVersions.js';
 import { createHttpError } from './errors.js';
@@ -28,6 +35,7 @@ export const PCM_STREAM_BYTES_PER_SECOND = SAMPLE_RATE * CHANNEL_COUNT * (BIT_DE
 const READER_TEST_HOSTNAME = 'reader.test';
 const EMPTY_AUDIO_RETRY_LIMIT = 2;
 const EMPTY_AUDIO_RETRY_DELAY_MS = 120;
+const WORD_PATTERN = /\S+/g;
 const insecureReaderTestDispatcher = new Agent({
   connect: {
     rejectUnauthorized: false
@@ -227,6 +235,35 @@ function buildStreamingWavHeader() {
   buffer.writeUInt32LE(unknownLength, 40);
 
   return buffer;
+}
+
+export function estimatePcmInitialBufferSeconds(
+  text,
+  {
+    minimumSeconds = STREAM_PCM_INITIAL_BUFFER_SECONDS,
+    generationRealtimeFactor = STREAM_PCM_GENERATION_REALTIME_FACTOR,
+    speechWordsPerMinute = STREAM_PCM_SPEECH_WORDS_PER_MINUTE,
+    maxSeconds = STREAM_PCM_MAX_INITIAL_BUFFER_SECONDS
+  } = {}
+) {
+  const minimum = Number.isFinite(minimumSeconds) && minimumSeconds > 0 ? minimumSeconds : 0;
+  const factor = Number.isFinite(generationRealtimeFactor) && generationRealtimeFactor > 1
+    ? generationRealtimeFactor
+    : 1;
+  const wordsPerMinute = Number.isFinite(speechWordsPerMinute) && speechWordsPerMinute > 0
+    ? speechWordsPerMinute
+    : 150;
+  const maximum = Number.isFinite(maxSeconds) && maxSeconds > 0 ? maxSeconds : 0;
+  const wordCount = (String(text || '').trim().match(WORD_PATTERN) || []).length;
+  if (wordCount === 0 || factor <= 1) {
+    return maximum > 0 ? Math.min(minimum, maximum) : minimum;
+  }
+
+  const estimatedAudioSeconds = (wordCount / wordsPerMinute) * 60;
+  const catchUpRatio = (factor - 1) / factor;
+  const automaticSeconds = estimatedAudioSeconds * catchUpRatio;
+  const bufferSeconds = Math.max(minimum, automaticSeconds);
+  return maximum > 0 ? Math.min(bufferSeconds, maximum) : bufferSeconds;
 }
 
 export function createBufferedPcmStream(
