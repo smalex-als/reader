@@ -83,7 +83,11 @@ function getStreamPcmCacheKey(text: string, pageKey: string, voice: string) {
   return `${voice}\u001f${pageKey}\u001f${text}`;
 }
 
-export function useStreamingAudio() {
+export function useStreamingAudio({
+  onSegmentStart
+}: {
+  onSegmentStart?: (pageKey: string) => void;
+} = {}) {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const [streamState, setStreamState] = useState<StreamState>(INITIAL_STREAM_STATE);
@@ -115,6 +119,11 @@ export function useStreamingAudio() {
   const stopAfterCurrentPageKeyRef = useRef<string | null>(null);
   const pauseAtStartPageKeyRef = useRef<string | null>(null);
   const pcmCacheRef = useRef<Map<string, CachedStreamChunk[]>>(new Map());
+  const onSegmentStartRef = useRef(onSegmentStart);
+
+  useEffect(() => {
+    onSegmentStartRef.current = onSegmentStart;
+  }, [onSegmentStart]);
 
   const clearQueue = useCallback(() => {
     queueRef.current = [];
@@ -490,6 +499,7 @@ export function useStreamingAudio() {
         return;
       }
 
+      onSegmentStartRef.current?.(nextItem.pageKey);
       sourceEndedRef.current = false;
       activeRequestPageKeyRef.current = nextItem.pageKey;
       const cacheKey = getStreamPcmCacheKey(nextItem.text, nextItem.pageKey, nextItem.voice || DEFAULT_STREAM_VOICE);

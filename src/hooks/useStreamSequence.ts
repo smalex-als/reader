@@ -834,31 +834,21 @@ export function useStreamSequence({
     }
   }, [pauseStream, restartStreamFromPageKey, resumeStream, streamState.pageKey, streamState.status, streamVoice]);
 
-  useEffect(() => {
+  const handleStreamSegmentStart = useCallback((pageKey: string) => {
     const buffer = scrollBufferRef.current;
-    if (!buffer || streamState.status !== 'streaming' || !streamState.pageKey) {
-      return;
+    if (buffer && pageKey !== buffer.lastActivePageKey) {
+      buffer.lastActivePageKey = pageKey;
+      buffer.queuedAhead = Math.max(0, buffer.queuedAhead - 1);
+      void fillScrollBuffer(buffer.runId);
     }
-    if (streamState.pageKey === buffer.lastActivePageKey) {
-      return;
-    }
-    buffer.lastActivePageKey = streamState.pageKey;
-    buffer.queuedAhead = Math.max(0, buffer.queuedAhead - 1);
-    void fillScrollBuffer(buffer.runId);
-  }, [fillScrollBuffer, streamState.pageKey, streamState.status]);
 
-  useEffect(() => {
-    const buffer = paragraphBufferRef.current;
-    if (!buffer || streamState.status !== 'streaming' || !streamState.pageKey) {
-      return;
+    const paragraphBuffer = paragraphBufferRef.current;
+    if (paragraphBuffer && pageKey !== paragraphBuffer.lastActivePageKey) {
+      paragraphBuffer.lastActivePageKey = pageKey;
+      paragraphBuffer.queuedAhead = Math.max(0, paragraphBuffer.queuedAhead - 1);
+      fillParagraphBuffer(paragraphBuffer.runId);
     }
-    if (streamState.pageKey === buffer.lastActivePageKey) {
-      return;
-    }
-    buffer.lastActivePageKey = streamState.pageKey;
-    buffer.queuedAhead = Math.max(0, buffer.queuedAhead - 1);
-    fillParagraphBuffer(buffer.runId);
-  }, [fillParagraphBuffer, streamState.pageKey, streamState.status]);
+  }, [fillParagraphBuffer, fillScrollBuffer]);
 
   useEffect(() => {
     if (
@@ -993,6 +983,7 @@ export function useStreamSequence({
     handleStopStream,
     handleToggleStreamPause,
     handlePlayNextStudyBlock,
-    restartStreamFromPageKey
+    restartStreamFromPageKey,
+    handleStreamSegmentStart
   };
 }

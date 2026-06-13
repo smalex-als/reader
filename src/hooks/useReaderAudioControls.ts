@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react';
 import { useAudioController } from '@/hooks/useAudioController';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useFloatingAudio } from '@/hooks/useFloatingAudio';
@@ -11,6 +12,7 @@ import { usePlaybackWakeLock } from '@/hooks/useWakeLock';
 
 export function useReaderAudioControls() {
   const { bookId, chapterNumber } = useCurrentChapterContext();
+  const streamSegmentStartRef = useRef<(pageKey: string) => void>(() => undefined);
 
   useStreamVoices();
   useMp3Voice();
@@ -27,7 +29,11 @@ export function useReaderAudioControls() {
     stopStream,
     stopAfterCurrentStream,
     pauseStreamAtStart
-  } = useStreamingAudio();
+  } = useStreamingAudio({
+    onSegmentStart: useCallback((pageKey: string) => {
+      streamSegmentStartRef.current(pageKey);
+    }, [])
+  });
 
   useFloatingAudio();
   usePlaybackWakeLock();
@@ -47,7 +53,8 @@ export function useReaderAudioControls() {
     handleStopStream,
     handleToggleStreamPause,
     handlePlayNextStudyBlock,
-    restartStreamFromPageKey
+    restartStreamFromPageKey,
+    handleStreamSegmentStart
   } = useStreamSequence({
     startStream,
     enqueueStream,
@@ -56,6 +63,9 @@ export function useReaderAudioControls() {
     resumeStream,
     pauseStreamAtStart
   });
+  useEffect(() => {
+    streamSegmentStartRef.current = handleStreamSegmentStart;
+  }, [handleStreamSegmentStart]);
   useStreamControls({
     startStreamSequence,
     handlePlayPageBlock,
