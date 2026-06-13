@@ -22,6 +22,11 @@ export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 export const STREAM_SERVER =
   process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'http://192.168.1.174:3005';
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
+const streamPcmInitialBufferSeconds = Number.parseFloat(process.env.STREAM_PCM_INITIAL_BUFFER_SECONDS || '5');
+export const STREAM_PCM_INITIAL_BUFFER_SECONDS =
+  Number.isFinite(streamPcmInitialBufferSeconds) && streamPcmInitialBufferSeconds > 0
+    ? streamPcmInitialBufferSeconds
+    : 0;
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
 export const YANDEX_API_KEY = process.env.YANDEX_API_KEY || '';
 export const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID || '';

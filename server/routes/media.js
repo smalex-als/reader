@@ -26,6 +26,7 @@ import {
 import { createBookFromPdf } from '../lib/pdf.js';
 import { invalidateSearchIndexForImage } from '../lib/search.js';
 import {
+  createBufferedPcmStream,
   createTextPcmStream,
   createTextWavStream,
   PCM_STREAM_BIT_DEPTH,
@@ -392,7 +393,8 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
       abortController.signal,
       requestId
     );
-    const responseBytes = await writeStreamResponse(pcmStream, res, () => setPcmStreamHeaders(res));
+    const bufferedPcmStream = createBufferedPcmStream(pcmStream);
+    const responseBytes = await writeStreamResponse(bufferedPcmStream, res, () => setPcmStreamHeaders(res));
     await log.finish({ status: 'ok', source: 'streaming', responseBytes });
   } catch (error) {
     if (abortController.signal.aborted || req.aborted || !res.writable) {

@@ -3,11 +3,11 @@ import { createReadStream, createWriteStream } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { PassThrough } from 'node:stream';
+import { PassThrough, Transform } from 'node:stream';
 import { promisify } from 'node:util';
 import { pipeline } from 'node:stream/promises';
 import { Agent, WebSocket } from 'undici';
-import { STREAM_SERVER, STREAM_VOICE } from '../config.js';
+import { STREAM_PCM_INITIAL_BUFFER_SECONDS, STREAM_SERVER, STREAM_VOICE } from '../config.js';
 import { assertBookDirectory } from './books.js';
 import { getChapterTextVersionText } from './chapterTextVersions.js';
 import { createHttpError } from './errors.js';
@@ -24,6 +24,7 @@ export const PCM_STREAM_SAMPLE_RATE = SAMPLE_RATE;
 export const PCM_STREAM_CHANNEL_COUNT = CHANNEL_COUNT;
 export const PCM_STREAM_BIT_DEPTH = BIT_DEPTH;
 export const PCM_STREAM_MIME_TYPE = 'audio/wav';
+export const PCM_STREAM_BYTES_PER_SECOND = SAMPLE_RATE * CHANNEL_COUNT * (BIT_DEPTH / 8);
 const READER_TEST_HOSTNAME = 'reader.test';
 const EMPTY_AUDIO_RETRY_LIMIT = 2;
 const EMPTY_AUDIO_RETRY_DELAY_MS = 120;
@@ -226,6 +227,58 @@ function buildStreamingWavHeader() {
   buffer.writeUInt32LE(unknownLength, 40);
 
   return buffer;
+}
+
+export function createBufferedPcmStream(
+  stream,
+  {
+    initialBufferSeconds = STREAM_PCM_INITIAL_BUFFER_SECONDS,
+    initialBufferBytes = Math.round(initialBufferSeconds * PCM_STREAM_BYTES_PER_SECOND)
+  } = {}
+) {
+  const targetBytes =
+    Number.isFinite(initialBufferBytes) && initialBufferBytes > 0 ? Math.floor(initialBufferBytes) : 0;
+  if (targetBytes <= 0) {
+    return stream;
+  }
+
+  const bufferedChunks = [];
+  let bufferedBytes = 0;
+  let flushed = false;
+
+  const flushBufferedChunks = (transform) => {
+    if (flushed) {
+      return;
+    }
+    flushed = true;
+    for (const chunk of bufferedChunks) {
+      transform.push(chunk);
+    }
+    bufferedChunks.length = 0;
+  };
+
+  const bufferTransform = new Transform({
+    transform(chunk, _encoding, callback) {
+      if (flushed) {
+        callback(null, chunk);
+        return;
+      }
+
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      bufferedChunks.push(buffer);
+      bufferedBytes += buffer.length;
+      if (bufferedBytes >= targetBytes) {
+        flushBufferedChunks(this);
+      }
+      callback();
+    },
+    flush(callback) {
+      flushBufferedChunks(this);
+      callback();
+    }
+  });
+
+  return stream.pipe(bufferTransform);
 }
 
 async function readStreamToBuffer(stream, signal) {
