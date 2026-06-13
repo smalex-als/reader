@@ -4,14 +4,11 @@ import CloseIcon from '@/components/CloseIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import UnitTopicMarkdown from '@/components/UnitTopicMarkdown';
 import { useUnitTopicPlayback } from '@/hooks/useUnitTopicPlayback';
+import { useUnitsNavigationActions } from '@/hooks/useUnitsNavigationActions';
 import { useUnitsViewActions } from '@/hooks/useUnitsViewActions';
-import { useUnitTopicQuiz } from '@/hooks/useUnitTopicQuiz';
 import {
-  appActions,
-  selectNavigationState,
   selectUnitWorkflow,
   selectViewerWorkflow,
-  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { UnitItem, UnitSet } from '@/types/app';
@@ -87,13 +84,18 @@ function ReadStatusIcon({ read }: { read: boolean }) {
 }
 
 export default function UnitsView() {
-  const dispatch = useAppDispatch();
-  const { selectedUnitSetId: selectedSetId, selectedUnitTopicId: selectedTopicId } =
-    useAppSelector(selectNavigationState);
+  const {
+    selectedSetId,
+    selectedTopicId,
+    selectSet,
+    openSet,
+    selectTopic,
+    openTopicQuiz,
+    openSource
+  } = useUnitsNavigationActions();
   const { refreshToken } = useAppSelector(selectUnitWorkflow);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
-  const { openQuiz: openUnitTopicQuiz } = useUnitTopicQuiz();
   const {
     items,
     loading,
@@ -166,37 +168,6 @@ export default function UnitsView() {
     topicSpeechText
   });
 
-  const handleSelectSet = useCallback(
-    (unitSetId: string | null) => {
-      dispatch(appActions.setSelectedUnitSetId(unitSetId));
-      dispatch(appActions.setSelectedUnitTopicId(null));
-    },
-    [dispatch]
-  );
-
-  const handleOpenSet = useCallback(
-    (item: UnitSet) => {
-      handleSelectSet(item.id);
-    },
-    [handleSelectSet]
-  );
-
-  const handleSelectTopic = useCallback(
-    (topicId: string | null) => {
-      dispatch(appActions.setSelectedUnitTopicId(topicId));
-    },
-    [dispatch]
-  );
-
-  const handleOpenTopicQuiz = useCallback(
-    async (label: string) => {
-      dispatch(appActions.setUnitQuizLabel(label));
-      await openUnitTopicQuiz();
-      dispatch(appActions.refreshUnits());
-    },
-    [dispatch, openUnitTopicQuiz]
-  );
-
   const handleToggleTopicRead = useCallback(
     async (unitSetId: string, topicId: string, read: boolean) => {
       await toggleTopicRead({ unitSetId, topicId, read });
@@ -256,7 +227,7 @@ export default function UnitsView() {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => handleSelectTopic(null)}
+            onClick={() => selectTopic(null)}
           >
             {labels.back}
           </button>
@@ -291,7 +262,7 @@ export default function UnitsView() {
               type="button"
               className="button button-secondary"
               onClick={() =>
-                void handleOpenTopicQuiz(`${selectedUnitNumber} - ${selectedUnit.title}`)
+                void openTopicQuiz(`${selectedUnitNumber} - ${selectedUnit.title}`)
               }
             >
               {labels.quiz}
@@ -467,7 +438,7 @@ export default function UnitsView() {
     return (
       <div className="audio-library unit-library unit-library-detail">
         <header className="audio-library-detail-header">
-          <button type="button" className="button button-secondary" onClick={() => handleSelectSet(null)}>
+          <button type="button" className="button button-secondary" onClick={() => selectSet(null)}>
             Back
           </button>
           <div className="audio-viewer-title">
@@ -480,12 +451,7 @@ export default function UnitsView() {
                 type="button"
                 className="button button-secondary"
                 onClick={() =>
-                  dispatch(
-                    appActions.requestUnitSourceNavigation(
-                      selectedSet.sourceBookId!,
-                      selectedSet.sourceChapterNumber!
-                    )
-                  )
+                  openSource(selectedSet.sourceBookId!, selectedSet.sourceChapterNumber!)
                 }
               >
                 Open Source
@@ -515,7 +481,7 @@ export default function UnitsView() {
                 <button
                   type="button"
                   className="unit-library-topic-title"
-                  onClick={() => handleSelectTopic(unit.id)}
+                  onClick={() => selectTopic(unit.id)}
                 >
                   {index + 1} - {unit.title}
                 </button>
@@ -574,11 +540,11 @@ export default function UnitsView() {
               className="audio-library-row"
               role="button"
               tabIndex={0}
-              onClick={() => handleOpenSet(item)}
+              onClick={() => openSet(item)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
-                  handleOpenSet(item);
+                  openSet(item);
                 }
               }}
             >
@@ -601,7 +567,7 @@ export default function UnitsView() {
                   className="button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    handleOpenSet(item);
+                    openSet(item);
                   }}
                 >
                   Open
@@ -612,12 +578,7 @@ export default function UnitsView() {
                     className="button button-secondary"
                     onClick={(event) => {
                       event.stopPropagation();
-                      dispatch(
-                        appActions.requestUnitSourceNavigation(
-                          item.sourceBookId!,
-                          item.sourceChapterNumber!
-                        )
-                      );
+                      openSource(item.sourceBookId!, item.sourceChapterNumber!);
                     }}
                   >
                     Source
