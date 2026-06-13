@@ -198,6 +198,7 @@ export function useStreamSequence({
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
   const autoAdvanceRef = useRef(false);
   const pendingRestartTimerRef = useRef<number | null>(null);
+  const pendingScrollContinuationRef = useRef<number | null>(null);
   const studyReplayPageKeyRef = useRef<string | null>(null);
   const studyPausedAtStartRef = useRef(false);
 
@@ -211,6 +212,7 @@ export function useStreamSequence({
   const stopStreamSequence = useCallback(() => {
     clearPendingRestartTimer();
     sequenceRunIdRef.current += 1;
+    pendingScrollContinuationRef.current = null;
     scrollBufferRef.current = null;
     paragraphBufferRef.current = null;
     streamSequenceRef.current = null;
@@ -437,6 +439,7 @@ export function useStreamSequence({
       }
       const runId = sequenceRunIdRef.current + 1;
       sequenceRunIdRef.current = runId;
+      pendingScrollContinuationRef.current = null;
       const pendingSegments = studyMode ? [] : segments.slice(1);
       scrollBufferRef.current = continueAcrossPages && !studyMode
         ? {
@@ -908,6 +911,46 @@ export function useStreamSequence({
       stopStreamSequence();
       return;
     }
+    if (sequence.source === 'page' && viewMode === 'scroll') {
+      const buffer = scrollBufferRef.current;
+      const activePageIndex = buffer?.lastActivePageIndex ?? manifest.indexOf(sequence.baseKey);
+      const nextPageIndex = activePageIndex >= 0 ? activePageIndex + 1 : currentPage + 1;
+      const nextImage = manifest[nextPageIndex] ?? null;
+      if (nextImage) {
+        const runId = sequenceRunIdRef.current;
+        if (pendingScrollContinuationRef.current === runId) {
+          return;
+        }
+        pendingScrollContinuationRef.current = runId;
+        void (async () => {
+          try {
+            for (let pageIndex = nextPageIndex; pageIndex < manifest.length; pageIndex += 1) {
+              if (sequenceRunIdRef.current !== runId) {
+                return;
+              }
+              const imageUrl = manifest[pageIndex];
+              const pageText = await fetchPageTextByImage(imageUrl, { silent: true, updateCurrentState: false });
+              if (!pageText || getPageStreamSegments(pageText, imageUrl, pageIndex).length === 0) {
+                continue;
+              }
+              if (sequenceRunIdRef.current !== runId) {
+                return;
+              }
+              pendingScrollContinuationRef.current = null;
+              void startScrollPageSequence(imageUrl, pageText, undefined, true);
+              return;
+            }
+          } catch {
+            // Fall through to the same cleanup path as reaching the end of the manifest.
+          }
+          if (sequenceRunIdRef.current === runId) {
+            pendingScrollContinuationRef.current = null;
+            stopStreamSequence();
+          }
+        })();
+        return;
+      }
+    }
     if (autoAdvanceRef.current) {
       const source = lastStreamSourceRef.current;
       if (source && (source.type === 'page' || source.type === 'chapter')) {
@@ -918,12 +961,17 @@ export function useStreamSequence({
     }
     stopStreamSequence();
   }, [
+    currentPage,
+    fetchPageTextByImage,
     handleSequenceComplete,
+    manifest,
     pauseStreamAtStart,
+    startScrollPageSequence,
     stopStreamSequence,
     streamSequenceActive,
     streamState.status,
-    studyMode
+    studyMode,
+    viewMode
   ]);
 
   useEffect(() => {
