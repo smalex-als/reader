@@ -95,3 +95,17 @@ test('automatic pcm buffer respects min and max bounds', () => {
     45
   );
 });
+
+test('zero initial pcm buffer disables automatic buffering', () => {
+  const longText = Array.from({ length: 1000 }, (_, index) => `word${index}`).join(' ');
+
+  assert.equal(
+    estimatePcmInitialBufferSeconds(longText, {
+      minimumSeconds: 0,
+      generationRealtimeFactor: 1.5,
+      speechWordsPerMinute: 150,
+      maxSeconds: 45
+    }),
+    0
+  );
+});

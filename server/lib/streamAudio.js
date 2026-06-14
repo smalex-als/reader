@@ -247,6 +247,9 @@ export function estimatePcmInitialBufferSeconds(
   } = {}
 ) {
   const minimum = Number.isFinite(minimumSeconds) && minimumSeconds > 0 ? minimumSeconds : 0;
+  if (minimum <= 0) {
+    return 0;
+  }
   const factor = Number.isFinite(generationRealtimeFactor) && generationRealtimeFactor > 1
     ? generationRealtimeFactor
     : 1;
