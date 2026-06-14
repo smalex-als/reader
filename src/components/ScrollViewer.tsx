@@ -108,6 +108,7 @@ export default function ScrollViewer() {
   const streamPositionActive =
     streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
   const streamPageKey = streamPositionActive ? streamState.pageKey : null;
+  const streamAutoFollowActive = autoFollowEnabled && Boolean(parseStreamLocator(streamPageKey)?.imageUrl);
   const setCurrentPageFromScroll = useCallback(
     (pageIndex: number) => {
       dispatch(appActions.setReaderCurrentPage(pageIndex));
@@ -235,6 +236,9 @@ export default function ScrollViewer() {
   const updateCurrentPageFromViewport = () => {
     const scroller = scrollerRef.current;
     if (!hasMountedRef.current || manifest.length === 0 || !scroller) {
+      return;
+    }
+    if (streamAutoFollowActive) {
       return;
     }
     const scrollerRect = scroller.getBoundingClientRect();

@@ -91,9 +91,13 @@ export function loadLastBook(): string | null {
 }
 
 export function saveLastBook(bookId: string | null) {
+  const nextBookId = bookId && bookId.trim() ? bookId : null;
+  if (libraryStateCache.lastBook === nextBookId) {
+    return;
+  }
   libraryStateCache = {
     ...libraryStateCache,
-    lastBook: bookId && bookId.trim() ? bookId : null
+    lastBook: nextBookId
   };
   void persistLibraryPatch({ lastBook: libraryStateCache.lastBook });
 }
@@ -104,6 +108,9 @@ export function loadLastPage(bookId: string): number | null {
 }
 
 export function saveLastPage(bookId: string, pageIndex: number) {
+  if (libraryStateCache.lastPages[bookId] === pageIndex) {
+    return;
+  }
   libraryStateCache = {
     ...libraryStateCache,
     lastPages: {
