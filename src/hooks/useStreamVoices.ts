@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 import { fetchStreamVoices } from '@/api/streamVoices';
 import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
@@ -56,6 +56,7 @@ export function useStreamVoices() {
   const dispatch = useAppDispatch();
   const { bookId } = useAppSelector(selectReaderSession);
   const { streamVoiceOptions, defaultStreamVoice, streamVoice } = useAppSelector(selectVoiceWorkflow);
+  const streamVoiceHydratedBookRef = useRef<string | null>(null);
 
   const setStreamVoice: Dispatch<SetStateAction<StreamVoice>> = useCallback(
     (next) => {
@@ -104,6 +105,10 @@ export function useStreamVoices() {
   }, [dispatch, showToast]);
 
   useEffect(() => {
+    if (streamVoiceHydratedBookRef.current === bookId) {
+      return;
+    }
+    streamVoiceHydratedBookRef.current = bookId;
     const storedVoice = bookId ? loadStreamVoiceForBook(bookId) : null;
     const nextVoice =
       storedVoice && isStreamVoice(storedVoice)
@@ -116,7 +121,7 @@ export function useStreamVoices() {
   }, [bookId, dispatch, getDefaultStreamVoice, isStreamVoice, streamVoice]);
 
   useEffect(() => {
-    if (!bookId) {
+    if (!bookId || !streamVoice) {
       return;
     }
     const timeout = window.setTimeout(() => {
