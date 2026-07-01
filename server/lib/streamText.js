@@ -260,8 +260,15 @@ function normalizeTypographyForSpeech(text) {
     .replace(/[ \t]+-[ \t]+/g, ', ');
 }
 
+function normalizeMarkdownEscapesForSpeech(text) {
+  return text.replace(/\\([\\`*_{}\[\]()#+\-.!|>])/g, '$1');
+}
+
 function normalizeMarkdownHeadingForSpeech(heading) {
-  const cleaned = heading.replace(/[ \t]+#{1,}[ \t]*$/, '').trim();
+  const cleaned = normalizeMarkdownEscapesForSpeech(heading)
+    .replace(/[ \t]+#{1,}[ \t]*$/, '')
+    .replace(/^\s*\d+(?:\.\d+)*[.)][ \t]+/, '')
+    .trim();
   if (!cleaned) {
     return '';
   }
@@ -315,6 +322,7 @@ export function stripMarkdown(text) {
   output = output.replace(ZERO_WIDTH_PATTERN, '');
   output = output.replace(/\uFE0F/g, '');
   output = output.replace(CONTROL_PATTERN, ' ');
+  output = normalizeMarkdownEscapesForSpeech(output);
   output = output.replace(EMOJI_PATTERN, ' ');
   output = output.replace(/[^\p{L}\p{N}\p{P}\p{Z}\n]/gu, ' ');
   output = output.replace(/[ \t]+\n/g, '\n');

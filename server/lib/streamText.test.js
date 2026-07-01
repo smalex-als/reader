@@ -209,6 +209,18 @@ test('adds sentence punctuation to markdown headings for speech', () => {
   );
 });
 
+test('removes markdown heading outline numbers and escaped punctuation for speech', () => {
+  const input =
+    '## **0\\. Global Summary — Employer Previews Impacted Jobs and the Set Spans 3+ Countries, but Actions Panel Shows No Country-Specific Caveat**';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(
+    output,
+    'Global Summary, Employer Previews Impacted Jobs and the Set Spans 3 Countries, but Actions Panel Shows No Country-Specific Caveat.'
+  );
+});
+
 test('prepares chapter speech sections from markdown headings', () => {
   const input = [
     'Intro without punctuation',
