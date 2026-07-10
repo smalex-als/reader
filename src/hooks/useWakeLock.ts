@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react';
 import {
   selectAudioState,
   selectFloatingAudio,
-  selectStreamRuntime,
   useAppSelector
 } from '@/state/appState';
+import { useStreamRuntimeSelector } from '@/state/streamRuntimeStore';
 
 export function useWakeLock(enabled: boolean) {
   const wakeLockRef = useRef<any>(null);
@@ -68,11 +68,11 @@ export function useWakeLock(enabled: boolean) {
 
 export function usePlaybackWakeLock() {
   const audioState = useAppSelector(selectAudioState);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamStatus = useStreamRuntimeSelector((state) => state.status);
   const { playbackState: floatingAudioPlaybackState } = useAppSelector(selectFloatingAudio);
   const isListening =
     audioState.status === 'playing' ||
-    streamState.status === 'streaming' ||
+    streamStatus === 'streaming' ||
     floatingAudioPlaybackState === 'playing';
 
   useWakeLock(isListening);

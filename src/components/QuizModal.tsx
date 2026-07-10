@@ -9,12 +9,12 @@ import {
   selectModalOpen,
   selectQuizWorkflow,
   selectReaderPreferences,
-  selectStreamRuntime,
   selectUnitWorkflow,
   useAppDispatch,
   useAppSelector,
   type QuizModal as QuizModalId
 } from '@/state/appState';
+import { useStreamActivity } from '@/state/streamRuntimeStore';
 
 export default function QuizModal() {
   const dispatch = useAppDispatch();
@@ -27,7 +27,7 @@ export default function QuizModal() {
   const open = unitQuizOpen || chapterQuizOpen;
   const { loading, error, quiz } = useAppSelector(selectQuizWorkflow(activeModal));
   const { quizAutoPlayEnabled: autoPlayEnabled } = useAppSelector(selectReaderPreferences);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamActivity();
   const { quizLabel: unitQuizLabel } = useAppSelector(selectUnitWorkflow);
   const chapterLabel = useCurrentChapterLabel();
   const modalContextLabel = activeModal === 'unitQuiz' ? unitQuizLabel : chapterLabel;

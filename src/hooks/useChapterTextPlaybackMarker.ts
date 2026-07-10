@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { selectStreamRuntime, useAppSelector } from '@/state/appState';
+import { useStreamActivity } from '@/state/streamRuntimeStore';
 
 export function useChapterTextPlaybackMarker() {
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamActivity();
   const streamPositionActive =
     streamState.status === 'connecting' || streamState.status === 'streaming' || streamState.status === 'paused';
 

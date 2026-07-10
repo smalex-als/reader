@@ -14,10 +14,10 @@ import {
   selectModalOpen,
   selectNavigationState,
   selectReaderSession,
-  selectStreamRuntime,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamRuntimeSelector } from '@/state/streamRuntimeStore';
 
 function isTextInput(element: EventTarget | null) {
   if (!(element instanceof HTMLElement)) {
@@ -42,7 +42,7 @@ export function useHotkeys() {
     applyFilters
   } = useViewerTransformControls();
   const { fetchPageText, toggleTextModal } = usePageText();
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamStatus = useStreamRuntimeSelector((state) => state.status);
   const textModalOpen = useAppSelector(selectModalOpen('text'));
   const helpOpen = useAppSelector(selectModalOpen('help'));
   const printModalOpen = useAppSelector(selectModalOpen('print'));
@@ -66,7 +66,6 @@ export function useHotkeys() {
   const { openVocabulary } = useChapterVocabulary();
   const isTextBook = bookType === 'text';
   const currentImage = manifest[currentPage] ?? null;
-  const streamStatus = streamState.status;
   const quizOpen = chapterQuizOpen || unitQuizOpen;
   const openQuiz = useCallback(() => {
     dispatch(appActions.closeModal('settings'));

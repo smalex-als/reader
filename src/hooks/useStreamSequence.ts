@@ -11,12 +11,12 @@ import {
   selectChapterTextContext,
   selectPageTextWorkflow,
   selectReaderSession,
-  selectStreamRuntime,
   selectViewerWorkflow,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamRuntimeSelector } from '@/state/streamRuntimeStore';
 import type { ChapterParagraph } from '@/state/appState';
 import type { PageText, StreamState } from '@/types/app';
 
@@ -56,6 +56,19 @@ const ACTIVE_STREAM_STATUSES = new Set<ActiveStreamStatus>(['connecting', 'strea
 const SCROLL_STREAM_LOOKAHEAD = 2;
 const PARAGRAPH_STREAM_LOOKAHEAD = 2;
 const STREAM_RESTART_DELAY_MS = 120;
+const selectStreamSequenceRuntime = (state: StreamState) => ({
+  status: state.status,
+  pageKey: state.pageKey,
+  playbackSeconds: state.playbackSeconds === 0 ? 0 : 1
+});
+const streamSequenceRuntimeEqual = (
+  previous: ReturnType<typeof selectStreamSequenceRuntime>,
+  next: ReturnType<typeof selectStreamSequenceRuntime>
+) => (
+  previous.status === next.status &&
+  previous.pageKey === next.pageKey &&
+  previous.playbackSeconds === next.playbackSeconds
+);
 
 function getTextModeFromBaseKey(baseKey: string) {
   if (baseKey.startsWith('narration-')) {
@@ -160,7 +173,7 @@ export function useStreamSequence({
   const chapterCount = useAppSelector(selectBookChapterCount);
   const manifest = useAppSelector(selectBookManifest);
   const { firstChapterParagraph } = useAppSelector(selectChapterTextContext);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamRuntimeSelector(selectStreamSequenceRuntime, streamSequenceRuntimeEqual);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { streamVoice } = useAppSelector(selectVoiceWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);

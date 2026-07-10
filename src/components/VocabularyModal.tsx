@@ -7,17 +7,17 @@ import { copyToClipboard } from '@/lib/clipboard';
 import {
   appActions,
   selectModalOpen,
-  selectStreamRuntime,
   selectVocabularyWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamActivity } from '@/state/streamRuntimeStore';
 
 export default function VocabularyModal() {
   const dispatch = useAppDispatch();
   const { showToast } = useToast();
   const open = useAppSelector(selectModalOpen('vocabulary'));
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamActivity();
   const {
     loading,
     error,

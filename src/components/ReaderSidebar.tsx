@@ -7,11 +7,11 @@ import {
   selectBookType,
   selectNavigationState,
   selectReaderSession,
-  selectStreamRuntime,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamRuntimeSelector } from '@/state/streamRuntimeStore';
 import { useShowBookmarks, useToggleBookmark } from '@/hooks/useBookmarks';
 
 type ViewMode = 'pages' | 'scroll' | 'text' | 'audio';
@@ -70,7 +70,7 @@ export default function ReaderSidebar() {
   const chapterCount = useAppSelector(selectBookChapterCount);
   const manifest = useAppSelector(selectBookManifest);
   const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamStatus = useStreamRuntimeSelector((state) => state.status);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const [collapsed, setCollapsed] = useState(readInitialCollapsed);
   const [pageDraft, setPageDraft] = useState('');
@@ -84,9 +84,9 @@ export default function ReaderSidebar() {
   const bookmarksCount = bookmarks.length;
   const controlsDisabled = manifestLength === 0 || !currentBook;
   const streamActive =
-    streamState.status === 'streaming' ||
-    streamState.status === 'connecting' ||
-    streamState.status === 'paused';
+    streamStatus === 'streaming' ||
+    streamStatus === 'connecting' ||
+    streamStatus === 'paused';
   const showReaderControls = mainView === 'reader';
 
   useEffect(() => {

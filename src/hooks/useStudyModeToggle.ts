@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import {
   appActions,
-  selectStreamRuntime,
   selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamRuntimeSelector } from '@/state/streamRuntimeStore';
 
 function isActiveStreamStatus(status: string) {
   return status === 'connecting' || status === 'streaming' || status === 'paused';
@@ -13,7 +13,7 @@ function isActiveStreamStatus(status: string) {
 
 export function useStudyModeToggle() {
   const dispatch = useAppDispatch();
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamStatus = useStreamRuntimeSelector((state) => state.status);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { studyMode } = settings;
 
@@ -23,10 +23,10 @@ export function useStudyModeToggle() {
       ...settings,
       studyMode: nextStudyMode
     }));
-    if (nextStudyMode && isActiveStreamStatus(streamState.status)) {
+    if (nextStudyMode && isActiveStreamStatus(streamStatus)) {
       dispatch(appActions.requestStopAfterCurrentStream());
     }
-  }, [dispatch, settings, streamState.status, studyMode]);
+  }, [dispatch, settings, streamStatus, studyMode]);
 
   return {
     studyMode,

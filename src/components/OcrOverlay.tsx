@@ -7,12 +7,12 @@ import {
   selectBookManifest,
   selectOcrEdit,
   selectReaderSession,
-  selectStreamRuntime,
   selectStreamUiControls,
   selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamActivity } from '@/state/streamRuntimeStore';
 
 interface OcrOverlayProps {
   imageUrl: string;
@@ -29,7 +29,7 @@ export default function OcrOverlay({ imageUrl }: OcrOverlayProps) {
   const { currentText: pageText, fetchPageText } = usePageText(imageUrl);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { editMode: globalEditMode } = useAppSelector(selectOcrEdit);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamActivity();
   const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
   const { handleOpenImagePreview } = useImagePreview();
   const currentImage = manifest[currentPage] ?? null;

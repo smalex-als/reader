@@ -1,10 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import {
   appActions,
-  selectStreamRuntime,
   useAppDispatch,
-  useAppSelector
 } from '@/state/appState';
+import { useStreamActivity } from '@/state/streamRuntimeStore';
 
 export function useUnitTopicPlayback({
   unitSetId,
@@ -18,7 +17,7 @@ export function useUnitTopicPlayback({
   topicSpeechText: string;
 }) {
   const dispatch = useAppDispatch();
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamActivity();
   const unitStreamBaseKey = useMemo(
     () => `unit::${encodeURIComponent(unitSetId)}::${encodeURIComponent(topicId)}`,
     [topicId, unitSetId]

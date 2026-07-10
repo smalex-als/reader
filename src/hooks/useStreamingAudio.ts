@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { openStreamPcmReader } from '@/api/streamingAudio';
 import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry } from '@/lib/actionHandlers';
-import { appActions, useAppDispatch } from '@/state/appState';
+import { useSetStreamRuntime } from '@/state/streamRuntimeStore';
 import type { StreamState } from '@/types/app';
 import { stripMarkdown } from '@/lib/streamText';
 
@@ -88,7 +88,7 @@ export function useStreamingAudio({
 }: {
   onSegmentStart?: (pageKey: string) => void;
 } = {}) {
-  const dispatch = useAppDispatch();
+  const setStreamRuntime = useSetStreamRuntime();
   const { showToast } = useToast();
   const [streamState, setStreamState] = useState<StreamState>(INITIAL_STREAM_STATE);
   const finalizeStreamRef = useRef<(status?: StreamState['status'], error?: string) => void>(() => {});
@@ -153,8 +153,8 @@ export function useStreamingAudio({
 
   useEffect(() => {
     streamStateRef.current = streamState;
-    dispatch(appActions.setStreamRuntime(streamState));
-  }, [dispatch, streamState]);
+    setStreamRuntime(streamState);
+  }, [setStreamRuntime, streamState]);
 
   const stopPlaybackTimer = useCallback(() => {
     if (playbackTimerRef.current !== null) {

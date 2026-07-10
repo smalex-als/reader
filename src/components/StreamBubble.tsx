@@ -4,18 +4,18 @@ import { useStreamUi } from '@/hooks/useStreamUi';
 import {
   appActions,
   selectReaderSession,
-  selectStreamRuntime,
   selectStreamUiControls,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamRuntime } from '@/state/streamRuntimeStore';
 
 export default function StreamBubble() {
   const dispatch = useAppDispatch();
   const { studyMode, toggleStudyMode } = useStudyModeToggle();
   const { viewMode } = useAppSelector(selectReaderSession);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamRuntime();
   const { autoFollowStream } = useAppSelector(selectStreamUiControls);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const { isVisible, status, isDisabled, ariaLabel, title } = useStreamUi(streamState);

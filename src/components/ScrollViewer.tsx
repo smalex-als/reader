@@ -9,12 +9,12 @@ import {
   selectBookManifest,
   selectPageTextWorkflow,
   selectReaderSession,
-  selectStreamRuntime,
   selectStreamUiControls,
   selectViewerWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamActivity } from '@/state/streamRuntimeStore';
 
 const PAGE_VISIBILITY_THRESHOLD = 0.35;
 const BLOCK_VISIBILITY_THRESHOLD = 0.55;
@@ -60,7 +60,7 @@ export default function ScrollViewer() {
   const manifest = useAppSelector(selectBookManifest);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamActivity();
   const { autoFollowStream: autoFollowEnabled } = useAppSelector(selectStreamUiControls);
   const currentImage = manifest[currentPage] ?? null;
   const pageText = currentImage ? textCache[currentImage] ?? null : null;

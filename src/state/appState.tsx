@@ -1,8 +1,7 @@
 import {
   createContext,
   useContext,
-  useMemo,
-  useReducer,
+  useRef,
   type Dispatch,
   type ReactNode
 } from 'react';
@@ -34,12 +33,32 @@ import type {
   PageTextOcrEngine,
   Quiz,
   SearchResult,
-  StreamState,
   TocEntry,
   ToastMessage,
   ViewerMetrics
 } from '@/types/app';
 import type { FloatingAudioPlaybackState, FloatingAudioTrack } from '@/types/floatingAudio';
+import {
+  createSelectorStore,
+  useStoreSelector,
+  type EqualityFn,
+  type SelectorStore
+} from '@/state/createSelectorStore';
+import { StreamRuntimeProvider } from '@/state/streamRuntimeStore';
+import {
+  initialUiState,
+  isUiAction,
+  reduceUiState,
+  uiActions,
+  type UiAction
+} from '@/state/slices/uiSlice';
+import {
+  initialStreamUiState,
+  isStreamUiAction,
+  reduceStreamUiState,
+  streamUiActions,
+  type StreamUiAction
+} from '@/state/slices/streamUiSlice';
 
 export type AppToolbarTab = 'image' | 'study' | 'tools';
 export type TocVariant = 'main' | 'detailed';
@@ -206,8 +225,6 @@ export interface StreamUiControlsState {
   playbackRate: number;
 }
 
-export type StreamRuntimeState = StreamState;
-
 export interface UnitWorkflowState {
   refreshToken: number;
   quizLabel: string;
@@ -370,7 +387,6 @@ export interface CentralAppState {
   refreshTokens: AppRefreshTokens;
   readerPreferences: ReaderPreferencesState;
   streamUiControls: StreamUiControlsState;
-  streamRuntime: StreamRuntimeState;
   unitWorkflow: UnitWorkflowState;
   ocrEdit: OcrEditState;
   ocrQueueWorkflow: OcrQueueWorkflowState;
@@ -394,23 +410,8 @@ export interface CentralAppState {
 }
 
 export type AppAction =
-  | { type: 'modal/open'; modal: SimpleModal }
-  | { type: 'modal/close'; modal: SimpleModal }
-  | { type: 'modal/setOpen'; modal: SimpleModal; open: boolean }
-  | { type: 'bookCard/open'; bookId: string }
-  | { type: 'bookCard/close' }
-  | { type: 'bookCard/setOpen'; open: boolean }
-  | { type: 'bookCard/setBookId'; bookId: string | null }
-  | { type: 'fullscreen/set'; fullscreen: boolean }
-  | { type: 'toast/show'; toast: ToastMessage }
-  | { type: 'toast/dismiss' }
-  | { type: 'imagePreview/open'; preview: ImagePreviewTarget }
-  | { type: 'imagePreview/close' }
-  | { type: 'imagePreview/setEnhancedUrl'; url: string | null }
-  | { type: 'editor/setOpen'; open: boolean }
-  | { type: 'editor/setChapterNumber'; chapterNumber: number | null }
-  | { type: 'editor/setTextVersion'; textVersion: ChapterEditorTextVersion | null }
-  | { type: 'settingsToolbar/setTab'; tab: AppToolbarTab }
+  | UiAction
+  | StreamUiAction
   | { type: 'navigation/setMainView'; view: MainView }
   | { type: 'navigation/setSelectedUnitSetId'; id: string | null }
   | { type: 'navigation/setSelectedUnitTopicId'; id: string | null }
@@ -481,10 +482,6 @@ export type AppAction =
   | { type: 'refresh/bookCards' }
   | { type: 'preferences/setPageTextOcrEngine'; engine: PageTextOcrEngine }
   | { type: 'preferences/setQuizAutoPlayEnabled'; enabled: boolean }
-  | { type: 'streamUi/toggleAutoFollow' }
-  | { type: 'streamUi/setSelectedBlockKey'; key: string | null }
-  | { type: 'streamUi/setPlaybackRate'; rate: number }
-  | { type: 'streamRuntime/set'; streamState: StreamRuntimeState }
   | { type: 'unitWorkflow/refresh' }
   | { type: 'unitWorkflow/setQuizLabel'; label: string }
   | { type: 'unitWorkflow/setCreating'; creating: boolean }
@@ -620,13 +617,6 @@ const initialAudioState: AudioState = {
   currentPageKey: null
 };
 
-const initialStreamRuntimeState: StreamRuntimeState = {
-  status: 'idle',
-  pageKey: null,
-  playbackSeconds: 0,
-  modelSeconds: 0
-};
-
 const initialOcrQueueWorkflowState: OcrQueueWorkflowState = {
   jobs: [],
   paused: false,
@@ -677,40 +667,7 @@ function createDefaultEditorBookCard(bookId: string): BookCard {
 }
 
 const initialAppState: CentralAppState = {
-  ui: {
-    modals: {
-      help: false,
-      listeningDashboard: false,
-      ocrQueue: false,
-      jobWorker: false,
-      search: false,
-      promptEditor: false,
-      settings: false,
-      tocNav: false,
-      tocManage: false,
-      text: false,
-      print: false,
-      bookmarks: false,
-      chapterQuiz: false,
-      unitQuiz: false,
-      vocabulary: false,
-      memoryCard: false,
-      bookSelect: false,
-      bookCard: false
-    },
-    fullscreen: false,
-    toast: null,
-    bookCardBookId: null,
-    imagePreview: null,
-    editor: {
-      open: false,
-      chapterNumber: null,
-      textVersion: null
-    },
-    settingsToolbar: {
-      activeTab: 'image'
-    }
-  },
+  ui: initialUiState,
   navigation: getInitialNavigation(),
   pageNavigationRequest: null,
   dashboardNavigationRequest: null,
@@ -743,12 +700,7 @@ const initialAppState: CentralAppState = {
     pageTextOcrEngine: 'deepseek_ocr',
     quizAutoPlayEnabled: true
   },
-  streamUiControls: {
-    autoFollowStream: true,
-    selectedStreamBlockKey: null,
-    playbackRate: 1
-  },
-  streamRuntime: initialStreamRuntimeState,
+  streamUiControls: initialStreamUiState,
   unitWorkflow: {
     refreshToken: 0,
     quizLabel: 'Topic',
@@ -858,36 +810,8 @@ const initialAppState: CentralAppState = {
 };
 
 export const appActions = {
-  openModal: (modal: SimpleModal): AppAction => ({ type: 'modal/open', modal }),
-  closeModal: (modal: SimpleModal): AppAction => ({ type: 'modal/close', modal }),
-  setModalOpen: (modal: SimpleModal, open: boolean): AppAction => ({
-    type: 'modal/setOpen',
-    modal,
-    open
-  }),
-  openBookCard: (bookId: string): AppAction => ({ type: 'bookCard/open', bookId }),
-  closeBookCard: (): AppAction => ({ type: 'bookCard/close' }),
-  setBookCardOpen: (open: boolean): AppAction => ({ type: 'bookCard/setOpen', open }),
-  setBookCardBookId: (bookId: string | null): AppAction => ({ type: 'bookCard/setBookId', bookId }),
-  setFullscreen: (fullscreen: boolean): AppAction => ({ type: 'fullscreen/set', fullscreen }),
-  showToast: (toast: ToastMessage): AppAction => ({ type: 'toast/show', toast }),
-  dismissToast: (): AppAction => ({ type: 'toast/dismiss' }),
-  openImagePreview: (preview: ImagePreviewTarget): AppAction => ({ type: 'imagePreview/open', preview }),
-  closeImagePreview: (): AppAction => ({ type: 'imagePreview/close' }),
-  setImagePreviewEnhancedUrl: (url: string | null): AppAction => ({
-    type: 'imagePreview/setEnhancedUrl',
-    url
-  }),
-  setEditorOpen: (open: boolean): AppAction => ({ type: 'editor/setOpen', open }),
-  setEditorChapterNumber: (chapterNumber: number | null): AppAction => ({
-    type: 'editor/setChapterNumber',
-    chapterNumber
-  }),
-  setEditorTextVersion: (textVersion: ChapterEditorTextVersion | null): AppAction => ({
-    type: 'editor/setTextVersion',
-    textVersion
-  }),
-  setSettingsToolbarTab: (tab: AppToolbarTab): AppAction => ({ type: 'settingsToolbar/setTab', tab }),
+  ...uiActions,
+  ...streamUiActions,
   setMainView: (view: MainView): AppAction => ({ type: 'navigation/setMainView', view }),
   setSelectedUnitSetId: (id: string | null): AppAction => ({
     type: 'navigation/setSelectedUnitSetId',
@@ -978,10 +902,6 @@ export const appActions = {
     type: 'ocrQueueWorkflow/setSnapshot',
     ...payload
   }),
-  setStreamRuntime: (streamState: StreamRuntimeState): AppAction => ({
-    type: 'streamRuntime/set',
-    streamState
-  }),
   setReaderBookId: (bookId: string | null): AppAction => ({
     type: 'readerSession/setBookId',
     bookId
@@ -1066,12 +986,6 @@ export const appActions = {
     type: 'preferences/setQuizAutoPlayEnabled',
     enabled
   }),
-  toggleAutoFollowStream: (): AppAction => ({ type: 'streamUi/toggleAutoFollow' }),
-  setSelectedStreamBlockKey: (key: string | null): AppAction => ({
-    type: 'streamUi/setSelectedBlockKey',
-    key
-  }),
-  setPlaybackRate: (rate: number): AppAction => ({ type: 'streamUi/setPlaybackRate', rate }),
   refreshUnits: (): AppAction => ({ type: 'unitWorkflow/refresh' }),
   setUnitQuizLabel: (label: string): AppAction => ({
     type: 'unitWorkflow/setQuizLabel',
@@ -1387,179 +1301,14 @@ export const appActions = {
 };
 
 export function appReducer(state: CentralAppState, action: AppAction): CentralAppState {
+  if (isUiAction(action)) {
+    return { ...state, ui: reduceUiState(state.ui, action) };
+  }
+  if (isStreamUiAction(action)) {
+    return { ...state, streamUiControls: reduceStreamUiState(state.streamUiControls, action) };
+  }
+
   switch (action.type) {
-    case 'modal/open':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          modals: {
-            ...state.ui.modals,
-            [action.modal]: true
-          }
-        }
-      };
-    case 'modal/close':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          modals: {
-            ...state.ui.modals,
-            [action.modal]: false
-          }
-        }
-      };
-    case 'modal/setOpen':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          modals: {
-            ...state.ui.modals,
-            [action.modal]: action.open
-          }
-        }
-      };
-    case 'bookCard/open':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          modals: {
-            ...state.ui.modals,
-            bookCard: true
-          },
-          bookCardBookId: action.bookId
-        }
-      };
-    case 'bookCard/close':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          modals: {
-            ...state.ui.modals,
-            bookCard: false
-          },
-          bookCardBookId: null
-        }
-      };
-    case 'bookCard/setOpen':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          modals: {
-            ...state.ui.modals,
-            bookCard: action.open
-          }
-        }
-      };
-    case 'bookCard/setBookId':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          bookCardBookId: action.bookId
-        }
-      };
-    case 'fullscreen/set':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          fullscreen: action.fullscreen
-        }
-      };
-    case 'toast/show':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          toast: action.toast
-        }
-      };
-    case 'toast/dismiss':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          toast: null
-        }
-      };
-    case 'imagePreview/open':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          imagePreview: action.preview
-        }
-      };
-    case 'imagePreview/close':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          imagePreview: null
-        }
-      };
-    case 'imagePreview/setEnhancedUrl':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          imagePreview: state.ui.imagePreview
-            ? {
-                ...state.ui.imagePreview,
-                enhancedUrl: action.url
-              }
-            : null
-        }
-      };
-    case 'editor/setOpen':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          editor: {
-            ...state.ui.editor,
-            open: action.open
-          }
-        }
-      };
-    case 'editor/setChapterNumber':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          editor: {
-            ...state.ui.editor,
-            chapterNumber: action.chapterNumber
-          }
-        }
-      };
-    case 'editor/setTextVersion':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          editor: {
-            ...state.ui.editor,
-            textVersion: action.textVersion
-          }
-        }
-      };
-    case 'settingsToolbar/setTab':
-      return {
-        ...state,
-        ui: {
-          ...state.ui,
-          settingsToolbar: {
-            activeTab: action.tab
-          }
-        }
-      };
     case 'navigation/setMainView':
       return {
         ...state,
@@ -1998,35 +1747,6 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
           ...state.readerPreferences,
           quizAutoPlayEnabled: action.enabled
         }
-      };
-    case 'streamUi/toggleAutoFollow':
-      return {
-        ...state,
-        streamUiControls: {
-          ...state.streamUiControls,
-          autoFollowStream: !state.streamUiControls.autoFollowStream
-        }
-      };
-    case 'streamUi/setSelectedBlockKey':
-      return {
-        ...state,
-        streamUiControls: {
-          ...state.streamUiControls,
-          selectedStreamBlockKey: action.key
-        }
-      };
-    case 'streamUi/setPlaybackRate':
-      return {
-        ...state,
-        streamUiControls: {
-          ...state.streamUiControls,
-          playbackRate: action.rate
-        }
-      };
-    case 'streamRuntime/set':
-      return {
-        ...state,
-        streamRuntime: action.streamState
       };
     case 'unitWorkflow/refresh':
       return {
@@ -2822,34 +2542,52 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
   }
 }
 
-const AppStateContext = createContext<CentralAppState | null>(null);
-const AppDispatchContext = createContext<Dispatch<AppAction> | null>(null);
+type AppStore = SelectorStore<CentralAppState> & {
+  dispatch: Dispatch<AppAction>;
+};
+
+const AppStoreContext = createContext<AppStore | null>(null);
+
+function createAppStore(): AppStore {
+  const store = createSelectorStore(initialAppState);
+  return {
+    ...store,
+    dispatch: (action) => {
+      store.setState((state) => appReducer(state, action));
+    }
+  };
+}
+
+function useAppStore() {
+  const store = useContext(AppStoreContext);
+  if (!store) {
+    throw new Error('App state hooks must be used inside AppStateProvider');
+  }
+  return store;
+}
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appReducer, initialAppState);
-  const dispatchValue = useMemo(() => dispatch, [dispatch]);
+  const storeRef = useRef<AppStore | null>(null);
+  if (!storeRef.current) {
+    storeRef.current = createAppStore();
+  }
 
   return (
-    <AppStateContext.Provider value={state}>
-      <AppDispatchContext.Provider value={dispatchValue}>{children}</AppDispatchContext.Provider>
-    </AppStateContext.Provider>
+    <AppStoreContext.Provider value={storeRef.current}>
+      <StreamRuntimeProvider>{children}</StreamRuntimeProvider>
+    </AppStoreContext.Provider>
   );
 }
 
 export function useAppDispatch() {
-  const dispatch = useContext(AppDispatchContext);
-  if (!dispatch) {
-    throw new Error('useAppDispatch must be used inside AppStateProvider');
-  }
-  return dispatch;
+  return useAppStore().dispatch;
 }
 
-export function useAppSelector<T>(selector: (state: CentralAppState) => T): T {
-  const state = useContext(AppStateContext);
-  if (!state) {
-    throw new Error('useAppSelector must be used inside AppStateProvider');
-  }
-  return selector(state);
+export function useAppSelector<T>(
+  selector: (state: CentralAppState) => T,
+  isEqual?: EqualityFn<T>
+): T {
+  return useStoreSelector(useAppStore(), selector, isEqual);
 }
 
 export const selectModalOpen = (modal: SimpleModal) => (state: CentralAppState) => state.ui.modals[modal];
@@ -2886,7 +2624,6 @@ export const selectChapterTextContext = (state: CentralAppState) => state.chapte
 export const selectRefreshTokens = (state: CentralAppState) => state.refreshTokens;
 export const selectReaderPreferences = (state: CentralAppState) => state.readerPreferences;
 export const selectStreamUiControls = (state: CentralAppState) => state.streamUiControls;
-export const selectStreamRuntime = (state: CentralAppState) => state.streamRuntime;
 export const selectUnitWorkflow = (state: CentralAppState) => state.unitWorkflow;
 export const selectOcrEdit = (state: CentralAppState) => state.ocrEdit;
 export const selectOcrQueueWorkflow = (state: CentralAppState) => state.ocrQueueWorkflow;

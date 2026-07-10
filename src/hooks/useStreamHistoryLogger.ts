@@ -5,10 +5,10 @@ import {
   selectBookManifest,
   selectBookType,
   selectReaderSession,
-  selectStreamRuntime,
   selectTocWorkflow,
   useAppSelector
 } from '@/state/appState';
+import { useStreamRuntime } from '@/state/streamRuntimeStore';
 
 function parseUnitStreamPageKey(pageKey: string | null) {
   if (typeof pageKey !== 'string') {
@@ -34,7 +34,7 @@ export function useStreamHistoryLogger() {
   const chapterCount = useAppSelector(selectBookChapterCount);
   const manifest = useAppSelector(selectBookManifest);
   const { entries: tocEntries, detailedEntries: detailedTocEntries } = useAppSelector(selectTocWorkflow);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamRuntime();
   const sortedTocEntries = useMemo(() => {
     return [...tocEntries]
       .filter((entry) => Number.isInteger(entry.page))

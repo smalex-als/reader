@@ -7,12 +7,12 @@ import {
   selectChapterTextContext,
   selectReaderSession,
   selectStreamControlRequest,
-  selectStreamRuntime,
   selectStreamUiControls,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { useStreamActivity } from '@/state/streamRuntimeStore';
 
 interface UseStreamControlsOptions {
   startStreamSequence: () => Promise<void>;
@@ -51,7 +51,7 @@ export function useStreamControls({
   const { viewMode } = useAppSelector(selectReaderSession);
   const { displayedChapterText } = useAppSelector(selectChapterTextContext);
   const { selectedStreamBlockKey } = useAppSelector(selectStreamUiControls);
-  const streamState = useAppSelector(selectStreamRuntime);
+  const streamState = useStreamActivity();
   const streamControlRequest = useAppSelector(selectStreamControlRequest);
   const { streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const mp3VoiceOptions = useMemo(
