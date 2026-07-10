@@ -2,6 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { openStreamPcmReader } from '@/api/streamingAudio';
 import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry } from '@/lib/actionHandlers';
+import {
+  canAcceptStreamingPageAudio,
+  canEnqueueStreamingAudio,
+  createStreamingSessionState,
+  isCurrentAudioChain,
+  isCurrentStreamingSession,
+  isStreamingPlaybackPaused,
+  transitionStreamingSession,
+  type StreamingSessionEvent
+} from '@/lib/streamingSessionMachine';
 import { useSetStreamRuntime } from '@/state/streamRuntimeStore';
 import type { StreamState } from '@/types/app';
 import { stripMarkdown } from '@/lib/streamText';
@@ -91,7 +101,7 @@ export function useStreamingAudio({
   const setStreamRuntime = useSetStreamRuntime();
   const { showToast } = useToast();
   const [streamState, setStreamState] = useState<StreamState>(INITIAL_STREAM_STATE);
-  const finalizeStreamRef = useRef<(status?: StreamState['status'], error?: string) => void>(() => {});
+  const disposeStreamRef = useRef<() => void>(() => {});
   const streamStateRef = useRef<StreamState>(INITIAL_STREAM_STATE);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const workletRef = useRef<AudioWorkletNode | null>(null);
@@ -106,20 +116,17 @@ export function useStreamingAudio({
   const finalizeTimerRef = useRef<number | null>(null);
   const hasStartedPlaybackRef = useRef(false);
   const silentFramesRef = useRef(0);
-  const sessionRef = useRef(0);
-  const audioChainSessionRef = useRef(0);
+  const sessionMachineRef = useRef(createStreamingSessionState());
   const audioShutdownRef = useRef<Promise<void>>(Promise.resolve());
-  const playbackPausedRef = useRef(false);
-  const stopRequestedRef = useRef(false);
-  const sourceEndedRef = useRef(false);
-  const firstAudioRef = useRef(false);
   const queueRef = useRef<QueuedStreamItem[]>([]);
-  const activeSegmentKeyRef = useRef<string | null>(null);
-  const activeRequestPageKeyRef = useRef<string | null>(null);
-  const stopAfterCurrentPageKeyRef = useRef<string | null>(null);
-  const pauseAtStartPageKeyRef = useRef<string | null>(null);
   const pcmCacheRef = useRef<Map<string, CachedStreamChunk[]>>(new Map());
   const onSegmentStartRef = useRef(onSegmentStart);
+
+  const transitionSession = useCallback((event: StreamingSessionEvent) => {
+    const nextState = transitionStreamingSession(sessionMachineRef.current, event);
+    sessionMachineRef.current = nextState;
+    return nextState;
+  }, []);
 
   useEffect(() => {
     onSegmentStartRef.current = onSegmentStart;
@@ -181,7 +188,7 @@ export function useStreamingAudio({
   }, [stopPlaybackTimer]);
 
   const silencePlayback = useCallback(() => {
-    audioChainSessionRef.current += 1;
+    transitionSession({ type: 'invalidate-audio-chain' });
     stopPlaybackTimer();
     clearFinalizeTimer();
     playbackSamplesRef.current = 0;
@@ -189,9 +196,6 @@ export function useStreamingAudio({
     queuedSamplesRef.current = 0;
     hasStartedPlaybackRef.current = false;
     silentFramesRef.current = 0;
-    firstAudioRef.current = false;
-    activeSegmentKeyRef.current = null;
-    activeRequestPageKeyRef.current = null;
     pcmRemainderRef.current = null;
 
     const node = workletRef.current;
@@ -223,7 +227,7 @@ export function useStreamingAudio({
         () => closeContext
       );
     }
-  }, [clearFinalizeTimer, stopPlaybackTimer]);
+  }, [clearFinalizeTimer, stopPlaybackTimer, transitionSession]);
 
   const closeStreamRequest = useCallback(() => {
     const reader = readerRef.current;
@@ -235,26 +239,24 @@ export function useStreamingAudio({
     requestAbortRef.current = null;
     abortController?.abort();
     requestInFlightRef.current = false;
-    activeRequestPageKeyRef.current = null;
-  }, []);
+    transitionSession({ type: 'request-finished' });
+  }, [transitionSession]);
 
   const finalizeStream = useCallback(
     (status: StreamState['status'] = 'idle', error?: string) => {
-      sessionRef.current += 1;
-      const pauseAtStartPageKey = status === 'idle' ? pauseAtStartPageKeyRef.current : null;
-      stopRequestedRef.current = false;
-      playbackPausedRef.current = Boolean(pauseAtStartPageKey);
-      stopAfterCurrentPageKeyRef.current = null;
-      pauseAtStartPageKeyRef.current = null;
+      const completedSession = transitionSession({
+        type: 'complete',
+        status: status === 'error' ? 'error' : 'idle'
+      });
       clearQueue();
       const playedSeconds = playbackSamplesRef.current / SAMPLE_RATE;
       silencePlayback();
       closeStreamRequest();
-      const nextState = pauseAtStartPageKey
+      const nextState = completedSession.status === 'paused' && completedSession.pageKey
         ? {
             ...INITIAL_STREAM_STATE,
             status: 'paused' as const,
-            pageKey: pauseAtStartPageKey,
+            pageKey: completedSession.pageKey,
             playbackSeconds: 0,
             error: undefined
           }
@@ -271,17 +273,12 @@ export function useStreamingAudio({
         showToast(error, 'error');
       }
     },
-    [clearQueue, closeStreamRequest, showToast, silencePlayback]
+    [clearQueue, closeStreamRequest, showToast, silencePlayback, transitionSession]
   );
 
   const pauseCompletedStreamAtStart = useCallback(
     (pageKey: string) => {
-      sessionRef.current += 1;
-      stopRequestedRef.current = false;
-      playbackPausedRef.current = true;
-      sourceEndedRef.current = true;
-      stopAfterCurrentPageKeyRef.current = null;
-      pauseAtStartPageKeyRef.current = null;
+      transitionSession({ type: 'pause-at-start', pageKey });
       clearQueue();
       closeStreamRequest();
       silencePlayback();
@@ -295,18 +292,26 @@ export function useStreamingAudio({
       streamStateRef.current = nextState;
       setStreamState(nextState);
     },
-    [clearQueue, closeStreamRequest, silencePlayback]
+    [clearQueue, closeStreamRequest, silencePlayback, transitionSession]
   );
 
-  useEffect(() => {
-    finalizeStreamRef.current = finalizeStream;
-  }, [finalizeStream]);
+  const disposeStream = useCallback(() => {
+    transitionSession({ type: 'unmount' });
+    clearQueue();
+    silencePlayback();
+    closeStreamRequest();
+  }, [clearQueue, closeStreamRequest, silencePlayback, transitionSession]);
 
   useEffect(() => {
+    disposeStreamRef.current = disposeStream;
+  }, [disposeStream]);
+
+  useEffect(() => {
+    transitionSession({ type: 'mount' });
     return () => {
-      finalizeStreamRef.current();
+      disposeStreamRef.current();
     };
-  }, []);
+  }, [transitionSession]);
 
   const handleWorkletMessage = useCallback(
     (data: any) => {
@@ -324,8 +329,11 @@ export function useStreamingAudio({
       const frames = data.frames;
       playbackSamplesRef.current += frames;
 
-      if (typeof data.pageKey === 'string' && data.pageKey !== activeSegmentKeyRef.current) {
-        activeSegmentKeyRef.current = data.pageKey;
+      if (
+        typeof data.pageKey === 'string' &&
+        data.pageKey !== sessionMachineRef.current.activeSegmentPageKey
+      ) {
+        transitionSession({ type: 'segment-started', pageKey: data.pageKey });
         setStreamState((prev) => ({ ...prev, pageKey: data.pageKey }));
       }
 
@@ -343,14 +351,14 @@ export function useStreamingAudio({
       bufferSamplesRef.current = Math.max(0, bufferSamplesRef.current - frames);
 
       const shouldStop =
-        (sourceEndedRef.current || stopRequestedRef.current) &&
+        sessionMachineRef.current.sourceEnded &&
         bufferSamplesRef.current === 0 &&
         silentFramesRef.current >= SILENT_FRAME_LIMIT;
       if (shouldStop) {
         if (finalizeTimerRef.current === null) {
           finalizeTimerRef.current = window.setTimeout(() => {
             finalizeTimerRef.current = null;
-            const pauseAtStartPageKey = pauseAtStartPageKeyRef.current;
+            const pauseAtStartPageKey = sessionMachineRef.current.pauseAtStartPageKey;
             if (pauseAtStartPageKey) {
               pauseCompletedStreamAtStart(pauseAtStartPageKey);
               return;
@@ -362,31 +370,28 @@ export function useStreamingAudio({
         clearFinalizeTimer();
       }
     },
-    [clearFinalizeTimer, finalizeStream, pauseCompletedStreamAtStart, startPlaybackTimer]
+    [clearFinalizeTimer, finalizeStream, pauseCompletedStreamAtStart, startPlaybackTimer, transitionSession]
   );
 
   const createAudioChain = useCallback(async (sessionId: number) => {
     silencePlayback();
     await audioShutdownRef.current;
-    if (sessionRef.current !== sessionId || stopRequestedRef.current) {
+    if (!isCurrentStreamingSession(sessionMachineRef.current, sessionId)) {
       return false;
     }
-    const audioChainSession = audioChainSessionRef.current + 1;
-    audioChainSessionRef.current = audioChainSession;
-    sourceEndedRef.current = false;
+    const audioChainSession = transitionSession({ type: 'begin-audio-chain' }).audioChainId;
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: SAMPLE_RATE });
     await ctx.audioWorklet.addModule('/stream-worklet.js');
     if (
-      sessionRef.current !== sessionId ||
-      stopRequestedRef.current ||
-      audioChainSessionRef.current !== audioChainSession
+      !isCurrentStreamingSession(sessionMachineRef.current, sessionId) ||
+      !isCurrentAudioChain(sessionMachineRef.current, audioChainSession)
     ) {
       void ctx.close().catch(() => {});
       return false;
     }
     const node = new AudioWorkletNode(ctx, 'stream-player');
     node.port.onmessage = (event) => {
-      if (audioChainSessionRef.current !== audioChainSession) {
+      if (!isCurrentAudioChain(sessionMachineRef.current, audioChainSession)) {
         return;
       }
       handleWorkletMessage(event.data);
@@ -395,10 +400,13 @@ export function useStreamingAudio({
     audioCtxRef.current = ctx;
     workletRef.current = node;
     return true;
-  }, [handleWorkletMessage, silencePlayback]);
+  }, [handleWorkletMessage, silencePlayback, transitionSession]);
 
   const resumePlaybackContext = useCallback(async (sessionId: number) => {
-    if (playbackPausedRef.current || sessionRef.current !== sessionId || stopRequestedRef.current) {
+    if (
+      isStreamingPlaybackPaused(sessionMachineRef.current) ||
+      !isCurrentStreamingSession(sessionMachineRef.current, sessionId)
+    ) {
       return false;
     }
     const ctx = audioCtxRef.current;
@@ -412,7 +420,10 @@ export function useStreamingAudio({
         return false;
       }
     }
-    if (playbackPausedRef.current || sessionRef.current !== sessionId || stopRequestedRef.current) {
+    if (
+      isStreamingPlaybackPaused(sessionMachineRef.current) ||
+      !isCurrentStreamingSession(sessionMachineRef.current, sessionId)
+    ) {
       if (ctx.state === 'running') {
         try {
           await ctx.suspend();
@@ -426,8 +437,7 @@ export function useStreamingAudio({
   }, []);
 
   const appendAudio = useCallback((chunk: Float32Array, pageKey: string | null) => {
-    const stopAfterPageKey = stopAfterCurrentPageKeyRef.current;
-    if (stopAfterPageKey && pageKey !== null && pageKey !== stopAfterPageKey) {
+    if (!canAcceptStreamingPageAudio(sessionMachineRef.current, pageKey)) {
       return;
     }
     bufferSamplesRef.current += chunk.length;
@@ -484,7 +494,7 @@ export function useStreamingAudio({
 
   const startQueuedRequest = useCallback(
     async (sessionId: number) => {
-      if (sessionRef.current !== sessionId || stopRequestedRef.current) {
+      if (!isCurrentStreamingSession(sessionMachineRef.current, sessionId)) {
         return;
       }
       if (readerRef.current || requestInFlightRef.current) {
@@ -494,14 +504,12 @@ export function useStreamingAudio({
       const nextItem = queueRef.current.shift();
       if (!nextItem) {
         requestInFlightRef.current = false;
-        activeRequestPageKeyRef.current = null;
-        sourceEndedRef.current = true;
+        transitionSession({ type: 'source-ended' });
         return;
       }
 
       onSegmentStartRef.current?.(nextItem.pageKey);
-      sourceEndedRef.current = false;
-      activeRequestPageKeyRef.current = nextItem.pageKey;
+      transitionSession({ type: 'request-started', pageKey: nextItem.pageKey });
       const cacheKey = getStreamPcmCacheKey(nextItem.text, nextItem.pageKey, nextItem.voice || DEFAULT_STREAM_VOICE);
       const cachedChunks = pcmCacheRef.current.get(cacheKey);
       let receivedSegmentAudio = false;
@@ -510,30 +518,32 @@ export function useStreamingAudio({
         ...prev,
         modelSeconds: 0,
         error: undefined,
-        status: firstAudioRef.current ? prev.status : 'connecting'
+        status: sessionMachineRef.current.hasStartedAudio ? prev.status : 'connecting'
       }));
 
       if (cachedChunks) {
         pcmCacheRef.current.delete(cacheKey);
         pcmCacheRef.current.set(cacheKey, cachedChunks);
         requestInFlightRef.current = false;
-        activeRequestPageKeyRef.current = null;
+        transitionSession({ type: 'request-finished' });
         await resumePlaybackContext(sessionId);
-        firstAudioRef.current = true;
+        if (!isCurrentStreamingSession(sessionMachineRef.current, sessionId)) {
+          return;
+        }
+        const audioStartedSession = transitionSession({ type: 'audio-started' });
         setStreamState((prev) => ({
           ...prev,
-          status: playbackPausedRef.current || prev.status === 'paused' ? 'paused' : 'streaming'
+          status: audioStartedSession.status === 'paused' || prev.status === 'paused' ? 'paused' : 'streaming'
         }));
         for (const cachedChunk of cachedChunks) {
-          if (sessionRef.current !== sessionId || stopRequestedRef.current) {
-            sourceEndedRef.current = true;
+          if (!isCurrentStreamingSession(sessionMachineRef.current, sessionId)) {
             return;
           }
           appendAudio(cachedChunk.samples.slice(), cachedChunk.pageKey);
         }
-        if (stopAfterCurrentPageKeyRef.current) {
+        if (sessionMachineRef.current.stopAfterCurrentPageKey) {
           clearQueue();
-          sourceEndedRef.current = true;
+          transitionSession({ type: 'source-ended' });
           return;
         }
         if (queueRef.current.length > 0) {
@@ -543,7 +553,7 @@ export function useStreamingAudio({
           void startQueuedRequest(sessionId);
           return;
         }
-        sourceEndedRef.current = true;
+        transitionSession({ type: 'source-ended' });
         return;
       }
 
@@ -563,7 +573,7 @@ export function useStreamingAudio({
         requestInFlightRef.current = false;
         await resumePlaybackContext(sessionId);
 
-        while (sessionRef.current === sessionId && !stopRequestedRef.current) {
+        while (isCurrentStreamingSession(sessionMachineRef.current, sessionId)) {
           const { done, value } = await reader.read();
           if (done) {
             break;
@@ -602,10 +612,10 @@ export function useStreamingAudio({
           receivedSampleCount += sampleCount;
           if (!receivedSegmentAudio) {
             receivedSegmentAudio = true;
-            firstAudioRef.current = true;
+            const audioStartedSession = transitionSession({ type: 'audio-started' });
             setStreamState((prev) => ({
               ...prev,
-              status: playbackPausedRef.current || prev.status === 'paused' ? 'paused' : 'streaming'
+              status: audioStartedSession.status === 'paused' || prev.status === 'paused' ? 'paused' : 'streaming'
             }));
           }
         }
@@ -625,17 +635,16 @@ export function useStreamingAudio({
         readerRef.current = null;
         requestAbortRef.current = null;
         requestInFlightRef.current = false;
-        activeRequestPageKeyRef.current = null;
-        if (stopRequestedRef.current || sessionRef.current !== sessionId) {
-          sourceEndedRef.current = true;
+        if (!isCurrentStreamingSession(sessionMachineRef.current, sessionId)) {
           return;
         }
+        transitionSession({ type: 'request-finished' });
         if (receivedSampleCount > 0) {
           cachePcmSegment(cacheKey, segmentChunks);
         }
-        if (stopAfterCurrentPageKeyRef.current) {
+        if (sessionMachineRef.current.stopAfterCurrentPageKey) {
           clearQueue();
-          sourceEndedRef.current = true;
+          transitionSession({ type: 'source-ended' });
           return;
         }
         if (queueRef.current.length > 0) {
@@ -645,19 +654,35 @@ export function useStreamingAudio({
           void startQueuedRequest(sessionId);
           return;
         }
-        sourceEndedRef.current = true;
+        transitionSession({ type: 'source-ended' });
       } catch (error) {
         requestInFlightRef.current = false;
-        activeRequestPageKeyRef.current = null;
+        const sessionIsCurrent = isCurrentStreamingSession(sessionMachineRef.current, sessionId);
+        if (sessionIsCurrent) {
+          transitionSession({ type: 'request-finished' });
+        }
         if ((error as Error)?.name === 'AbortError') {
-          sourceEndedRef.current = true;
+          if (sessionIsCurrent) {
+            transitionSession({ type: 'source-ended' });
+          }
+          return;
+        }
+        if (!sessionIsCurrent) {
           return;
         }
         console.error('Unable to start stream', error);
         finalizeStream('error', 'Unable to start stream');
       }
     },
-    [appendAudio, appendSilence, clearQueue, finalizeStream, openPcmStream, resumePlaybackContext]
+    [
+      appendAudio,
+      appendSilence,
+      clearQueue,
+      finalizeStream,
+      openPcmStream,
+      resumePlaybackContext,
+      transitionSession
+    ]
   );
 
   const startStream = useCallback(
@@ -690,18 +715,18 @@ export function useStreamingAudio({
         showToast('Audio stream already running', 'info');
         return;
       }
-      const sessionId = sessionRef.current + 1;
-      sessionRef.current = sessionId;
-      stopRequestedRef.current = false;
-      playbackPausedRef.current = false;
-      firstAudioRef.current = false;
-      stopAfterCurrentPageKeyRef.current = null;
-      pauseAtStartPageKeyRef.current = pauseAtStartOnComplete ? pageKey : null;
+      const resolvedVoice = voice || DEFAULT_STREAM_VOICE;
+      const sessionId = transitionSession({
+        type: 'start',
+        pageKey,
+        voice: resolvedVoice,
+        pauseAtStartOnComplete
+      }).sessionId;
       clearQueue();
       queueRef.current.push({
         text: cleaned,
         pageKey,
-        voice: voice || DEFAULT_STREAM_VOICE,
+        voice: resolvedVoice,
         pauseAfterMs: getInterSegmentPauseMs(cleaned)
       });
       const nextState: StreamState = {
@@ -731,7 +756,7 @@ export function useStreamingAudio({
         finalizeStream('error', 'Unable to start stream');
       }
     },
-    [clearQueue, createAudioChain, finalizeStream, showToast, startQueuedRequest]
+    [clearQueue, createAudioChain, finalizeStream, showToast, startQueuedRequest, transitionSession]
   );
 
   const enqueueStream = useCallback(
@@ -745,7 +770,7 @@ export function useStreamingAudio({
       voice?: string;
     }) => {
       const cleaned = stripMarkdown(text).trim();
-      if (!cleaned || stopRequestedRef.current || sessionRef.current === 0) {
+      if (!cleaned || !canEnqueueStreamingAudio(sessionMachineRef.current)) {
         return;
       }
       queueRef.current.push({
@@ -755,7 +780,7 @@ export function useStreamingAudio({
         pauseAfterMs: getInterSegmentPauseMs(cleaned)
       });
       if (workletRef.current && !readerRef.current && !requestInFlightRef.current) {
-        void startQueuedRequest(sessionRef.current);
+        void startQueuedRequest(sessionMachineRef.current.sessionId);
       }
     },
     [startQueuedRequest]
@@ -765,8 +790,13 @@ export function useStreamingAudio({
     if (streamStateRef.current.status !== 'streaming') {
       return;
     }
-    playbackPausedRef.current = true;
+    transitionSession({ type: 'pause' });
     stopPlaybackTimer();
+    setStreamState((prev) => {
+      const nextState = { ...prev, status: 'paused' as const };
+      streamStateRef.current = nextState;
+      return nextState;
+    });
     const ctx = audioCtxRef.current;
     if (ctx && ctx.state === 'running') {
       try {
@@ -775,18 +805,13 @@ export function useStreamingAudio({
         // ignore suspend errors
       }
     }
-    setStreamState((prev) => {
-      const nextState = { ...prev, status: 'paused' as const };
-      streamStateRef.current = nextState;
-      return nextState;
-    });
-  }, [stopPlaybackTimer]);
+  }, [stopPlaybackTimer, transitionSession]);
 
   const resumeStream = useCallback(async () => {
     if (streamStateRef.current.status !== 'paused') {
       return;
     }
-    playbackPausedRef.current = false;
+    const sessionId = sessionMachineRef.current.sessionId;
     const ctx = audioCtxRef.current;
     if (ctx && ctx.state !== 'running') {
       try {
@@ -795,7 +820,17 @@ export function useStreamingAudio({
         // ignore resume errors
       }
     }
-    if (hasStartedPlaybackRef.current) {
+    if (
+      !isCurrentStreamingSession(sessionMachineRef.current, sessionId) ||
+      sessionMachineRef.current.status !== 'paused'
+    ) {
+      if (ctx?.state === 'running') {
+        void ctx.suspend().catch(() => {});
+      }
+      return;
+    }
+    const resumedSession = transitionSession({ type: 'resume' });
+    if (resumedSession.hasStartedAudio || hasStartedPlaybackRef.current) {
       startPlaybackTimer();
     }
     setStreamState((prev) => {
@@ -803,44 +838,35 @@ export function useStreamingAudio({
       streamStateRef.current = nextState;
       return nextState;
     });
-  }, [startPlaybackTimer]);
+  }, [startPlaybackTimer, transitionSession]);
 
   const stopStream = useCallback(() => {
-    stopRequestedRef.current = true;
-    playbackPausedRef.current = false;
-    sourceEndedRef.current = true;
-    stopAfterCurrentPageKeyRef.current = null;
-    pauseAtStartPageKeyRef.current = null;
+    transitionSession({ type: 'source-ended' });
     clearQueue();
     closeStreamRequest();
     finalizeStream();
-  }, [clearQueue, closeStreamRequest, finalizeStream]);
+  }, [clearQueue, closeStreamRequest, finalizeStream, transitionSession]);
 
   const stopAfterCurrentStream = useCallback(() => {
-    const pageKey = activeSegmentKeyRef.current ?? streamStateRef.current.pageKey;
+    const pageKey = sessionMachineRef.current.activeSegmentPageKey ?? streamStateRef.current.pageKey;
     if (!pageKey) {
       clearQueue();
       return;
     }
-    stopAfterCurrentPageKeyRef.current = pageKey;
-    pauseAtStartPageKeyRef.current = pageKey;
+    transitionSession({ type: 'stop-after-current', pageKey });
     clearQueue();
     const node = workletRef.current;
     node?.port.postMessage({ type: 'trim-after-page-key', pageKey });
-    const activeRequestPageKey = activeRequestPageKeyRef.current;
+    const activeRequestPageKey = sessionMachineRef.current.activeRequestPageKey;
     if (activeRequestPageKey && activeRequestPageKey !== pageKey) {
       closeStreamRequest();
-      sourceEndedRef.current = true;
+      transitionSession({ type: 'source-ended' });
     }
-  }, [clearQueue, closeStreamRequest]);
+  }, [clearQueue, closeStreamRequest, transitionSession]);
 
   const pauseStreamAtStart = useCallback(
     (pageKey: string) => {
-      stopAfterCurrentPageKeyRef.current = null;
-      pauseAtStartPageKeyRef.current = null;
-      stopRequestedRef.current = false;
-      playbackPausedRef.current = true;
-      sourceEndedRef.current = true;
+      transitionSession({ type: 'pause-at-start', pageKey });
       clearQueue();
       closeStreamRequest();
       silencePlayback();
@@ -854,7 +880,7 @@ export function useStreamingAudio({
       streamStateRef.current = nextState;
       setStreamState(nextState);
     },
-    [clearQueue, closeStreamRequest, silencePlayback]
+    [clearQueue, closeStreamRequest, silencePlayback, transitionSession]
   );
 
   return {

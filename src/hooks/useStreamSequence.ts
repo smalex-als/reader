@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAudioController } from '@/hooks/useAudioController';
 import { useToast } from '@/hooks/useToast';
 import { parseStreamLocator } from '@/lib/streamLocator';
+import {
+  createStreamSequenceMachineState,
+  isCurrentStreamSequenceRun,
+  transitionStreamSequenceMachine,
+  type StreamSequenceMachineEvent
+} from '@/lib/streamSequenceMachine';
 import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
 import {
   appActions,
@@ -185,16 +191,8 @@ export function useStreamSequence({
     source: 'page' | 'chapter' | 'paragraph';
     baseKey: string;
   } | null>(null);
-  const pendingStreamSequenceRef = useRef<{
-    fullText: string;
-    startIndex: number;
-    baseKey: string;
-    source: 'page' | 'chapter' | 'paragraph';
-    voiceOverride?: string;
-  } | null>(null);
-  const pendingSingleStreamRef = useRef<{ text: string; pageKey: string; voiceOverride?: string } | null>(null);
   const lastStreamSourceRef = useRef<StreamSource | null>(null);
-  const sequenceRunIdRef = useRef(0);
+  const sequenceMachineRef = useRef(createStreamSequenceMachineState());
   const scrollBufferRef = useRef<{
     runId: number;
     nextPageIndex: number;
@@ -212,9 +210,14 @@ export function useStreamSequence({
   const [streamSequenceActive, setStreamSequenceActive] = useState(false);
   const autoAdvanceRef = useRef(false);
   const pendingRestartTimerRef = useRef<number | null>(null);
-  const streamStartPendingRef = useRef(false);
   const studyReplayPageKeyRef = useRef<string | null>(null);
   const studyPausedAtStartRef = useRef(false);
+
+  const transitionSequence = useCallback((event: StreamSequenceMachineEvent) => {
+    const nextState = transitionStreamSequenceMachine(sequenceMachineRef.current, event);
+    sequenceMachineRef.current = nextState;
+    return nextState;
+  }, []);
 
   const clearPendingRestartTimer = useCallback(() => {
     if (pendingRestartTimerRef.current !== null) {
@@ -225,15 +228,14 @@ export function useStreamSequence({
 
   const stopStreamSequence = useCallback(() => {
     clearPendingRestartTimer();
-    sequenceRunIdRef.current += 1;
+    transitionSequence({ type: 'stop' });
     autoAdvanceRef.current = false;
     lastStreamSourceRef.current = null;
-    streamStartPendingRef.current = false;
     scrollBufferRef.current = null;
     paragraphBufferRef.current = null;
     streamSequenceRef.current = null;
     setStreamSequenceActive(false);
-  }, [clearPendingRestartTimer]);
+  }, [clearPendingRestartTimer, transitionSequence]);
 
   const handleSequenceComplete = useCallback(
     (_source: 'page' | 'chapter') => {
@@ -308,7 +310,10 @@ export function useStreamSequence({
       if (!buffer || buffer.runId !== runId) {
         return;
       }
-      while (sequenceRunIdRef.current === runId && buffer.queuedAhead < PARAGRAPH_STREAM_LOOKAHEAD) {
+      while (
+        isCurrentStreamSequenceRun(sequenceMachineRef.current, runId) &&
+        buffer.queuedAhead < PARAGRAPH_STREAM_LOOKAHEAD
+      ) {
         if (buffer.pendingSegments.length === 0) {
           break;
         }
@@ -350,7 +355,10 @@ export function useStreamSequence({
           });
         }
 
-        while (sequenceRunIdRef.current === runId && buffer.queuedAheadPages < SCROLL_STREAM_LOOKAHEAD) {
+        while (
+          isCurrentStreamSequenceRun(sequenceMachineRef.current, runId) &&
+          buffer.queuedAheadPages < SCROLL_STREAM_LOOKAHEAD
+        ) {
           if (buffer.nextPageIndex >= manifest.length) {
             break;
           }
@@ -444,9 +452,7 @@ export function useStreamSequence({
         baseKey: imageUrl
       };
       autoAdvanceRef.current = false;
-      const runId = sequenceRunIdRef.current + 1;
-      sequenceRunIdRef.current = runId;
-      streamStartPendingRef.current = true;
+      const runId = transitionSequence({ type: 'begin' }).runId;
       const pendingSegments = studyMode ? [] : segments.slice(1);
       scrollBufferRef.current = continueAcrossPages && !studyMode
         ? {
@@ -490,7 +496,8 @@ export function useStreamSequence({
       resetCurrentSequence,
       studyMode,
       streamState.status,
-      streamVoice
+      streamVoice,
+      transitionSequence
     ]
   );
 
@@ -506,7 +513,14 @@ export function useStreamSequence({
       const replacingPausedStudyStream = studyPausedAtStartRef.current && streamState.status === 'paused';
       studyPausedAtStartRef.current = false;
       if (isStreamBusy(streamState.status) && !replacingPausedStudyStream) {
-        pendingStreamSequenceRef.current = { fullText, startIndex, baseKey, source, voiceOverride };
+        transitionSequence({
+          type: 'queue-restart',
+          reason: voiceOverride ? 'voice-change' : 'replacement',
+          pending: {
+            kind: 'sequence',
+            value: { fullText, startIndex, baseKey, source, voiceOverride }
+          }
+        });
         stopStream();
         stopStreamSequence();
         return;
@@ -530,9 +544,7 @@ export function useStreamSequence({
       }
       lastStreamSourceRef.current = { type: source, fullText, startIndex, baseKey };
       autoAdvanceRef.current = (source === 'page' || source === 'chapter') && viewMode !== 'scroll';
-      const runId = sequenceRunIdRef.current + 1;
-      sequenceRunIdRef.current = runId;
-      streamStartPendingRef.current = true;
+      const runId = transitionSequence({ type: 'begin' }).runId;
       streamSequenceRef.current = { source, baseKey };
       setStreamSequenceActive(true);
       if (paragraphMode && paragraphSegments) {
@@ -579,6 +591,7 @@ export function useStreamSequence({
       studyMode,
       streamState.status,
       streamVoice,
+      transitionSequence,
       viewMode
     ]
   );
@@ -651,17 +664,24 @@ export function useStreamSequence({
       const replacingPausedStudyStream = studyPausedAtStartRef.current && streamState.status === 'paused';
       studyPausedAtStartRef.current = false;
       if (isStreamBusy(streamState.status) && !replacingPausedStudyStream) {
-        pendingSingleStreamRef.current = { text: trimmed, pageKey: payload.pageKey, voiceOverride };
+        transitionSequence({
+          type: 'queue-restart',
+          reason: voiceOverride ? 'voice-change' : 'replacement',
+          pending: {
+            kind: 'single',
+            value: { text: trimmed, pageKey: payload.pageKey, voiceOverride }
+          }
+        });
         stopStream();
         stopStreamSequence();
         return;
       }
-      pendingSingleStreamRef.current = null;
+      transitionSequence({ type: 'consume-restart' });
       stopAudio();
       stopStreamSequence();
       lastStreamSourceRef.current = { type: 'single', text: trimmed, pageKey: payload.pageKey };
       autoAdvanceRef.current = false;
-      streamStartPendingRef.current = true;
+      transitionSequence({ type: 'begin' });
       await startStream({
         text: trimmed,
         pageKey: payload.pageKey,
@@ -679,7 +699,8 @@ export function useStreamSequence({
       stopStreamSequence,
       streamState.status,
       streamVoice,
-      studyMode
+      studyMode,
+      transitionSequence
     ]
   );
 
@@ -889,15 +910,15 @@ export function useStreamSequence({
 
   useEffect(() => {
     if (streamState.status !== 'idle') {
-      streamStartPendingRef.current = false;
+      transitionSequence({ type: 'stream-active' });
     }
-  }, [streamState.status]);
+  }, [streamState.status, transitionSequence]);
 
   useEffect(() => {
     if (!streamSequenceActive || streamState.status !== 'idle') {
       return;
     }
-    if (streamStartPendingRef.current) {
+    if (sequenceMachineRef.current.startPending) {
       return;
     }
     const sequence = streamSequenceRef.current;
@@ -936,7 +957,7 @@ export function useStreamSequence({
     if (!studyMode || streamSequenceActive || streamState.status !== 'idle') {
       return;
     }
-    if (pendingStreamSequenceRef.current || pendingSingleStreamRef.current) {
+    if (sequenceMachineRef.current.pendingRestart) {
       return;
     }
     const pageKey = studyReplayPageKeyRef.current;
@@ -952,57 +973,59 @@ export function useStreamSequence({
       clearPendingRestartTimer();
       return;
     }
-    const pending = pendingStreamSequenceRef.current;
-    if (!pending) {
+    const pending = sequenceMachineRef.current.pendingRestart;
+    if (pending?.kind !== 'sequence') {
       return;
     }
     clearPendingRestartTimer();
     pendingRestartTimerRef.current = window.setTimeout(() => {
       pendingRestartTimerRef.current = null;
-      const nextPending = pendingStreamSequenceRef.current;
-      if (!nextPending || streamState.status !== 'idle') {
+      const nextPending = sequenceMachineRef.current.pendingRestart;
+      if (nextPending?.kind !== 'sequence' || streamState.status !== 'idle') {
         return;
       }
-      pendingStreamSequenceRef.current = null;
+      transitionSequence({ type: 'consume-restart' });
       void startStreamSequenceFromText(
-        nextPending.fullText,
-        nextPending.startIndex,
-        nextPending.baseKey,
-        nextPending.source,
-        nextPending.voiceOverride
+        nextPending.value.fullText,
+        nextPending.value.startIndex,
+        nextPending.value.baseKey,
+        nextPending.value.source,
+        nextPending.value.voiceOverride
       );
     }, STREAM_RESTART_DELAY_MS);
-  }, [clearPendingRestartTimer, startStreamSequenceFromText, streamState.status]);
+  }, [clearPendingRestartTimer, startStreamSequenceFromText, streamState.status, transitionSequence]);
 
   useEffect(() => {
     if (streamState.status !== 'idle') {
       clearPendingRestartTimer();
       return;
     }
-    const pending = pendingSingleStreamRef.current;
-    if (!pending) {
+    const pending = sequenceMachineRef.current.pendingRestart;
+    if (pending?.kind !== 'single') {
       return;
     }
     clearPendingRestartTimer();
     pendingRestartTimerRef.current = window.setTimeout(() => {
       pendingRestartTimerRef.current = null;
-      const nextPending = pendingSingleStreamRef.current;
-      if (!nextPending || streamState.status !== 'idle') {
+      const nextPending = sequenceMachineRef.current.pendingRestart;
+      if (nextPending?.kind !== 'single' || streamState.status !== 'idle') {
         return;
       }
-      pendingSingleStreamRef.current = null;
-      stopAudio();
-      stopStreamSequence();
-      void startStream({
-        text: nextPending.text,
-        pageKey: nextPending.pageKey,
-        voice: nextPending.voiceOverride ?? streamVoice,
-        pauseAtStartOnComplete: studyMode
-      });
+      transitionSequence({ type: 'consume-restart' });
+      void handlePlaySingleStream(
+        { text: nextPending.value.text, pageKey: nextPending.value.pageKey },
+        nextPending.value.voiceOverride
+      );
     }, STREAM_RESTART_DELAY_MS);
-  }, [clearPendingRestartTimer, startStream, stopAudio, stopStreamSequence, streamState.status, streamVoice, studyMode]);
+  }, [clearPendingRestartTimer, handlePlaySingleStream, streamState.status, transitionSequence]);
 
-  useEffect(() => () => clearPendingRestartTimer(), [clearPendingRestartTimer]);
+  useEffect(() => {
+    transitionSequence({ type: 'mount' });
+    return () => {
+      clearPendingRestartTimer();
+      transitionSequence({ type: 'unmount' });
+    };
+  }, [clearPendingRestartTimer, transitionSequence]);
 
   return {
     startStreamSequence,
