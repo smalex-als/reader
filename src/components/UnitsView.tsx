@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import UnitTopicMarkdown from '@/components/UnitTopicMarkdown';
 import { useUnitSelfCheckRuntime } from '@/hooks/useUnitSelfCheckRuntime';
@@ -247,8 +248,13 @@ export default function UnitsView() {
           </div>
         </article>
         {selfCheckOpen ? (
-          <div className="modal-backdrop" role="dialog" aria-modal="true">
-            <div className="modal modal-quiz modal-self-check">
+          <ModalShell
+            ariaLabel="Self-check"
+            onClose={closeSelfCheck}
+            className="modal-quiz modal-self-check"
+            closeOnBackdrop={!selfCheckLoading}
+            closeOnEscape={!selfCheckLoading}
+          >
               <header className="modal-header">
                 <h2 className="modal-title">
                   {labels.selfCheck}
@@ -366,8 +372,7 @@ export default function UnitsView() {
                   <p className="modal-status">No self-check questions available.</p>
                 )}
               </section>
-            </div>
-          </div>
+          </ModalShell>
         ) : null}
       </div>
     );

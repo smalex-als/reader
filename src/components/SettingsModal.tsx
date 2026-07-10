@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import Toolbar from '@/components/Toolbar';
 import {
   appActions,
@@ -19,8 +20,7 @@ export default function SettingsModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-settings">
+    <ModalShell ariaLabel="Settings" onClose={handleClose} className="modal-settings">
         <header className="modal-header">
           <h2 className="modal-title">Settings</h2>
           <button
@@ -36,7 +36,6 @@ export default function SettingsModal() {
         <section className="modal-body modal-settings-body">
           <Toolbar />
         </section>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

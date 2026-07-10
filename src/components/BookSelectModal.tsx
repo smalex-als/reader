@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useDeleteBook, useUploadChapter, useUploadPdf } from '@/hooks/useBookMutations';
 import {
   appActions,
@@ -171,8 +172,7 @@ export default function BookSelectModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-wide book-select-modal">
+    <ModalShell ariaLabel="Select a book" onClose={handleClose} className="modal-wide book-select-modal">
         <header className="modal-header">
           <h2 className="modal-title">Select a book</h2>
           <div className="modal-actions">
@@ -390,7 +390,6 @@ export default function BookSelectModal() {
             Done
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

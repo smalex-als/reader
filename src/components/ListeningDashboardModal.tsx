@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useListeningDashboardActions } from '@/hooks/useListeningDashboardActions';
 import {
   appActions,
@@ -54,21 +55,6 @@ export default function ListeningDashboardModal() {
     if (!open) {
       return;
     }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return;
-      }
-      event.preventDefault();
-      handleClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleClose, open]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
     dispatch(appActions.loadListeningDashboard());
   }, [dispatch, open]);
 
@@ -86,8 +72,11 @@ export default function ListeningDashboardModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-wide modal-listening-dashboard">
+    <ModalShell
+      ariaLabel="Listening dashboard"
+      onClose={handleClose}
+      className="modal-wide modal-listening-dashboard"
+    >
         <header className="modal-header">
           <h2 className="modal-title">Listening Dashboard</h2>
           <div className="modal-actions">
@@ -308,7 +297,6 @@ export default function ListeningDashboardModal() {
             </div>
           ) : null}
         </section>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

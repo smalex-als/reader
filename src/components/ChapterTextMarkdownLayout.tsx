@@ -1,22 +1,12 @@
-import { isValidElement, useEffect, useMemo, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useMemo, type RefObject } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { TextOutlineItem } from '@/hooks/useChapterTextOutline';
+import { createInteractiveMarkdownComponents } from '@/lib/interactiveMarkdown';
 import { hashText } from '@/lib/textHash';
 import { appActions, useAppDispatch } from '@/state/appState';
 
-function extractTextFromNode(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node);
-  }
-  if (Array.isArray(node)) {
-    return node.map(extractTextFromNode).join('');
-  }
-  if (isValidElement(node)) {
-    return extractTextFromNode(node.props.children);
-  }
-  return '';
-}
+const CHAPTER_MARKDOWN_BLOCK_TAGS = ['p', 'ul', 'ol', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
 
 function isTextBlockVisible(containerRect: DOMRect, blockRect: DOMRect) {
   const comfortableTop = containerRect.top + 96;
@@ -82,125 +72,29 @@ export default function ChapterTextMarkdownLayout({
   }, [playingParagraphMode, playingParagraphStart, textViewerRef]);
 
   const markdownComponents = useMemo(() => {
-    const shouldIgnoreBlockClick = (event: ReactMouseEvent<HTMLElement>) => {
-      const target = event.target;
-      if (!(target instanceof Element)) {
-        return false;
-      }
-      if (target.closest('a, button, input, select, textarea, [role="button"], [contenteditable="true"]')) {
-        return true;
-      }
-      return Boolean(window.getSelection()?.toString().trim());
-    };
-
-    const resolveTextRange = (textValue: string, node?: any) => {
-      if (!displayText) {
-        return { start: 0, end: 0 };
-      }
-      const nodeOffset = node?.position?.start?.offset;
-      if (typeof nodeOffset === 'number') {
-        const lineStart = displayText.lastIndexOf('\n', nodeOffset - 1);
-        const start = lineStart === -1 ? 0 : lineStart + 1;
-        const nodeEnd = node?.position?.end?.offset;
-        const end = typeof nodeEnd === 'number' && nodeEnd > start ? nodeEnd : start + textValue.length;
-        return { start, end };
-      }
-      if (textValue) {
-        const foundIndex = displayText.indexOf(textValue);
-        if (foundIndex !== -1) {
-          const lineStart = displayText.lastIndexOf('\n', foundIndex - 1);
-          const start = lineStart === -1 ? 0 : lineStart + 1;
-          return { start, end: foundIndex + textValue.length };
-        }
-      }
-      return { start: 0, end: 0 };
-    };
-
-    const isPlayingRange = (startIndex: number, endIndex: number) => {
-      return (
-        playingParagraphStart !== null &&
-        playingParagraphMode === 'chapter' &&
-        playingParagraphStart >= startIndex &&
-        playingParagraphStart < Math.max(endIndex, startIndex + 1)
-      );
-    };
-
-    const playTextBlock = (startIndex: number, paragraphKey: string) => {
-      dispatch(appActions.requestPlayStudyAudioParagraph({
-        fullText: displayText,
-        startIndex,
-        key: paragraphKey
-      }));
-    };
-
-    const renderBlock = (Tag: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6') => {
-      return ({ children, node }: { children?: ReactNode; node?: any }) => {
-        const textValue = extractTextFromNode(children ?? '').trim();
-        const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
-        const outlineItem = outlineByOffset.get(node?.position?.start?.offset);
+    return createInteractiveMarkdownComponents({
+      sourceText: displayText,
+      activeStart: playingParagraphMode === 'chapter' ? playingParagraphStart : null,
+      blockTags: CHAPTER_MARKDOWN_BLOCK_TAGS,
+      getBlockAttributes: ({ node }) => {
+        const nodeOffset = node?.position?.start.offset;
+        const outlineItem = typeof nodeOffset === 'number' ? outlineByOffset.get(nodeOffset) : undefined;
+        return {
+          id: outlineItem?.id,
+          'data-outline-id': outlineItem?.id
+        };
+      },
+      onBlockClick: ({ startIndex, text }) => {
         const paragraphKey = chapterNumber
-          ? `chapter-${chapterNumber}-${selectedVersionId}-${hashText(textValue)}-${startIndex}`
+          ? `chapter-${chapterNumber}-${selectedVersionId}-${hashText(text)}-${startIndex}`
           : '';
-        const isPlaying = isPlayingRange(startIndex, endIndex);
-        return (
-          <Tag
-            id={outlineItem?.id}
-            className="text-viewer-block"
-            data-playing={isPlaying ? 'true' : 'false'}
-            data-streamable={textValue ? 'true' : undefined}
-            data-outline-id={outlineItem?.id ?? undefined}
-            data-paragraph-start={startIndex}
-            onClick={(event) => {
-              if (!textValue || shouldIgnoreBlockClick(event)) {
-                return;
-              }
-              playTextBlock(startIndex, paragraphKey);
-            }}
-          >
-            {children}
-          </Tag>
-        );
-      };
-    };
-
-    const renderList = (Tag: 'ul' | 'ol') => {
-      return ({ children, node, ...props }: any) => {
-        const textValue = extractTextFromNode(children ?? '').trim();
-        const { start: startIndex, end: endIndex } = resolveTextRange(textValue, node);
-        const paragraphKey = chapterNumber
-          ? `chapter-${chapterNumber}-${selectedVersionId}-${hashText(textValue)}-${startIndex}`
-          : '';
-        const isPlaying = isPlayingRange(startIndex, endIndex);
-        return (
-          <div
-            className="text-viewer-block text-viewer-list-block"
-            data-playing={isPlaying ? 'true' : 'false'}
-            data-streamable={textValue ? 'true' : undefined}
-            data-paragraph-start={startIndex}
-            onClick={(event) => {
-              if (!textValue || shouldIgnoreBlockClick(event)) {
-                return;
-              }
-              playTextBlock(startIndex, paragraphKey);
-            }}
-          >
-            <Tag {...props}>{children}</Tag>
-          </div>
-        );
-      };
-    };
-
-    return {
-      p: renderBlock('p'),
-      ul: renderList('ul'),
-      ol: renderList('ol'),
-      h1: renderBlock('h1'),
-      h2: renderBlock('h2'),
-      h3: renderBlock('h3'),
-      h4: renderBlock('h4'),
-      h5: renderBlock('h5'),
-      h6: renderBlock('h6')
-    };
+        dispatch(appActions.requestPlayStudyAudioParagraph({
+          fullText: displayText,
+          startIndex,
+          key: paragraphKey
+        }));
+      }
+    });
   }, [
     chapterNumber,
     displayText,

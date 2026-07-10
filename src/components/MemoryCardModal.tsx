@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useChapterMemoryCard } from '@/hooks/useChapterMemoryCard';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useToast } from '@/hooks/useToast';
@@ -44,21 +44,6 @@ export default function MemoryCardModal() {
     showToast(copied ? 'Copied memory card to clipboard' : 'Unable to copy memory card', copied ? 'success' : 'error');
   };
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return;
-      }
-      event.preventDefault();
-      handleClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open]);
-
   const streamPrefix = memoryCard ? `memory-card::chapter-${memoryCard.chapterNumber}` : null;
   const isStreaming =
     !!streamPrefix &&
@@ -71,8 +56,7 @@ export default function MemoryCardModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-memory-card">
+    <ModalShell ariaLabel="Memory card" onClose={handleClose} className="modal-memory-card">
         <header className="modal-header">
           <h2 className="modal-title">
             Memory Card
@@ -157,7 +141,6 @@ export default function MemoryCardModal() {
             </div>
           ) : null}
         </section>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

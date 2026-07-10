@@ -45,20 +45,6 @@ export function useChapterTextVersionModalRuntime({
     });
   }, [createRequestId, dispatch, handleCreateVersion]);
 
-  useEffect(() => {
-    if (!versionModalOpen) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeVersionModal();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [closeVersionModal, versionModalOpen]);
-
   return {
     versionModalOpen,
     openVersionModal,

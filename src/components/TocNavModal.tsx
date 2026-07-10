@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { formatListeningTime } from '@/lib/listeningTime';
 import { getDetailedTocLevel } from '@/lib/toc';
 import {
@@ -88,8 +89,7 @@ export default function TocNavModal() {
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-toc">
+    <ModalShell ariaLabel="Table of contents" onClose={handleClose} className="modal-toc">
         <header className="modal-header">
           <h2 className="modal-title">Table of Contents</h2>
           <button
@@ -162,7 +162,6 @@ export default function TocNavModal() {
             Done
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

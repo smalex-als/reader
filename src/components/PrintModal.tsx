@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import {
   appActions,
   selectModalOpen,
@@ -28,8 +29,7 @@ export default function PrintModal() {
   const hasOptions = options.length > 0;
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <ModalShell ariaLabel="Create PDF" onClose={handleClose}>
         <header className="modal-header">
           <h2 className="modal-title">Create printable PDF</h2>
           <button
@@ -83,7 +83,6 @@ export default function PrintModal() {
             {loading ? 'Creating…' : 'Create PDF'}
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

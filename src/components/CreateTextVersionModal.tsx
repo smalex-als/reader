@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import {
   appActions,
   selectTextVersionModalWorkflow,
@@ -23,20 +24,28 @@ export default function CreateTextVersionModal() {
   } = useAppSelector(selectTextVersionModalWorkflow);
   const selectedPromptTemplate =
     customPrompt || promptLibrary.find((prompt) => prompt.id === selectedPromptId)?.template || '';
+  const handleClose = () => {
+    dispatch(appActions.closeTextVersionModal());
+  };
 
   if (!open) {
     return null;
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-wide text-version-modal">
+    <ModalShell
+      ariaLabel="Create text version"
+      onClose={handleClose}
+      className="modal-wide text-version-modal"
+      closeOnBackdrop={!versionSaving}
+      closeOnEscape={!versionSaving}
+    >
         <header className="modal-header">
           <h2 className="modal-title">Create Text Version</h2>
           <button
             type="button"
             className="button button-ghost modal-icon-button"
-            onClick={() => dispatch(appActions.closeTextVersionModal())}
+            onClick={handleClose}
             aria-label="Close version modal"
             title="Close version modal"
             disabled={versionSaving}
@@ -132,7 +141,7 @@ export default function CreateTextVersionModal() {
           <button
             type="button"
             className="button button-secondary"
-            onClick={() => dispatch(appActions.closeTextVersionModal())}
+            onClick={handleClose}
             disabled={versionSaving}
           >
             Cancel
@@ -146,7 +155,6 @@ export default function CreateTextVersionModal() {
             {versionSaving ? 'Creating…' : 'Create Version'}
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

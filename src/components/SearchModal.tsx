@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useBookSearch } from '@/hooks/useBookSearch';
 import {
   appActions,
@@ -59,8 +60,12 @@ export default function SearchModal() {
   const hasResults = results.length > 0;
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-wide search-modal">
+    <ModalShell
+      ariaLabel="Search"
+      onClose={handleClose}
+      className="modal-wide search-modal"
+      initialFocusRef={inputRef}
+    >
         <header className="modal-header">
           <h2 className="modal-title">
             Search
@@ -146,7 +151,6 @@ export default function SearchModal() {
             </ul>
           ) : null}
         </section>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

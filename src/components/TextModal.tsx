@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { usePageText } from '@/hooks/usePageText';
 import { useToast } from '@/hooks/useToast';
 import { copyToClipboard } from '@/lib/clipboard';
@@ -72,8 +73,13 @@ export default function TextModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-wide">
+    <ModalShell
+      ariaLabel="Page text"
+      onClose={handleClose}
+      className="modal-wide"
+      closeOnBackdrop={!saving}
+      closeOnEscape={!saving}
+    >
         <header className="modal-header">
           <h2 className="modal-title">
             {title}
@@ -154,7 +160,6 @@ export default function TextModal() {
             {saving ? 'Saving…' : 'Save'}
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

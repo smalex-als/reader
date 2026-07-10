@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useChapterVocabulary } from '@/hooks/useChapterVocabulary';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useToast } from '@/hooks/useToast';
@@ -41,21 +42,6 @@ export default function VocabularyModal() {
     showToast(copied ? 'Copied vocabulary to clipboard' : 'Unable to copy vocabulary', copied ? 'success' : 'error');
   };
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return;
-      }
-      event.preventDefault();
-      handleClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open]);
-
   const spokenText = useMemo(() => {
     if (!vocabulary) {
       return '';
@@ -78,8 +64,7 @@ export default function VocabularyModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-vocabulary">
+    <ModalShell ariaLabel="Vocabulary" onClose={handleClose} className="modal-vocabulary">
         <header className="modal-header">
           <h2 className="modal-title">
             Vocabulary
@@ -184,7 +169,6 @@ export default function VocabularyModal() {
             </div>
           ) : null}
         </section>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

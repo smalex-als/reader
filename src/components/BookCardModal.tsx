@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import {
   appActions,
   selectBookCardBookId,
@@ -63,8 +64,12 @@ export default function BookCardModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <ModalShell
+      ariaLabel="Book card"
+      onClose={handleClose}
+      closeOnBackdrop={!saving}
+      closeOnEscape={!saving}
+    >
         <header className="modal-header">
           <h2 className="modal-title">Book Card</h2>
           <button
@@ -196,7 +201,6 @@ export default function BookCardModal() {
             {saving ? 'Saving…' : 'Save Card'}
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

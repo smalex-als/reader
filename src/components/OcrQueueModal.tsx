@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useOcrQueue } from '@/hooks/useOcrQueue';
 import {
   appActions,
@@ -60,8 +61,7 @@ export default function OcrQueueModal() {
     : 'Idle';
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <ModalShell ariaLabel="OCR queue" onClose={handleClose}>
         <header className="modal-header">
           <h2 className="modal-title">
             Batch OCR
@@ -154,7 +154,6 @@ export default function OcrQueueModal() {
             Done
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

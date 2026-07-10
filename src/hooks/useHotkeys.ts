@@ -326,44 +326,6 @@ export function useHotkeys() {
           event.preventDefault();
           dispatch(appActions.requestToggleFullscreen());
           break;
-        case 'escape':
-          if (textModalOpen) {
-            dispatch(appActions.closeModal('text'));
-          }
-          if (bookModalOpen) {
-            dispatch(appActions.closeModal('bookSelect'));
-          }
-          if (ocrQueueOpen) {
-            dispatch(appActions.closeModal('ocrQueue'));
-          }
-          if (tocOpen) {
-            dispatch(appActions.closeModal('tocNav'));
-          }
-          if (tocManageOpen) {
-            dispatch(appActions.closeModal('tocManage'));
-          }
-          if (settingsOpen) {
-            dispatch(appActions.closeModal('settings'));
-          }
-          if (helpOpen) {
-            dispatch(appActions.closeModal('help'));
-          }
-          if (printModalOpen) {
-            dispatch(appActions.closeModal('print'));
-          }
-          if (bookmarksOpen) {
-            dispatch(appActions.closeModal('bookmarks'));
-          }
-          if (searchOpen) {
-            dispatch(appActions.closeModal('search'));
-          }
-          if (bookCardOpen) {
-            dispatch(appActions.closeBookCard());
-          }
-          if (promptEditorOpen) {
-            dispatch(appActions.closeModal('promptEditor'));
-          }
-          break;
         default:
           break;
       }

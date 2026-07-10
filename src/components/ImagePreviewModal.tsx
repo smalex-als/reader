@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useImagePreviewActions } from '@/hooks/useImagePreviewActions';
 import { normalizeImageCaption } from '@/lib/imagePreview';
 import {
@@ -21,21 +22,6 @@ export default function ImagePreviewModal() {
   };
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return;
-      }
-      event.preventDefault();
-      handleClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open]);
-
-  useEffect(() => {
     dispatch(appActions.resetImagePreviewStatus());
   }, [dispatch, open, preview?.cropUrl]);
 
@@ -47,8 +33,7 @@ export default function ImagePreviewModal() {
   const displayUrl = preview.enhancedUrl ?? preview.cropUrl;
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-image-preview">
+    <ModalShell ariaLabel="Image preview" onClose={handleClose} className="modal-image-preview">
         <header className="modal-header">
           <h2 className="modal-title">Image Preview</h2>
           <div className="modal-actions">
@@ -94,7 +79,6 @@ export default function ImagePreviewModal() {
             {error ? <p className="modal-status">{error}</p> : null}
           </figure>
         </section>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

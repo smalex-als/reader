@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useRemoveBookmark } from '@/hooks/useBookmarks';
 import {
   appActions,
@@ -26,8 +27,7 @@ export default function BookmarksModal() {
   const sorted = [...bookmarks].sort((a, b) => a.page - b.page);
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <ModalShell ariaLabel="Bookmarks" onClose={handleClose}>
         <header className="modal-header">
           <h2 className="modal-title">
             Bookmarks
@@ -90,7 +90,6 @@ export default function BookmarksModal() {
             </ul>
           ) : null}
         </section>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

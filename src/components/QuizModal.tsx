@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useChapterQuiz } from '@/hooks/useChapterQuiz';
 import { useCurrentChapterLabel } from '@/hooks/useCurrentChapterLabel';
 import { useUnitActions } from '@/hooks/useUnitActions';
@@ -120,8 +121,7 @@ export default function QuizModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-quiz">
+    <ModalShell ariaLabel="Quiz" onClose={handleClose} className="modal-quiz">
         <header className="modal-header">
           <h2 className="modal-title">
             Quiz
@@ -318,7 +318,6 @@ export default function QuizModal() {
             </div>
           ) : null}
         </section>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

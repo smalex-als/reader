@@ -1,4 +1,5 @@
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { HOTKEYS } from '@/lib/hotkeys';
 import {
   appActions,
@@ -19,8 +20,7 @@ export default function HelpModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal">
+    <ModalShell ariaLabel="Keyboard shortcuts" onClose={handleClose}>
         <header className="modal-header">
           <h2 className="modal-title">Keyboard shortcuts</h2>
           <button
@@ -48,7 +48,6 @@ export default function HelpModal() {
             Got it
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { usePromptEditorActions } from '@/hooks/usePromptEditorActions';
 import {
   appActions,
@@ -96,8 +97,13 @@ export default function PromptEditorModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-wide prompt-editor-modal">
+    <ModalShell
+      ariaLabel="Version prompts"
+      onClose={handleClose}
+      className="modal-wide prompt-editor-modal"
+      closeOnBackdrop={!saving}
+      closeOnEscape={!saving}
+    >
         <header className="modal-header">
           <div>
             <h2 className="modal-title">Version Prompts</h2>
@@ -186,7 +192,6 @@ export default function PromptEditorModal() {
             {saving ? 'Saving…' : 'Save Prompt'}
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

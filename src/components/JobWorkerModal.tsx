@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ModalShell from '@/components/ModalShell';
 import { useJobWorkerActions } from '@/hooks/useJobWorkerActions';
 import {
   appActions,
@@ -112,8 +113,7 @@ export default function JobWorkerModal() {
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true">
-      <div className="modal modal-job-worker">
+    <ModalShell ariaLabel="Job worker" onClose={handleClose} className="modal-job-worker">
         <header className="modal-header">
           <h2 className="modal-title">
             Job Worker
@@ -185,7 +185,6 @@ export default function JobWorkerModal() {
             Done
           </button>
         </footer>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
