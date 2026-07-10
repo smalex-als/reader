@@ -28,6 +28,7 @@ RUN mkdir -p /app/data
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server.js ./server.js
 COPY --from=builder /app/server ./server
+COPY --from=builder /app/shared ./shared
 
 EXPOSE 3000
 
