@@ -3,7 +3,6 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import multer from 'multer';
 import { derivePrintFilename, createPdfFromImages } from '../lib/pdf.js';
 import {
   deleteBook,
@@ -49,7 +48,7 @@ import { generateChapterQuiz, generateUnitTopicQuiz, loadChapterQuiz, loadUnitTo
 import { evaluateUnitTopicSelfCheck } from '../lib/selfCheck.js';
 import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabulary.js';
 import { createEnhancedImagePreview, createImagePreviewCrop } from '../lib/imagePreview.js';
-import { DATA_DIR, MAX_UPLOAD_BYTES } from '../config.js';
+import { DATA_DIR } from '../config.js';
 import { formatChapterAudioFilename } from '../lib/streamAudio.js';
 import { resolveChapterSubtitlePaths } from '../lib/chapterSubtitles.js';
 import {
@@ -69,9 +68,10 @@ import {
 import { loadLibraryState, updateLibraryState } from '../lib/libraryState.js';
 import { listGeneratedAudio } from '../lib/audioLibrary.js';
 import { createUnitsFromChapter, listUnits, updateUnitTopicRead } from '../lib/units.js';
+import { createMemoryUpload } from '../lib/upload.js';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
+const upload = createMemoryUpload();
 const CHAPTER_PAD_LENGTH = 3;
 const execFileAsync = promisify(execFile);
 

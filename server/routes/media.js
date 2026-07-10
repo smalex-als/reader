@@ -1,5 +1,4 @@
 import express from 'express';
-import multer from 'multer';
 import fs from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
 import path from 'node:path';
@@ -9,7 +8,6 @@ import {
   DEFAULT_STREAM_VOICE,
   DEFAULT_VOICE,
   LOCAL_STREAM_VOICES,
-  MAX_UPLOAD_BYTES,
   YANDEX_STREAM_VOICES,
   XAI_STREAM_VOICES,
   voiceProfiles
@@ -38,9 +36,10 @@ import {
 import { generateXaiTtsDebugFile, generateXaiTtsPcmBuffer } from '../lib/xaiTts.js';
 import { generateYandexTtsPcmBuffer } from '../lib/yandexTts.js';
 import { createTtsLogTimer } from '../lib/ttsLog.js';
+import { createMemoryUpload } from '../lib/upload.js';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } });
+const upload = createMemoryUpload();
 const TTS_PROVIDER_OPENAI = 'openai';
 const TTS_PROVIDER_XAI = 'xai';
 const TTS_PROVIDER_YANDEX = 'yandex';

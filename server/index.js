@@ -66,12 +66,14 @@ export function createApp() {
   });
 
   app.use((err, req, res, _next) => {
-    const status =
-      err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+    const isUploadError = err instanceof multer.MulterError;
+    const status = isUploadError
+      ? err.code === 'LIMIT_FILE_SIZE'
         ? 413
-        : err.status || 500;
+        : 400
+      : err.status || 500;
     const message =
-      err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+      isUploadError && err.code === 'LIMIT_FILE_SIZE'
         ? `File too large (max ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))}MB)`
         : err.message || 'Internal Server Error';
     // eslint-disable-next-line no-console

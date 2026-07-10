@@ -14,7 +14,7 @@
   "dependencies": {
     "express": "^5.2.1",
     "mime-types": "^2.1.35",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "openai": "^6.42.0",
     "pdf-lib": "^1.17.1",
     "react": "^18.2.0",
@@ -22,7 +22,7 @@
     "react-markdown": "^10.1.0",
     "react-virtuoso": "^4.18.7",
     "remark-gfm": "^4.0.1",
-    "undici": "^6.22.0"
+    "undici": "^6.27.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
