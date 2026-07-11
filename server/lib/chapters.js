@@ -33,7 +33,7 @@ async function preprocessChapterTextForBook(bookId, rawText) {
   const prompt = await getChapterPrompt(bookId);
   const openai = getOpenAI();
   const response = await openai.responses.create({
-    model: 'gpt-5.5',
+    model: 'gpt-5.6-sol',
     input: [
       {
         role: 'system',

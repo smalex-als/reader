@@ -160,7 +160,7 @@ export async function generateTocFromOcr(bookId, options = {}) {
 
   const openai = getOpenAI();
   const response = await openai.responses.create({
-    model: 'gpt-5.5',
+    model: 'gpt-5.6-sol',
     input: [
       {
         role: 'user',

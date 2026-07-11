@@ -64,7 +64,7 @@ export const initialChapterToolsState: ChapterToolsState = {
     versions: [],
     promptLibrary: [],
     sourceVersionId: 'base',
-    versionModel: 'gpt-5.5',
+    versionModel: 'gpt-5.6-sol',
     selectedPromptId: '',
     customPrompt: '',
     promptName: '',

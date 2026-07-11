@@ -516,7 +516,7 @@ async function adaptWithOpenAI({ content, sourceChapterTitle, sourceBookId, sour
   const openai = getOpenAI();
   const promptText = CHAPTER_UNITS_PROMPT.replace('PASTE CHAPTER CONTENT HERE', content);
   const response = await openai.responses.create({
-    model: 'gpt-5.5',
+    model: 'gpt-5.6-sol',
     input: [
       {
         role: 'system',

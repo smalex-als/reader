@@ -129,7 +129,7 @@ export async function generateChapterVocabulary({ bookId, chapterNumber, force =
 
   const openai = getOpenAI();
   const response = await openai.chat.completions.create({
-    model: 'gpt-5.5',
+    model: 'gpt-5.6-sol',
     messages: [
       {
         role: 'developer',
