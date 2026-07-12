@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import type { AudioChapter } from '@/api/chapterAudio';
+import { useConfirmation } from '@/components/ConfirmationProvider';
 import type { StreamVoiceOption } from '@/lib/appConstants';
 import { appActions, useAppDispatch } from '@/state/appState';
 import type { ChapterAudioProvider } from '@/types/app';
@@ -26,6 +27,7 @@ export function useAudioViewRuntimeActions({
   streamVoiceOptions: StreamVoiceOption[];
 }) {
   const dispatch = useAppDispatch();
+  const { confirmAction } = useConfirmation();
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
@@ -76,17 +78,22 @@ export function useAudioViewRuntimeActions({
   );
 
   const confirmDeleteAudio = useCallback(
-    async (chapterNumber: number, versionId: string) => {
+    async ({ chapterNumber, chapterTitle, versionId }: {
+      chapterNumber: number;
+      chapterTitle: string;
+      versionId: string;
+    }) => {
       if (audioDeleting[chapterNumber]) {
         return;
       }
-      const confirmed = window.confirm(`Delete generated MP3 for chapter ${chapterNumber}?`);
-      if (!confirmed) {
-        return;
-      }
-      await deleteAudio({ chapterNumber, versionId });
+      await confirmAction({
+        title: `Delete chapter ${chapterNumber} MP3?`,
+        description: `Generated audio for “${chapterTitle}” will be permanently deleted. The chapter text is not affected.`,
+        confirmLabel: 'Delete MP3',
+        action: () => deleteAudio({ chapterNumber, versionId })
+      });
     },
-    [audioDeleting, deleteAudio]
+    [audioDeleting, confirmAction, deleteAudio]
   );
 
   return {

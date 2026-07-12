@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useConfirmation } from '@/components/ConfirmationProvider';
 import {
   chapterTextVersionHandlers,
   type ChapterTextVersionActions
@@ -64,6 +65,7 @@ export function useChapterTextVersionCommands({
   promptName,
   actions
 }: ChapterTextVersionCommandsParams) {
+  const { confirmAction } = useConfirmation();
   const handleGenerate = useCallback(async () => {
     if (!canGenerate || !bookId || !chapterNumber || !chapterRange || generating) {
       return;
@@ -148,16 +150,17 @@ export function useChapterTextVersionCommands({
     if (!bookId || !chapterNumber || !selectedVersion || !selectedVersion.deletable || versionSaving) {
       return;
     }
-    const confirmed = window.confirm(`Delete ${selectedVersion.label}?`);
-    if (!confirmed) {
-      return;
-    }
-    await chapterTextVersionHandlers.runAction('deleteVersion', null, actions, {
-      bookId,
-      chapterNumber,
-      versionId: selectedVersion.id
+    await confirmAction({
+      title: `Delete “${selectedVersion.label}”?`,
+      description: `This text version for chapter ${chapterNumber} will be permanently deleted. The base chapter remains unchanged.`,
+      confirmLabel: 'Delete version',
+      action: () => chapterTextVersionHandlers.runAction('deleteVersion', null, actions, {
+        bookId,
+        chapterNumber,
+        versionId: selectedVersion.id
+      })
     });
-  }, [actions, bookId, chapterNumber, selectedVersion, versionSaving]);
+  }, [actions, bookId, chapterNumber, confirmAction, selectedVersion, versionSaving]);
 
   const handleCancelAudioJob = useCallback(async () => {
     if (!bookId || !chapterNumber) {
@@ -175,14 +178,16 @@ export function useChapterTextVersionCommands({
       return;
     }
     const targetVersionId = chapterAudioVersionId || selectedVersionId || 'base';
-    const confirmed = window.confirm('Delete generated MP3 for this chapter?');
-    if (!confirmed) {
-      return;
-    }
-    await chapterTextVersionHandlers.runAction('deleteAudio', null, actions, {
-      bookId,
-      chapterNumber,
-      versionId: targetVersionId
+    const versionLabel = selectedVersion?.label ?? targetVersionId;
+    await confirmAction({
+      title: `Delete chapter ${chapterNumber} MP3?`,
+      description: `Generated audio for “${versionLabel}” will be permanently deleted. The chapter text is not affected.`,
+      confirmLabel: 'Delete MP3',
+      action: () => chapterTextVersionHandlers.runAction('deleteAudio', null, actions, {
+        bookId,
+        chapterNumber,
+        versionId: targetVersionId
+      })
     });
   }, [
     actions,
@@ -191,7 +196,9 @@ export function useChapterTextVersionCommands({
     chapterAudioUrl,
     chapterAudioVersionId,
     chapterNumber,
+    confirmAction,
     isAudioJobActive,
+    selectedVersion?.label,
     selectedVersionId
   ]);
 

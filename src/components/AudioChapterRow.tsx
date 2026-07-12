@@ -4,7 +4,11 @@ import type { ChapterAudioProvider } from '@/types/app';
 
 type AudioChapterRowProps = {
   cancelAudioJob: (chapterNumber: number) => Promise<void>;
-  confirmDeleteAudio: (chapterNumber: number, versionId: string) => Promise<void>;
+  confirmDeleteAudio: (payload: {
+    chapterNumber: number;
+    chapterTitle: string;
+    versionId: string;
+  }) => Promise<void>;
   generateAudio: (payload: {
     chapterNumber: number;
     versionId: string;
@@ -109,7 +113,11 @@ export default function AudioChapterRow({
             <button
               type="button"
               className="button button-secondary audio-delete"
-              onClick={() => void confirmDeleteAudio(entry.chapterNumber, row.latestVersionId)}
+              onClick={() => void confirmDeleteAudio({
+                chapterNumber: entry.chapterNumber,
+                chapterTitle: entry.title,
+                versionId: row.latestVersionId
+              })}
               disabled={row.playDisabled}
               aria-label="Delete MP3 file"
               title="Delete MP3 file"

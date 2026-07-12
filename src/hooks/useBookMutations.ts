@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { useConfirmation } from '@/components/ConfirmationProvider';
 import { useToast } from '@/hooks/useToast';
 import {
   addSortedBook,
@@ -17,6 +18,7 @@ import {
 } from '@/state/appState';
 
 export function useChapterActions() {
+  const { confirmAction } = useConfirmation();
   const { showToast } = useToast();
   const dispatch = useAppDispatch();
   const { bookId } = useAppSelector(selectReaderSession);
@@ -102,18 +104,17 @@ export function useChapterActions() {
         showToast('Valid chapter is required', 'error');
         return;
       }
-      const confirmed = window.confirm(
-        `Delete chapter ${chapterNumber}? Other chapter numbers will stay unchanged.`
-      );
-      if (!confirmed) {
-        return;
-      }
-      await bookSessionHandlers.runAction('deleteChapter', null, actions, {
-        bookId,
-        chapterNumber
+      await confirmAction({
+        title: `Delete chapter ${chapterNumber}?`,
+        description: `Chapter ${chapterNumber} and its text in “${bookId}” will be permanently deleted. Other chapter numbers will stay unchanged.`,
+        confirmLabel: 'Delete chapter',
+        action: () => bookSessionHandlers.runAction('deleteChapter', null, actions, {
+          bookId,
+          chapterNumber
+        })
       });
     },
-    [actions, bookId, bookType, showToast]
+    [actions, bookId, bookType, confirmAction, showToast]
   );
 
   return {
