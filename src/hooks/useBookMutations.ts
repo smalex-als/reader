@@ -152,12 +152,6 @@ export function useDeleteBook() {
 
   return useCallback(
     async (targetBookId: string) => {
-      const confirmed = window.confirm(
-        `Delete "${targetBookId}" and all of its files? This cannot be undone.`
-      );
-      if (!confirmed) {
-        return;
-      }
       await bookSessionHandlers.runAction('deleteBook', null, actions, {
         targetBookId,
         currentBookId: bookId

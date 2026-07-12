@@ -691,6 +691,16 @@ body {
   background: rgba(213, 229, 242, 0.12);
 }
 
+.button-danger {
+  color: #fff2f2;
+  background: rgba(218, 65, 73, 0.78);
+  border-color: rgba(255, 112, 120, 0.72);
+}
+
+.button-danger:hover:not(:disabled) {
+  background: rgba(232, 72, 81, 0.92);
+}
+
 .button-ghost {
   background: transparent;
   border: none;
@@ -3188,6 +3198,32 @@ body {
 .modal-image-preview {
   width: min(1120px, calc(100vw - 2rem));
   max-height: min(90vh, 920px);
+}
+
+.modal-confirmation {
+  width: min(440px, 100%);
+  height: auto;
+  max-height: min(90vh, 420px);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+}
+
+.confirmation-modal-body {
+  padding-top: 0.2rem;
+}
+
+.confirmation-modal-copy {
+  margin: 0;
+  color: rgba(213, 229, 242, 0.74);
+  line-height: 1.55;
+}
+
+.confirmation-modal-copy strong {
+  color: rgba(246, 250, 255, 0.96);
+  overflow-wrap: anywhere;
+}
+
+.confirmation-modal-actions {
+  justify-content: flex-end;
 }
 
 .modal-header,

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import ModalShell from '@/components/ModalShell';
 import { useDeleteBook, useUploadChapter, useUploadPdf } from '@/hooks/useBookMutations';
 import {
@@ -47,6 +48,8 @@ export default function BookSelectModal() {
   const [chapterTitle, setChapterTitle] = useState('');
   const [sortMode, setSortMode] = useState<BookSortMode>(() => loadBookSortMode());
   const [bookMeta, setBookMeta] = useState(() => loadBookMeta());
+  const [pendingDeleteBook, setPendingDeleteBook] = useState<string | null>(null);
+  const [deletingBook, setDeletingBook] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -160,6 +163,18 @@ export default function BookSelectModal() {
     dispatch(appActions.setMainView('reader'));
     dispatch(appActions.setReaderBookId(book));
     dispatch(appActions.closeModal('bookSelect'));
+  };
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteBook || deletingBook) {
+      return;
+    }
+    setDeletingBook(true);
+    try {
+      await deleteBook(pendingDeleteBook);
+      setPendingDeleteBook(null);
+    } finally {
+      setDeletingBook(false);
+    }
   };
   if (!open) {
     return null;
@@ -311,7 +326,7 @@ export default function BookSelectModal() {
                         <button
                           type="button"
                           className="button button-ghost book-select-action book-select-delete"
-                          onClick={() => void deleteBook(book)}
+                          onClick={() => setPendingDeleteBook(book)}
                           aria-label={`Delete ${book}`}
                         >
                           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -413,6 +428,20 @@ export default function BookSelectModal() {
             Done
           </button>
         </footer>
+        {pendingDeleteBook ? (
+          <ConfirmationModal
+            title="Delete this book?"
+            confirmLabel="Delete book"
+            busy={deletingBook}
+            onCancel={() => setPendingDeleteBook(null)}
+            onConfirm={() => void handleConfirmDelete()}
+          >
+            <p className="confirmation-modal-copy">
+              <strong>{pendingDeleteBook}</strong> and all of its files will be permanently deleted.
+              This action cannot be undone.
+            </p>
+          </ConfirmationModal>
+        ) : null}
     </ModalShell>
   );
 }
