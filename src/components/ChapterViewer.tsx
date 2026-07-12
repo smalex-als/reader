@@ -1,10 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import AddIcon from '@/components/AddIcon';
 import ChapterTextMarkdownLayout from '@/components/ChapterTextMarkdownLayout';
+import ChapterToolsPanel from '@/components/ChapterToolsPanel';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
-import TextSettingsPanel from '@/components/TextSettingsPanel';
-import TrashIcon from '@/components/TrashIcon';
 import { useChapterActions } from '@/hooks/useBookMutations';
 import { useChapterTextPlaybackMarker } from '@/hooks/useChapterTextPlaybackMarker';
 import { useChapterTextVersionModalRuntime } from '@/hooks/useChapterTextVersionModalRuntime';
@@ -214,226 +212,65 @@ export default function ChapterViewer() {
           </button>
         </div>
         {toolsOpen ? (
-          <div className="text-viewer-tools-panel" id="text-viewer-tools">
-            <section className="text-viewer-tools-section" aria-label="View tools">
-              <h3 className="text-viewer-tools-title">View</h3>
-              <div className="text-viewer-tools-body">
-                <div className="text-viewer-tools-row">
-                  <button
-                    type="button"
-                    className="button button-secondary"
-                    onClick={() => setSettingsOpen((prev) => !prev)}
-                    aria-expanded={settingsOpen}
-                    aria-controls="text-viewer-settings"
-                  >
-                    {settingsOpen ? 'Hide settings' : 'Text settings'}
-                  </button>
-                  {outlineItems.length > 0 ? (
-                    <button
-                      type="button"
-                      className="button button-secondary"
-                      onClick={() => setOutlineOpen((prev) => !prev)}
-                      aria-expanded={outlineOpen}
-                      aria-controls="text-viewer-outline"
-                    >
-                      {outlineOpen ? 'Hide outline' : 'Show outline'}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-            {bookType === 'text' ? (
-              <section className="text-viewer-tools-section" aria-label="Chapter tools">
-                <h3 className="text-viewer-tools-title">Chapter</h3>
-                <div className="text-viewer-tools-body">
-                  <div className="text-viewer-tools-row">
-                    <button
-                      type="button"
-                      className="button button-ghost modal-icon-button"
-                      onClick={() => void handleCreateChapter({ bookName: '', chapterTitle: '' })}
-                      disabled={chapterCreating}
-                      aria-label="Create chapter"
-                      title="Create chapter"
-                    >
-                      <AddIcon />
-                    </button>
-                    {chapterNumber ? (
-                      <button
-                        type="button"
-                        className="button button-ghost modal-icon-button"
-                        onClick={() => void handleDeleteChapter(chapterNumber)}
-                        disabled={chapterDeleting || displayLoading}
-                        aria-label="Delete chapter"
-                        title="Delete chapter"
-                      >
-                        <TrashIcon />
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </section>
-            ) : null}
-            <section className="text-viewer-tools-section" aria-label="Version tools">
-              <h3 className="text-viewer-tools-title">Versions</h3>
-              <div className="text-viewer-tools-body">
-                <div className="text-viewer-tools-row">
-                  <button
-                    type="button"
-                    className="button button-ghost modal-icon-button"
-                    onClick={openVersionModal}
-                    disabled={!canCreateVersion || versionSaving}
-                    aria-label="Create text version"
-                    title="Create text version"
-                  >
-                    <AddIcon />
-                  </button>
-                  {selectedVersion?.deletable ? (
-                    <button
-                      type="button"
-                      className="button button-ghost modal-icon-button"
-                      onClick={() => void handleDeleteVersion()}
-                      disabled={versionSaving}
-                      aria-label="Delete selected version"
-                      title="Delete selected version"
-                    >
-                      <TrashIcon />
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-            <section className="text-viewer-tools-section" aria-label="Audio tools">
-              <h3 className="text-viewer-tools-title">Audio</h3>
-              <div className="text-viewer-tools-body">
-                <div className="text-viewer-tools-row">
-                  {chapterNumber && mp3VoiceOptions.length > 0 ? (
-                    <label className="text-viewer-version-select text-viewer-voice-select">
-                      <span>MP3 voice</span>
-                      <select
-                        value={mp3Voice}
-                        onChange={(event) => handleMp3VoiceChange(event.target.value)}
-                        disabled={isAudioJobActive || audioGenerating}
-                      >
-                        {mp3VoiceOptions.map((voice) => (
-                          <option key={voice.id} value={voice.id}>
-                            {voice.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ) : null}
-                  {chapterNumber ? (
-                    <button
-                      type="button"
-                      className="button button-secondary"
-                      onClick={() => void handleGenerateAudio()}
-                      disabled={!canGenerateAudio || audioGenerating || audioDeleting || isAudioJobActive || !mp3Voice}
-                    >
-                      {audioGenerating
-                        ? 'Queuing MP3…'
-                        : chapterAudioReady && chapterAudioVersionId === selectedVersionId
-                          ? 'Regenerate MP3'
-                          : 'Generate MP3'}
-                    </button>
-                  ) : null}
-                  {chapterNumber && isAudioJobActive ? (
-                    <button type="button" className="button button-secondary" onClick={handleCancelAudioJob}>
-                      Cancel
-                    </button>
-                  ) : null}
-                  {chapterAudioReady && chapterAudioUrl ? (
-                    <>
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        onClick={() =>
-                          playChapterAudio({
-                            audioUrl: chapterAudioUrl,
-                            subchapters: chapterAudioSubchapters
-                          })
-                        }
-                        disabled={audioDeleting}
-                      >
-                        ▶ Play
-                      </button>
-                      <a
-                        className="button button-secondary modal-icon-button"
-                        href={chapterAudioUrl}
-                        download
-                        aria-label="Download MP3 file"
-                        title="Download MP3 file"
-                      >
-                        ↓
-                      </a>
-                      <button
-                        type="button"
-                        className="button button-secondary modal-icon-button"
-                        onClick={() => void handleDeleteAudio()}
-                        disabled={audioDeleting || isAudioJobActive}
-                        aria-label="Delete MP3 file"
-                        title="Delete MP3 file"
-                      >
-                        <TrashIcon size={16} />
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-                {isAudioJobActive && audioJob?.progress ? (
-                  <div className="mp3-generation-progress">
-                    <div
-                      className="mp3-generation-progress-track"
-                      role="progressbar"
-                      aria-valuenow={audioJob.progress.percent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label="MP3 generation progress"
-                    >
-                      <div
-                        className="mp3-generation-progress-fill"
-                        style={{ width: `${audioJob.progress.percent}%` }}
-                      />
-                    </div>
-                    <div className="mp3-generation-progress-meta">
-                      <span>{audioJob.progress.label ?? 'Generating MP3'}</span>
-                      <span>
-                        {audioJob.progress.percent}%
-                        {audioJob.progress.total > 0
-                          ? ` · ${audioJob.progress.current}/${audioJob.progress.total}`
-                          : ''}
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </section>
-            <section className="text-viewer-tools-section" aria-label="Study tools">
-              <h3 className="text-viewer-tools-title">Study</h3>
-              <div className="text-viewer-tools-body">
-                <div className="text-viewer-tools-row">
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={() =>
-                      void handleCreateUnit({
-                        text: displayText ?? '',
-                        chapterTitle,
-                        versionLabel: selectedVersion?.label ?? null,
-                        versionId: selectedVersionId
-                      })
-                    }
-                    disabled={!chapterNumber || !displayText?.trim() || displayLoading || unitCreating}
-                  >
-                    {unitCreating ? 'Creating...' : 'Create a unit'}
-                  </button>
-                </div>
-              </div>
-            </section>
-          </div>
-        ) : null}
-        {settingsOpen ? (
-          <TextSettingsPanel
-            id="text-viewer-settings"
-            controlPrefix="text"
+          <ChapterToolsPanel
+            settings={{
+              open: settingsOpen,
+              onToggle: () => setSettingsOpen((current) => !current)
+            }}
+            outline={{
+              available: outlineItems.length > 0,
+              open: outlineOpen,
+              onToggle: () => setOutlineOpen((current) => !current)
+            }}
+            chapter={{
+              visible: bookType === 'text',
+              number: chapterNumber,
+              creating: chapterCreating,
+              deleting: chapterDeleting || displayLoading,
+              onCreate: () => void handleCreateChapter({ bookName: '', chapterTitle: '' }),
+              onDelete: () => {
+                if (chapterNumber) {
+                  void handleDeleteChapter(chapterNumber);
+                }
+              }
+            }}
+            versions={{
+              canCreate: canCreateVersion,
+              canDelete: Boolean(selectedVersion?.deletable),
+              saving: versionSaving,
+              onCreate: openVersionModal,
+              onDelete: () => void handleDeleteVersion()
+            }}
+            audio={{
+              audioDeleting,
+              audioGenerating,
+              audioJob,
+              canGenerateAudio,
+              chapterAudioReady,
+              chapterAudioSubchapters,
+              chapterAudioUrl,
+              chapterAudioVersionId,
+              chapterNumber,
+              isAudioJobActive,
+              mp3Voice,
+              mp3VoiceOptions,
+              onCancelAudioJob: handleCancelAudioJob,
+              onDeleteAudio: () => void handleDeleteAudio(),
+              onGenerateAudio: () => void handleGenerateAudio(),
+              onPlayAudio: playChapterAudio,
+              onVoiceChange: handleMp3VoiceChange,
+              selectedVersionId
+            }}
+            study={{
+              creating: unitCreating,
+              disabled: !chapterNumber || !displayText?.trim() || displayLoading || unitCreating,
+              onCreate: () => void handleCreateUnit({
+                text: displayText ?? '',
+                chapterTitle,
+                versionLabel: selectedVersion?.label ?? null,
+                versionId: selectedVersionId
+              })
+            }}
           />
         ) : null}
       </header>
