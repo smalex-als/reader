@@ -5,6 +5,7 @@ import test from 'node:test';
 import { DATA_DIR } from '../server/config.js';
 import {
   buildYouTubeDownloadArgs,
+  extractYouTubeVideoTitle,
   formatChapterSourceAudioFilename,
   getYouTubeAudioDownload,
   normalizeYouTubeUrl
@@ -41,9 +42,18 @@ test('builds a single-video MP3 yt-dlp command without invoking a shell', () => 
     '--no-progress',
     '--output'
   ]);
-  assert.equal(args.at(-2), '/data/book/chapter001.source-job.download.%(ext)s');
+  assert.equal(args.at(-4), '/data/book/chapter001.source-job.download.%(ext)s');
+  assert.equal(args.at(-3), '--print');
+  assert.equal(args.at(-2), 'after_move:%(title)s');
   assert.equal(args.at(-1), 'https://youtu.be/abc123');
   assert.equal(formatChapterSourceAudioFilename(7), 'chapter007.mp3');
+});
+
+test('extracts the final YouTube title from yt-dlp output', () => {
+  assert.equal(
+    extractYouTubeVideoTitle('download message\nThis type of training CHANGED everything for me.\n'),
+    'This type of training CHANGED everything for me.'
+  );
 });
 
 test('migrates completed source audio into the playable base chapter filename', async () => {

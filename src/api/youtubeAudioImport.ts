@@ -10,6 +10,7 @@ export type YouTubeAudioImportStatus = {
   error?: string | null;
   audioUrl?: string | null;
   bytes?: number | null;
+  videoTitle?: string | null;
 };
 
 async function readStatus(response: Response) {

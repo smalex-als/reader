@@ -7,6 +7,7 @@ import { YT_DLP_BIN } from '../config.js';
 import { createHttpError } from './errors.js';
 import { assertBookDirectory } from './books.js';
 import { safeStat, writeFileAtomic } from './fs.js';
+import { updateTocTitle } from './toc.js';
 import {
   enqueueBackgroundJob,
   isBackgroundQueueEnabled,
@@ -71,8 +72,18 @@ export function buildYouTubeDownloadArgs({ sourceUrl, outputTemplate }) {
     '--no-progress',
     '--output',
     outputTemplate,
+    '--print',
+    'after_move:%(title)s',
     sourceUrl
   ];
+}
+
+export function extractYouTubeVideoTitle(output) {
+  const lines = String(output || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return (lines.at(-1) || '').slice(0, 300);
 }
 
 async function writeSourceMetadata(directory, chapterNumber, metadata) {
@@ -172,11 +183,12 @@ export async function runYouTubeAudioDownloadJob({
 
   try {
     await fs.rm(temporaryMp3Path, { force: true });
-    await execFileAsync(
+    const { stdout } = await execFileAsync(
       YT_DLP_BIN,
       buildYouTubeDownloadArgs({ sourceUrl: normalizedUrl, outputTemplate }),
       { timeout: 30 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 }
     );
+    const videoTitle = extractYouTubeVideoTitle(stdout);
     const downloaded = await safeStat(temporaryMp3Path);
     if (!downloaded?.isFile() || downloaded.size <= 0) {
       throw createHttpError(502, 'yt-dlp did not produce an MP3 file');
@@ -187,10 +199,18 @@ export async function runYouTubeAudioDownloadJob({
       return null;
     }
     await fs.rename(temporaryMp3Path, finalPath);
+    if (videoTitle) {
+      try {
+        await updateTocTitle(bookId, chapterNumber - 1, videoTitle);
+      } catch (error) {
+        console.warn('Unable to update chapter title from YouTube metadata', error);
+      }
+    }
     return writeSourceMetadata(directory, chapterNumber, {
       ...baseMetadata,
       status: 'completed',
       completedAt: new Date().toISOString(),
+      videoTitle: videoTitle || null,
       audioUrl: `/data/${bookId}/${finalFilename}`,
       bytes: downloaded.size
     });

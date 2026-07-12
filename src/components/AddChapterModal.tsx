@@ -44,7 +44,11 @@ export default function AddChapterModal({
     if (source === 'youtube' && !sourceUrl.trim()) {
       return;
     }
-    await onSubmit({ chapterTitle, source, sourceUrl });
+    await onSubmit({
+      chapterTitle: source === 'youtube' ? '' : chapterTitle,
+      source,
+      sourceUrl
+    });
   };
 
   return (
@@ -83,16 +87,18 @@ export default function AddChapterModal({
               <option value="youtube">YouTube URL</option>
             </select>
           </label>
-          <label className="text-viewer-setting add-chapter-modal-field">
-            <span className="text-viewer-setting-label">Chapter title</span>
-            <input
-              className="text-viewer-input"
-              value={chapterTitle}
-              onChange={(event) => setChapterTitle(event.target.value)}
-              placeholder="Optional"
-              disabled={busy}
-            />
-          </label>
+          {source === 'blank' ? (
+            <label className="text-viewer-setting add-chapter-modal-field">
+              <span className="text-viewer-setting-label">Chapter title</span>
+              <input
+                className="text-viewer-input"
+                value={chapterTitle}
+                onChange={(event) => setChapterTitle(event.target.value)}
+                placeholder="Optional"
+                disabled={busy}
+              />
+            </label>
+          ) : null}
           {source === 'youtube' ? (
             <label className="text-viewer-setting add-chapter-modal-field">
               <span className="text-viewer-setting-label">YouTube URL</span>
@@ -106,7 +112,7 @@ export default function AddChapterModal({
                 disabled={busy}
               />
               <span className="text-viewer-placeholder-help">
-                The URL becomes the initial chapter text. MP3 download continues in the background.
+                The video title becomes the chapter title. MP3 download continues in the background.
               </span>
             </label>
           ) : null}

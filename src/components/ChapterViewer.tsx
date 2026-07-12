@@ -57,10 +57,11 @@ export default function ChapterViewer() {
     youtubeAudioImport.status?.sourceUrl &&
     chapterTitle?.trim() === youtubeAudioImport.status.sourceUrl.trim()
   );
-  const visibleChapterTitle = youtubeTitlePlaceholder ? 'YouTube Chapter' : chapterTitle;
-  const visibleChapterLabel = youtubeTitlePlaceholder && chapterNumber
-    ? `Chapter ${chapterNumber}`
-    : chapterLabel;
+  const youtubeVideoTitle = youtubeAudioImport.status?.videoTitle?.trim() || null;
+  const visibleChapterTitle = youtubeVideoTitle || (youtubeTitlePlaceholder ? 'YouTube Chapter' : chapterTitle);
+  const visibleChapterLabel = youtubeVideoTitle || (
+    youtubeTitlePlaceholder && chapterNumber ? `Chapter ${chapterNumber}` : chapterLabel
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [addChapterOpen, setAddChapterOpen] = useState(false);

@@ -4,7 +4,12 @@ import {
   retryYouTubeAudioImport,
   type YouTubeAudioImportStatus
 } from '@/api/youtubeAudioImport';
-import { appActions, useAppDispatch } from '@/state/appState';
+import {
+  appActions,
+  selectTocWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 const ACTIVE_POLL_DELAY_MS = 2000;
 const FAILED_RECHECK_LIMIT = 10;
@@ -17,6 +22,7 @@ export function useYouTubeAudioImport({
   chapterNumber: number | null;
 }) {
   const dispatch = useAppDispatch();
+  const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
   const [status, setStatus] = useState<YouTubeAudioImportStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -85,8 +91,17 @@ export function useYouTubeAudioImport({
       return;
     }
     refreshedJobs.current.add(key);
+    if (status.videoTitle?.trim()) {
+      dispatch(appActions.setTocEntries(
+        tocEntries.map((entry) =>
+          entry.page === chapterNumber - 1
+            ? { ...entry, title: status.videoTitle!.trim() }
+            : entry
+        )
+      ));
+    }
     dispatch(appActions.refreshChapterView());
-  }, [bookId, chapterNumber, dispatch, status]);
+  }, [bookId, chapterNumber, dispatch, status, tocEntries]);
 
   const retry = useCallback(async () => {
     if (!bookId || !chapterNumber || retrying) {
