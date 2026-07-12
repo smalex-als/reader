@@ -38,7 +38,7 @@ export function useChapterActions() {
           dispatch(appActions.setTocEntries(data.toc));
           dispatch(appActions.setReaderCurrentPage(data.chapterIndex ?? 0));
           dispatch(appActions.setEditorChapterNumber(data.chapterIndex !== null ? data.chapterIndex + 1 : null));
-          dispatch(appActions.setEditorOpen(true));
+          dispatch(appActions.setEditorOpen(!data.sourceAudioJob));
           dispatch(appActions.setReaderViewMode('text'));
           dispatch(appActions.setModalOpen('bookSelect', false));
         },

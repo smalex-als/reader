@@ -4,6 +4,7 @@ import ChapterTextMarkdownLayout from '@/components/ChapterTextMarkdownLayout';
 import AddChapterModal from '@/components/AddChapterModal';
 import ChapterToolsPanel from '@/components/ChapterToolsPanel';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
+import YouTubeAudioImportCard from '@/components/YouTubeAudioImportCard';
 import { useChapterActions } from '@/hooks/useBookMutations';
 import { useChapterTextPlaybackMarker } from '@/hooks/useChapterTextPlaybackMarker';
 import { useChapterTextVersionModalRuntime } from '@/hooks/useChapterTextVersionModalRuntime';
@@ -14,6 +15,7 @@ import { useChapterViewerActions } from '@/hooks/useChapterViewerActions';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useDisplayedChapterText } from '@/hooks/useDisplayedChapterText';
 import { useUnitActions } from '@/hooks/useUnitActions';
+import { useYouTubeAudioImport } from '@/hooks/useYouTubeAudioImport';
 import { formatListeningTime } from '@/lib/listeningTime';
 import {
   selectBookDeletingChapter,
@@ -50,6 +52,15 @@ export default function ChapterViewer() {
     unitCreating,
     handleCreateUnit
   } = useUnitActions();
+  const youtubeAudioImport = useYouTubeAudioImport({ bookId, chapterNumber });
+  const youtubeTitlePlaceholder = Boolean(
+    youtubeAudioImport.status?.sourceUrl &&
+    chapterTitle?.trim() === youtubeAudioImport.status.sourceUrl.trim()
+  );
+  const visibleChapterTitle = youtubeTitlePlaceholder ? 'YouTube Chapter' : chapterTitle;
+  const visibleChapterLabel = youtubeTitlePlaceholder && chapterNumber
+    ? `Chapter ${chapterNumber}`
+    : chapterLabel;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [addChapterOpen, setAddChapterOpen] = useState(false);
@@ -98,7 +109,7 @@ export default function ChapterViewer() {
     playChapterAudio
   } = useChapterViewerActions({
     chapterNumber,
-    chapterTitle,
+    chapterTitle: visibleChapterTitle,
     displayText: displayText ?? '',
     selectedVersion,
     selectedVersionId,
@@ -132,11 +143,16 @@ export default function ChapterViewer() {
   });
   useDisplayedChapterText({
     chapterNumber,
-    chapterTitle,
+    chapterTitle: visibleChapterTitle,
     displayText: displayText ?? '',
     selectedVersionId,
     selectedVersionLabel: selectedVersion?.label ?? null
   });
+
+  const youtubeUrlPlaceholder = Boolean(
+    youtubeAudioImport.status?.sourceUrl &&
+    displayText?.trim() === youtubeAudioImport.status.sourceUrl.trim()
+  );
 
   const handleToolsToggle = useCallback(() => {
     setToolsOpen((current) => {
@@ -162,7 +178,7 @@ export default function ChapterViewer() {
       <header className="text-viewer-header">
         <div className="text-viewer-title">
           <div className="text-viewer-title-kicker">
-            <span className="text-viewer-label">{chapterLabel}</span>
+            <span className="text-viewer-label">{visibleChapterLabel}</span>
             <button
               type="button"
               className="text-viewer-audio-link"
@@ -171,7 +187,7 @@ export default function ChapterViewer() {
               Audio
             </button>
           </div>
-          <h2 className="text-viewer-heading">{chapterTitle ?? 'No chapter selected'}</h2>
+          <h2 className="text-viewer-heading">{visibleChapterTitle ?? 'No chapter selected'}</h2>
         </div>
         {pageMeta ? <div className="text-viewer-meta">{pageMeta}</div> : null}
         <div className="text-viewer-actions">
@@ -268,7 +284,7 @@ export default function ChapterViewer() {
               disabled: !chapterNumber || !displayText?.trim() || displayLoading || unitCreating,
               onCreate: () => void handleCreateUnit({
                 text: displayText ?? '',
-                chapterTitle,
+                chapterTitle: visibleChapterTitle,
                 versionLabel: selectedVersion?.label ?? null,
                 versionId: selectedVersionId
               })
@@ -298,12 +314,21 @@ export default function ChapterViewer() {
         {!tocLoading && chapterNumber && !displayLoading && !missingFile && displayError && (
           <p className="text-viewer-status">{displayError}</p>
         )}
+        {youtubeAudioImport.status ? (
+          <YouTubeAudioImportCard
+            status={youtubeAudioImport.status}
+            requestError={youtubeAudioImport.requestError}
+            retrying={youtubeAudioImport.retrying}
+            onRetry={() => void youtubeAudioImport.retry()}
+            onPlay={(audioUrl) => playChapterAudio({ audioUrl, subchapters: [] })}
+          />
+        ) : null}
         <ChapterTextMarkdownLayout
           activeOutlineId={activeOutlineId}
           chapterNumber={chapterNumber}
           displayError={displayError}
           displayLoading={displayLoading}
-          displayText={displayText ?? ''}
+          displayText={youtubeUrlPlaceholder ? '' : displayText ?? ''}
           handleOutlineSelect={handleOutlineSelect}
           missingFile={missingFile}
           outlineByOffset={outlineByOffset}
@@ -321,6 +346,7 @@ export default function ChapterViewer() {
           !generating &&
           !missingFile &&
           !displayError &&
+          !youtubeUrlPlaceholder &&
           !displayText && <p className="text-viewer-status">Chapter text is empty.</p>}
         {!tocLoading && allowGenerate && chapterNumber && !missingFile ? (
           <div className="text-viewer-regenerate">

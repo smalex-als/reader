@@ -15,7 +15,7 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - Streaming audio via WebSocket (external stream server), including a floating stream control bubble.
 - Backend streaming audio test endpoints for raw PCM and experimental streaming WAV output.
 - Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
-- Text chapters can be created from a YouTube URL; the URL is saved as the initial chapter body and `yt-dlp` downloads a source MP3 through BullMQ.
+- Text chapters can be created from a YouTube URL; the URL is saved as the initial chapter body while `yt-dlp` downloads an MP3 through BullMQ. The chapter shows persistent queued/downloading/completed/failed status, playback, and retry controls.
 - Redis/BullMQ background processing for long-running chapter MP3 generation, with retries and durable queued work.
 - Study tools per chapter: `Quiz`, `Vocabulary`, and `Memory Card`.
 - Unit study sets: turn a chapter into standalone topic-based units, open topics by URL, stream topic paragraphs, mark topics read/unread, and create quizzes for individual topics.

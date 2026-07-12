@@ -50,6 +50,14 @@ function formatChapterSourceMetadataFilename(chapterNumber) {
   return `${formatChapterPrefix(chapterNumber)}.youtube.json`;
 }
 
+function formatLegacyChapterSourceAudioFilename(chapterNumber) {
+  return `${formatChapterPrefix(chapterNumber)}.source.mp3`;
+}
+
+function formatLegacyChapterSourceMetadataFilename(chapterNumber) {
+  return `${formatChapterPrefix(chapterNumber)}.source.json`;
+}
+
 export function buildYouTubeDownloadArgs({ sourceUrl, outputTemplate }) {
   return [
     '--ignore-config',
@@ -74,15 +82,63 @@ async function writeSourceMetadata(directory, chapterNumber, metadata) {
 }
 
 async function loadSourceMetadata(directory, chapterNumber) {
-  const metadataPath = path.join(directory, formatChapterSourceMetadataFilename(chapterNumber));
-  try {
-    return JSON.parse(await fs.readFile(metadataPath, 'utf8'));
-  } catch (error) {
-    if (error?.code === 'ENOENT' || error instanceof SyntaxError) {
-      return null;
+  const filenames = [
+    formatChapterSourceMetadataFilename(chapterNumber),
+    formatLegacyChapterSourceMetadataFilename(chapterNumber)
+  ];
+  for (const filename of filenames) {
+    try {
+      return JSON.parse(await fs.readFile(path.join(directory, filename), 'utf8'));
+    } catch (error) {
+      if (error?.code !== 'ENOENT' && !(error instanceof SyntaxError)) {
+        throw error;
+      }
     }
-    throw error;
   }
+  return null;
+}
+
+export async function getYouTubeAudioDownload({ bookId, chapterNumber }) {
+  const directory = await assertBookDirectory(bookId);
+  const metadata = await loadSourceMetadata(directory, chapterNumber);
+  if (!metadata) {
+    return null;
+  }
+  const currentMetadataPath = path.join(directory, formatChapterSourceMetadataFilename(chapterNumber));
+  const legacyMetadataPath = path.join(directory, formatLegacyChapterSourceMetadataFilename(chapterNumber));
+  if (!(await safeStat(currentMetadataPath))?.isFile()) {
+    await writeSourceMetadata(directory, chapterNumber, metadata);
+    await fs.rm(legacyMetadataPath, { force: true });
+  }
+  if (metadata.status !== 'completed') {
+    return metadata;
+  }
+  const audioFilename = formatChapterSourceAudioFilename(chapterNumber);
+  const audioPath = path.join(directory, audioFilename);
+  const legacyAudioPath = path.join(directory, formatLegacyChapterSourceAudioFilename(chapterNumber));
+  let audioStat = await safeStat(audioPath);
+  if (!audioStat?.isFile()) {
+    const legacyAudioStat = await safeStat(legacyAudioPath);
+    if (legacyAudioStat?.isFile()) {
+      await fs.rename(legacyAudioPath, audioPath);
+      audioStat = legacyAudioStat;
+    }
+  }
+  if (audioStat?.isFile() && audioStat.size > 0) {
+    const completed = {
+      ...metadata,
+      audioUrl: `/data/${bookId}/${audioFilename}`,
+      bytes: audioStat.size
+    };
+    await writeSourceMetadata(directory, chapterNumber, completed);
+    return completed;
+  }
+  return {
+    ...metadata,
+    status: 'failed',
+    audioUrl: null,
+    error: 'Downloaded MP3 file is missing'
+  };
 }
 
 export async function runYouTubeAudioDownloadJob({

@@ -70,6 +70,7 @@ import { createUnitsFromChapter, listUnits, updateUnitTopicRead } from '../lib/u
 import { createMemoryUpload } from '../lib/upload.js';
 import {
   enqueueYouTubeAudioDownload,
+  getYouTubeAudioDownload,
   normalizeYouTubeUrl
 } from '../lib/chapterSourceAudio.js';
 
@@ -622,6 +623,33 @@ router.get('/api/books/:id/chapters/:chapter/audio/status', asyncHandler(async (
         }
       : null
   });
+}));
+
+router.get('/api/books/:id/chapters/:chapter/youtube-audio/status', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  res.setHeader('Cache-Control', 'no-store');
+  const job = await getYouTubeAudioDownload({ bookId, chapterNumber });
+  res.json({ book: bookId, chapterNumber, job });
+}));
+
+router.post('/api/books/:id/chapters/:chapter/youtube-audio/retry', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number.parseInt(req.params.chapter, 10);
+  const existing = await getYouTubeAudioDownload({ bookId, chapterNumber });
+  if (!existing?.sourceUrl) {
+    throw createHttpError(404, 'YouTube audio import not found');
+  }
+  if (existing.status === 'queued' || existing.status === 'running') {
+    res.status(202).json({ book: bookId, chapterNumber, job: existing });
+    return;
+  }
+  const job = await enqueueYouTubeAudioDownload({
+    bookId,
+    chapterNumber,
+    sourceUrl: existing.sourceUrl
+  });
+  res.status(job.status === 'failed' ? 503 : 202).json({ book: bookId, chapterNumber, job });
 }));
 
 router.post('/api/books/:id/chapters/:chapter/audio/cancel', asyncHandler(async (req, res) => {

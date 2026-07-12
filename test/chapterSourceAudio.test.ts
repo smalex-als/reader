@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
+import { DATA_DIR } from '../server/config.js';
 import {
   buildYouTubeDownloadArgs,
   formatChapterSourceAudioFilename,
+  getYouTubeAudioDownload,
   normalizeYouTubeUrl
 } from '../server/lib/chapterSourceAudio.js';
 
@@ -40,4 +44,30 @@ test('builds a single-video MP3 yt-dlp command without invoking a shell', () => 
   assert.equal(args.at(-2), '/data/book/chapter001.source-job.download.%(ext)s');
   assert.equal(args.at(-1), 'https://youtu.be/abc123');
   assert.equal(formatChapterSourceAudioFilename(7), 'chapter007.mp3');
+});
+
+test('migrates completed source audio into the playable base chapter filename', async () => {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  const directory = await fs.mkdtemp(path.join(DATA_DIR, '.youtube-import-test-'));
+  const bookId = path.basename(directory);
+  try {
+    await fs.writeFile(path.join(directory, 'chapter001.source.mp3'), Buffer.from('fake mp3'));
+    await fs.writeFile(path.join(directory, 'chapter001.source.json'), JSON.stringify({
+      source: 'youtube',
+      sourceUrl: 'https://youtu.be/abc123',
+      jobId: 'legacy-job',
+      status: 'completed'
+    }));
+
+    const status = await getYouTubeAudioDownload({ bookId, chapterNumber: 1 });
+
+    assert.equal(status?.status, 'completed');
+    assert.equal(status?.audioUrl, `/data/${bookId}/chapter001.mp3`);
+    assert.equal((await fs.stat(path.join(directory, 'chapter001.mp3'))).isFile(), true);
+    await assert.rejects(fs.stat(path.join(directory, 'chapter001.source.mp3')), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(path.join(directory, 'chapter001.source.json')), { code: 'ENOENT' });
+    assert.equal((await fs.stat(path.join(directory, 'chapter001.youtube.json'))).isFile(), true);
+  } finally {
+    await fs.rm(directory, { recursive: true, force: true });
+  }
 });

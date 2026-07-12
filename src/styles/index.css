@@ -2562,6 +2562,128 @@ body {
   color: var(--text-viewer-muted);
 }
 
+.youtube-audio-import {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--text-viewer-border-soft);
+  border-radius: 1rem;
+  background: var(--text-viewer-bg-soft);
+}
+
+.youtube-audio-import[data-status='completed'] {
+  border-color: rgba(52, 211, 153, 0.38);
+}
+
+.youtube-audio-import[data-status='failed'] {
+  border-color: rgba(248, 113, 113, 0.42);
+}
+
+.youtube-audio-import-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  background: var(--text-viewer-bg-faint);
+  color: var(--text-viewer-accent);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.youtube-audio-import[data-status='completed'] .youtube-audio-import-icon {
+  color: #34d399;
+}
+
+.youtube-audio-import[data-status='failed'] .youtube-audio-import-icon {
+  color: #f87171;
+}
+
+.youtube-audio-import-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.youtube-audio-import-heading,
+.youtube-audio-import-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.youtube-audio-import-kicker {
+  margin-bottom: 0.2rem;
+  color: var(--text-viewer-subtle);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.youtube-audio-import h3,
+.youtube-audio-import p {
+  margin: 0;
+}
+
+.youtube-audio-import h3 {
+  color: var(--text-viewer-strong);
+  font-size: 1rem;
+}
+
+.youtube-audio-import p {
+  margin-top: 0.45rem;
+  color: var(--text-viewer-muted);
+  font-size: 0.9rem;
+}
+
+.youtube-audio-import-source {
+  color: var(--text-viewer-accent);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.youtube-audio-import-source:hover {
+  text-decoration: underline;
+}
+
+.youtube-audio-import-progress {
+  position: relative;
+  height: 0.42rem;
+  margin-top: 0.9rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--text-viewer-border-soft);
+}
+
+.youtube-audio-import-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: inherit;
+  background: var(--text-viewer-accent);
+  animation: youtube-audio-import-progress 1.35s ease-in-out infinite;
+}
+
+.youtube-audio-import-footer {
+  justify-content: flex-start;
+  margin-top: 0.9rem;
+  color: var(--text-viewer-subtle);
+  font-size: 0.82rem;
+}
+
+@keyframes youtube-audio-import-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(365%);
+  }
+}
+
 .mp3-generation-progress {
   width: 100%;
   margin-top: 0.75rem;
