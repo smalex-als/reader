@@ -132,7 +132,7 @@ make server-up       # build and start Redis, Reader, and HTTPS nginx
 make server-start    # start existing server containers
 make server-ps       # container status
 make server-logs     # follow nginx, Reader, and Redis logs
-make server-health   # verify Reader from inside its container
+make server-health   # verify both Reader and the external HTTPS proxy
 make server-restart  # restart the complete server stack
 make server-stop     # stop containers without removing them
 make server-down     # stop and remove containers

@@ -90,7 +90,11 @@ server-ps:
 	$(SERVER_COMPOSE) ps
 
 server-health:
+	@printf 'Reader: '
 	$(SERVER_COMPOSE) exec -T reader curl --fail --silent --show-error http://127.0.0.1:3000/api/health
+	@printf '\n'
+	@printf 'HTTPS proxy: '
+	curl --insecure --fail --silent --show-error https://127.0.0.1:3001/api/health
 	@printf '\n'
 
 lint:

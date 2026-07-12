@@ -64,7 +64,7 @@ main() {
   PROXY_HEALTH_URL="https://127.0.0.1:3001/api/health"
   PROXY_HEALTHY=false
   for _attempt in {1..30}; do
-    if curl --insecure --fail --silent --show-error "$PROXY_HEALTH_URL" >/dev/null; then
+    if curl --insecure --fail --silent "$PROXY_HEALTH_URL" >/dev/null 2>&1; then
       PROXY_HEALTHY=true
       break
     fi
@@ -80,7 +80,9 @@ main() {
     docker image prune -f >/dev/null
   fi
 
-  log "deploy succeeded at $(git rev-parse --short HEAD) (Reader, Redis, and nginx healthy)"
+  SUCCESS_MESSAGE="deploy succeeded at $(git rev-parse --short HEAD) (Reader, Redis, and nginx healthy)"
+  log "$SUCCESS_MESSAGE"
+  echo "$SUCCESS_MESSAGE"
 }
 
 main "$@"
