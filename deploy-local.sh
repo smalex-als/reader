@@ -12,7 +12,7 @@ main() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG_FILE"
   }
 
-  # Skip if another deploy is still running.
+  # Skip if another server deploy is still running.
   exec 9>/tmp/reader-deploy.lock
   flock -n 9 || exit 0
 
@@ -22,18 +22,46 @@ main() {
 
   LOCAL="$(git rev-parse HEAD)"
   REMOTE="$(git rev-parse origin/main)"
+  UPDATED=false
 
-  if [ "$LOCAL" = "$REMOTE" ]; then
-    exit 0
+  if [ "$LOCAL" != "$REMOTE" ]; then
+    log "deploying ${LOCAL:0:7} -> ${REMOTE:0:7}"
+    git pull --ff-only origin main
+    UPDATED=true
   fi
 
-  log "deploying ${LOCAL:0:7} -> ${REMOTE:0:7}"
+  COMPOSE_ARGS=(up -d)
+  if [ "$UPDATED" = true ]; then
+    COMPOSE_ARGS+=(--build)
+  fi
 
-  git pull --ff-only origin main
-  docker compose up --build -d
-  docker image prune -f >/dev/null
+  CERT_DIR="${HOME}/dev/certs2"
+  if [ ! -f "${CERT_DIR}/reader.test.pem" ] || [ ! -f "${CERT_DIR}/reader.test.key" ]; then
+    log "server deploy requires ${CERT_DIR}/reader.test.pem and reader.test.key"
+    return 1
+  fi
+  docker compose --profile https "${COMPOSE_ARGS[@]}" redis reader nginx
 
-  log "deploy succeeded at $(git rev-parse --short HEAD)"
+  HEALTH_URL="http://127.0.0.1:3000/api/health"
+  HEALTHY=false
+  for _attempt in {1..30}; do
+    if docker compose exec -T reader curl --fail --silent --show-error "$HEALTH_URL" >/dev/null; then
+      HEALTHY=true
+      break
+    fi
+    sleep 1
+  done
+  if [ "$HEALTHY" != true ]; then
+    docker compose logs --tail=100 reader redis >> "$LOG_FILE" 2>&1 || true
+    log "health check failed: ${HEALTH_URL}"
+    return 1
+  fi
+
+  if [ "$UPDATED" = true ]; then
+    docker image prune -f >/dev/null
+  fi
+
+  log "deploy succeeded at $(git rev-parse --short HEAD) (reader and Redis healthy)"
 }
 
 main "$@"

@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { DATA_DIR } from '../config.js';
 import { safeStat } from './fs.js';
 import { createHttpError } from './errors.js';
@@ -15,6 +16,12 @@ import {
 import { generateChapterXaiAudio } from './chapterXaiAudio.js';
 import { generateChapterYandexAudio } from './chapterYandexAudio.js';
 import { createTtsLogTimer } from './ttsLog.js';
+import {
+  cancelBackgroundJob,
+  CHAPTER_AUDIO_JOB_NAME,
+  enqueueBackgroundJob,
+  isBackgroundQueueEnabled
+} from './backgroundJobs.js';
 
 const JOB_STORE_PATH = path.join(DATA_DIR, 'chapter-audio-jobs.json');
 const activeSignals = new Map();
@@ -98,7 +105,8 @@ function normalizeJob(job) {
     updatedAt: job.updatedAt ?? null,
     error: job.error ?? null,
     audioUrl: job.audioUrl ?? null,
-    progress: normalizeProgress(job.progress)
+    progress: normalizeProgress(job.progress),
+    queueJobId: typeof job.queueJobId === 'string' ? job.queueJobId : null
   };
 }
 
@@ -141,6 +149,14 @@ export async function cancelChapterAudioJob(bookId, chapterNumber) {
   const signal = activeSignals.get(key);
   if (signal) {
     signal.canceled = true;
+  }
+  const existing = await getChapterAudioJob(bookId, chapterNumber);
+  if (existing?.queueJobId) {
+    try {
+      await cancelBackgroundJob(existing.queueJobId);
+    } catch (error) {
+      console.error('Failed to cancel queued chapter audio job', error);
+    }
   }
   return updateJob(bookId, chapterNumber, {
     status: 'canceled',
@@ -199,15 +215,32 @@ async function removeLegacySubtitleFiles({ bookId, chapterNumber, versionId }) {
   }
 }
 
-async function runChapterAudioJob({
+export async function runChapterAudioJob({
   bookId,
   chapterNumber,
   voice,
   versionId = null,
   provider = 'default',
-  force = false
+  force = false,
+  queueJobId = null,
+  throwOnFailure = false
 }) {
+  const currentJob = await getChapterAudioJob(bookId, chapterNumber);
+  if (
+    (queueJobId && currentJob?.queueJobId !== queueJobId) ||
+    currentJob?.status === 'canceled'
+  ) {
+    return;
+  }
   const key = getJobKey(bookId, chapterNumber);
+  const signal = activeSignals.get(key) ?? {
+    canceled: false,
+    voice,
+    versionId: versionId ?? 'base',
+    provider,
+    force
+  };
+  activeSignals.set(key, signal);
   let preparation = null;
   const normalizedProvider = provider === 'xai' || provider === 'yandex' ? provider : 'streaming';
   const jobLog = createTtsLogTimer({
@@ -238,7 +271,6 @@ async function runChapterAudioJob({
       progress: { percent: 15, current: 0, total: 0, label: 'Preparing MP3' }
     });
 
-    const signal = activeSignals.get(key);
     if (signal?.canceled) {
       await updateJob(bookId, chapterNumber, { status: 'canceled', progress: null });
       return;
@@ -476,6 +508,9 @@ async function runChapterAudioJob({
       text: preparation?.cleanText ?? '',
       versionId: preparation?.versionId ?? versionId ?? 'base'
     });
+    if (throwOnFailure) {
+      throw error;
+    }
   } finally {
     activeSignals.delete(key);
   }
@@ -510,6 +545,7 @@ export async function enqueueChapterAudioJob({
     updatedAt: new Date().toISOString(),
     error: null,
     progress: { percent: 5, current: 0, total: 0, label: 'Queued' },
+    queueJobId: randomUUID(),
     audioUrl:
       existing &&
       !force &&
@@ -518,10 +554,26 @@ export async function enqueueChapterAudioJob({
         ? existing.audioUrl ?? null
         : null
   });
-  const key = getJobKey(bookId, chapterNumber);
-  activeSignals.set(key, { canceled: false, voice, versionId: versionId ?? 'base', provider, force });
-  setImmediate(() => {
-    void runChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider, force });
-  });
+  const payload = {
+    bookId,
+    chapterNumber,
+    voice,
+    versionId,
+    provider,
+    force,
+    queueJobId: job.queueJobId
+  };
+  if (isBackgroundQueueEnabled()) {
+    try {
+      await enqueueBackgroundJob(CHAPTER_AUDIO_JOB_NAME, payload, { jobId: job.queueJobId });
+    } catch (error) {
+      await finalizeFailure(bookId, chapterNumber, error);
+      throw createHttpError(503, 'Unable to queue chapter audio generation');
+    }
+  } else {
+    setImmediate(() => {
+      void runChapterAudioJob(payload);
+    });
+  }
   return job;
 }

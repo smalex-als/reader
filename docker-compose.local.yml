@@ -1,0 +1,6 @@
+services:
+  reader:
+    environment:
+      STREAM_SERVER: ${LOCAL_STREAM_SERVER:-http://192.168.1.174:3005}
+    ports:
+      - "${READER_PORT:-3000}:3000"

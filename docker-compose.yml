@@ -1,4 +1,15 @@
 services:
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
   reader:
     platform: linux/amd64
     build:
@@ -9,6 +20,8 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3000
+      REDIS_URL: redis://redis:6379
+      BACKGROUND_JOB_CONCURRENCY: ${BACKGROUND_JOB_CONCURRENCY:-1}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
       YANDEX_API_KEY: ${YANDEX_API_KEY:-}
@@ -27,8 +40,18 @@ services:
       NODE_TLS_REJECT_UNAUTHORIZED: '0'
     volumes:
       - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
     restart: unless-stopped
   nginx:
+    profiles: ["https"]
     image: nginx:1.27
     depends_on:
       - reader
@@ -38,3 +61,6 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ${HOME}/dev/certs2:/certs:ro
     restart: unless-stopped
+
+volumes:
+  redis-data:

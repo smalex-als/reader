@@ -59,6 +59,18 @@ test('initial pcm buffer flushes short streams on end', async () => {
   assert.deepEqual([...(await collected)], [1, 2, 3, 4, 5]);
 });
 
+test('initial pcm buffer forwards source errors', async () => {
+  const source = new PassThrough();
+  const buffered = createBufferedPcmStream(source, { initialBufferBytes: 10 });
+  const errorEvent = once(buffered, 'error');
+  const expected = new Error('stream failed');
+
+  source.destroy(expected);
+
+  const [received] = await errorEvent;
+  assert.equal(received, expected);
+});
+
 test('automatic pcm buffer grows with estimated text duration', () => {
   const text = Array.from({ length: 150 }, (_, index) => `word${index}`).join(' ');
 

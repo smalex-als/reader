@@ -12,6 +12,15 @@ export const STATIC_ROOT = existsSync(DIST_DIR) ? DIST_DIR : ROOT_DIR;
 
 export const HOST = process.env.HOST || '0.0.0.0';
 export const PORT = Number.parseInt(process.env.PORT || '3000', 10);
+export const REDIS_URL = process.env.REDIS_URL || '';
+const backgroundJobConcurrencyRaw = Number.parseInt(
+  process.env.BACKGROUND_JOB_CONCURRENCY || '1',
+  10
+);
+export const BACKGROUND_JOB_CONCURRENCY =
+  Number.isFinite(backgroundJobConcurrencyRaw) && backgroundJobConcurrencyRaw > 0
+    ? backgroundJobConcurrencyRaw
+    : 1;
 export const BOOKMARKS_FILENAME = 'bookmarks.txt';
 export const TOC_FILENAME = 'toc.json';
 export const DETAILED_TOC_FILENAME = 'toc.detailed.json';

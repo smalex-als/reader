@@ -318,6 +318,9 @@ export function createBufferedPcmStream(
     }
   });
 
+  stream.on('error', (error) => {
+    bufferTransform.destroy(error);
+  });
   return stream.pipe(bufferTransform);
 }
 

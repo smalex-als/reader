@@ -8,6 +8,8 @@ import booksRouter from './routes/books.js';
 import mediaRouter from './routes/media.js';
 import healthRouter from './routes/health.js';
 import eventsRouter from './routes/events.js';
+import { closeBackgroundJobs } from './lib/backgroundJobs.js';
+import { startReaderBackgroundJobWorker } from './lib/backgroundJobWorker.js';
 
 export function createApp() {
   const app = express();
@@ -84,20 +86,36 @@ export function createApp() {
 
 export function startServer() {
   const app = createApp();
+  let server;
 
   if (HTTPS_KEY_PATH && HTTPS_CERT_PATH) {
     const httpsOptions = {
       key: readFileSync(path.resolve(ROOT_DIR, HTTPS_KEY_PATH)),
       cert: readFileSync(path.resolve(ROOT_DIR, HTTPS_CERT_PATH))
     };
-    https.createServer(httpsOptions, app).listen(PORT, HOST, () => {
+    server = https.createServer(httpsOptions, app).listen(PORT, HOST, () => {
       // eslint-disable-next-line no-console
       console.log(`Server listening on https://${HOST}:${PORT}`);
     });
   } else {
-    app.listen(PORT, HOST, () => {
+    server = app.listen(PORT, HOST, () => {
       // eslint-disable-next-line no-console
       console.log(`Server listening on http://${HOST}:${PORT}`);
     });
   }
+  startReaderBackgroundJobWorker();
+
+  let shuttingDown = false;
+  const shutdown = () => {
+    if (shuttingDown) {
+      return;
+    }
+    shuttingDown = true;
+    server.close(() => {
+      void closeBackgroundJobs().finally(() => process.exit(0));
+    });
+  };
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+  return server;
 }

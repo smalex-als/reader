@@ -15,6 +15,7 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - Streaming audio via WebSocket (external stream server), including a floating stream control bubble.
 - Backend streaming audio test endpoints for raw PCM and experimental streaming WAV output.
 - Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
+- Redis/BullMQ background processing for long-running chapter MP3 generation, with retries and durable queued work.
 - Study tools per chapter: `Quiz`, `Vocabulary`, and `Memory Card`.
 - Unit study sets: turn a chapter into standalone topic-based units, open topics by URL, stream topic paragraphs, mark topics read/unread, and create quizzes for individual topics.
 - Listening dashboard backed by `.stream-history.log`, including grouped sessions, top books/chapters, and navigation back into the book.
@@ -32,6 +33,110 @@ npm run dev
 
 The app runs on Vite (default `http://localhost:5173`), and the API/static server runs on
 `http://localhost:3000`.
+
+Without `REDIS_URL`, long-running jobs use the existing in-process fallback.
+
+## Local Docker
+
+The shortest way to build and start Reader with Redis is:
+
+```bash
+cd /Users/smalex/jsprojects/reader
+make local-up
+```
+
+Then open `http://localhost:3000`, or run `make local-open`.
+
+Useful Make targets:
+
+```bash
+make local-ps       # container status
+make local-logs     # follow Reader and Redis logs
+make local-health   # verify the API and BullMQ mode
+make local-restart  # restart Reader and Redis
+make local-stop     # stop containers without removing them
+make local-down     # stop and remove containers
+make check          # lint, tests, and production build
+```
+
+Run `make help` to print the available commands. To use another host port:
+
+```bash
+READER_PORT=3100 make local-up
+```
+
+The local Docker profile connects chapter streaming audio to
+`http://192.168.1.174:3005`. Override it when needed:
+
+```bash
+LOCAL_STREAM_SERVER=http://host.docker.internal:3005 make local-up
+```
+
+The equivalent full Docker Compose command is:
+
+```bash
+cd /Users/smalex/jsprojects/reader
+
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.local.yml \
+  up --build -d redis reader
+```
+
+Open the app at `http://localhost:3000`. Set `READER_PORT` to publish a different host port.
+
+Check container status:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.local.yml \
+  ps
+```
+
+Follow Reader and Redis logs:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.local.yml \
+  logs -f reader redis
+```
+
+Stop and remove the local containers:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.local.yml \
+  down
+```
+
+The Redis data remains in the named Docker volume. Add `-v` to `down` only when you intentionally
+want to delete that queued-job data as well.
+
+## Server deployment
+
+`./deploy-local.sh` is the server deployment entrypoint. It pulls `origin/main`, starts Redis, Reader, and the HTTPS nginx profile, then verifies the Reader health endpoint from inside the container. The Reader port is not published directly by the server Compose configuration.
+
+Run it from the repository checkout on the server:
+
+```bash
+make server-deploy
+```
+
+Server stack commands:
+
+```bash
+make server-up       # build and start Redis, Reader, and HTTPS nginx
+make server-start    # start existing server containers
+make server-ps       # container status
+make server-logs     # follow nginx, Reader, and Redis logs
+make server-health   # verify Reader from inside its container
+make server-restart  # restart the complete server stack
+make server-stop     # stop containers without removing them
+make server-down     # stop and remove containers
+```
 
 For a production build:
 
@@ -106,6 +211,8 @@ Server environment variables:
 - `STREAM_VOICE` (default stream voice id; defaults to `VITE_STREAM_VOICE`)
 - `OCR_TIMEOUT_MS` (timeout for OCR requests in milliseconds; default `20000`. On timeout the server writes an empty page text file and returns empty OCR text.)
 - `MAX_UPLOAD_MB` (max upload size for multipart uploads like PDF import; default `300`)
+- `REDIS_URL` (enables the BullMQ background queue, for example `redis://localhost:6379`)
+- `BACKGROUND_JOB_CONCURRENCY` (number of long-running jobs processed concurrently; default `1`)
 
 Front-end environment variables:
 
@@ -225,4 +332,4 @@ Search and health:
 - `GET /api/books/:id/search`
 - `POST /api/books/:id/search/index`
 - `GET /api/stream-history/dashboard`
-- `GET /api/health` — not used by the app; manual/backend test only
+- `GET /api/health` — reports `backgroundJobs: bullmq` when Redis is configured, otherwise `inline`

@@ -485,7 +485,7 @@ router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, r
     req.body?.provider === 'xai' || req.body?.provider === 'yandex' ? req.body.provider : 'default';
   const force = req.body?.force !== false;
   const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider, force });
-  res.json({ book: bookId, chapterNumber, job });
+  res.status(202).json({ book: bookId, chapterNumber, job });
 }));
 
 router.delete('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, res) => {

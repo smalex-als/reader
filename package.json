@@ -12,6 +12,7 @@
     "search:index": "node scripts/build-search-index.js"
   },
   "dependencies": {
+    "bullmq": "^5.80.2",
     "express": "^5.2.1",
     "mime-types": "^2.1.35",
     "multer": "^2.2.0",
