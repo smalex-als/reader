@@ -12,6 +12,10 @@ import type {
 } from '@/api/chapterAudio';
 import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
+import {
+  AudioJobPollingController,
+  type AudioJobPollContext
+} from '@/lib/audioJobPollingController';
 import type { ChapterAudioProvider } from '@/types/app';
 
 type ChapterStatus = {
@@ -33,10 +37,6 @@ type AudioViewState = {
 type AudioViewPayloads = {
   loadAudioStatus: {
     bookId: string | null;
-  };
-  pollAudioJobStatus: {
-    bookId: string | null;
-    chapterNumber: number;
   };
   generateAudio: {
     bookId: string | null;
@@ -68,7 +68,7 @@ type AudioViewActions = {
   removeAudioJob: (chapterNumber: number) => void;
   markChapterAudioDeleted: (chapterNumber: number, versionId: string) => void;
   clearPoll: (chapterNumber: number) => void;
-  schedulePoll: (chapterNumber: number) => void;
+  schedulePoll: (chapterNumber: number, bookId: string) => void;
   showError: (message: string) => void;
   showSuccess: (message: string) => void;
 };
@@ -110,36 +110,6 @@ addActionHandler('loadAudioStatus', async (_state, actions, payload): Promise<vo
   });
 });
 
-addActionHandler('pollAudioJobStatus', async (_state, actions, payload): Promise<void> => {
-  if (!payload.bookId) {
-    return;
-  }
-
-  try {
-    const job = await fetchChapterAudioJobStatus(payload.bookId, payload.chapterNumber);
-    if (!job?.status) {
-      actions.clearPoll(payload.chapterNumber);
-      return;
-    }
-    actions.setAudioJob(payload.chapterNumber, job);
-    if (job.status === 'completed') {
-      actions.clearPoll(payload.chapterNumber);
-      const chapters = await fetchBookAudioChapters(payload.bookId);
-      actions.applyChapters(chapters);
-      return;
-    }
-    if (job.status === 'failed' || job.status === 'canceled') {
-      actions.clearPoll(payload.chapterNumber);
-      return;
-    }
-    actions.schedulePoll(payload.chapterNumber);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to read audio job status.';
-    actions.setChapterError(payload.chapterNumber, message);
-    actions.schedulePoll(payload.chapterNumber);
-  }
-});
-
 addActionHandler('generateAudio', async (state, actions, payload): Promise<void> => {
   if (!payload.bookId || state.audioBusy[payload.chapterNumber]) {
     return;
@@ -160,7 +130,7 @@ addActionHandler('generateAudio', async (state, actions, payload): Promise<void>
     } else {
       actions.showSuccess(`Audio job queued for chapter ${payload.chapterNumber}`);
     }
-    actions.schedulePoll(payload.chapterNumber);
+    actions.schedulePoll(payload.chapterNumber, payload.bookId);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to generate audio.';
     actions.setChapterError(payload.chapterNumber, message);
@@ -216,9 +186,22 @@ export function useAudioViewActions(input: {
   mp3Voice: string;
 }) {
   const { showToast } = useToast();
-  const pollTimers = useRef<Map<number, number>>(new Map());
-  const pollAttempts = useRef<Map<number, number>>(new Map());
-  const pollAudioJobStatusRef = useRef<(chapterNumber: number) => void>();
+  const pollAudioJobStatusRef = useRef<(
+    chapterNumber: number,
+    context: AudioJobPollContext
+  ) => Promise<boolean>>();
+  const pollingControllerRef = useRef<AudioJobPollingController>();
+  if (!pollingControllerRef.current) {
+    pollingControllerRef.current = new AudioJobPollingController({
+      scheduler: {
+        setTimeout: (callback, delayMs) => window.setTimeout(callback, delayMs),
+        clearTimeout: (timer) => window.clearTimeout(timer as number)
+      },
+      poll: (chapterNumber, context) =>
+        pollAudioJobStatusRef.current?.(chapterNumber, context) ?? Promise.resolve(false)
+    });
+  }
+  const pollingController = pollingControllerRef.current;
   const [statusMap, setStatusMap] = useState<Record<number, ChapterStatus>>({});
   const [statusLoading, setStatusLoading] = useState(false);
   const [audioBusy, setAudioBusyState] = useState<Record<number, boolean>>({});
@@ -243,25 +226,6 @@ export function useAudioViewActions(input: {
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
-
-  const clearPoll = useCallback((chapterNumber: number) => {
-    const timer = pollTimers.current.get(chapterNumber);
-    if (timer) {
-      window.clearTimeout(timer);
-    }
-    pollTimers.current.delete(chapterNumber);
-    pollAttempts.current.delete(chapterNumber);
-  }, []);
-
-  const schedulePoll = useCallback((chapterNumber: number) => {
-    const attempt = (pollAttempts.current.get(chapterNumber) ?? 0) + 1;
-    pollAttempts.current.set(chapterNumber, attempt);
-    const delay = Math.min(1000 * 2 ** (attempt - 1), 10000);
-    const timer = window.setTimeout(() => {
-      pollAudioJobStatusRef.current?.(chapterNumber);
-    }, delay);
-    pollTimers.current.set(chapterNumber, timer);
-  }, []);
 
   const actions = useMemo<AudioViewActions>(
     () => ({
@@ -326,12 +290,12 @@ export function useAudioViewActions(input: {
           )
         );
       },
-      clearPoll,
-      schedulePoll,
+      clearPoll: (chapterNumber) => pollingController.clear(chapterNumber),
+      schedulePoll: (chapterNumber, bookId) => pollingController.schedule(chapterNumber, bookId),
       showError: (message) => showToast(message, 'error'),
       showSuccess: (message) => showToast(message, 'success')
     }),
-    [clearPoll, schedulePoll, showToast]
+    [pollingController, showToast]
   );
 
   const runAction = useCallback(
@@ -346,36 +310,59 @@ export function useAudioViewActions(input: {
     [input.bookId, runAction]
   );
 
-  const pollAudioJobStatus = useCallback(
-    (chapterNumber: number) =>
-      runAction('pollAudioJobStatus', {
-        bookId: input.bookId,
-        chapterNumber
-      }),
-    [input.bookId, runAction]
-  );
+  const pollAudioJobStatus = useCallback(async (
+    chapterNumber: number,
+    context: AudioJobPollContext
+  ) => {
+    const bookId = input.bookId;
+    if (!bookId) {
+      return false;
+    }
+    try {
+      const job = await fetchChapterAudioJobStatus(bookId, chapterNumber);
+      if (!context.isCurrent()) {
+        return false;
+      }
+      if (!job?.status) {
+        return false;
+      }
+      actions.setAudioJob(chapterNumber, job);
+      if (job.status === 'completed') {
+        const nextChapters = await fetchBookAudioChapters(bookId);
+        if (context.isCurrent()) {
+          actions.applyChapters(nextChapters);
+        }
+        return false;
+      }
+      return job.status !== 'failed' && job.status !== 'canceled';
+    } catch (error) {
+      if (!context.isCurrent()) {
+        return false;
+      }
+      const message = error instanceof Error ? error.message : 'Unable to read audio job status.';
+      actions.setChapterError(chapterNumber, message);
+      return true;
+    }
+  }, [actions, input.bookId]);
 
   useEffect(() => {
-    pollAudioJobStatusRef.current = (chapterNumber) => {
-      void pollAudioJobStatus(chapterNumber);
-    };
+    pollAudioJobStatusRef.current = pollAudioJobStatus;
   }, [pollAudioJobStatus]);
 
   useEffect(() => {
+    pollingController.mount();
+    return () => pollingController.dispose();
+  }, [pollingController]);
+
+  useEffect(() => {
+    pollingController.setScope(input.bookId);
+    pollingController.reset();
     if (!input.bookId || !input.canLoadAudioStatus) {
       void runAction('loadAudioStatus', { bookId: null });
       return;
     }
     void loadAudioStatus();
-  }, [input.bookId, input.canLoadAudioStatus, loadAudioStatus, runAction]);
-
-  useEffect(() => {
-    return () => {
-      pollTimers.current.forEach((timer) => window.clearTimeout(timer));
-      pollTimers.current.clear();
-      pollAttempts.current.clear();
-    };
-  }, []);
+  }, [input.bookId, input.canLoadAudioStatus, loadAudioStatus, pollingController, runAction]);
 
   return {
     statusMap,
