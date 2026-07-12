@@ -1389,6 +1389,26 @@ body {
   min-height: 0;
 }
 
+.add-chapter-modal {
+  width: min(34rem, calc(100vw - 2rem));
+  height: auto;
+  max-height: min(90vh, 38rem);
+}
+
+.add-chapter-modal form,
+.add-chapter-modal-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.add-chapter-modal-body {
+  gap: 1rem;
+}
+
+.add-chapter-modal-field {
+  align-items: stretch;
+}
+
 .text-version-modal-body {
   display: flex;
   flex-direction: column;

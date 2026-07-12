@@ -7,6 +7,7 @@ import {
   uploadPdfBook,
   type DeleteBookResult,
   type TextChapterMutationResult,
+  type CreateChapterSource,
   type UploadPdfResult
 } from '@/api/bookSession';
 import { createActionHandlerRegistry } from '@/lib/actionHandlers';
@@ -23,6 +24,8 @@ type BookSessionPayloads = {
     chapterTitle: string;
     targetBookId: string;
     isExisting: boolean;
+    source: CreateChapterSource;
+    sourceUrl: string;
   };
   deleteChapter: {
     bookId: string;
@@ -81,7 +84,13 @@ addActionHandler('createChapter', async (_state, actions, payload): Promise<void
   try {
     const result = await createEmptyTextChapter(payload);
     actions.applyCreatedChapter(result);
-    actions.showSuccess('Chapter created');
+    if (result.sourceAudioJob?.status === 'failed') {
+      actions.showError('Chapter created, but YouTube audio could not be queued');
+    } else if (result.sourceAudioJob) {
+      actions.showSuccess('Chapter created. YouTube audio download queued');
+    } else {
+      actions.showSuccess('Chapter created');
+    }
   } catch (error) {
     console.error(error);
     actions.showError('Failed to create chapter');

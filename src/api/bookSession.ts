@@ -16,7 +16,17 @@ export type TextChapterMutationResult = {
   chapterFileCount: number;
   toc: TocEntry[];
   chapterNumber?: number;
+  sourceAudioJob?: {
+    jobId: string;
+    source: 'youtube';
+    sourceUrl: string;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    error?: string | null;
+    audioUrl?: string | null;
+  } | null;
 };
+
+export type CreateChapterSource = 'blank' | 'youtube';
 
 export type DeleteBookResult = {
   book: string;
@@ -64,6 +74,7 @@ function normalizeChapterMutation(payload: {
   chapterFileCount?: number;
   toc?: TocEntry[];
   chapterNumber?: number;
+  sourceAudioJob?: TextChapterMutationResult['sourceAudioJob'];
 }): TextChapterMutationResult {
   return {
     book: payload.book,
@@ -72,7 +83,8 @@ function normalizeChapterMutation(payload: {
     chapterCount: normalizeInteger(payload.chapterCount),
     chapterFileCount: normalizeInteger(payload.chapterFileCount, normalizeInteger(payload.chapterCount)),
     toc: normalizeToc(payload.toc),
-    chapterNumber: normalizeInteger(payload.chapterNumber, 0) > 0 ? normalizeInteger(payload.chapterNumber) : undefined
+    chapterNumber: normalizeInteger(payload.chapterNumber, 0) > 0 ? normalizeInteger(payload.chapterNumber) : undefined,
+    sourceAudioJob: payload.sourceAudioJob ?? null
   };
 }
 
@@ -107,17 +119,28 @@ export async function createEmptyTextChapter(input: {
   chapterTitle: string;
   targetBookId: string;
   isExisting: boolean;
+  source: CreateChapterSource;
+  sourceUrl: string;
 }) {
   const response = input.isExisting
     ? await fetch(`/api/books/${encodeURIComponent(input.targetBookId)}/chapters/empty`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chapterTitle: input.chapterTitle })
+        body: JSON.stringify({
+          chapterTitle: input.chapterTitle,
+          source: input.source,
+          sourceUrl: input.sourceUrl
+        })
       })
     : await fetch('/api/books/text/empty', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookName: input.bookName, chapterTitle: input.chapterTitle })
+        body: JSON.stringify({
+          bookName: input.bookName,
+          chapterTitle: input.chapterTitle,
+          source: input.source,
+          sourceUrl: input.sourceUrl
+        })
       });
   const payload = await readJson<{
     book: string;
@@ -126,6 +149,7 @@ export async function createEmptyTextChapter(input: {
     chapterCount?: number;
     chapterFileCount?: number;
     toc?: TocEntry[];
+    sourceAudioJob?: TextChapterMutationResult['sourceAudioJob'];
   }>(response, 'Create failed');
   return normalizeChapterMutation(payload);
 }

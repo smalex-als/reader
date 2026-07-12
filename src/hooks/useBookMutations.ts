@@ -7,6 +7,7 @@ import {
   createBookSessionActions
 } from '@/hooks/bookSessionActions';
 import { clamp } from '@/lib/math';
+import type { CreateChapterSource } from '@/api/bookSession';
 import { saveLastBook, saveLastPage } from '@/lib/storage';
 import {
   appActions,
@@ -73,10 +74,17 @@ export function useChapterActions() {
   );
 
   const handleCreateChapter = useCallback(
-    async (details: { bookName: string; chapterTitle: string }) => {
+    async (details: {
+      bookName: string;
+      chapterTitle: string;
+      source?: CreateChapterSource;
+      sourceUrl?: string;
+    }) => {
       const bookName = details.bookName.trim();
       const chapterTitle = details.chapterTitle.trim();
       const targetBookId = bookName || bookId || '';
+      const source = details.source ?? 'blank';
+      const sourceUrl = details.sourceUrl?.trim() ?? '';
       if (!targetBookId) {
         showToast('Book name is required for a new text book', 'error');
         return;
@@ -85,11 +93,17 @@ export function useChapterActions() {
         showToast('Select a text book or enter a new book name', 'error');
         return;
       }
+      if (source === 'youtube' && !sourceUrl) {
+        showToast('YouTube URL is required', 'error');
+        return;
+      }
       await bookSessionHandlers.runAction('createChapter', null, actions, {
         bookName,
         chapterTitle,
         targetBookId,
-        isExisting: books.includes(targetBookId)
+        isExisting: books.includes(targetBookId),
+        source,
+        sourceUrl
       });
     },
     [actions, bookId, bookType, books, showToast]

@@ -6,6 +6,7 @@ import {
 
 export const BACKGROUND_QUEUE_NAME = 'reader-background';
 export const CHAPTER_AUDIO_JOB_NAME = 'chapter-audio';
+export const YOUTUBE_AUDIO_JOB_NAME = 'youtube-audio';
 
 let queue = null;
 let worker = null;

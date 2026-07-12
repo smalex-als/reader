@@ -68,6 +68,10 @@ import { loadLibraryState, updateLibraryState } from '../lib/libraryState.js';
 import { listGeneratedAudio } from '../lib/audioLibrary.js';
 import { createUnitsFromChapter, listUnits, updateUnitTopicRead } from '../lib/units.js';
 import { createMemoryUpload } from '../lib/upload.js';
+import {
+  enqueueYouTubeAudioDownload,
+  normalizeYouTubeUrl
+} from '../lib/chapterSourceAudio.js';
 
 const router = express.Router();
 const upload = createMemoryUpload();
@@ -76,6 +80,39 @@ const execFileAsync = promisify(execFile);
 
 function formatChapterSuffix(chapterNumber) {
   return String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0');
+}
+
+function normalizeChapterSource(body) {
+  if (body?.source !== 'youtube') {
+    return { source: 'blank', sourceUrl: null };
+  }
+  return {
+    source: 'youtube',
+    sourceUrl: normalizeYouTubeUrl(body?.sourceUrl)
+  };
+}
+
+async function createTextChapterFromSource(bookId, body) {
+  const { chapterTitle } = body || {};
+  const source = normalizeChapterSource(body);
+  if (source.source === 'blank') {
+    return {
+      result: await createEmptyTextChapter(bookId, chapterTitle),
+      sourceAudioJob: null
+    };
+  }
+  const result = await addTextChapter(bookId, {
+    title: typeof chapterTitle === 'string' && chapterTitle.trim()
+      ? chapterTitle
+      : 'YouTube Chapter',
+    content: source.sourceUrl
+  });
+  const sourceAudioJob = await enqueueYouTubeAudioDownload({
+    bookId,
+    chapterNumber: result.chapterNumber,
+    sourceUrl: source.sourceUrl
+  });
+  return { result, sourceAudioJob };
 }
 
 async function getAudioDurationSeconds(filePath) {
@@ -753,20 +790,22 @@ router.post('/api/books/text', upload.single('file'), asyncHandler(async (req, r
 }));
 
 router.post('/api/books/text/empty', asyncHandler(async (req, res) => {
-  const { bookName, chapterTitle } = req.body || {};
+  const { bookName } = req.body || {};
+  normalizeChapterSource(req.body);
   const bookId = await createTextBook(bookName);
-  const result = await createEmptyTextChapter(bookId, chapterTitle);
+  const { result, sourceAudioJob } = await createTextChapterFromSource(bookId, req.body);
   await invalidateBookSearchIndex(bookId);
   const [chapterCount, chapterFileCount] = await Promise.all([
     getTextChapterNavigationCount(bookId),
     getTextChapterCount(bookId)
   ]);
-  res.json({
+  res.status(sourceAudioJob ? 202 : 200).json({
     book: bookId,
     bookType: 'text',
     chapterCount,
     chapterFileCount,
     ...result,
+    sourceAudioJob,
     toc: await attachTocStats(bookId, result.toc)
   });
 }));
@@ -790,14 +829,20 @@ router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async
 
 router.post('/api/books/:id/chapters/empty', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
-  const { chapterTitle } = req.body || {};
-  const result = await createEmptyTextChapter(bookId, chapterTitle);
+  const { result, sourceAudioJob } = await createTextChapterFromSource(bookId, req.body);
   await invalidateBookSearchIndex(bookId);
   const [chapterCount, chapterFileCount] = await Promise.all([
     getTextChapterNavigationCount(bookId),
     getTextChapterCount(bookId)
   ]);
-  res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
+  res.status(sourceAudioJob ? 202 : 200).json({
+    book: bookId,
+    bookType: 'text',
+    chapterCount,
+    chapterFileCount,
+    ...result,
+    sourceAudioJob
+  });
 }));
 
 router.put('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => {

@@ -21,6 +21,7 @@ export const BACKGROUND_JOB_CONCURRENCY =
   Number.isFinite(backgroundJobConcurrencyRaw) && backgroundJobConcurrencyRaw > 0
     ? backgroundJobConcurrencyRaw
     : 1;
+export const YT_DLP_BIN = process.env.YT_DLP_BIN || 'yt-dlp';
 export const BOOKMARKS_FILENAME = 'bookmarks.txt';
 export const TOC_FILENAME = 'toc.json';
 export const DETAILED_TOC_FILENAME = 'toc.detailed.json';

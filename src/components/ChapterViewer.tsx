@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import ChapterTextMarkdownLayout from '@/components/ChapterTextMarkdownLayout';
+import AddChapterModal from '@/components/AddChapterModal';
 import ChapterToolsPanel from '@/components/ChapterToolsPanel';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import { useChapterActions } from '@/hooks/useBookMutations';
@@ -51,6 +52,7 @@ export default function ChapterViewer() {
   } = useUnitActions();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [addChapterOpen, setAddChapterOpen] = useState(false);
   const textViewerRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -227,7 +229,7 @@ export default function ChapterViewer() {
               number: chapterNumber,
               creating: chapterCreating,
               deleting: chapterDeleting || displayLoading,
-              onCreate: () => void handleCreateChapter({ bookName: '', chapterTitle: '' }),
+              onCreate: () => setAddChapterOpen(true),
               onDelete: () => {
                 if (chapterNumber) {
                   void handleDeleteChapter(chapterNumber);
@@ -341,6 +343,24 @@ export default function ChapterViewer() {
           <p className="text-viewer-status">Existing MP3 belongs to another text version. Generate audio to update it.</p>
         ) : null}
       </section>
+      <AddChapterModal
+        busy={chapterCreating}
+        open={addChapterOpen}
+        onClose={() => {
+          if (!chapterCreating) {
+            setAddChapterOpen(false);
+          }
+        }}
+        onSubmit={async ({ chapterTitle: nextTitle, source, sourceUrl }) => {
+          await handleCreateChapter({
+            bookName: '',
+            chapterTitle: nextTitle,
+            source,
+            sourceUrl
+          });
+          setAddChapterOpen(false);
+        }}
+      />
       <CreateTextVersionModal />
     </div>
   );
