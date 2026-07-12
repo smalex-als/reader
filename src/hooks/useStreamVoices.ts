@@ -145,6 +145,7 @@ export function useMp3Voice() {
   const dispatch = useAppDispatch();
   const { bookId } = useAppSelector(selectReaderSession);
   const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
+  const mp3VoiceHydratedBookRef = useRef<string | null>(null);
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
@@ -166,18 +167,26 @@ export function useMp3Voice() {
 
   useEffect(() => {
     if (mp3VoiceOptions.length === 0) {
-      setMp3Voice('');
       return;
     }
-    const storedVoice = bookId ? loadMp3VoiceForBook(bookId) : null;
-    const nextVoice =
-      storedVoice && mp3VoiceOptions.some((option) => option.id === storedVoice)
-        ? storedVoice
-        : getDefaultMp3Voice();
-    setMp3Voice((previous) =>
-      previous && mp3VoiceOptions.some((option) => option.id === previous) && !storedVoice ? previous : nextVoice
-    );
-  }, [bookId, getDefaultMp3Voice, mp3VoiceOptions, setMp3Voice]);
+
+    if (mp3VoiceHydratedBookRef.current !== bookId) {
+      mp3VoiceHydratedBookRef.current = bookId;
+      const storedVoice = bookId ? loadMp3VoiceForBook(bookId) : null;
+      const nextVoice =
+        storedVoice && mp3VoiceOptions.some((option) => option.id === storedVoice)
+          ? storedVoice
+          : getDefaultMp3Voice();
+      if (mp3Voice !== nextVoice) {
+        dispatch(appActions.setMp3Voice(nextVoice));
+      }
+      return;
+    }
+
+    if (!mp3VoiceOptions.some((option) => option.id === mp3Voice)) {
+      dispatch(appActions.setMp3Voice(getDefaultMp3Voice()));
+    }
+  }, [bookId, dispatch, getDefaultMp3Voice, mp3Voice, mp3VoiceOptions]);
 
   useEffect(() => {
     if (!bookId || !mp3Voice || !mp3VoiceOptions.some((option) => option.id === mp3Voice)) {
