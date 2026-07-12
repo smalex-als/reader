@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { TextOutlineItem } from '@/lib/chapterTextOutline';
 import { createInteractiveMarkdownComponents } from '@/lib/interactiveMarkdown';
+import { remarkLegacyCenteredHtml } from '@/lib/legacyMarkdown';
 import { hashText } from '@/lib/textHash';
 import { appActions, useAppDispatch } from '@/state/appState';
 
@@ -131,7 +132,7 @@ export default function ChapterTextMarkdownLayout({
         </aside>
       ) : null}
       <div className="text-viewer-markdown">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        <ReactMarkdown remarkPlugins={[remarkGfm, remarkLegacyCenteredHtml]} components={markdownComponents}>
           {displayText}
         </ReactMarkdown>
       </div>
