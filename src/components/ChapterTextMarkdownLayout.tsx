@@ -1,7 +1,7 @@
 import { useEffect, useMemo, type RefObject } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { TextOutlineItem } from '@/hooks/useChapterTextOutline';
+import type { TextOutlineItem } from '@/lib/chapterTextOutline';
 import { createInteractiveMarkdownComponents } from '@/lib/interactiveMarkdown';
 import { hashText } from '@/lib/textHash';
 import { appActions, useAppDispatch } from '@/state/appState';
