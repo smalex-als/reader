@@ -34,7 +34,6 @@ export default function Toolbar() {
     handleCopyPageText,
     handleCreateBlankChapter,
     handleOpenHelp,
-    handleOpenJobWorker,
     handleOpenMemoryCard,
     handleOpenOcrQueue,
     handleOpenPrint,
@@ -97,7 +96,6 @@ export default function Toolbar() {
               handleCopyPageText={handleCopyPageText}
               handleCreateBlankChapter={handleCreateBlankChapter}
               handleOpenHelp={handleOpenHelp}
-              handleOpenJobWorker={handleOpenJobWorker}
               handleOpenOcrQueue={handleOpenOcrQueue}
               handleOpenPrint={handleOpenPrint}
               handleOpenPromptEditor={handleOpenPromptEditor}

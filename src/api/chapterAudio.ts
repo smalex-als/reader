@@ -25,7 +25,6 @@ export type AudioChapter = {
   audio: {
     ready: boolean;
     url: string;
-    srtUrl?: string | null;
     versionId?: string | null;
     durationSeconds?: number | null;
     provider?: ChapterAudioProvider;

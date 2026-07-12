@@ -18,7 +18,6 @@ import VocabularyModal from '@/components/VocabularyModal';
 import ListeningDashboardModal from '@/components/ListeningDashboardModal';
 import MemoryCardModal from '@/components/MemoryCardModal';
 import PromptEditorModal from '@/components/PromptEditorModal';
-import JobWorkerModal from '@/components/JobWorkerModal';
 import { useBookCardActions } from '@/hooks/useBookCardActions';
 
 interface AppModalsProps {
@@ -56,7 +55,6 @@ export default function AppModals({
       {renderInPortal(<PromptEditorModal />, portalTarget)}
       {renderInPortal(<ListeningDashboardModal />, portalTarget)}
       {renderInPortal(<ImagePreviewModal />, portalTarget)}
-      {renderInPortal(<JobWorkerModal />, portalTarget)}
       <OcrQueueModal />
     </>
   );

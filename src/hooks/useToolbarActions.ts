@@ -121,11 +121,6 @@ export function useToolbarActions({
     dispatch(appActions.openModal('ocrQueue'));
   }, [dispatch]);
 
-  const handleOpenJobWorker = useCallback(() => {
-    closeSettings();
-    dispatch(appActions.openModal('jobWorker'));
-  }, [closeSettings, dispatch]);
-
   const handleOpenTocManage = useCallback(() => {
     closeSettings();
     dispatch(appActions.openModal('tocManage'));
@@ -187,7 +182,6 @@ export function useToolbarActions({
     handleCopyPageText,
     handleCreateBlankChapter,
     handleOpenHelp,
-    handleOpenJobWorker,
     handleOpenMemoryCard,
     handleOpenOcrQueue,
     handleOpenPrint,

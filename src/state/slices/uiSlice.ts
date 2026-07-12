@@ -50,7 +50,6 @@ export const initialUiState: AppUiState = {
     help: false,
     listeningDashboard: false,
     ocrQueue: false,
-    jobWorker: false,
     search: false,
     promptEditor: false,
     settings: false,

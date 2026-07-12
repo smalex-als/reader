@@ -8,7 +8,6 @@ export type FloatingAudioSubchapter = {
 export type FloatingAudioTrack = {
   title: string;
   url: string;
-  srtUrl?: string | null;
   subtitle?: string;
   kind?: 'page-tts' | 'text-tts' | 'file';
   provider?: 'openai' | 'xai' | 'yandex' | 'default' | null;

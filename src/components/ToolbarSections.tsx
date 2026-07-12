@@ -252,7 +252,6 @@ type ToolbarToolsSectionProps = {
   handleCopyPageText: () => void;
   handleCreateBlankChapter: () => void;
   handleOpenHelp: () => void;
-  handleOpenJobWorker: () => void;
   handleOpenOcrQueue: () => void;
   handleOpenPrint: () => void;
   handleOpenPromptEditor: () => void;
@@ -275,7 +274,6 @@ export function ToolbarToolsSection({
   handleCopyPageText,
   handleCreateBlankChapter,
   handleOpenHelp,
-  handleOpenJobWorker,
   handleOpenOcrQueue,
   handleOpenPrint,
   handleOpenPromptEditor,
@@ -329,9 +327,6 @@ export function ToolbarToolsSection({
         </button>
         <button type="button" className="button" onClick={handleOpenPromptEditor}>
           Prompts
-        </button>
-        <button type="button" className="button" onClick={handleOpenJobWorker}>
-          Jobs
         </button>
         {showOcrStatus && (
           <div className="toolbar-status" role="status" aria-live="polite">

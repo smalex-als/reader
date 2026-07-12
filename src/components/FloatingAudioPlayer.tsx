@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFloatingAudioSubtitles } from '@/hooks/useFloatingAudioSubtitles';
 import { PLAYBACK_RATE_OPTIONS, normalizePlaybackRate } from '@/lib/appConstants';
-import { emitFloatingAudioSubchapterSelect, emitFloatingAudioTime } from '@/lib/floatingAudioEvents';
+import { emitFloatingAudioSubchapterSelect } from '@/lib/floatingAudioEvents';
 import {
   appActions,
   selectBookManifest,
@@ -39,13 +38,11 @@ export default function FloatingAudioPlayer() {
   const currentImage = manifest[currentPage] ?? null;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const lastEmittedSubchapterKeyRef = useRef<string | null>(null);
-  const lastEmittedTrackKeyRef = useRef<string | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [seeking, setSeeking] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const subtitleCues = useFloatingAudioSubtitles(track?.srtUrl);
   const subchapters = useMemo(
     () =>
       (track?.subchapters ?? [])
@@ -150,7 +147,6 @@ export default function FloatingAudioPlayer() {
         audioRef.current.pause();
       }
       lastEmittedSubchapterKeyRef.current = null;
-      lastEmittedTrackKeyRef.current = null;
       setPlaying(false);
       setCurrentTime(0);
       setDuration(0);
@@ -179,25 +175,6 @@ export default function FloatingAudioPlayer() {
       setPlaying(false);
     });
   }, [syncPlaybackState, track]);
-
-
-  useEffect(() => {
-    if (!track) {
-      return;
-    }
-    const trackKey = `${track.url}:${track.startSeconds ?? 0}`;
-    if (lastEmittedTrackKeyRef.current !== trackKey) {
-      lastEmittedTrackKeyRef.current = trackKey;
-      return;
-    }
-    emitFloatingAudioTime({
-      track,
-      currentTime,
-      duration,
-      playing
-    });
-  }, [currentTime, duration, playing, track]);
-
   const emitSubchapterNavigation = useCallback(
     (entry: FloatingAudioSubchapter) => {
       if (!track) {

@@ -7,3 +7,4 @@ data
 npm-debug.log*
 coverage
 tmp
+services

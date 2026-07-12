@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import { useAudioLibraryActions } from '@/hooks/useAudioLibraryActions';
-import { onFloatingAudioTime } from '@/lib/floatingAudioEvents';
-import { findStickyCueIndex } from '@/lib/subtitles';
 import {
   appActions,
   selectViewerWorkflow,
@@ -53,7 +51,6 @@ function toFloatingTrack(item: AudioLibraryItem, startSeconds?: number): Floatin
     title: item.chapterTitle,
     subtitle: `${item.bookTitle} · Chapter ${item.chapterNumber}`,
     url: item.audioUrl,
-    srtUrl: item.srtUrl,
     provider: item.provider,
     chapterNumber: item.chapterNumber,
     versionId: item.versionId,
@@ -66,8 +63,6 @@ export default function AudioLibraryView() {
   const dispatch = useAppDispatch();
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { textFontSize } = settings;
-  const libraryRef = useRef<HTMLDivElement | null>(null);
-  const cueRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const {
     items,
     loading,
@@ -78,7 +73,6 @@ export default function AudioLibraryView() {
   } = useAudioLibraryActions();
   const [query, setQuery] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -109,48 +103,14 @@ export default function AudioLibraryView() {
     () => items.find((item) => item.id === selectedItemId) ?? null,
     [items, selectedItemId]
   );
-  const activeCueIndex = useMemo(() => findStickyCueIndex(subtitleCues, currentTime), [currentTime, subtitleCues]);
   const transcriptStyle = useMemo(
     () => ({ '--text-viewer-font-size': `${textFontSize}px` } as CSSProperties),
     [textFontSize]
   );
 
   useEffect(() => {
-    if (!selectedItem) {
-      return;
-    }
-    return onFloatingAudioTime((detail) => {
-      if (detail.track.url !== selectedItem.audioUrl) {
-        return;
-      }
-      setCurrentTime(detail.currentTime);
-    });
-  }, [selectedItem]);
-
-  useEffect(() => {
-    cueRefs.current = {};
-    setCurrentTime(0);
     void loadSubtitles(selectedItem?.srtUrl ?? null);
   }, [loadSubtitles, selectedItem?.srtUrl]);
-
-  useEffect(() => {
-    if (activeCueIndex < 0) {
-      return;
-    }
-    const container = libraryRef.current;
-    const activeCue = cueRefs.current[activeCueIndex];
-    if (!container || !activeCue) {
-      return;
-    }
-    const containerRect = container.getBoundingClientRect();
-    const cueRect = activeCue.getBoundingClientRect();
-    const isFullyVisible = cueRect.top >= containerRect.top && cueRect.bottom <= containerRect.bottom;
-    if (isFullyVisible) {
-      return;
-    }
-    const nextScrollTop = container.scrollTop + cueRect.top - containerRect.top;
-    container.scrollTo({ top: Math.max(0, nextScrollTop), behavior: 'smooth' });
-  }, [activeCueIndex]);
 
   const handleSelectItem = useCallback((item: AudioLibraryItem) => {
     setSelectedItemId(item.id);
@@ -168,7 +128,6 @@ export default function AudioLibraryView() {
       if (!selectedItem) {
         return;
       }
-      setCurrentTime(cue.startSeconds);
       handlePlayItem(selectedItem, cue.startSeconds);
     },
     [handlePlayItem, selectedItem]
@@ -188,7 +147,7 @@ export default function AudioLibraryView() {
     ].filter(Boolean);
 
     return (
-      <div ref={libraryRef} className="audio-library audio-library-detail">
+      <div className="audio-library audio-library-detail">
         <header className="audio-library-detail-header">
           <button type="button" className="button button-secondary" onClick={() => setSelectedItemId(null)}>
             Back
@@ -268,11 +227,8 @@ export default function AudioLibraryView() {
           {subtitleCues.map((cue, index) => (
             <button
               key={`${cue.startSeconds}-${index}`}
-              ref={(element) => {
-                cueRefs.current[index] = element;
-              }}
               type="button"
-              className={`audio-library-cue ${activeCueIndex === index ? 'audio-library-cue-active' : ''}`}
+              className="audio-library-cue"
               onClick={() => handleCueSelect(cue)}
             >
               {cue.text}

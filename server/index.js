@@ -8,7 +8,6 @@ import booksRouter from './routes/books.js';
 import mediaRouter from './routes/media.js';
 import healthRouter from './routes/health.js';
 import eventsRouter from './routes/events.js';
-import jobsRouter from './routes/jobs.js';
 
 export function createApp() {
   const app = express();
@@ -52,7 +51,6 @@ export function createApp() {
   app.use(mediaRouter);
   app.use(healthRouter);
   app.use(eventsRouter);
-  app.use(jobsRouter);
 
   app.get('/{*splat}', (req, res, next) => {
     if (req.path.startsWith('/api/')) {

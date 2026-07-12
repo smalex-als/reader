@@ -22,7 +22,6 @@ import type {
   ChapterTextVersion,
   ChapterVocabulary,
   ImagePreviewTarget,
-  JobWorkerJob,
   ListeningDashboardData,
   OcrJob,
   OcrQueueState,
@@ -114,7 +113,6 @@ export type SimpleModal =
   | 'help'
   | 'listeningDashboard'
   | 'ocrQueue'
-  | 'jobWorker'
   | 'search'
   | 'promptEditor'
   | 'settings'
@@ -352,13 +350,6 @@ export interface ImagePreviewWorkflowState {
   error: string | null;
 }
 
-export interface JobWorkerWorkflowState {
-  jobs: JobWorkerJob[];
-  loading: boolean;
-  error: string | null;
-  refreshRequestId: number;
-}
-
 export interface ListeningDashboardWorkflowState {
   data: ListeningDashboardData | null;
   loading: boolean;
@@ -448,7 +439,6 @@ export interface CentralAppState {
   imagePreviewWorkflow: ImagePreviewWorkflowState;
   bookCardWorkflow: BookCardWorkflowState;
   promptEditorWorkflow: PromptEditorWorkflowState;
-  jobWorkerWorkflow: JobWorkerWorkflowState;
   listeningDashboardWorkflow: ListeningDashboardWorkflowState;
   viewerWorkflow: ViewerWorkflowState;
   voiceWorkflow: VoiceWorkflowState;
@@ -560,7 +550,6 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
     const libraryWorkflow = reduceLibraryWorkflow({
       bookCardWorkflow: state.bookCardWorkflow,
       promptEditorWorkflow: state.promptEditorWorkflow,
-      jobWorkerWorkflow: state.jobWorkerWorkflow,
       listeningDashboardWorkflow: state.listeningDashboardWorkflow
     }, action);
     return { ...state, ...libraryWorkflow };
@@ -665,7 +654,6 @@ export const selectPageTextWorkflow = (state: CentralAppState) => state.pageText
 export const selectImagePreviewWorkflow = (state: CentralAppState) => state.imagePreviewWorkflow;
 export const selectBookCardWorkflow = (state: CentralAppState) => state.bookCardWorkflow;
 export const selectPromptEditorWorkflow = (state: CentralAppState) => state.promptEditorWorkflow;
-export const selectJobWorkerWorkflow = (state: CentralAppState) => state.jobWorkerWorkflow;
 export const selectListeningDashboardWorkflow = (state: CentralAppState) => state.listeningDashboardWorkflow;
 export const selectViewerWorkflow = (state: CentralAppState) => state.viewerWorkflow;
 export const selectVoiceWorkflow = (state: CentralAppState) => state.voiceWorkflow;

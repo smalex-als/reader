@@ -102,19 +102,3 @@ export function parseSrt(text: string): SubtitleCue[] {
     });
   return mergeAwkwardSubtitleCues(cues);
 }
-
-export function findStickyCueIndex(cues: SubtitleCue[], currentTime: number) {
-  if (cues.length === 0) {
-    return -1;
-  }
-  const activeIndex = cues.findIndex((cue) => currentTime >= cue.startSeconds && currentTime <= cue.endSeconds);
-  if (activeIndex >= 0) {
-    return activeIndex;
-  }
-  for (let index = cues.length - 1; index >= 0; index -= 1) {
-    if (currentTime >= cues[index].startSeconds) {
-      return index;
-    }
-  }
-  return 0;
-}

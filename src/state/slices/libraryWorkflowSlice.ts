@@ -2,12 +2,10 @@ import type {
   BookCard,
   BookCardUpdate,
   ChapterTextPrompt,
-  JobWorkerJob,
   ListeningDashboardData
 } from '@/types/app';
 import type {
   BookCardWorkflowState,
-  JobWorkerWorkflowState,
   ListeningDashboardWorkflowState,
   PromptEditorWorkflowState
 } from '@/state/appState';
@@ -15,7 +13,6 @@ import type {
 export type LibraryWorkflowState = {
   bookCardWorkflow: BookCardWorkflowState;
   promptEditorWorkflow: PromptEditorWorkflowState;
-  jobWorkerWorkflow: JobWorkerWorkflowState;
   listeningDashboardWorkflow: ListeningDashboardWorkflowState;
 };
 
@@ -36,10 +33,6 @@ export type LibraryWorkflowAction =
   | { type: 'promptEditorWorkflow/setSaving'; saving: boolean }
   | { type: 'promptEditorWorkflow/setError'; error: string | null }
   | { type: 'promptEditorWorkflow/setStatus'; status: string | null }
-  | { type: 'jobWorkerWorkflow/loadJobs' }
-  | { type: 'jobWorkerWorkflow/setJobs'; jobs: JobWorkerJob[] }
-  | { type: 'jobWorkerWorkflow/setLoading'; loading: boolean }
-  | { type: 'jobWorkerWorkflow/setError'; error: string | null }
   | { type: 'listeningDashboardWorkflow/load' }
   | { type: 'listeningDashboardWorkflow/setData'; data: ListeningDashboardData | null }
   | { type: 'listeningDashboardWorkflow/setLoading'; loading: boolean }
@@ -62,10 +55,6 @@ const LIBRARY_WORKFLOW_ACTION_TYPES = new Set<LibraryWorkflowAction['type']>([
   'promptEditorWorkflow/setSaving',
   'promptEditorWorkflow/setError',
   'promptEditorWorkflow/setStatus',
-  'jobWorkerWorkflow/loadJobs',
-  'jobWorkerWorkflow/setJobs',
-  'jobWorkerWorkflow/setLoading',
-  'jobWorkerWorkflow/setError',
   'listeningDashboardWorkflow/load',
   'listeningDashboardWorkflow/setData',
   'listeningDashboardWorkflow/setLoading',
@@ -95,7 +84,6 @@ export const initialLibraryWorkflowState: LibraryWorkflowState = {
     error: null,
     status: null
   },
-  jobWorkerWorkflow: { jobs: [], loading: false, error: null, refreshRequestId: 0 },
   listeningDashboardWorkflow: { data: null, loading: false, error: null, refreshRequestId: 0 }
 };
 
@@ -128,10 +116,6 @@ export const libraryWorkflowActions = {
   setPromptEditorSaving: (saving: boolean) => ({ type: 'promptEditorWorkflow/setSaving' as const, saving }),
   setPromptEditorError: (error: string | null) => ({ type: 'promptEditorWorkflow/setError' as const, error }),
   setPromptEditorStatus: (status: string | null) => ({ type: 'promptEditorWorkflow/setStatus' as const, status }),
-  loadJobWorkerJobs: () => ({ type: 'jobWorkerWorkflow/loadJobs' as const }),
-  setJobWorkerJobs: (jobs: JobWorkerJob[]) => ({ type: 'jobWorkerWorkflow/setJobs' as const, jobs }),
-  setJobWorkerLoading: (loading: boolean) => ({ type: 'jobWorkerWorkflow/setLoading' as const, loading }),
-  setJobWorkerError: (error: string | null) => ({ type: 'jobWorkerWorkflow/setError' as const, error }),
   loadListeningDashboard: () => ({ type: 'listeningDashboardWorkflow/load' as const }),
   setListeningDashboardData: (data: ListeningDashboardData | null) => ({ type: 'listeningDashboardWorkflow/setData' as const, data }),
   setListeningDashboardLoading: (loading: boolean) => ({ type: 'listeningDashboardWorkflow/setLoading' as const, loading }),
@@ -205,14 +189,6 @@ export function reduceLibraryWorkflow(
       return { ...state, promptEditorWorkflow: { ...state.promptEditorWorkflow, error: action.error } };
     case 'promptEditorWorkflow/setStatus':
       return { ...state, promptEditorWorkflow: { ...state.promptEditorWorkflow, status: action.status } };
-    case 'jobWorkerWorkflow/loadJobs':
-      return { ...state, jobWorkerWorkflow: { ...state.jobWorkerWorkflow, refreshRequestId: state.jobWorkerWorkflow.refreshRequestId + 1 } };
-    case 'jobWorkerWorkflow/setJobs':
-      return { ...state, jobWorkerWorkflow: { ...state.jobWorkerWorkflow, jobs: action.jobs } };
-    case 'jobWorkerWorkflow/setLoading':
-      return { ...state, jobWorkerWorkflow: { ...state.jobWorkerWorkflow, loading: action.loading } };
-    case 'jobWorkerWorkflow/setError':
-      return { ...state, jobWorkerWorkflow: { ...state.jobWorkerWorkflow, error: action.error } };
     case 'listeningDashboardWorkflow/load':
       return { ...state, listeningDashboardWorkflow: { ...state.listeningDashboardWorkflow, refreshRequestId: state.listeningDashboardWorkflow.refreshRequestId + 1 } };
     case 'listeningDashboardWorkflow/setData':

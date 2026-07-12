@@ -50,7 +50,6 @@ import { generateChapterVocabulary, loadChapterVocabulary } from '../lib/vocabul
 import { createEnhancedImagePreview, createImagePreviewCrop } from '../lib/imagePreview.js';
 import { DATA_DIR } from '../config.js';
 import { formatChapterAudioFilename } from '../lib/streamAudio.js';
-import { resolveChapterSubtitlePaths } from '../lib/chapterSubtitles.js';
 import {
   addTextChapter,
   createTextBook,
@@ -316,12 +315,10 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
       const latestVersionId = versions?.latestVersionId ?? 'base';
       const audioFilename = formatChapterAudioFilename(chapterNumber, latestVersionId);
       const audioPath = path.join(DATA_DIR, bookId, audioFilename);
-      const subtitlePaths = resolveChapterSubtitlePaths({ mp3Path: audioPath, chapterNumber, versionId: latestVersionId });
       const [audioStat, audioMeta] = await Promise.all([
         safeStat(audioPath),
         loadChapterAudioMeta(bookId, chapterNumber, latestVersionId)
       ]);
-      const srtStat = await safeStat(subtitlePaths.srtPath);
       const audioSize = audioStat?.isFile?.() ? audioStat.size : null;
       const audioDurationSeconds = audioStat?.isFile?.()
         ? await getAudioDurationSeconds(audioPath)
@@ -335,7 +332,6 @@ router.get('/api/books/:id/audio', asyncHandler(async (req, res) => {
         audio: {
           ready: Boolean(audioStat?.isFile?.()),
           url: `/data/${bookId}/${audioFilename}`,
-          srtUrl: srtStat?.isFile?.() ? `/data/${bookId}/${subtitlePaths.srtFilename}` : null,
           bytes: audioSize,
           durationSeconds: audioDurationSeconds,
           versionId: audioMeta?.versionId ?? null,
@@ -510,13 +506,18 @@ router.delete('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req,
   const audioFilename = formatChapterAudioFilename(chapterNumber, versionId);
   const audioPath = path.join(DATA_DIR, bookId, audioFilename);
   const metaPath = `${audioPath}.meta.json`;
-  const subtitlePaths = resolveChapterSubtitlePaths({ mp3Path: audioPath, chapterNumber, versionId });
+  const srtPath = path.join(DATA_DIR, bookId, formatChapterAudioFilename(chapterNumber, versionId, '.srt'));
+  const subtitleTranscriptPath = path.join(
+    DATA_DIR,
+    bookId,
+    formatChapterAudioFilename(chapterNumber, versionId, '.subtitles.txt')
+  );
   const audioStat = await safeStat(audioPath);
   for (const targetPath of [
     audioPath,
     metaPath,
-    subtitlePaths.srtPath,
-    subtitlePaths.transcriptPath
+    srtPath,
+    subtitleTranscriptPath
   ]) {
     try {
       await fs.unlink(targetPath);

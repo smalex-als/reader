@@ -67,7 +67,6 @@ export function useAudioViewRuntimeActions({
         title: chapter.title,
         subtitle: `Chapter ${chapter.chapterNumber}`,
         url: chapter.audio.url,
-        srtUrl: chapter.audio.srtUrl ?? null,
         chapterNumber: chapter.chapterNumber,
         versionId,
         subchapters: chapter.audio.subchapters ?? []
