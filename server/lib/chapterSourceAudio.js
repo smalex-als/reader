@@ -8,7 +8,7 @@ import { createHttpError } from './errors.js';
 import { assertBookDirectory } from './books.js';
 import { safeStat, writeFileAtomic } from './fs.js';
 import { updateTocTitle } from './toc.js';
-import { requestNemotronTranscription } from './nemotronAsr.js';
+import { cleanNemotronTranscript, requestNemotronTranscription } from './nemotronAsr.js';
 import {
   enqueueBackgroundJob,
   isBackgroundQueueEnabled,
@@ -137,10 +137,27 @@ export async function getYouTubeAudioDownload({ bookId, chapterNumber }) {
     }
   }
   if (audioStat?.isFile() && audioStat.size > 0) {
+    let transcriptCleaned = Boolean(metadata.transcriptCleaned);
+    if (metadata.transcriptReady && !transcriptCleaned) {
+      const chapterTextPath = path.join(directory, `${formatChapterPrefix(chapterNumber)}.txt`);
+      try {
+        const chapterText = await fs.readFile(chapterTextPath, 'utf8');
+        const cleaned = cleanNemotronTranscript(chapterText);
+        if (cleaned && cleaned !== chapterText.trim()) {
+          await writeFileAtomic(chapterTextPath, `${cleaned}\n`);
+        }
+        transcriptCleaned = true;
+      } catch (error) {
+        if (error?.code !== 'ENOENT') {
+          throw error;
+        }
+      }
+    }
     const completed = {
       ...metadata,
       audioUrl: `/data/${bookId}/${audioFilename}`,
-      bytes: audioStat.size
+      bytes: audioStat.size,
+      transcriptCleaned
     };
     await writeSourceMetadata(directory, chapterNumber, completed);
     return completed;
@@ -231,7 +248,7 @@ export async function runYouTubeAudioDownloadJob({
     });
     let transcriptReady = false;
     if (asrJob) {
-      const transcript = (await fs.readFile(transcriptPath, 'utf8')).trim();
+      const transcript = cleanNemotronTranscript(await fs.readFile(transcriptPath, 'utf8'));
       if (!transcript) {
         throw createHttpError(502, 'Nemotron ASR produced an empty transcript');
       }
@@ -243,7 +260,8 @@ export async function runYouTubeAudioDownloadJob({
       ...failureMetadata,
       status: 'completed',
       completedAt: new Date().toISOString(),
-      transcriptReady
+      transcriptReady,
+      transcriptCleaned: transcriptReady
     });
   } catch (error) {
     await fs.rm(temporaryMp3Path, { force: true }).catch(() => {});

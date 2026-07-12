@@ -70,7 +70,9 @@ export function useYouTubeAudioImport({
           return;
         }
         setLoading(false);
-        setRequestError(error instanceof Error ? error.message : 'Unable to load YouTube audio status');
+        const message = error instanceof Error ? error.message : 'Unable to load YouTube audio status';
+        setRequestError(`${message}. Retrying…`);
+        timer = window.setTimeout(() => void poll(), ACTIVE_POLL_DELAY_MS);
       }
     };
 

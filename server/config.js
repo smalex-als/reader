@@ -140,6 +140,7 @@ export const CHAPTER_QUIZ_PROMPT = readPrompt('chapter-quiz.txt');
 export const CHAPTER_VOCAB_PROMPT = readPrompt('chapter-vocab.txt');
 export const CHAPTER_MEMORY_CARD_PROMPT = readPrompt('chapter-memory-card.txt');
 export const CHAPTER_REVIEW_EXTRACT_PROMPT = readPrompt('chapter-review-extract.txt');
+export const NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT = readPrompt('nemotron-transcript-cleanup.txt');
 export const CHAPTER_UNITS_PROMPT = readPrompt('chapter-units.txt');
 export const getTextPrompt = ({ backend, model } = {}) => {
   const cacheKey = `${backend || ''}|${model || ''}`;

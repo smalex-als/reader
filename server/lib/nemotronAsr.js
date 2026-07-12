@@ -27,6 +27,14 @@ export function formatAsrDataPath(filePath) {
   return relative.split(path.sep).join('/');
 }
 
+export function cleanNemotronTranscript(value) {
+  return String(value || '')
+    .replace(/(?:\r?\n)?[ \t]*<\s*[a-z]{2,3}[-_][a-z0-9]{2,8}\s*>[ \t]*/gi, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]*\n[ \t]*/g, '\n')
+    .trim();
+}
+
 export async function requestNemotronTranscription({
   audioPath,
   outputPath,

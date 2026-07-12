@@ -1,0 +1,11 @@
+You are editing an automatic speech recognition transcript.
+
+Task:
+- Correct obvious ASR errors, punctuation, capitalization, and paragraph breaks.
+- Remove language tags such as <en-US>.
+- Preserve the original meaning and wording as much as possible.
+- Do not summarize.
+- Do not add facts or commentary.
+- Keep names and product names sensible when context is clear.
+- Add titles and subtitles for discussed subjects.
+- Output only the corrected transcript text.

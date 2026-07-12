@@ -5,7 +5,12 @@ import { loadToc } from './toc.js';
 import { createHttpError } from './errors.js';
 import { safeStat, writeFileAtomic } from './fs.js';
 import { createStats } from './tocStats.js';
-import { CHAPTER_NARRATION_PROMPT, CHAPTER_REVIEW_EXTRACT_PROMPT, DATA_DIR } from '../config.js';
+import {
+  CHAPTER_NARRATION_PROMPT,
+  CHAPTER_REVIEW_EXTRACT_PROMPT,
+  DATA_DIR,
+  NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT
+} from '../config.js';
 import { getOpenAI } from './openai.js';
 
 const CHAPTER_PAD_LENGTH = 3;
@@ -42,6 +47,13 @@ function getDefaultPromptLibrary() {
         id: 'review-extract-default',
         name: 'Review Extract',
         template: CHAPTER_REVIEW_EXTRACT_PROMPT,
+        builtIn: true,
+        createdAt: new Date(0).toISOString()
+      },
+      {
+        id: 'nemotron-transcript-cleanup',
+        name: 'Clean Nemotron Transcript',
+        template: NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT,
         builtIn: true,
         createdAt: new Date(0).toISOString()
       }
