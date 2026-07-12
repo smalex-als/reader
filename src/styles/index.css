@@ -4376,6 +4376,45 @@ body {
   margin-right: auto;
 }
 
+.book-select-view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+  padding: 0.3rem;
+  border-radius: 0.85rem;
+  background: rgba(213, 229, 242, 0.045);
+  border: 1px solid rgba(213, 229, 242, 0.08);
+}
+
+.book-select-view-tab {
+  flex: 1;
+  padding: 0.65rem 0.8rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: rgba(213, 229, 242, 0.58);
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.book-select-view-tab:hover,
+.book-select-view-tab:focus-visible {
+  color: rgba(239, 246, 253, 0.9);
+}
+
+.book-select-view-tab-active {
+  color: rgba(245, 249, 253, 0.98);
+  background: rgba(68, 128, 230, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(89, 151, 255, 0.24);
+}
+
+.book-select-feed-panel {
+  width: 100%;
+}
+
 .book-select-modal .modal-footer {
   justify-content: flex-end;
   border-top: 1px solid rgba(213, 229, 242, 0.08);
@@ -4573,16 +4612,28 @@ body {
   gap: 0.75rem;
 }
 
-.book-select-import-heading {
-  margin-top: 2rem;
-  margin-bottom: 0.8rem;
+.book-import-tab-panel {
+  min-height: 360px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.5rem;
 }
 
-.book-select-imports {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(190px, 0.8fr);
-  gap: 0.8rem;
-  padding-bottom: 0.25rem;
+.book-upload-standalone {
+  width: min(560px, 100%);
+  padding: 1.25rem;
+}
+
+.book-upload-pdf {
+  min-height: 220px;
+  justify-content: space-between;
+}
+
+.book-upload-heading {
+  margin: 0.35rem 0 0;
+  font-size: 1.3rem;
+  color: rgba(241, 247, 253, 0.96);
 }
 
 .book-upload-header {
@@ -4746,8 +4797,13 @@ body {
     display: none;
   }
 
-  .book-select-imports {
-    grid-template-columns: 1fr;
+  .book-select-view-tabs {
+    gap: 0.2rem;
+  }
+
+  .book-select-view-tab {
+    padding-inline: 0.45rem;
+    font-size: 0.76rem;
   }
 
   .book-select-action {
