@@ -1,4 +1,36 @@
 services:
+  nemotron-asr:
+    profiles: ["asr"]
+    platform: linux/amd64
+    build:
+      context: ./services/nemotron-asr
+      dockerfile: Dockerfile
+    environment:
+      NEMOTRON_ASR_HOST: 0.0.0.0
+      NEMOTRON_ASR_PORT: 3300
+      NEMOTRON_ASR_DATA_DIR: /data
+      NEMOTRON_ASR_MODEL: ${NEMOTRON_ASR_MODEL:-nvidia/nemotron-3.5-asr-streaming-0.6b}
+      NEMOTRON_ASR_DEVICE: ${NEMOTRON_ASR_DEVICE:-cuda}
+      NEMOTRON_ASR_PRECISION: ${NEMOTRON_ASR_PRECISION:-fp16}
+      NEMOTRON_ASR_CHUNK_SECONDS: ${NEMOTRON_ASR_CHUNK_SECONDS:-600}
+      NEMOTRON_ASR_KEEP_MODEL_LOADED: ${NEMOTRON_ASR_KEEP_MODEL_LOADED:-false}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    volumes:
+      - ./data:/data
+      - nemotron-cache:/root/.cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3300/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
   redis:
     image: redis:7.4-alpine
     command: redis-server --appendonly yes
@@ -22,6 +54,10 @@ services:
       PORT: 3000
       REDIS_URL: redis://redis:6379
       BACKGROUND_JOB_CONCURRENCY: ${BACKGROUND_JOB_CONCURRENCY:-1}
+      NEMOTRON_ASR_URL: ${NEMOTRON_ASR_URL:-http://nemotron-asr:3300}
+      NEMOTRON_ASR_LANGUAGE: ${NEMOTRON_ASR_LANGUAGE:-auto}
+      NEMOTRON_ASR_TIMEOUT_MS: ${NEMOTRON_ASR_TIMEOUT_MS:-3600000}
+      NEMOTRON_ASR_POLL_INTERVAL_MS: ${NEMOTRON_ASR_POLL_INTERVAL_MS:-2000}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
       YANDEX_API_KEY: ${YANDEX_API_KEY:-}
@@ -65,3 +101,4 @@ services:
 
 volumes:
   redis-data:
+  nemotron-cache:

@@ -9,6 +9,13 @@ dist/
 logs/
 tmp/
 temp/
+__pycache__/
+
+# Service experiments stay local; the production Nemotron service is versioned.
+services/*
+!services/nemotron-asr/
+!services/nemotron-asr/**
+services/nemotron-asr/__pycache__/
 
 # Environment overrides
 .env
@@ -23,4 +30,3 @@ temp/
 
 # Local data sets
 data/
-services/

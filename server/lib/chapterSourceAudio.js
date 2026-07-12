@@ -8,6 +8,7 @@ import { createHttpError } from './errors.js';
 import { assertBookDirectory } from './books.js';
 import { safeStat, writeFileAtomic } from './fs.js';
 import { updateTocTitle } from './toc.js';
+import { requestNemotronTranscription } from './nemotronAsr.js';
 import {
   enqueueBackgroundJob,
   isBackgroundQueueEnabled,
@@ -170,6 +171,9 @@ export async function runYouTubeAudioDownloadJob({
   const temporaryMp3Path = path.join(directory, `${temporaryBase}.mp3`);
   const finalFilename = formatChapterSourceAudioFilename(chapterNumber);
   const finalPath = path.join(directory, finalFilename);
+  const transcriptFilename = `${prefix}.transcript.txt`;
+  const transcriptPath = path.join(directory, transcriptFilename);
+  const chapterTextPath = path.join(directory, `${prefix}.txt`);
   const baseMetadata = {
     ...current,
     source: 'youtube',
@@ -180,25 +184,31 @@ export async function runYouTubeAudioDownloadJob({
     error: null
   };
   await writeSourceMetadata(directory, chapterNumber, baseMetadata);
+  let failureMetadata = baseMetadata;
 
   try {
-    await fs.rm(temporaryMp3Path, { force: true });
-    const { stdout } = await execFileAsync(
-      YT_DLP_BIN,
-      buildYouTubeDownloadArgs({ sourceUrl: normalizedUrl, outputTemplate }),
-      { timeout: 30 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 }
-    );
-    const videoTitle = extractYouTubeVideoTitle(stdout);
-    const downloaded = await safeStat(temporaryMp3Path);
-    if (!downloaded?.isFile() || downloaded.size <= 0) {
-      throw createHttpError(502, 'yt-dlp did not produce an MP3 file');
-    }
-    const latest = await loadSourceMetadata(directory, chapterNumber);
-    if (latest?.jobId !== jobId) {
+    const existingAudio = current?.audioUrl ? await safeStat(finalPath) : null;
+    let downloaded = existingAudio?.isFile() && existingAudio.size > 0 ? existingAudio : null;
+    let videoTitle = current?.videoTitle || '';
+    if (!downloaded) {
       await fs.rm(temporaryMp3Path, { force: true });
-      return null;
+      const { stdout } = await execFileAsync(
+        YT_DLP_BIN,
+        buildYouTubeDownloadArgs({ sourceUrl: normalizedUrl, outputTemplate }),
+        { timeout: 30 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 }
+      );
+      videoTitle = extractYouTubeVideoTitle(stdout);
+      downloaded = await safeStat(temporaryMp3Path);
+      if (!downloaded?.isFile() || downloaded.size <= 0) {
+        throw createHttpError(502, 'yt-dlp did not produce an MP3 file');
+      }
+      const latest = await loadSourceMetadata(directory, chapterNumber);
+      if (latest?.jobId !== jobId) {
+        await fs.rm(temporaryMp3Path, { force: true });
+        return null;
+      }
+      await fs.rename(temporaryMp3Path, finalPath);
     }
-    await fs.rename(temporaryMp3Path, finalPath);
     if (videoTitle) {
       try {
         await updateTocTitle(bookId, chapterNumber - 1, videoTitle);
@@ -206,23 +216,45 @@ export async function runYouTubeAudioDownloadJob({
         console.warn('Unable to update chapter title from YouTube metadata', error);
       }
     }
-    return writeSourceMetadata(directory, chapterNumber, {
+    failureMetadata = await writeSourceMetadata(directory, chapterNumber, {
       ...baseMetadata,
-      status: 'completed',
-      completedAt: new Date().toISOString(),
+      status: 'transcribing',
+      downloadedAt: new Date().toISOString(),
       videoTitle: videoTitle || null,
       audioUrl: `/data/${bookId}/${finalFilename}`,
       bytes: downloaded.size
     });
+    const asrJob = await requestNemotronTranscription({
+      audioPath: finalPath,
+      outputPath: transcriptPath,
+      jobId
+    });
+    let transcriptReady = false;
+    if (asrJob) {
+      const transcript = (await fs.readFile(transcriptPath, 'utf8')).trim();
+      if (!transcript) {
+        throw createHttpError(502, 'Nemotron ASR produced an empty transcript');
+      }
+      await writeFileAtomic(chapterTextPath, `${transcript}\n`);
+      await fs.rm(transcriptPath, { force: true });
+      transcriptReady = true;
+    }
+    return writeSourceMetadata(directory, chapterNumber, {
+      ...failureMetadata,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+      transcriptReady
+    });
   } catch (error) {
     await fs.rm(temporaryMp3Path, { force: true }).catch(() => {});
+    await fs.rm(transcriptPath, { force: true }).catch(() => {});
     const latest = await loadSourceMetadata(directory, chapterNumber);
     if (latest?.jobId === jobId) {
       await writeSourceMetadata(directory, chapterNumber, {
-        ...baseMetadata,
+        ...failureMetadata,
         status: 'failed',
         failedAt: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'YouTube audio download failed'
+        error: error instanceof Error ? error.message : 'YouTube chapter import failed'
       });
     }
     throw error;
@@ -232,15 +264,19 @@ export async function runYouTubeAudioDownloadJob({
 export async function enqueueYouTubeAudioDownload({ bookId, chapterNumber, sourceUrl }) {
   const directory = await assertBookDirectory(bookId);
   const normalizedUrl = normalizeYouTubeUrl(sourceUrl);
+  const existing = await loadSourceMetadata(directory, chapterNumber);
   const jobId = randomUUID();
   const queued = await writeSourceMetadata(directory, chapterNumber, {
+    ...existing,
     source: 'youtube',
     sourceUrl: normalizedUrl,
     jobId,
     status: 'queued',
     queuedAt: new Date().toISOString(),
-    error: null,
-    audioUrl: null
+    completedAt: null,
+    failedAt: null,
+    transcriptReady: false,
+    error: null
   });
   const payload = { bookId, chapterNumber, sourceUrl: normalizedUrl, jobId };
   if (isBackgroundQueueEnabled()) {

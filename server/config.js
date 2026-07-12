@@ -22,6 +22,16 @@ export const BACKGROUND_JOB_CONCURRENCY =
     ? backgroundJobConcurrencyRaw
     : 1;
 export const YT_DLP_BIN = process.env.YT_DLP_BIN || 'yt-dlp';
+export const NEMOTRON_ASR_URL = (process.env.NEMOTRON_ASR_URL || '').replace(/\/$/, '');
+export const NEMOTRON_ASR_LANGUAGE = process.env.NEMOTRON_ASR_LANGUAGE || 'auto';
+export const NEMOTRON_ASR_TIMEOUT_MS = Number.parseInt(
+  process.env.NEMOTRON_ASR_TIMEOUT_MS || '3600000',
+  10
+);
+export const NEMOTRON_ASR_POLL_INTERVAL_MS = Number.parseInt(
+  process.env.NEMOTRON_ASR_POLL_INTERVAL_MS || '2000',
+  10
+);
 export const BOOKMARKS_FILENAME = 'bookmarks.txt';
 export const TOC_FILENAME = 'toc.json';
 export const DETAILED_TOC_FILENAME = 'toc.detailed.json';

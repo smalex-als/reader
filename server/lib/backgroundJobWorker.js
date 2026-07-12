@@ -20,7 +20,7 @@ export function startReaderBackgroundJobWorker() {
     if (job.name === YOUTUBE_AUDIO_JOB_NAME) {
       await job.updateProgress({ percent: 10, label: 'Downloading YouTube audio' });
       await runYouTubeAudioDownloadJob(job.data);
-      await job.updateProgress({ percent: 100, label: 'Source MP3 ready' });
+      await job.updateProgress({ percent: 100, label: 'Chapter ready' });
       return;
     }
     throw new Error(`Unsupported background job: ${job.name}`);

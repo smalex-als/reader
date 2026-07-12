@@ -60,6 +60,7 @@ export function useYouTubeAudioImport({
         if (
           next?.status === 'queued' ||
           next?.status === 'running' ||
+          next?.status === 'transcribing' ||
           (next?.status === 'failed' && failedRechecks <= FAILED_RECHECK_LIMIT)
         ) {
           timer = window.setTimeout(() => void poll(), ACTIVE_POLL_DELAY_MS);

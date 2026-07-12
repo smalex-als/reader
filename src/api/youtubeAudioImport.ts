@@ -2,7 +2,7 @@ export type YouTubeAudioImportStatus = {
   source: 'youtube';
   sourceUrl: string;
   jobId: string;
-  status: 'queued' | 'running' | 'completed' | 'failed';
+  status: 'queued' | 'running' | 'transcribing' | 'completed' | 'failed';
   queuedAt?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
@@ -11,6 +11,7 @@ export type YouTubeAudioImportStatus = {
   audioUrl?: string | null;
   bytes?: number | null;
   videoTitle?: string | null;
+  transcriptReady?: boolean;
 };
 
 async function readStatus(response: Response) {

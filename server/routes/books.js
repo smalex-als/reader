@@ -640,7 +640,7 @@ router.post('/api/books/:id/chapters/:chapter/youtube-audio/retry', asyncHandler
   if (!existing?.sourceUrl) {
     throw createHttpError(404, 'YouTube audio import not found');
   }
-  if (existing.status === 'queued' || existing.status === 'running') {
+  if (existing.status === 'queued' || existing.status === 'running' || existing.status === 'transcribing') {
     res.status(202).json({ book: bookId, chapterNumber, job: existing });
     return;
   }

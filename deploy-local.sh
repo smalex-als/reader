@@ -40,7 +40,7 @@ main() {
     log "server deploy requires ${CERT_DIR}/reader.test.pem and reader.test.key"
     return 1
   fi
-  docker compose --profile https "${COMPOSE_ARGS[@]}" redis reader
+  docker compose --profile https --profile asr "${COMPOSE_ARGS[@]}" redis nemotron-asr reader
 
   HEALTH_URL="http://127.0.0.1:3000/api/health"
   HEALTHY=false
@@ -52,8 +52,23 @@ main() {
     sleep 1
   done
   if [ "$HEALTHY" != true ]; then
-    docker compose logs --tail=100 reader redis >> "$LOG_FILE" 2>&1 || true
+    docker compose --profile asr logs --tail=100 reader nemotron-asr redis >> "$LOG_FILE" 2>&1 || true
     log "health check failed: ${HEALTH_URL}"
+    return 1
+  fi
+
+  ASR_HEALTHY=false
+  for _attempt in {1..30}; do
+    if docker compose --profile asr exec -T nemotron-asr python -c \
+      "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3300/health', timeout=2)"; then
+      ASR_HEALTHY=true
+      break
+    fi
+    sleep 1
+  done
+  if [ "$ASR_HEALTHY" != true ]; then
+    docker compose --profile asr logs --tail=100 nemotron-asr >> "$LOG_FILE" 2>&1 || true
+    log "Nemotron ASR health check failed"
     return 1
   fi
 
@@ -80,7 +95,7 @@ main() {
     docker image prune -f >/dev/null
   fi
 
-  SUCCESS_MESSAGE="deploy succeeded at $(git rev-parse --short HEAD) (Reader, Redis, and nginx healthy)"
+  SUCCESS_MESSAGE="deploy succeeded at $(git rev-parse --short HEAD) (Reader, Redis, Nemotron ASR, and nginx healthy)"
   log "$SUCCESS_MESSAGE"
   echo "$SUCCESS_MESSAGE"
 }
