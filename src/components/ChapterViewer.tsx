@@ -45,7 +45,6 @@ export default function ChapterViewer() {
     bookId,
     chapterNumber,
     chapterTitle,
-    chapterLabel,
     pageRange
   } = useCurrentChapterContext();
   const {
@@ -59,9 +58,7 @@ export default function ChapterViewer() {
   );
   const youtubeVideoTitle = youtubeAudioImport.status?.videoTitle?.trim() || null;
   const visibleChapterTitle = youtubeVideoTitle || (youtubeTitlePlaceholder ? 'YouTube Chapter' : chapterTitle);
-  const visibleChapterLabel = youtubeVideoTitle || (
-    youtubeTitlePlaceholder && chapterNumber ? `Chapter ${chapterNumber}` : chapterLabel
-  );
+  const visibleChapterLabel = chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter';
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [addChapterOpen, setAddChapterOpen] = useState(false);
