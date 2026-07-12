@@ -1199,7 +1199,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  flex: 1 1 14rem;
+  flex: 1 1 32rem;
   min-width: 0;
 }
 
@@ -1255,8 +1255,8 @@ body {
   justify-content: flex-end;
   gap: 0.45rem;
   flex-wrap: wrap;
-  flex: 1 1 34rem;
-  min-width: min(100%, 22rem);
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 100%;
 }
 
