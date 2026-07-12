@@ -161,24 +161,20 @@ export default function BookSelectModal() {
     dispatch(appActions.setReaderBookId(book));
     dispatch(appActions.closeModal('bookSelect'));
   };
-  const handleOpenAudioLibrary = () => {
-    dispatch(appActions.closeModal('bookSelect'));
-    dispatch(appActions.closeModal('settings'));
-    dispatch(appActions.setMainView('audio-library'));
-  };
-
   if (!open) {
     return null;
   }
 
   return (
     <ModalShell ariaLabel="Select a book" onClose={handleClose} className="modal-wide book-select-modal">
-        <header className="modal-header">
-          <h2 className="modal-title">Select a book</h2>
+        <header className="modal-header book-select-header">
+          <div className="book-select-heading">
+            <h2 className="modal-title">Your library</h2>
+            <span className="book-select-heading-meta">
+              {books.length} {books.length === 1 ? 'book' : 'books'}
+            </span>
+          </div>
           <div className="modal-actions">
-            <button type="button" className="button button-secondary" onClick={handleOpenAudioLibrary}>
-              MP3 Library
-            </button>
             <button
               type="button"
               className="button button-ghost modal-icon-button"
@@ -190,9 +186,12 @@ export default function BookSelectModal() {
             </button>
           </div>
         </header>
-        <section className="modal-body">
+        <section className="modal-body book-select-body">
           <div className="book-select-toolbar">
-            <span className="book-select-toolbar-label">Sort</span>
+            <div>
+              <span className="book-select-toolbar-label">Book feed</span>
+              <p className="book-select-toolbar-copy">Pick up where you left off or save something for later.</p>
+            </div>
             <div className="segmented" role="tablist" aria-label="Book sort">
               <button
                 type="button"
@@ -238,7 +237,7 @@ export default function BookSelectModal() {
                 const displayCover = card?.coverImage ?? null;
                 return (
                   <li key={book}>
-                    <div className="book-select-row">
+                    <article className={`book-select-row ${active ? 'book-select-row-active' : ''}`}>
                       <button
                         type="button"
                         className={`book-select-button ${active ? 'book-select-button-active' : ''}`}
@@ -255,7 +254,7 @@ export default function BookSelectModal() {
                         </span>
                         <span className="book-select-labels">
                           <span className="book-select-name-row">
-                            <span>{displayTitle}</span>
+                            <span className="book-select-name">{displayTitle}</span>
                             {active ? <span className="book-select-marker">Current</span> : null}
                             {isDeferred ? <span className="book-select-tag">Saved</span> : null}
                           </span>
@@ -270,18 +269,27 @@ export default function BookSelectModal() {
                           </span>
                           <span className="book-select-subtitle book-select-id">{book}</span>
                         </span>
+                        <span className="book-select-open" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="m9 18 6-6-6-6" />
+                          </svg>
+                        </span>
                       </button>
                       <div className="book-select-actions">
                         <button
                           type="button"
-                          className="button button-ghost"
+                          className="button button-ghost book-select-action"
                           onClick={() => dispatch(appActions.openBookCard(book))}
                         >
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                          </svg>
                           Edit
                         </button>
                         <button
                           type="button"
-                          className={`button button-ghost book-select-deferred ${isDeferred ? 'book-select-deferred-active' : ''}`}
+                          className={`button button-ghost book-select-action book-select-deferred ${isDeferred ? 'book-select-deferred-active' : ''}`}
                           onClick={() => {
                             const nextDeferred = !isDeferred;
                             setBookDeferred(book, nextDeferred);
@@ -295,18 +303,27 @@ export default function BookSelectModal() {
                           }}
                           aria-label={isDeferred ? `Remove ${book} from saved` : `Mark ${book} as saved`}
                         >
-                          {isDeferred ? 'Saved ✓' : 'Save'}
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M6 4h12v17l-6-4-6 4Z" />
+                          </svg>
+                          {isDeferred ? 'Saved' : 'Save'}
                         </button>
                         <button
                           type="button"
-                          className="button button-ghost book-select-delete"
+                          className="button button-ghost book-select-action book-select-delete"
                           onClick={() => void deleteBook(book)}
                           aria-label={`Delete ${book}`}
                         >
+                          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M4 7h16" />
+                            <path d="M9 7V4h6v3" />
+                            <path d="m6 7 1 14h10l1-14" />
+                            <path d="M10 11v6M14 11v6" />
+                          </svg>
                           Delete
                         </button>
                       </div>
-                    </div>
+                    </article>
                   </li>
                 );
               })}
@@ -314,7 +331,12 @@ export default function BookSelectModal() {
           )}
           {cardsLoading ? <p className="modal-status">Loading book cards…</p> : null}
           {cardsError ? <p className="modal-status">{cardsError}</p> : null}
-          <div className="book-upload">
+          <div className="book-select-import-heading">
+            <span className="book-select-toolbar-label">Add to library</span>
+            <p className="book-select-toolbar-copy">Import a text chapter or start a scanned book from PDF.</p>
+          </div>
+          <div className="book-select-imports">
+          <div className="book-upload book-upload-chapter">
             <div className="book-upload-header">
               <span className="book-upload-title">Text chapters</span>
               <span className="book-upload-hint">
@@ -383,6 +405,7 @@ export default function BookSelectModal() {
               style={{ display: 'none' }}
               onChange={handleSelectPdf}
             />
+          </div>
           </div>
         </section>
         <footer className="modal-footer">
