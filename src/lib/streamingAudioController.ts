@@ -224,10 +224,15 @@ export function createStreamingAudioController({
     transition({ type: 'request-finished' });
   }
 
-  function finalizeStream(status: StreamState['status'] = 'idle', error?: string) {
+  function finalizeStream(
+    status: StreamState['status'] = 'idle',
+    error?: string,
+    preservePauseAtStart = true
+  ) {
     const completedSession = transition({
       type: 'complete',
-      status: status === 'error' ? 'error' : 'idle'
+      status: status === 'error' ? 'error' : 'idle',
+      preservePauseAtStart
     });
     queue.clear();
     const playedSeconds = playbackSamples / SAMPLE_RATE;
@@ -674,7 +679,7 @@ export function createStreamingAudioController({
     transition({ type: 'source-ended' });
     queue.clear();
     closeStreamRequest();
-    finalizeStream();
+    finalizeStream('idle', undefined, false);
   }
 
   function stopAfterCurrentStream() {

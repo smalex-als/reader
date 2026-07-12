@@ -1,6 +1,7 @@
 import { StreamLookaheadController, type StreamLookaheadEnvironment } from '@/lib/streamLookaheadController';
 import { parseStreamLocator } from '@/lib/streamLocator';
 import { StreamRestartCoordinator, type RestartTimerScheduler } from '@/lib/streamRestartCoordinator';
+import { StreamStudyReplayGuard } from '@/lib/streamStudyReplayGuard';
 import {
   createStreamSequenceMachineState,
   isCurrentStreamSequenceRun,
@@ -95,6 +96,7 @@ export function createStreamSequenceController({
   let studyPausedAtStart = false;
   const lookahead = new StreamLookaheadController<PageText>();
   const restartCoordinator = new StreamRestartCoordinator(scheduler, restartDelayMs);
+  const studyReplayGuard = new StreamStudyReplayGuard();
 
   function getEnvironment() {
     if (!environment) {
@@ -128,9 +130,9 @@ export function createStreamSequenceController({
     };
   }
 
-  function stopStreamSequence() {
+  function stopStreamSequence(clearPending = false) {
     restartCoordinator.clear();
-    transition({ type: 'stop' });
+    transition({ type: 'stop', clearPending });
     autoAdvance = false;
     lastStreamSource = null;
     lookahead.clear();
@@ -189,6 +191,7 @@ export function createStreamSequenceController({
       current.showToast('No page text available to stream', 'error');
       return;
     }
+    studyReplayGuard.allowPlayback();
 
     const replacingPausedStudyStream = studyPausedAtStart && current.streamState.status === 'paused';
     studyPausedAtStart = false;
@@ -235,6 +238,7 @@ export function createStreamSequenceController({
     voiceOverride?: string
   ) {
     const current = getEnvironment();
+    studyReplayGuard.allowPlayback();
     const voice = voiceOverride ?? current.streamVoice;
     const replacingPausedStudyStream = studyPausedAtStart && current.streamState.status === 'paused';
     studyPausedAtStart = false;
@@ -359,6 +363,7 @@ export function createStreamSequenceController({
       current.showToast('No text available to stream', 'error');
       return;
     }
+    studyReplayGuard.allowPlayback();
     const replacingPausedStudyStream = studyPausedAtStart && current.streamState.status === 'paused';
     studyPausedAtStart = false;
     if (ACTIVE_STREAM_STATUSES.has(current.streamState.status) && !replacingPausedStudyStream) {
@@ -416,8 +421,9 @@ export function createStreamSequenceController({
     autoAdvance = false;
     studyReplayPageKey = null;
     studyPausedAtStart = false;
+    studyReplayGuard.blockUntilIdle();
     current.stopStream();
-    stopStreamSequence();
+    stopStreamSequence(true);
   }
 
   async function restartStreamFromPageKey(pageKey: string, voiceOverride: string) {
@@ -572,6 +578,9 @@ export function createStreamSequenceController({
 
   function syncRuntime() {
     const current = getEnvironment();
+    if (!studyReplayGuard.shouldSync(current.streamState.status)) {
+      return;
+    }
     if (current.studyMode) {
       lookahead.suppressForStudy(current.manifest.length);
       if (current.streamState.pageKey) {

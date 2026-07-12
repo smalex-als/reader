@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useStudyModeToggle } from '@/hooks/useStudyModeToggle';
 import { useStreamUi } from '@/hooks/useStreamUi';
 import {
@@ -19,33 +18,20 @@ export default function StreamBubble() {
   const { autoFollowStream } = useAppSelector(selectStreamUiControls);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const { isVisible, status, isDisabled, ariaLabel, title } = useStreamUi(streamState);
-  const [renderVisible, setRenderVisible] = useState(isVisible);
-  const [displayStatus, setDisplayStatus] = useState(status);
   const showAutoFollow = viewMode === 'scroll';
   const playedSeconds = Math.max(0, Math.floor(streamState.playbackSeconds));
   const minutes = Math.floor(playedSeconds / 60);
   const seconds = playedSeconds % 60;
   const timeLabel = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
-  useEffect(() => {
-    if (isVisible) {
-      setDisplayStatus(status);
-      setRenderVisible(true);
-      return;
-    }
-    setDisplayStatus('paused');
-    const timeout = window.setTimeout(() => setRenderVisible(false), 450);
-    return () => window.clearTimeout(timeout);
-  }, [isVisible, status]);
-
-  if (!renderVisible) {
+  if (!isVisible) {
     return null;
   }
 
   return (
     <div
       className={`stream-bubble ${
-        displayStatus === 'connecting'
+        status === 'connecting'
           ? 'stream-bubble-connecting'
           : ''
       }`}
@@ -58,11 +44,11 @@ export default function StreamBubble() {
         aria-label={ariaLabel}
         title={title}
       >
-        {displayStatus === 'paused' ? (
+        {status === 'paused' ? (
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M8 5v14l11-7-11-7z" />
           </svg>
-        ) : displayStatus === 'connecting' ? (
+        ) : status === 'connecting' ? (
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M12 4a8 8 0 1 1-5.7 13.6l1.4-1.4A6 6 0 1 0 12 6v2l3-3-3-3v2z" />
           </svg>

@@ -36,7 +36,7 @@ export type StreamingSessionEvent =
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'stop-after-current'; pageKey: string }
-  | { type: 'complete'; status?: 'idle' | 'error' }
+  | { type: 'complete'; status?: 'idle' | 'error'; preservePauseAtStart?: boolean }
   | { type: 'pause-at-start'; pageKey: string }
   | { type: 'unmount' };
 
@@ -136,7 +136,9 @@ export function transitionStreamingSession(
         pauseAtStartPageKey: event.pageKey
       };
     case 'complete': {
-      const pauseAtStartPageKey = event.status !== 'error' ? state.pauseAtStartPageKey : null;
+      const pauseAtStartPageKey = event.status !== 'error' && event.preservePauseAtStart !== false
+        ? state.pauseAtStartPageKey
+        : null;
       return {
         ...state,
         status: pauseAtStartPageKey ? 'paused' : (event.status ?? 'idle'),

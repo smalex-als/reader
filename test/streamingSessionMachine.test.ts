@@ -90,6 +90,25 @@ test('stop-after-current rejects later page audio and pauses at the boundary', (
   assert.equal(state.pageKey, 'page-1');
 });
 
+test('explicit stop discards the study pause-at-start boundary', () => {
+  let state = transition(createStreamingSessionState(), {
+    type: 'start',
+    pageKey: 'page-1',
+    voice: 'voice-a',
+    pauseAtStartOnComplete: true
+  });
+  state = transition(state, { type: 'segment-started', pageKey: 'page-1' });
+
+  state = transition(state, {
+    type: 'complete',
+    preservePauseAtStart: false
+  });
+
+  assert.equal(state.status, 'idle');
+  assert.equal(state.pageKey, null);
+  assert.equal(state.pauseAtStartPageKey, null);
+});
+
 test('component unmount disposes the machine and invalidates all tokens', () => {
   let state = transition(createStreamingSessionState(), {
     type: 'start',

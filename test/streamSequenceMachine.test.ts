@@ -52,6 +52,24 @@ test('sequence unmount clears pending work and invalidates run tokens', () => {
   assert.equal(isCurrentStreamSequenceRun(state, staleRunId), false);
 });
 
+test('explicit stop clears a pending restart', () => {
+  let state = transitionStreamSequenceMachine(createStreamSequenceMachineState(), { type: 'begin' });
+  state = transitionStreamSequenceMachine(state, {
+    type: 'queue-restart',
+    reason: 'voice-change',
+    pending: {
+      kind: 'single',
+      value: { text: 'hello', pageKey: 'page-1', voiceOverride: 'voice-b' }
+    }
+  });
+
+  state = transitionStreamSequenceMachine(state, { type: 'stop', clearPending: true });
+
+  assert.equal(state.phase, 'idle');
+  assert.equal(state.pendingRestart, null);
+  assert.equal(state.restartReason, null);
+});
+
 test('mount reactivates a Strict Mode cleanup without reviving the old run', () => {
   let state = transitionStreamSequenceMachine(createStreamSequenceMachineState(), { type: 'begin' });
   const staleRunId = state.runId;
