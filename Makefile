@@ -66,10 +66,12 @@ server-deploy:
 	./deploy-local.sh
 
 server-up:
-	$(SERVER_COMPOSE) up --build -d --wait redis reader nginx
+	$(SERVER_COMPOSE) up --build -d --wait redis reader
+	$(SERVER_COMPOSE) up -d --no-deps --force-recreate nginx
 
 server-start:
-	$(SERVER_COMPOSE) up -d --wait redis reader nginx
+	$(SERVER_COMPOSE) up -d --wait redis reader
+	$(SERVER_COMPOSE) up -d --no-deps --force-recreate nginx
 
 server-stop:
 	$(SERVER_COMPOSE) stop nginx reader redis
@@ -78,7 +80,8 @@ server-down:
 	$(SERVER_COMPOSE) down
 
 server-restart:
-	$(SERVER_COMPOSE) restart redis reader nginx
+	$(SERVER_COMPOSE) restart redis reader
+	$(SERVER_COMPOSE) restart nginx
 
 server-logs:
 	$(SERVER_COMPOSE) logs -f nginx reader redis

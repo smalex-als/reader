@@ -40,7 +40,7 @@ main() {
     log "server deploy requires ${CERT_DIR}/reader.test.pem and reader.test.key"
     return 1
   fi
-  docker compose --profile https "${COMPOSE_ARGS[@]}" redis reader nginx
+  docker compose --profile https "${COMPOSE_ARGS[@]}" redis reader
 
   HEALTH_URL="http://127.0.0.1:3000/api/health"
   HEALTHY=false
@@ -57,11 +57,30 @@ main() {
     return 1
   fi
 
+  # nginx resolves the Reader service through Docker DNS. Recreate only the
+  # proxy after Reader is healthy so deploys cannot retain an old container IP.
+  docker compose --profile https up -d --no-deps --force-recreate nginx
+
+  PROXY_HEALTH_URL="https://127.0.0.1:3001/api/health"
+  PROXY_HEALTHY=false
+  for _attempt in {1..30}; do
+    if curl --insecure --fail --silent --show-error "$PROXY_HEALTH_URL" >/dev/null; then
+      PROXY_HEALTHY=true
+      break
+    fi
+    sleep 1
+  done
+  if [ "$PROXY_HEALTHY" != true ]; then
+    docker compose --profile https logs --tail=100 nginx >> "$LOG_FILE" 2>&1 || true
+    log "nginx health check failed: ${PROXY_HEALTH_URL}"
+    return 1
+  fi
+
   if [ "$UPDATED" = true ]; then
     docker image prune -f >/dev/null
   fi
 
-  log "deploy succeeded at $(git rev-parse --short HEAD) (reader and Redis healthy)"
+  log "deploy succeeded at $(git rev-parse --short HEAD) (Reader, Redis, and nginx healthy)"
 }
 
 main "$@"

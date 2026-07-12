@@ -54,7 +54,8 @@ services:
     profiles: ["https"]
     image: nginx:1.27
     depends_on:
-      - reader
+      reader:
+        condition: service_healthy
     ports:
       - "3001:443"
     volumes:
