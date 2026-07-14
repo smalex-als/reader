@@ -94,7 +94,13 @@ export function useYouTubeAudioImport({
     if (!bookId || !chapterNumber || !status || !hasUsableTranscript) {
       return;
     }
-    const key = `${bookId}:${chapterNumber}:${status.jobId}`;
+    const key = [
+      bookId,
+      chapterNumber,
+      status.jobId,
+      status.status,
+      status.postProcessVersionId ?? 'base'
+    ].join(':');
     if (refreshedJobs.current.has(key)) {
       return;
     }
@@ -107,6 +113,9 @@ export function useYouTubeAudioImport({
             : entry
         )
       ));
+    }
+    if (status.status === 'completed' && status.postProcessVersionId) {
+      dispatch(appActions.requestChapterVersionNavigation(chapterNumber, status.postProcessVersionId));
     }
     dispatch(appActions.refreshChapterView());
   }, [bookId, chapterNumber, dispatch, status, tocEntries]);

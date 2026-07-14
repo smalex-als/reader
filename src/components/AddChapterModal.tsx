@@ -37,6 +37,7 @@ export default function AddChapterModal({
   const [prompts, setPrompts] = useState<ChapterTextPrompt[]>([]);
   const [promptsLoading, setPromptsLoading] = useState(false);
   const [promptsError, setPromptsError] = useState<string | null>(null);
+  const selectedPrompt = prompts.find((prompt) => prompt.id === postProcessPromptId) ?? null;
 
   useEffect(() => {
     if (!open) {
@@ -110,7 +111,10 @@ export default function AddChapterModal({
     >
       <form onSubmit={(event) => void handleSubmit(event)}>
         <header className="modal-header">
-          <h2 id={titleId} className="modal-title">Add Chapter</h2>
+          <div className="add-chapter-modal-heading">
+            <h2 id={titleId} className="modal-title">Add Chapter</h2>
+            <p>Create an empty chapter or turn a YouTube video into readable text.</p>
+          </div>
           <button
             type="button"
             className="button button-ghost modal-icon-button"
@@ -136,7 +140,8 @@ export default function AddChapterModal({
               onKeyDown={handleTabKeyDown}
               disabled={busy}
             >
-              Blank Chapter
+              <span>Blank Chapter</span>
+              <small>Start writing from scratch</small>
             </button>
             <button
               ref={youtubeTabRef}
@@ -151,7 +156,8 @@ export default function AddChapterModal({
               onKeyDown={handleTabKeyDown}
               disabled={busy}
             >
-              YouTube Audio
+              <span>YouTube Audio</span>
+              <small>Download and transcribe</small>
             </button>
           </div>
           {source === 'blank' ? (
@@ -180,6 +186,25 @@ export default function AddChapterModal({
               aria-labelledby={youtubeTabId}
               className="add-chapter-source-panel"
             >
+              <div className="add-chapter-workflow" aria-label="YouTube import workflow">
+                <div className="add-chapter-workflow-step">
+                  <span>1</span>
+                  <div><strong>Download</strong><small>YouTube audio to MP3</small></div>
+                </div>
+                <div className="add-chapter-workflow-arrow" aria-hidden="true">→</div>
+                <div className="add-chapter-workflow-step">
+                  <span>2</span>
+                  <div><strong>Transcribe</strong><small>Nemotron speech-to-text</small></div>
+                </div>
+                <div className="add-chapter-workflow-arrow" aria-hidden="true">→</div>
+                <div className="add-chapter-workflow-step">
+                  <span>3</span>
+                  <div>
+                    <strong>{selectedPrompt ? 'Create version' : 'Save base'}</strong>
+                    <small>{selectedPrompt?.name ?? 'Keep the raw transcript'}</small>
+                  </div>
+                </div>
+              </div>
               <label className="text-viewer-setting add-chapter-modal-field">
                 <span className="text-viewer-setting-label">YouTube URL</span>
                 <input
@@ -214,7 +239,7 @@ export default function AddChapterModal({
                     : promptsError
                       ? `Prompts unavailable: ${promptsError}`
                       : postProcessPromptId
-                        ? 'The prompt creates a new text version after the Nemotron transcript is ready.'
+                        ? 'A new text version will be created and opened automatically when processing finishes.'
                         : 'The Nemotron transcript will remain the base version.'}
                 </span>
               </label>
