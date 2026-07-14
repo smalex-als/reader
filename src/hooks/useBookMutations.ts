@@ -79,12 +79,14 @@ export function useChapterActions() {
       chapterTitle: string;
       source?: CreateChapterSource;
       sourceUrl?: string;
+      postProcessPromptId?: string;
     }) => {
       const bookName = details.bookName.trim();
       const chapterTitle = details.chapterTitle.trim();
       const targetBookId = bookName || bookId || '';
       const source = details.source ?? 'blank';
       const sourceUrl = details.sourceUrl?.trim() ?? '';
+      const postProcessPromptId = details.postProcessPromptId?.trim() ?? '';
       if (!targetBookId) {
         showToast('Book name is required for a new text book', 'error');
         return;
@@ -103,7 +105,8 @@ export function useChapterActions() {
         targetBookId,
         isExisting: books.includes(targetBookId),
         source,
-        sourceUrl
+        sourceUrl,
+        postProcessPromptId
       });
     },
     [actions, bookId, bookType, books, showToast]

@@ -61,6 +61,7 @@ export function useYouTubeAudioImport({
           next?.status === 'queued' ||
           next?.status === 'running' ||
           next?.status === 'transcribing' ||
+          next?.status === 'post-processing' ||
           (next?.status === 'failed' && failedRechecks <= FAILED_RECHECK_LIMIT)
         ) {
           timer = window.setTimeout(() => void poll(), ACTIVE_POLL_DELAY_MS);
@@ -86,7 +87,11 @@ export function useYouTubeAudioImport({
   }, [bookId, chapterNumber, pollNonce]);
 
   useEffect(() => {
-    if (!bookId || !chapterNumber || status?.status !== 'completed') {
+    const hasUsableTranscript = Boolean(
+      status?.status === 'completed' ||
+      (status?.status === 'failed' && status.transcriptReady)
+    );
+    if (!bookId || !chapterNumber || !status || !hasUsableTranscript) {
       return;
     }
     const key = `${bookId}:${chapterNumber}:${status.jobId}`;

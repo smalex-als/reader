@@ -23,6 +23,8 @@ export type TextChapterMutationResult = {
     status: 'queued' | 'running' | 'completed' | 'failed';
     error?: string | null;
     audioUrl?: string | null;
+    postProcessPromptId?: string | null;
+    postProcessPromptName?: string | null;
   } | null;
 };
 
@@ -121,6 +123,7 @@ export async function createEmptyTextChapter(input: {
   isExisting: boolean;
   source: CreateChapterSource;
   sourceUrl: string;
+  postProcessPromptId: string;
 }) {
   const response = input.isExisting
     ? await fetch(`/api/books/${encodeURIComponent(input.targetBookId)}/chapters/empty`, {
@@ -129,7 +132,8 @@ export async function createEmptyTextChapter(input: {
         body: JSON.stringify({
           chapterTitle: input.chapterTitle,
           source: input.source,
-          sourceUrl: input.sourceUrl
+          sourceUrl: input.sourceUrl,
+          postProcessPromptId: input.postProcessPromptId
         })
       })
     : await fetch('/api/books/text/empty', {
@@ -139,7 +143,8 @@ export async function createEmptyTextChapter(input: {
           bookName: input.bookName,
           chapterTitle: input.chapterTitle,
           source: input.source,
-          sourceUrl: input.sourceUrl
+          sourceUrl: input.sourceUrl,
+          postProcessPromptId: input.postProcessPromptId
         })
       });
   const payload = await readJson<{

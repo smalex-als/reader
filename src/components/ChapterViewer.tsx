@@ -375,12 +375,13 @@ export default function ChapterViewer() {
             setAddChapterOpen(false);
           }
         }}
-        onSubmit={async ({ chapterTitle: nextTitle, source, sourceUrl }) => {
+        onSubmit={async ({ chapterTitle: nextTitle, source, sourceUrl, postProcessPromptId }) => {
           await handleCreateChapter({
             bookName: '',
             chapterTitle: nextTitle,
             source,
-            sourceUrl
+            sourceUrl,
+            postProcessPromptId
           });
           setAddChapterOpen(false);
         }}

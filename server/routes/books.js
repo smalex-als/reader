@@ -85,11 +85,14 @@ function formatChapterSuffix(chapterNumber) {
 
 function normalizeChapterSource(body) {
   if (body?.source !== 'youtube') {
-    return { source: 'blank', sourceUrl: null };
+    return { source: 'blank', sourceUrl: null, postProcessPromptId: null };
   }
   return {
     source: 'youtube',
-    sourceUrl: normalizeYouTubeUrl(body?.sourceUrl)
+    sourceUrl: normalizeYouTubeUrl(body?.sourceUrl),
+    postProcessPromptId: typeof body?.postProcessPromptId === 'string'
+      ? body.postProcessPromptId.trim()
+      : null
   };
 }
 
@@ -102,6 +105,14 @@ async function createTextChapterFromSource(bookId, body) {
       sourceAudioJob: null
     };
   }
+  let postProcessPrompt = null;
+  if (source.postProcessPromptId) {
+    const library = await listChapterTextPromptLibrary();
+    postProcessPrompt = library.prompts.find((prompt) => prompt.id === source.postProcessPromptId) ?? null;
+    if (!postProcessPrompt) {
+      throw createHttpError(400, 'Selected post-processing prompt was not found');
+    }
+  }
   const result = await addTextChapter(bookId, {
     title: typeof chapterTitle === 'string' && chapterTitle.trim()
       ? chapterTitle
@@ -111,7 +122,9 @@ async function createTextChapterFromSource(bookId, body) {
   const sourceAudioJob = await enqueueYouTubeAudioDownload({
     bookId,
     chapterNumber: result.chapterNumber,
-    sourceUrl: source.sourceUrl
+    sourceUrl: source.sourceUrl,
+    postProcessPromptId: postProcessPrompt?.id ?? null,
+    postProcessPromptName: postProcessPrompt?.name ?? null
   });
   return { result, sourceAudioJob };
 }
@@ -640,14 +653,21 @@ router.post('/api/books/:id/chapters/:chapter/youtube-audio/retry', asyncHandler
   if (!existing?.sourceUrl) {
     throw createHttpError(404, 'YouTube audio import not found');
   }
-  if (existing.status === 'queued' || existing.status === 'running' || existing.status === 'transcribing') {
+  if (
+    existing.status === 'queued' ||
+    existing.status === 'running' ||
+    existing.status === 'transcribing' ||
+    existing.status === 'post-processing'
+  ) {
     res.status(202).json({ book: bookId, chapterNumber, job: existing });
     return;
   }
   const job = await enqueueYouTubeAudioDownload({
     bookId,
     chapterNumber,
-    sourceUrl: existing.sourceUrl
+    sourceUrl: existing.sourceUrl,
+    postProcessPromptId: existing.postProcessPromptId ?? null,
+    postProcessPromptName: existing.postProcessPromptName ?? null
   });
   res.status(job.status === 'failed' ? 503 : 202).json({ book: bookId, chapterNumber, job });
 }));

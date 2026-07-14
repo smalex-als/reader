@@ -9,6 +9,7 @@ import { assertBookDirectory } from './books.js';
 import { safeStat, writeFileAtomic } from './fs.js';
 import { updateTocTitle } from './toc.js';
 import { cleanNemotronTranscript, requestNemotronTranscription } from './nemotronAsr.js';
+import { createChapterTextVersion } from './chapterTextVersions.js';
 import {
   enqueueBackgroundJob,
   isBackgroundQueueEnabled,
@@ -174,7 +175,10 @@ export async function runYouTubeAudioDownloadJob({
   bookId,
   chapterNumber,
   sourceUrl,
-  jobId
+  jobId,
+  postProcessPromptId = null,
+  postProcessPromptName = null,
+  postProcessOperationId = null
 }) {
   const directory = await assertBookDirectory(bookId);
   const normalizedUrl = normalizeYouTubeUrl(sourceUrl);
@@ -233,35 +237,63 @@ export async function runYouTubeAudioDownloadJob({
         console.warn('Unable to update chapter title from YouTube metadata', error);
       }
     }
+    const canReuseTranscript = Boolean(
+      current?.transcriptReady &&
+      postProcessPromptId &&
+      (await safeStat(chapterTextPath))?.isFile()
+    );
     failureMetadata = await writeSourceMetadata(directory, chapterNumber, {
       ...baseMetadata,
-      status: 'transcribing',
+      status: canReuseTranscript ? 'post-processing' : 'transcribing',
       downloadedAt: new Date().toISOString(),
       videoTitle: videoTitle || null,
       audioUrl: `/data/${bookId}/${finalFilename}`,
-      bytes: downloaded.size
+      bytes: downloaded.size,
+      transcriptReady: canReuseTranscript
     });
-    const asrJob = await requestNemotronTranscription({
-      audioPath: finalPath,
-      outputPath: transcriptPath,
-      jobId
-    });
-    let transcriptReady = false;
-    if (asrJob) {
-      const transcript = cleanNemotronTranscript(await fs.readFile(transcriptPath, 'utf8'));
-      if (!transcript) {
-        throw createHttpError(502, 'Nemotron ASR produced an empty transcript');
+    let transcriptReady = canReuseTranscript;
+    if (!transcriptReady) {
+      const asrJob = await requestNemotronTranscription({
+        audioPath: finalPath,
+        outputPath: transcriptPath,
+        jobId
+      });
+      if (asrJob) {
+        const transcript = cleanNemotronTranscript(await fs.readFile(transcriptPath, 'utf8'));
+        if (!transcript) {
+          throw createHttpError(502, 'Nemotron ASR produced an empty transcript');
+        }
+        await writeFileAtomic(chapterTextPath, `${transcript}\n`);
+        await fs.rm(transcriptPath, { force: true });
+        transcriptReady = true;
       }
-      await writeFileAtomic(chapterTextPath, `${transcript}\n`);
-      await fs.rm(transcriptPath, { force: true });
-      transcriptReady = true;
+    }
+    let postProcessVersionId = null;
+    if (transcriptReady && postProcessPromptId) {
+      failureMetadata = await writeSourceMetadata(directory, chapterNumber, {
+        ...failureMetadata,
+        status: 'post-processing',
+        transcriptReady: true,
+        transcriptCleaned: true,
+        postProcessPromptId,
+        postProcessPromptName
+      });
+      const version = await createChapterTextVersion({
+        bookId,
+        chapterNumber,
+        sourceVersionId: 'base',
+        promptId: postProcessPromptId,
+        operationId: postProcessOperationId
+      });
+      postProcessVersionId = version.createdVersionId ?? null;
     }
     return writeSourceMetadata(directory, chapterNumber, {
       ...failureMetadata,
       status: 'completed',
       completedAt: new Date().toISOString(),
       transcriptReady,
-      transcriptCleaned: transcriptReady
+      transcriptCleaned: transcriptReady,
+      postProcessVersionId
     });
   } catch (error) {
     await fs.rm(temporaryMp3Path, { force: true }).catch(() => {});
@@ -272,6 +304,7 @@ export async function runYouTubeAudioDownloadJob({
         ...failureMetadata,
         status: 'failed',
         failedAt: new Date().toISOString(),
+        failureStage: failureMetadata.status,
         error: error instanceof Error ? error.message : 'YouTube chapter import failed'
       });
     }
@@ -279,11 +312,22 @@ export async function runYouTubeAudioDownloadJob({
   }
 }
 
-export async function enqueueYouTubeAudioDownload({ bookId, chapterNumber, sourceUrl }) {
+export async function enqueueYouTubeAudioDownload({
+  bookId,
+  chapterNumber,
+  sourceUrl,
+  postProcessPromptId = null,
+  postProcessPromptName = null
+}) {
   const directory = await assertBookDirectory(bookId);
   const normalizedUrl = normalizeYouTubeUrl(sourceUrl);
   const existing = await loadSourceMetadata(directory, chapterNumber);
   const jobId = randomUUID();
+  const postProcessOperationId = postProcessPromptId
+    ? existing?.postProcessPromptId === postProcessPromptId && existing?.postProcessOperationId
+      ? existing.postProcessOperationId
+      : randomUUID()
+    : null;
   const queued = await writeSourceMetadata(directory, chapterNumber, {
     ...existing,
     source: 'youtube',
@@ -293,10 +337,23 @@ export async function enqueueYouTubeAudioDownload({ bookId, chapterNumber, sourc
     queuedAt: new Date().toISOString(),
     completedAt: null,
     failedAt: null,
-    transcriptReady: false,
+    transcriptReady: Boolean(existing?.failureStage === 'post-processing' && existing?.transcriptReady),
+    postProcessPromptId,
+    postProcessPromptName,
+    postProcessOperationId,
+    postProcessVersionId: null,
+    failureStage: null,
     error: null
   });
-  const payload = { bookId, chapterNumber, sourceUrl: normalizedUrl, jobId };
+  const payload = {
+    bookId,
+    chapterNumber,
+    sourceUrl: normalizedUrl,
+    jobId,
+    postProcessPromptId,
+    postProcessPromptName,
+    postProcessOperationId
+  };
   if (isBackgroundQueueEnabled()) {
     try {
       await enqueueBackgroundJob(YOUTUBE_AUDIO_JOB_NAME, payload, { jobId });

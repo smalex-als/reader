@@ -26,6 +26,7 @@ type BookSessionPayloads = {
     isExisting: boolean;
     source: CreateChapterSource;
     sourceUrl: string;
+    postProcessPromptId: string;
   };
   deleteChapter: {
     bookId: string;

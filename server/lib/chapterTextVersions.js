@@ -479,9 +479,23 @@ export async function createChapterTextVersion({
   promptId = null,
   customPrompt = '',
   addToLibrary = false,
-  promptName = ''
+  promptName = '',
+  operationId = null
 }) {
   const { directory, chapterFilename, chapterPath } = await assertBaseChapter({ bookId, chapterNumber });
+  const normalizedOperationId = typeof operationId === 'string' ? operationId.trim().slice(0, 128) : '';
+  if (normalizedOperationId) {
+    const existingMeta = await loadVersionMeta({ directory, chapterNumber });
+    const existingVersion = existingMeta.versions.find(
+      (version) => version?.operationId === normalizedOperationId
+    );
+    if (existingVersion?.id) {
+      return {
+        ...(await listChapterTextVersions({ bookId, chapterNumber })),
+        createdVersionId: existingVersion.id
+      };
+    }
+  }
   const sourceTextVersion = await getChapterTextVersionText({
     bookId,
     chapterNumber,
@@ -572,7 +586,8 @@ export async function createChapterTextVersion({
     sourceVersionId: sourceTextVersion.versionId,
     model: selectedModel,
     promptId: selectedPrompt?.id ?? null,
-    promptName: selectedPrompt?.name ?? sanitizePromptName(promptName) ?? null
+    promptName: selectedPrompt?.name ?? sanitizePromptName(promptName) ?? null,
+    operationId: normalizedOperationId || null
   };
   await fs.writeFile(path.join(directory, nextVersion.filename), output, 'utf8');
   await writeJsonFile(meta.metaPath, {

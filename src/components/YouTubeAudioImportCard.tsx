@@ -25,17 +25,32 @@ function getStatusCopy(status: YouTubeAudioImportStatus) {
         title: 'Transcribing chapter',
         detail: 'The MP3 is ready. Nemotron is converting the audio into chapter text.'
       };
+    case 'post-processing':
+      return {
+        title: 'Applying text prompt',
+        detail: status.postProcessPromptName
+          ? `Creating a new version with “${status.postProcessPromptName}”.`
+          : 'Creating a new text version from the Nemotron transcript.'
+      };
     case 'completed':
       return {
         title: status.transcriptReady ? 'Chapter ready' : 'Audio ready',
-        detail: status.transcriptReady
+        detail: status.postProcessVersionId
+          ? `The transcript, MP3, and “${status.postProcessPromptName ?? 'post-processed'}” version are ready.`
+          : status.transcriptReady
           ? 'The transcript and MP3 are ready to use.'
           : 'The MP3 is available in this chapter and in Audio Library.'
       };
     case 'failed':
       return {
-        title: status.audioUrl ? 'Transcription failed' : 'Download failed',
-        detail: status.audioUrl
+        title: status.failureStage === 'post-processing'
+          ? 'Post-processing failed'
+          : status.audioUrl
+            ? 'Transcription failed'
+            : 'Download failed',
+        detail: status.failureStage === 'post-processing'
+          ? 'The MP3 and base transcript are safe. Retry to create the selected text version.'
+          : status.audioUrl
           ? 'The MP3 is safe. Retry to run Nemotron again without downloading the video.'
           : 'The latest download attempt failed. The queue may retry automatically, or you can retry now.'
       };
@@ -56,7 +71,11 @@ export default function YouTubeAudioImportCard({
   onRetry: () => void;
 }) {
   const copy = getStatusCopy(status);
-  const active = status.status === 'queued' || status.status === 'running' || status.status === 'transcribing';
+  const active =
+    status.status === 'queued' ||
+    status.status === 'running' ||
+    status.status === 'transcribing' ||
+    status.status === 'post-processing';
   const size = formatBytes(status.bytes);
 
   return (
@@ -67,7 +86,13 @@ export default function YouTubeAudioImportCard({
       aria-live="polite"
     >
       <div className="youtube-audio-import-icon" aria-hidden="true">
-        {status.status === 'completed' ? '✓' : status.status === 'failed' ? '!' : status.status === 'transcribing' ? '…' : '↓'}
+        {status.status === 'completed'
+          ? '✓'
+          : status.status === 'failed'
+            ? '!'
+            : status.status === 'transcribing' || status.status === 'post-processing'
+              ? '…'
+              : '↓'}
       </div>
       <div className="youtube-audio-import-content">
         <div className="youtube-audio-import-heading">
@@ -79,7 +104,7 @@ export default function YouTubeAudioImportCard({
             Open video ↗
           </a>
         </div>
-        <p>{requestError ?? copy.detail}</p>
+        <p>{requestError ?? (status.status === 'failed' ? status.error ?? copy.detail : copy.detail)}</p>
         {active ? (
           <div className="youtube-audio-import-progress" role="progressbar" aria-label={copy.title}>
             <span />
@@ -96,7 +121,13 @@ export default function YouTubeAudioImportCard({
           ) : null}
           {status.status === 'failed' ? (
             <button type="button" className="button" onClick={onRetry} disabled={retrying}>
-              {retrying ? 'Retrying…' : status.audioUrl ? 'Retry transcription' : 'Retry download'}
+              {retrying
+                ? 'Retrying…'
+                : status.failureStage === 'post-processing'
+                  ? 'Retry post-processing'
+                  : status.audioUrl
+                    ? 'Retry transcription'
+                    : 'Retry download'}
             </button>
           ) : null}
           {active ? <span>Usually takes a few minutes</span> : null}

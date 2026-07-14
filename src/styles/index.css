@@ -1409,6 +1409,22 @@ body {
   align-items: stretch;
 }
 
+.add-chapter-source-tabs {
+  display: flex;
+  width: 100%;
+}
+
+.add-chapter-source-tabs .segmented-item {
+  flex: 1;
+  padding: 0.7rem 1rem;
+}
+
+.add-chapter-source-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
 .text-version-modal-body {
   display: flex;
   flex-direction: column;

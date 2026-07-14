@@ -2,7 +2,7 @@ export type YouTubeAudioImportStatus = {
   source: 'youtube';
   sourceUrl: string;
   jobId: string;
-  status: 'queued' | 'running' | 'transcribing' | 'completed' | 'failed';
+  status: 'queued' | 'running' | 'transcribing' | 'post-processing' | 'completed' | 'failed';
   queuedAt?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
@@ -13,6 +13,10 @@ export type YouTubeAudioImportStatus = {
   videoTitle?: string | null;
   transcriptReady?: boolean;
   transcriptCleaned?: boolean;
+  postProcessPromptId?: string | null;
+  postProcessPromptName?: string | null;
+  postProcessVersionId?: string | null;
+  failureStage?: 'queued' | 'running' | 'transcribing' | 'post-processing' | null;
 };
 
 async function readStatus(response: Response) {
