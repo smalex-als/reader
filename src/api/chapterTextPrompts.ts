@@ -1,4 +1,9 @@
-import type { ChapterTextPrompt, ChapterTextPromptDraft } from '@/types/app';
+import {
+  CHAPTER_TEXT_VERSION_MODELS,
+  type ChapterTextPrompt,
+  type ChapterTextPromptDraft,
+  type ChapterTextVersionModel
+} from '@/types/app';
 
 type PromptLibraryResponse = {
   prompts?: unknown;
@@ -30,6 +35,9 @@ function normalizePrompt(value: unknown): ChapterTextPrompt | null {
   const id = typeof value.id === 'string' ? value.id : '';
   const name = typeof value.name === 'string' ? value.name : '';
   const template = typeof value.template === 'string' ? value.template : '';
+  const model = CHAPTER_TEXT_VERSION_MODELS.includes(value.model as ChapterTextVersionModel)
+    ? value.model as ChapterTextVersionModel
+    : 'gpt-5.6-sol';
   if (!id || !name || !template) {
     return null;
   }
@@ -37,6 +45,7 @@ function normalizePrompt(value: unknown): ChapterTextPrompt | null {
     id,
     name,
     template,
+    model,
     builtIn: value.builtIn === true,
     createdAt: typeof value.createdAt === 'string' ? value.createdAt : null,
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : null

@@ -201,7 +201,11 @@ export default function AddChapterModal({
                   <span>3</span>
                   <div>
                     <strong>{selectedPrompt ? 'Create version' : 'Save base'}</strong>
-                    <small>{selectedPrompt?.name ?? 'Keep the raw transcript'}</small>
+                    <small>
+                      {selectedPrompt
+                        ? `${selectedPrompt.name} · ${selectedPrompt.model}`
+                        : 'Keep the raw transcript'}
+                    </small>
                   </div>
                 </div>
               </div>
@@ -230,7 +234,7 @@ export default function AddChapterModal({
                 >
                   <option value="">No post-processing</option>
                   {prompts.map((prompt) => (
-                    <option key={prompt.id} value={prompt.id}>{prompt.name}</option>
+                    <option key={prompt.id} value={prompt.id}>{prompt.name} · {prompt.model}</option>
                   ))}
                 </select>
                 <span className="text-viewer-placeholder-help">

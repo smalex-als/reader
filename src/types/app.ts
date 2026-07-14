@@ -158,6 +158,7 @@ export interface ChapterTextPrompt {
   id: string;
   name: string;
   template: string;
+  model: ChapterTextVersionModel;
   builtIn?: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -166,7 +167,16 @@ export interface ChapterTextPrompt {
 export interface ChapterTextPromptDraft {
   name: string;
   template: string;
+  model: ChapterTextVersionModel;
 }
+
+export const CHAPTER_TEXT_VERSION_MODELS = [
+  'gpt-5.6-sol',
+  'gpt-5.6-terra',
+  'gpt-5.6-luna'
+] as const;
+
+export type ChapterTextVersionModel = (typeof CHAPTER_TEXT_VERSION_MODELS)[number];
 
 export interface ChapterTextVersion {
   id: string;

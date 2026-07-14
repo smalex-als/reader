@@ -269,7 +269,8 @@ router.get('/api/chapter-text-prompts', asyncHandler(async (_req, res) => {
 router.post('/api/chapter-text-prompts', asyncHandler(async (req, res) => {
   const { library, prompt } = await addPromptToLibrary({
     name: typeof req.body?.name === 'string' ? req.body.name : '',
-    template: typeof req.body?.template === 'string' ? req.body.template : ''
+    template: typeof req.body?.template === 'string' ? req.body.template : '',
+    model: typeof req.body?.model === 'string' ? req.body.model : ''
   });
   res.json({ ...library, prompt });
 }));
@@ -278,7 +279,8 @@ router.put('/api/chapter-text-prompts/:promptId', asyncHandler(async (req, res) 
   const library = await updatePromptInLibrary({
     promptId: req.params.promptId,
     name: typeof req.body?.name === 'string' ? req.body.name : '',
-    template: typeof req.body?.template === 'string' ? req.body.template : ''
+    template: typeof req.body?.template === 'string' ? req.body.template : '',
+    model: typeof req.body?.model === 'string' ? req.body.model : ''
   });
   res.json(library);
 }));

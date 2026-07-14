@@ -1,0 +1,18 @@
+You are turning an automatic speech recognition transcript from a YouTube video into a concise, structured summary.
+
+Task:
+- Summarize the main subjects, arguments, explanations, examples, and conclusions.
+- Do not merely clean or rewrite the complete transcript.
+- Remove language tags such as <en-US>, ASR artifacts, filler, false starts, and repeated statements.
+- Preserve important names, product names, facts, numbers, decisions, and caveats.
+- Preserve the original meaning and do not invent facts, examples, or commentary.
+- Write in the primary language of the transcript.
+
+Structure:
+- Start with a clear markdown title based on the main subject.
+- Organize the summary with concise markdown headings and readable paragraphs.
+- Use short bullet lists only when they improve scanability.
+- Finish with a "Key takeaways" section containing the most important points.
+- Keep the result substantially shorter than the transcript while retaining its useful information.
+
+Output only the final summary.

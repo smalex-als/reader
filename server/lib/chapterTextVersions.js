@@ -9,7 +9,8 @@ import {
   CHAPTER_NARRATION_PROMPT,
   CHAPTER_REVIEW_EXTRACT_PROMPT,
   DATA_DIR,
-  NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT
+  NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT,
+  YOUTUBE_TRANSCRIPT_SUMMARY_PROMPT
 } from '../config.js';
 import { getOpenAI } from './openai.js';
 
@@ -40,6 +41,7 @@ function getDefaultPromptLibrary() {
         id: 'narration-default',
         name: 'Narration',
         template: CHAPTER_NARRATION_PROMPT,
+        model: 'gpt-5.6-sol',
         builtIn: true,
         createdAt: new Date(0).toISOString()
       },
@@ -47,6 +49,7 @@ function getDefaultPromptLibrary() {
         id: 'review-extract-default',
         name: 'Review Extract',
         template: CHAPTER_REVIEW_EXTRACT_PROMPT,
+        model: 'gpt-5.6-sol',
         builtIn: true,
         createdAt: new Date(0).toISOString()
       },
@@ -54,6 +57,15 @@ function getDefaultPromptLibrary() {
         id: 'nemotron-transcript-cleanup',
         name: 'Clean Nemotron Transcript',
         template: NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT,
+        model: 'gpt-5.6-sol',
+        builtIn: true,
+        createdAt: new Date(0).toISOString()
+      },
+      {
+        id: 'youtube-transcript-summary',
+        name: 'Summarize YouTube Transcript',
+        template: YOUTUBE_TRANSCRIPT_SUMMARY_PROMPT,
+        model: 'gpt-5.6-sol',
         builtIn: true,
         createdAt: new Date(0).toISOString()
       }
@@ -72,6 +84,7 @@ function normalizePromptEntry(prompt, fallback = {}) {
     id,
     name,
     template,
+    model: sanitizeVersionModel(prompt?.model || fallback.model),
     builtIn: Boolean(fallback.builtIn || prompt?.builtIn),
     createdAt:
       typeof prompt?.createdAt === 'string'
@@ -155,7 +168,7 @@ export async function listChapterTextPromptLibrary() {
   return ensurePromptLibrary();
 }
 
-export async function addPromptToLibrary({ name, template }) {
+export async function addPromptToLibrary({ name, template, model }) {
   const promptName = sanitizePromptName(name);
   const promptTemplate = sanitizeTemplate(template);
   if (!promptName) {
@@ -176,6 +189,7 @@ export async function addPromptToLibrary({ name, template }) {
     id: nextId,
     name: promptName,
     template: promptTemplate,
+    model: sanitizeVersionModel(model),
     builtIn: false,
     createdAt: new Date().toISOString()
   };
@@ -186,7 +200,7 @@ export async function addPromptToLibrary({ name, template }) {
   return { library: nextLibrary, prompt };
 }
 
-export async function updatePromptInLibrary({ promptId, name, template }) {
+export async function updatePromptInLibrary({ promptId, name, template, model }) {
   const id = typeof promptId === 'string' ? promptId.trim() : '';
   if (!id) {
     throw createHttpError(400, 'Prompt id is required');
@@ -208,6 +222,7 @@ export async function updatePromptInLibrary({ promptId, name, template }) {
     ...current,
     name: promptName,
     template: promptTemplate,
+    model: sanitizeVersionModel(model),
     updatedAt: new Date().toISOString()
   };
   const nextLibrary = {
@@ -475,7 +490,7 @@ export async function createChapterTextVersion({
   bookId,
   chapterNumber,
   sourceVersionId = 'base',
-  model = 'gpt-5.6-sol',
+  model = null,
   promptId = null,
   customPrompt = '',
   addToLibrary = false,
@@ -519,7 +534,8 @@ export async function createChapterTextVersion({
   if (explicitPrompt && addToLibrary) {
     const saved = await addPromptToLibrary({
       name: promptName || 'Custom prompt',
-      template: explicitPrompt
+      template: explicitPrompt,
+      model
     });
     library = saved.library;
     selectedPrompt = saved.prompt;
@@ -536,7 +552,7 @@ export async function createChapterTextVersion({
     throw createHttpError(400, 'Prompt resolved to empty text');
   }
 
-  const selectedModel = sanitizeVersionModel(model);
+  const selectedModel = sanitizeVersionModel(model || selectedPrompt?.model);
   const openai = getOpenAI();
   // eslint-disable-next-line no-console
   console.log('Creating chapter text version via OpenAI', {

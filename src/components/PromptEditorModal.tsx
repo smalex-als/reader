@@ -9,6 +9,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { CHAPTER_TEXT_VERSION_MODELS, type ChapterTextVersionModel } from '@/types/app';
 
 const NEW_PROMPT_TEMPLATE = `Rewrite the chapter into a clean article version.
 
@@ -38,6 +39,7 @@ export default function PromptEditorModal() {
   const { prompts, selectedId, loading, saving, error, status } = useAppSelector(selectPromptEditorWorkflow);
   const [draftName, setDraftName] = useState('');
   const [draftTemplate, setDraftTemplate] = useState('');
+  const [draftModel, setDraftModel] = useState<ChapterTextVersionModel>('gpt-5.6-sol');
 
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedId) ?? prompts[0] ?? null,
@@ -45,7 +47,9 @@ export default function PromptEditorModal() {
   );
   const isDirty =
     selectedPrompt !== null &&
-    (draftName.trim() !== selectedPrompt.name || draftTemplate.trim() !== selectedPrompt.template);
+    (draftName.trim() !== selectedPrompt.name ||
+      draftTemplate.trim() !== selectedPrompt.template ||
+      draftModel !== selectedPrompt.model);
   const canSave = selectedPrompt !== null && draftName.trim().length > 0 && draftTemplate.trim().length > 0 && isDirty;
   const handleClose = () => {
     dispatch(appActions.closeModal('promptEditor'));
@@ -62,16 +66,19 @@ export default function PromptEditorModal() {
     if (!selectedPrompt) {
       setDraftName('');
       setDraftTemplate('');
+      setDraftModel('gpt-5.6-sol');
       return;
     }
     setDraftName(selectedPrompt.name);
     setDraftTemplate(selectedPrompt.template);
+    setDraftModel(selectedPrompt.model);
   }, [selectedPrompt]);
 
   const handleCreate = () => {
     void createPrompt({
       name: 'New article version prompt',
-      template: NEW_PROMPT_TEMPLATE
+      template: NEW_PROMPT_TEMPLATE,
+      model: 'gpt-5.6-sol'
     });
   };
 
@@ -81,7 +88,8 @@ export default function PromptEditorModal() {
     }
     void savePrompt(selectedPrompt.id, {
       name: draftName,
-      template: draftTemplate
+      template: draftTemplate,
+      model: draftModel
     });
   };
 
@@ -140,7 +148,7 @@ export default function PromptEditorModal() {
                 disabled={saving}
               >
                 <span>{prompt.name}</span>
-                {prompt.builtIn ? <small>built-in</small> : null}
+                <small>{prompt.builtIn ? `built-in · ${prompt.model}` : prompt.model}</small>
               </button>
             ))}
           </aside>
@@ -155,6 +163,19 @@ export default function PromptEditorModal() {
                     onChange={(event) => setDraftName(event.target.value)}
                     disabled={saving}
                   />
+                </label>
+                <label className="text-viewer-setting text-version-modal-field text-version-modal-field-compact">
+                  <span className="text-viewer-setting-label">Default model</span>
+                  <select
+                    className="text-viewer-select"
+                    value={draftModel}
+                    onChange={(event) => setDraftModel(event.target.value as ChapterTextVersionModel)}
+                    disabled={saving}
+                  >
+                    {CHAPTER_TEXT_VERSION_MODELS.map((model) => (
+                      <option key={model} value={model}>{model}</option>
+                    ))}
+                  </select>
                 </label>
                 <label className="text-viewer-setting text-version-modal-field">
                   <span className="text-viewer-setting-label">Prompt</span>

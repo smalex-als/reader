@@ -6,6 +6,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { CHAPTER_TEXT_VERSION_MODELS } from '@/types/app';
 
 export default function CreateTextVersionModal() {
   const dispatch = useAppDispatch();
@@ -76,7 +77,14 @@ export default function CreateTextVersionModal() {
               <select
                 className="text-viewer-select"
                 value={selectedPromptId}
-                onChange={(event) => dispatch(appActions.setTextVersionModalSelectedPromptId(event.target.value))}
+                onChange={(event) => {
+                  const nextPromptId = event.target.value;
+                  dispatch(appActions.setTextVersionModalSelectedPromptId(nextPromptId));
+                  const promptModel = promptLibrary.find((prompt) => prompt.id === nextPromptId)?.model;
+                  if (promptModel) {
+                    dispatch(appActions.setTextVersionModalVersionModel(promptModel));
+                  }
+                }}
                 disabled={versionSaving}
               >
                 {promptLibrary.map((prompt) => (
@@ -94,9 +102,9 @@ export default function CreateTextVersionModal() {
                 onChange={(event) => dispatch(appActions.setTextVersionModalVersionModel(event.target.value))}
                 disabled={versionSaving}
               >
-                <option value="gpt-5.6-sol">gpt-5.6-sol</option>
-                <option value="gpt-5.6-terra">gpt-5.6-terra</option>
-                <option value="gpt-5.6-luna">gpt-5.6-luna</option>
+                {CHAPTER_TEXT_VERSION_MODELS.map((model) => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
               </select>
             </label>
           </div>
