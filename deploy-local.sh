@@ -72,9 +72,13 @@ main() {
     return 1
   fi
 
-  # nginx resolves the Reader service through Docker DNS. Recreate only the
-  # proxy after Reader is healthy so deploys cannot retain an old container IP.
-  docker compose --profile https up -d --no-deps --force-recreate nginx
+  # nginx resolves the Reader service through Docker DNS. Recreate the proxy
+  # after a deployment so it cannot retain an old Reader container IP.
+  if [ "$UPDATED" = true ]; then
+    docker compose --profile https up -d --no-deps --force-recreate nginx
+  else
+    docker compose --profile https up -d --no-deps nginx
+  fi
 
   PROXY_HEALTH_URL="https://127.0.0.1:3001/api/health"
   PROXY_HEALTHY=false
