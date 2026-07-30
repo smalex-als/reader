@@ -121,6 +121,11 @@ function extractJsonArray(text) {
   }
 }
 
+export function stripOcrCoordinates(text) {
+  return (typeof text === 'string' ? text : '')
+    .replace(/<\|det\|>[\s\S]*?<\|\/det\|>/g, ' ');
+}
+
 export async function generateTocFromOcr(bookId, options = {}) {
   const variant = options?.variant === 'detailed' ? 'detailed' : 'main';
   const detailLevel = options?.detailLevel === 'detailed' ? 'detailed' : 'normal';
@@ -144,7 +149,7 @@ export async function generateTocFromOcr(bookId, options = {}) {
       continue;
     }
     const content = await fs.readFile(textAbsolute, 'utf8');
-    const trimmed = content.replace(/\s+/g, ' ').trim();
+    const trimmed = stripOcrCoordinates(content).replace(/\s+/g, ' ').trim();
     if (!trimmed) {
       continue;
     }
