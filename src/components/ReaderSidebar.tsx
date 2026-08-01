@@ -146,7 +146,8 @@ export default function ReaderSidebar() {
 
   return (
     <aside className={`reader-sidebar ${collapsed ? 'reader-sidebar-collapsed' : ''}`} aria-label="Reader navigation">
-      <div className="reader-sidebar-header">
+      <div className="reader-sidebar-scroll">
+        <div className="reader-sidebar-header">
         <button
           type="button"
           className="reader-sidebar-toggle"
@@ -165,9 +166,9 @@ export default function ReaderSidebar() {
             </span>
           </div>
         ) : null}
-      </div>
+        </div>
 
-      <div className="reader-sidebar-section">
+        <div className="reader-sidebar-section">
         <button type="button" className="reader-sidebar-action" onClick={handleOpenBookModal} title="Select book" data-tooltip={currentBook ? 'Change Book' : 'Select Book'}>
           <SidebarIcon name="book" />
           <span className="reader-sidebar-label">{currentBook ? 'Change Book' : 'Select Book'}</span>
@@ -192,10 +193,10 @@ export default function ReaderSidebar() {
           <SidebarIcon name="units" />
           <span className="reader-sidebar-label">Units</span>
         </button>
-      </div>
+        </div>
 
-      {showReaderControls ? (
-        <div className="reader-sidebar-section">
+        {showReaderControls ? (
+          <div className="reader-sidebar-section">
           {!collapsed ? <span className="reader-sidebar-section-title">Mode</span> : null}
           {[
             { mode: 'pages' as const, label: 'Pages', icon: 'pages' as const, disabled: disablePagesMode },
@@ -216,11 +217,11 @@ export default function ReaderSidebar() {
               <span className="reader-sidebar-label">{item.label}</span>
             </button>
           ))}
-        </div>
-      ) : null}
+          </div>
+        ) : null}
 
-      {showReaderControls ? (
-        <div className="reader-sidebar-section reader-sidebar-navigation">
+        {showReaderControls ? (
+          <div className="reader-sidebar-section reader-sidebar-navigation">
           {!collapsed ? <span className="reader-sidebar-section-title">Page</span> : null}
           <div className="reader-sidebar-pager">
             <button
@@ -264,11 +265,11 @@ export default function ReaderSidebar() {
               />
             </label>
           ) : null}
-        </div>
-      ) : null}
+          </div>
+        ) : null}
 
-      {showReaderControls ? (
-        <div className="reader-sidebar-section">
+        {showReaderControls ? (
+          <div className="reader-sidebar-section">
           <button type="button" className="reader-sidebar-action" onClick={handleOpenToc} disabled={controlsDisabled} title="Table of contents" data-tooltip="Table of contents">
             <SidebarIcon name="toc" />
             <span className="reader-sidebar-label">TOC</span>
@@ -293,10 +294,10 @@ export default function ReaderSidebar() {
             <span className="reader-sidebar-label">Bookmarks</span>
             {!collapsed ? <span className="reader-sidebar-count">{bookmarksCount}</span> : null}
           </button>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
 
-      <div className="reader-sidebar-section">
+        <div className="reader-sidebar-section">
         {!collapsed ? <span className="reader-sidebar-section-title">Audio</span> : null}
         {!collapsed ? (
           <label className="reader-sidebar-select">
@@ -333,6 +334,7 @@ export default function ReaderSidebar() {
           <SidebarIcon name="dashboard" />
           <span className="reader-sidebar-label">Dashboard</span>
         </button>
+        </div>
       </div>
 
       <div className="reader-sidebar-footer">

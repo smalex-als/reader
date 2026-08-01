@@ -21,11 +21,13 @@ body {
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: radial-gradient(circle at top, #1b2c3d 0%, #0b1622 80%);
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   height: 100%;
   width: 100%;
   display: flex;
@@ -35,6 +37,7 @@ body {
   display: flex;
   flex: 1;
   height: 100vh;
+  height: 100dvh;
   min-height: 0;
   width: 100vw;
   max-width: 100vw;
@@ -49,7 +52,7 @@ body {
 .reader-sidebar {
   width: 248px;
   min-width: 248px;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -78,6 +81,10 @@ body {
   gap: 0.45rem;
 }
 
+.reader-sidebar-scroll {
+  display: contents;
+}
+
 .reader-sidebar-header {
   min-height: 56px;
   padding-bottom: 0.75rem;
@@ -92,6 +99,7 @@ body {
 .reader-sidebar-footer {
   margin-top: auto;
   padding-top: 0.25rem;
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 .reader-sidebar-toggle,
@@ -318,7 +326,7 @@ body {
   min-height: 0;
   min-width: 0;
   width: 100%;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   position: relative;
 }
@@ -5224,6 +5232,7 @@ body {
 @media (max-width: 1024px) {
   .app-shell {
     height: 100vh;
+    height: 100dvh;
   }
 
   .reader-sidebar {
@@ -5234,6 +5243,29 @@ body {
   .reader-sidebar-collapsed {
     width: 58px;
     min-width: 58px;
+  }
+}
+
+@media (max-width: 1024px), (pointer: coarse) {
+  .reader-sidebar,
+  .reader-sidebar-collapsed {
+    overflow: hidden;
+  }
+
+  .reader-sidebar-scroll {
+    min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+  }
+
+  .reader-sidebar-footer {
+    flex: 0 0 auto;
+    margin-top: 0;
   }
 }
 
