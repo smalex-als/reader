@@ -19,7 +19,7 @@ import {
 } from '@/state/appState';
 import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
-import type { TocEntry } from '@/types/app';
+import type { ChapterTextVersionModel, TocEntry } from '@/types/app';
 
 function resolveNext<T>(next: SetStateAction<T>, current: T) {
   return typeof next === 'function' ? (next as (prev: T) => T)(current) : next;
@@ -44,6 +44,7 @@ type TocPayloads = {
     pageStart: number;
     pageEnd: number;
     chapterNumber: number;
+    model: ChapterTextVersionModel;
   };
 };
 
@@ -177,7 +178,8 @@ addActionHandler('generateChapter', async (_state, actions, payload): Promise<vo
       bookId: payload.bookId,
       pageStart: payload.pageStart,
       pageEnd: payload.pageEnd,
-      chapterNumber: payload.chapterNumber
+      chapterNumber: payload.chapterNumber,
+      model: payload.model
     });
     actions.showSuccess(`Chapter text saved: ${result.file}`);
   } catch (error) {
@@ -316,7 +318,7 @@ export function useTocManager() {
   }, [setDetailedTocEntries, setTocEntries]);
 
   const handleGenerateChapter = useCallback(
-    async (index: number) => {
+    async (index: number, model: ChapterTextVersionModel) => {
       if (!bookId) {
         return;
       }
@@ -355,7 +357,8 @@ export function useTocManager() {
         index,
         pageStart,
         pageEnd,
-        chapterNumber
+        chapterNumber,
+        model
       });
     },
     [bookId, manifestLength, runTocAction, showToast, tocEntries]

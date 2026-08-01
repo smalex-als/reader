@@ -1,4 +1,4 @@
-import type { TocEntry } from '@/types/app';
+import type { ChapterTextVersionModel, TocEntry } from '@/types/app';
 
 export type TocApiVariant = 'main' | 'detailed';
 
@@ -71,6 +71,7 @@ export async function generateChapterText(input: {
   pageStart: number;
   pageEnd: number;
   chapterNumber: number;
+  model: ChapterTextVersionModel;
 }) {
   const response = await fetch(`/api/books/${encodeURIComponent(input.bookId)}/chapters/generate`, {
     method: 'POST',
@@ -78,7 +79,8 @@ export async function generateChapterText(input: {
     body: JSON.stringify({
       pageStart: input.pageStart,
       pageEnd: input.pageEnd,
-      chapterNumber: input.chapterNumber
+      chapterNumber: input.chapterNumber,
+      model: input.model
     })
   });
   return readJson<{ file: string }>(response);

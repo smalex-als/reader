@@ -13,7 +13,7 @@ import {
 } from '@/api/chapterTextVersions';
 import type { ChapterAudioJobStatus } from '@/api/chapterAudio';
 import { createActionHandlerRegistry } from '@/lib/actionHandlers';
-import type { ChapterAudioProvider } from '@/types/app';
+import type { ChapterAudioProvider, ChapterTextVersionModel } from '@/types/app';
 
 export type AudioJobStatus = ChapterAudioJobStatus;
 
@@ -44,6 +44,7 @@ type ChapterTextVersionPayloads = {
     chapterNumber: number;
     pageStart: number;
     pageEnd: number;
+    model: ChapterTextVersionModel;
   };
   generateAudio: {
     bookId: string;

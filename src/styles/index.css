@@ -3556,6 +3556,10 @@ body {
   overflow-wrap: anywhere;
 }
 
+.chapter-generation-model-field {
+  margin-top: 1rem;
+}
+
 .confirmation-modal-actions {
   justify-content: flex-end;
 }

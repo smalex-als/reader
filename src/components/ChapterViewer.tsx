@@ -4,6 +4,7 @@ import ChapterTextMarkdownLayout from '@/components/ChapterTextMarkdownLayout';
 import AddChapterModal from '@/components/AddChapterModal';
 import ChapterToolsPanel from '@/components/ChapterToolsPanel';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
+import GenerateChapterModal from '@/components/GenerateChapterModal';
 import YouTubeAudioImportCard from '@/components/YouTubeAudioImportCard';
 import { useChapterActions } from '@/hooks/useBookMutations';
 import { useChapterTextPlaybackMarker } from '@/hooks/useChapterTextPlaybackMarker';
@@ -26,6 +27,7 @@ import {
   selectVoiceWorkflow,
   useAppSelector
 } from '@/state/appState';
+import type { ChapterTextVersionModel } from '@/types/app';
 
 export default function ChapterViewer() {
   const { handleCreateChapter, handleDeleteChapter } = useChapterActions();
@@ -62,6 +64,8 @@ export default function ChapterViewer() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [addChapterOpen, setAddChapterOpen] = useState(false);
+  const [chapterGenerationOpen, setChapterGenerationOpen] = useState(false);
+  const [chapterGenerationModel, setChapterGenerationModel] = useState<ChapterTextVersionModel>('gpt-5.6-sol');
   const textViewerRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -301,7 +305,12 @@ export default function ChapterViewer() {
         {!tocLoading && allowGenerate && chapterNumber && !displayLoading && missingFile && (
           <div className="text-viewer-action">
             <p className="text-viewer-status">{missingFile} is missing. Generate it now?</p>
-            <button type="button" className="button" onClick={handleGenerate} disabled={!canGenerate || generating}>
+            <button
+              type="button"
+              className="button"
+              onClick={() => setChapterGenerationOpen(true)}
+              disabled={!canGenerate || generating}
+            >
               {generating ? 'Generating…' : 'Generate Chapter'}
             </button>
           </div>
@@ -351,7 +360,7 @@ export default function ChapterViewer() {
             <button
               type="button"
               className="button button-secondary"
-              onClick={handleGenerate}
+              onClick={() => setChapterGenerationOpen(true)}
               disabled={!canGenerate || generating}
             >
               {generating ? 'Regenerating…' : 'Regenerate Chapter'}
@@ -387,6 +396,18 @@ export default function ChapterViewer() {
         }}
       />
       <CreateTextVersionModal />
+      {chapterGenerationOpen ? (
+        <GenerateChapterModal
+          chapterTitle={visibleChapterTitle || visibleChapterLabel}
+          model={chapterGenerationModel}
+          onClose={() => setChapterGenerationOpen(false)}
+          onGenerate={() => {
+            setChapterGenerationOpen(false);
+            void handleGenerate(chapterGenerationModel);
+          }}
+          onModelChange={setChapterGenerationModel}
+        />
+      ) : null}
     </div>
   );
 }

@@ -521,11 +521,11 @@ router.post('/api/books/:id/search/index', asyncHandler(async (req, res) => {
 
 router.post('/api/books/:id/chapters/generate', asyncHandler(async (req, res) => {
   const bookId = normalizeBookId(req.params.id);
-  const { pageStart, pageEnd, chapterNumber } = req.body || {};
+  const { pageStart, pageEnd, chapterNumber, model } = req.body || {};
   const start = typeof pageStart === 'string' ? Number.parseInt(pageStart, 10) : pageStart;
   const end = typeof pageEnd === 'string' ? Number.parseInt(pageEnd, 10) : pageEnd;
   const chapter = typeof chapterNumber === 'string' ? Number.parseInt(chapterNumber, 10) : chapterNumber;
-  const result = await generateChapterText(bookId, start, end, chapter);
+  const result = await generateChapterText(bookId, start, end, chapter, { model });
   res.json(result);
 }));
 

@@ -5,7 +5,7 @@ import {
   type ChapterTextVersionActions
 } from '@/hooks/chapterTextVersionActions';
 import { getChapterAudioProvider } from '@/hooks/chapterTextVersionState';
-import type { ChapterTextVersion } from '@/types/app';
+import type { ChapterTextVersion, ChapterTextVersionModel } from '@/types/app';
 
 type ChapterRange = {
   start: number;
@@ -66,7 +66,7 @@ export function useChapterTextVersionCommands({
   actions
 }: ChapterTextVersionCommandsParams) {
   const { confirmAction } = useConfirmation();
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (model: ChapterTextVersionModel) => {
     if (!canGenerate || !bookId || !chapterNumber || !chapterRange || generating) {
       return;
     }
@@ -74,7 +74,8 @@ export function useChapterTextVersionCommands({
       bookId,
       chapterNumber,
       pageStart: chapterRange.start,
-      pageEnd: chapterRange.end
+      pageEnd: chapterRange.end,
+      model
     });
   }, [actions, bookId, canGenerate, chapterNumber, chapterRange, generating]);
 

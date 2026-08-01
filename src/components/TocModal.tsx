@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import GenerateChapterModal from '@/components/GenerateChapterModal';
 import ModalShell from '@/components/ModalShell';
 import { useTocManager } from '@/hooks/useTocManager';
 import { getDetailedTocLevel } from '@/lib/toc';
@@ -13,9 +15,12 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import type { ChapterTextVersionModel } from '@/types/app';
 
 export default function TocModal() {
   const dispatch = useAppDispatch();
+  const [chapterModel, setChapterModel] = useState<ChapterTextVersionModel>('gpt-5.6-sol');
+  const [chapterGenerationIndex, setChapterGenerationIndex] = useState<number | null>(null);
   const {
     handleAddTocEntry,
     handleGenerateToc,
@@ -42,6 +47,7 @@ export default function TocModal() {
   const manifestLength = bookType === 'text' ? chapterCount : manifest.length;
   const allowGenerate = bookType !== 'text';
   const handleClose = () => {
+    setChapterGenerationIndex(null);
     dispatch(appActions.closeModal('tocManage'));
   };
 
@@ -52,8 +58,21 @@ export default function TocModal() {
   const busy = loading || generating || saving;
   const chapterBusy = chapterGeneratingIndex !== null;
 
+  const chapterGenerationEntry = chapterGenerationIndex === null
+    ? null
+    : tocEntries[chapterGenerationIndex] ?? null;
+  const handleConfirmChapterGeneration = () => {
+    if (chapterGenerationIndex === null) {
+      return;
+    }
+    const index = chapterGenerationIndex;
+    setChapterGenerationIndex(null);
+    void handleGenerateChapter(index, chapterModel);
+  };
+
   return (
-    <ModalShell ariaLabel="Edit table of contents" onClose={handleClose} className="modal-toc">
+    <>
+      <ModalShell ariaLabel="Edit table of contents" onClose={handleClose} className="modal-toc">
         <header className="modal-header">
           <h2 className="modal-title">Edit Table of Contents</h2>
           <button
@@ -170,14 +189,16 @@ export default function TocModal() {
                     disabled={busy}
                   />
                 </label>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => void handleGenerateChapter(index)}
-                  disabled={busy || chapterBusy || !allowGenerate}
-                >
-                  {chapterGeneratingIndex === index ? 'Generating…' : 'Generate Text'}
-                </button>
+                {variant === 'main' ? (
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => setChapterGenerationIndex(index)}
+                    disabled={busy || chapterBusy || !allowGenerate}
+                  >
+                    {chapterGeneratingIndex === index ? 'Generating…' : 'Generate Text'}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="button button-ghost"
@@ -203,6 +224,16 @@ export default function TocModal() {
             Done
           </button>
         </footer>
-    </ModalShell>
+      </ModalShell>
+      {chapterGenerationEntry ? (
+        <GenerateChapterModal
+          chapterTitle={chapterGenerationEntry.title}
+          model={chapterModel}
+          onClose={() => setChapterGenerationIndex(null)}
+          onGenerate={handleConfirmChapterGeneration}
+          onModelChange={setChapterModel}
+        />
+      ) : null}
+    </>
   );
 }

@@ -1,5 +1,10 @@
 import type { ChapterAudioJobStatus } from '@/api/chapterAudio';
-import type { ChapterAudioProvider, ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
+import type {
+  ChapterAudioProvider,
+  ChapterTextPrompt,
+  ChapterTextVersion,
+  ChapterTextVersionModel
+} from '@/types/app';
 
 export type ChapterTextVersionsResult = {
   latestVersionId: string | null;
@@ -24,6 +29,7 @@ export type GenerateChapterTextInput = {
   chapterNumber: number;
   pageStart: number;
   pageEnd: number;
+  model: ChapterTextVersionModel;
 };
 
 export type StartChapterVersionAudioInput = {
@@ -146,7 +152,8 @@ export async function generateChapterText(input: GenerateChapterTextInput) {
     body: JSON.stringify({
       pageStart: input.pageStart,
       pageEnd: input.pageEnd,
-      chapterNumber: input.chapterNumber
+      chapterNumber: input.chapterNumber,
+      model: input.model
     })
   });
   await ensureOk(response);

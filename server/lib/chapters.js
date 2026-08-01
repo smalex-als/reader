@@ -8,6 +8,12 @@ import {loadPageText} from './ocr.js';
 import {extractPlainTextFromOcrLayout} from './ocrLayout.js';
 
 const CHAPTER_PAD_LENGTH = 3;
+const CHAPTER_GENERATION_MODELS = new Set(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']);
+
+export function normalizeChapterGenerationModel(value) {
+  const model = typeof value === 'string' ? value.trim() : '';
+  return CHAPTER_GENERATION_MODELS.has(model) ? model : 'gpt-5.6-sol';
+}
 
 function formatChapterFilename(chapterNumber) {
   const normalized = String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0');
@@ -24,7 +30,7 @@ async function getChapterPrompt(bookId) {
   return isTechnicalCategory(card?.category) ? CHAPTER_SPLIT_PROMPT : CHAPTER_SIMPLE_PROMPT;
 }
 
-async function preprocessChapterTextForBook(bookId, rawText) {
+async function preprocessChapterTextForBook(bookId, rawText, model) {
   const input = typeof rawText === 'string' ? rawText.trim() : '';
   if (!input) {
     return '';
@@ -33,7 +39,7 @@ async function preprocessChapterTextForBook(bookId, rawText) {
   const prompt = await getChapterPrompt(bookId);
   const openai = getOpenAI();
   const response = await openai.responses.create({
-    model: 'gpt-5.6-sol',
+    model,
     input: [
       {
         role: 'system',
@@ -58,7 +64,7 @@ async function preprocessChapterTextForBook(bookId, rawText) {
   return processed || input;
 }
 
-export async function generateChapterText(bookId, pageStart, pageEnd, chapterNumber) {
+export async function generateChapterText(bookId, pageStart, pageEnd, chapterNumber, options = {}) {
   if (!Number.isInteger(pageStart) || pageStart < 0) {
     throw createHttpError(400, 'Valid pageStart is required');
   }
@@ -92,10 +98,11 @@ export async function generateChapterText(bookId, pageStart, pageEnd, chapterNum
 
   const combined = chunks.join('\n\n').trim();
   const directory = await assertBookDirectory(bookId);
+  const model = normalizeChapterGenerationModel(options?.model);
 
   let processed = combined;
   try {
-    processed = await preprocessChapterTextForBook(bookId, combined);
+    processed = await preprocessChapterTextForBook(bookId, combined, model);
   } catch (error) {
     console.warn('Chapter preprocessing failed; saving original text', error);
   }
@@ -106,6 +113,7 @@ export async function generateChapterText(bookId, pageStart, pageEnd, chapterNum
   return {
     book: bookId,
     chapterNumber,
+    model,
     file: `/data/${bookId}/${filename}`,
     pages: {
       start: pageStart,
