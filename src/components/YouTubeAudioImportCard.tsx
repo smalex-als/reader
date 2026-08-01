@@ -9,6 +9,9 @@ function formatBytes(value?: number | null) {
 }
 
 function getStatusCopy(status: YouTubeAudioImportStatus) {
+  const transcriptionLabel = status.transcriptionModel === 'gpt-transcribe'
+    ? 'OpenAI gpt-transcribe'
+    : 'Nemotron ASR';
   switch (status.status) {
     case 'queued':
       return {
@@ -23,14 +26,14 @@ function getStatusCopy(status: YouTubeAudioImportStatus) {
     case 'transcribing':
       return {
         title: 'Transcribing chapter',
-        detail: 'The MP3 is ready. Nemotron is converting the audio into chapter text.'
+        detail: `The MP3 is ready. ${transcriptionLabel} is converting the audio into chapter text.`
       };
     case 'post-processing':
       return {
         title: 'Applying text prompt',
         detail: status.postProcessPromptName
           ? `Creating a new version with “${status.postProcessPromptName}”.`
-          : 'Creating a new text version from the Nemotron transcript.'
+          : `Creating a new text version from the ${transcriptionLabel} transcript.`
       };
     case 'completed':
       return {
@@ -51,7 +54,7 @@ function getStatusCopy(status: YouTubeAudioImportStatus) {
         detail: status.failureStage === 'post-processing'
           ? 'The MP3 and base transcript are safe. Retry to create the selected text version.'
           : status.audioUrl
-          ? 'The MP3 is safe. Retry to run Nemotron again without downloading the video.'
+          ? `The MP3 is safe. Retry ${transcriptionLabel} without downloading the video.`
           : 'The latest download attempt failed. The queue may retry automatically, or you can retry now.'
       };
   }

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent 
 import CloseIcon from '@/components/CloseIcon';
 import ModalShell from '@/components/ModalShell';
 import type { CreateChapterSource } from '@/api/bookSession';
+import type { YouTubeTranscriptionModel } from '@/api/youtubeAudioImport';
 import { fetchPromptLibrary } from '@/api/chapterTextPrompts';
 import type { ChapterTextPrompt } from '@/types/app';
 
@@ -13,6 +14,7 @@ type AddChapterModalProps = {
     chapterTitle: string;
     source: CreateChapterSource;
     sourceUrl: string;
+    transcriptionModel: YouTubeTranscriptionModel;
     postProcessPromptId: string;
   }) => Promise<void>;
 };
@@ -33,6 +35,7 @@ export default function AddChapterModal({
   const [chapterTitle, setChapterTitle] = useState('');
   const [source, setSource] = useState<CreateChapterSource>('blank');
   const [sourceUrl, setSourceUrl] = useState('');
+  const [transcriptionModel, setTranscriptionModel] = useState<YouTubeTranscriptionModel>('nemotron-asr');
   const [postProcessPromptId, setPostProcessPromptId] = useState('');
   const [prompts, setPrompts] = useState<ChapterTextPrompt[]>([]);
   const [promptsLoading, setPromptsLoading] = useState(false);
@@ -46,6 +49,7 @@ export default function AddChapterModal({
     setChapterTitle('');
     setSource('blank');
     setSourceUrl('');
+    setTranscriptionModel('nemotron-asr');
     setPostProcessPromptId('');
     setPrompts([]);
     setPromptsLoading(true);
@@ -86,6 +90,7 @@ export default function AddChapterModal({
       chapterTitle: source === 'youtube' ? '' : chapterTitle,
       source,
       sourceUrl,
+      transcriptionModel,
       postProcessPromptId: source === 'youtube' ? postProcessPromptId : ''
     });
   };
@@ -194,7 +199,10 @@ export default function AddChapterModal({
                 <div className="add-chapter-workflow-arrow" aria-hidden="true">→</div>
                 <div className="add-chapter-workflow-step">
                   <span>2</span>
-                  <div><strong>Transcribe</strong><small>Nemotron speech-to-text</small></div>
+                  <div>
+                    <strong>Transcribe</strong>
+                    <small>{transcriptionModel === 'gpt-transcribe' ? 'OpenAI gpt-transcribe' : 'Nemotron ASR'}</small>
+                  </div>
                 </div>
                 <div className="add-chapter-workflow-arrow" aria-hidden="true">→</div>
                 <div className="add-chapter-workflow-step">
@@ -225,6 +233,23 @@ export default function AddChapterModal({
                 </span>
               </label>
               <label className="text-viewer-setting add-chapter-modal-field">
+                <span className="text-viewer-setting-label">Speech-to-text model</span>
+                <select
+                  className="text-viewer-select"
+                  value={transcriptionModel}
+                  onChange={(event) => setTranscriptionModel(event.target.value as YouTubeTranscriptionModel)}
+                  disabled={busy}
+                >
+                  <option value="nemotron-asr">Nemotron ASR</option>
+                  <option value="gpt-transcribe">OpenAI gpt-transcribe</option>
+                </select>
+                <span className="text-viewer-placeholder-help">
+                  {transcriptionModel === 'gpt-transcribe'
+                    ? 'Uses OPENAI_API_KEY. Long recordings are split into upload-sized audio chunks.'
+                    : 'Uses the configured local Nemotron ASR service.'}
+                </span>
+              </label>
+              <label className="text-viewer-setting add-chapter-modal-field">
                 <span className="text-viewer-setting-label">After speech-to-text</span>
                 <select
                   className="text-viewer-select"
@@ -244,7 +269,7 @@ export default function AddChapterModal({
                       ? `Prompts unavailable: ${promptsError}`
                       : postProcessPromptId
                         ? 'A new text version will be created and opened automatically when processing finishes.'
-                        : 'The Nemotron transcript will remain the base version.'}
+                        : `The ${transcriptionModel === 'gpt-transcribe' ? 'OpenAI' : 'Nemotron'} transcript will remain the base version.`}
                 </span>
               </label>
             </div>

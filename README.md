@@ -15,7 +15,7 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - Streaming audio via WebSocket (external stream server), including a floating stream control bubble.
 - Backend streaming audio test endpoints for raw PCM and experimental streaming WAV output.
 - Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
-- Text chapters can be created from a YouTube URL; `yt-dlp` downloads an MP3 through BullMQ, then the GPU-backed Nemotron ASR service replaces the temporary URL body with a transcript. The chapter shows persistent download/transcription/completed/failed status, playback, and retry controls.
+- Text chapters can be created from a YouTube URL; `yt-dlp` downloads an MP3 through BullMQ, then the selected `Nemotron ASR` or OpenAI `gpt-transcribe` model replaces the temporary URL body with a transcript. The chapter shows persistent download/transcription/completed/failed status, playback, and retry controls.
 - Redis/BullMQ background processing for long-running chapter MP3 generation, with retries and durable queued work.
 - Study tools per chapter: `Quiz`, `Vocabulary`, and `Memory Card`.
 - Unit study sets: turn a chapter into standalone topic-based units, open topics by URL, stream topic paragraphs, mark topics read/unread, and create quizzes for individual topics.
@@ -199,7 +199,7 @@ data/
 
 Server environment variables:
 
-- `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, TTS, and image enhancement)
+- `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, YouTube `gpt-transcribe`, TTS, and image enhancement)
 - `XAI_API_KEY` (required for xAI TTS generation)
 - `YANDEX_API_KEY` and `YANDEX_FOLDER_ID` (required for Yandex stream voices)
 - `YANDEX_STREAM_VOICES` (comma-separated Yandex stream voices; defaults to `alena,jane,zahar,oksana,ermil,marina`)
@@ -223,6 +223,8 @@ Server environment variables:
 - `NEMOTRON_ASR_TIMEOUT_MS` (maximum time for a transcription; default one hour)
 - `NEMOTRON_ASR_MODEL`, `NEMOTRON_ASR_DEVICE`, `NEMOTRON_ASR_PRECISION`, and `NEMOTRON_ASR_CHUNK_SECONDS` configure the ASR container.
 - `NEMOTRON_ASR_KEEP_MODEL_LOADED=true` keeps Nemotron in VRAM between jobs; by default the service releases it after every transcription.
+
+YouTube imports default to `nemotron-asr` for compatibility. Choosing `gpt-transcribe` uploads the downloaded MP3 to OpenAI; recordings above the API file-size limit are converted into 15-minute mono chunks and transcribed sequentially.
 
 Front-end environment variables:
 
