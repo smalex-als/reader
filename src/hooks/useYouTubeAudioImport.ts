@@ -10,6 +10,10 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import {
+  isActiveYouTubeAudioImportState,
+  shouldNavigateToCompletedYouTubeVersion
+} from '@/lib/youtubeAudioImportStatus';
 
 const ACTIVE_POLL_DELAY_MS = 2000;
 const FAILED_RECHECK_LIMIT = 10;
@@ -29,6 +33,7 @@ export function useYouTubeAudioImport({
   const [requestError, setRequestError] = useState<string | null>(null);
   const [pollNonce, setPollNonce] = useState(0);
   const refreshedJobs = useRef(new Set<string>());
+  const activeJobs = useRef(new Set<string>());
 
   useEffect(() => {
     if (!bookId || !chapterNumber) {
@@ -91,6 +96,9 @@ export function useYouTubeAudioImport({
       status?.status === 'completed' ||
       (status?.status === 'failed' && status.transcriptReady)
     );
+    if (status && isActiveYouTubeAudioImportState(status.status)) {
+      activeJobs.current.add(status.jobId);
+    }
     if (!bookId || !chapterNumber || !status || !hasUsableTranscript) {
       return;
     }
@@ -114,8 +122,16 @@ export function useYouTubeAudioImport({
         )
       ));
     }
-    if (status.status === 'completed' && status.postProcessVersionId) {
+    if (
+      status.postProcessVersionId &&
+      shouldNavigateToCompletedYouTubeVersion({
+        status: status.status,
+        wasActive: activeJobs.current.has(status.jobId),
+        postProcessVersionId: status.postProcessVersionId
+      })
+    ) {
       dispatch(appActions.requestChapterVersionNavigation(chapterNumber, status.postProcessVersionId));
+      activeJobs.current.delete(status.jobId);
     }
     dispatch(appActions.refreshChapterView());
   }, [bookId, chapterNumber, dispatch, status, tocEntries]);
