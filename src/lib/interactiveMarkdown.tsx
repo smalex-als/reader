@@ -18,7 +18,7 @@ export {
   resolveMarkdownTextRange
 } from '@/lib/interactiveMarkdownCore';
 
-export type InteractiveMarkdownTag = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'ul' | 'ol';
+export type InteractiveMarkdownTag = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'ul' | 'ol' | 'li';
 
 export type InteractiveMarkdownBlock = {
   endIndex: number;
@@ -66,6 +66,8 @@ export function createInteractiveMarkdownComponents({
   onBlockClick,
   sourceText
 }: InteractiveMarkdownOptions): Components {
+  const hasInteractiveListItems = blockTags.includes('li');
+
   const resolveBlock = (
     tag: InteractiveMarkdownTag,
     children: ReactNode,
@@ -80,10 +82,10 @@ export function createInteractiveMarkdownComponents({
     return ({ children, node, className, ...props }: ComponentPropsWithoutRef<Tag> & ExtraProps) => {
       const block = resolveBlock(tag, children, node);
       const attributes = getBlockAttributes?.(block) ?? {};
-      const active = isBlockActive?.(block) ?? isMarkdownRangeActive(
-        activeStart,
-        block.startIndex,
-        block.endIndex
+      const active = isBlockActive?.(block) ?? (
+        tag === 'li'
+          ? activeStart === block.startIndex
+          : isMarkdownRangeActive(activeStart, block.startIndex, block.endIndex)
       );
       return createElement(tag, {
         ...props,
@@ -96,6 +98,7 @@ export function createInteractiveMarkdownComponents({
           if (!block.text || shouldIgnoreInteractiveMarkdownClick(event)) {
             return;
           }
+          event.stopPropagation();
           onBlockClick(block);
         }
       }, children);
@@ -106,6 +109,13 @@ export function createInteractiveMarkdownComponents({
     return ({ children, node, className, ...props }: ComponentPropsWithoutRef<Tag> & ExtraProps) => {
       const block = resolveBlock(tag, children, node);
       const attributes = getBlockAttributes?.(block) ?? {};
+      if (hasInteractiveListItems) {
+        return (
+          <div className="text-viewer-list-block">
+            {createElement(tag, { ...props, className }, children)}
+          </div>
+        );
+      }
       const active = isBlockActive?.(block) ?? isMarkdownRangeActive(
         activeStart,
         block.startIndex,
@@ -125,6 +135,7 @@ export function createInteractiveMarkdownComponents({
             if (!block.text || shouldIgnoreInteractiveMarkdownClick(event)) {
               return;
             }
+            event.stopPropagation();
             onBlockClick(block);
           }}
         >
@@ -136,10 +147,37 @@ export function createInteractiveMarkdownComponents({
 
   const components: Components = {};
   for (const tag of blockTags) {
-    if (tag === 'ul' || tag === 'ol') {
-      components[tag] = renderList(tag);
-    } else {
-      components[tag] = renderTextBlock(tag);
+    switch (tag) {
+      case 'ul':
+        components.ul = renderList('ul');
+        break;
+      case 'ol':
+        components.ol = renderList('ol');
+        break;
+      case 'li':
+        components.li = renderTextBlock('li');
+        break;
+      case 'p':
+        components.p = renderTextBlock('p');
+        break;
+      case 'h1':
+        components.h1 = renderTextBlock('h1');
+        break;
+      case 'h2':
+        components.h2 = renderTextBlock('h2');
+        break;
+      case 'h3':
+        components.h3 = renderTextBlock('h3');
+        break;
+      case 'h4':
+        components.h4 = renderTextBlock('h4');
+        break;
+      case 'h5':
+        components.h5 = renderTextBlock('h5');
+        break;
+      case 'h6':
+        components.h6 = renderTextBlock('h6');
+        break;
     }
   }
   return components;

@@ -1,4 +1,5 @@
 import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
+import { splitMarkdownPlaybackBlocks } from '@/lib/markdownPlaybackBlocks';
 import type { PageText } from '@/types/app';
 
 export type PageStreamSegment = {
@@ -41,19 +42,14 @@ export function createParagraphStreamSegments(
 ): ParagraphStreamSegment[] {
   const input = normalizeFencedCodeBlocksForSpeech(fullText.slice(Math.max(0, startIndex)));
   const segments: ParagraphStreamSegment[] = [];
-  const paragraphPattern = /\S[\s\S]*?(?=(?:\n\s*\n)|$)/g;
-  let match;
+  const playbackBlocks = splitMarkdownPlaybackBlocks(input);
 
-  while ((match = paragraphPattern.exec(input)) !== null) {
-    const rawParagraph = match[0]?.trim();
-    if (!rawParagraph) {
-      continue;
-    }
-    const spokenParagraph = stripMarkdown(rawParagraph).trim();
+  for (const block of playbackBlocks) {
+    const spokenParagraph = stripMarkdown(block.rawText).trim();
     if (!spokenParagraph) {
       continue;
     }
-    const absoluteStart = startIndex + match.index;
+    const absoluteStart = startIndex + block.startIndex;
     const pageKey = formatParagraphPageKey(baseKey, absoluteStart);
     if (spokenParagraph.length <= 1240) {
       segments.push({ text: spokenParagraph, pageKey });
