@@ -10,7 +10,7 @@ type UseReaderLifecycleEffectsOptions = {
   chapterNumber: number | null;
   resetAudioCache: () => void;
   stopAudio: () => void;
-  stopStream: () => void;
+  stopStream: () => Promise<void>;
 };
 
 export function useReaderLifecycleEffects({

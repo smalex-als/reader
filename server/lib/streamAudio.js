@@ -16,6 +16,7 @@ import {
   STREAM_VOICE
 } from '../config.js';
 import { assertBookDirectory } from './books.js';
+import { AsyncSingleFlight } from './asyncSingleFlight.js';
 import { getChapterTextVersionText } from './chapterTextVersions.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
@@ -36,6 +37,8 @@ const READER_TEST_HOSTNAME = 'reader.test';
 const EMPTY_AUDIO_RETRY_LIMIT = 2;
 const EMPTY_AUDIO_RETRY_DELAY_MS = 120;
 const WORD_PATTERN = /\S+/g;
+const TTS_SOCKET_CLOSE_TIMEOUT_MS = 2_000;
+const localTtsSingleFlight = new AsyncSingleFlight();
 const insecureReaderTestDispatcher = new Agent({
   connect: {
     rejectUnauthorized: false
@@ -434,44 +437,59 @@ async function streamSingleTextSegmentToWritableOnce(text, voice, writable, sign
     let closed = false;
     let finished = false;
     let aborted = false;
+    let closeError = null;
+    let closeTimer = null;
     let bytesWritten = 0;
     const socket = new WebSocket(wsUrl, {
       dispatcher: resolveStreamDispatcher(wsUrl)
     });
     socket.binaryType = 'arraybuffer';
 
-    const handleAbort = () => {
-      aborted = true;
-      finalize(createAbortError());
-    };
-    if (signal) {
-      if (signal.aborted) {
-        handleAbort();
-        return;
-      }
-      signal.addEventListener('abort', handleAbort, { once: true });
-    }
-
-    const finalize = (error) => {
+    const settle = (error) => {
       if (finished) {
         return;
       }
       finished = true;
+      if (closeTimer !== null) {
+        clearTimeout(closeTimer);
+        closeTimer = null;
+      }
       if (signal) {
         signal.removeEventListener('abort', handleAbort);
-      }
-      if (!closed) {
-        try {
-          socket.close();
-        } catch {
-          // ignore close errors
-        }
       }
       if (error) {
         reject(error);
         return;
       }
       resolve(bytesWritten);
+    };
+
+    const requestSocketClose = (error) => {
+      closeError ??= error;
+      if (closed) {
+        settle(closeError);
+        return;
+      }
+      if (closeTimer !== null) {
+        return;
+      }
+      try {
+        socket.close();
+      } catch {
+        // A connecting socket may reject close(); its error/close event or the
+        // timeout below still provides a bounded handoff to the next request.
+      }
+      closeTimer = setTimeout(() => {
+        settle(closeError);
+      }, TTS_SOCKET_CLOSE_TIMEOUT_MS);
+    };
+
+    const handleAbort = () => {
+      if (aborted || finished) {
+        return;
+      }
+      aborted = true;
+      requestSocketClose(createAbortError());
     };
 
     socket.addEventListener('message', async (event) => {
@@ -529,22 +547,38 @@ async function streamSingleTextSegmentToWritableOnce(text, voice, writable, sign
         bytesWritten += buffer.length;
         writable.write(buffer);
       } catch (error) {
-        finalize(error);
+        if (!aborted) {
+          requestSocketClose(error);
+        }
       }
     });
 
     socket.addEventListener('error', (event) => {
-      finalize(createHttpError(502, 'Streaming audio connection failed'));
+      if (!aborted) {
+        requestSocketClose(createHttpError(502, 'Streaming audio connection failed'));
+      }
     });
 
     socket.addEventListener('close', () => {
       closed = true;
-      if (!aborted && bytesWritten === 0) {
-        finalize(createHttpError(502, 'Streaming service returned no audio'));
+      if (closeError) {
+        settle(closeError);
         return;
       }
-      finalize();
+      if (!aborted && bytesWritten === 0) {
+        settle(createHttpError(502, 'Streaming service returned no audio'));
+        return;
+      }
+      settle();
     });
+
+    if (signal) {
+      if (signal.aborted) {
+        handleAbort();
+      } else {
+        signal.addEventListener('abort', handleAbort, { once: true });
+      }
+    }
   });
 }
 
@@ -582,16 +616,18 @@ export function createTextPcmStream(text, voice, signal, requestId = createStrea
 
   void (async () => {
     try {
-      for (let index = 0; index < chunks.length; index += 1) {
-        const chunk = chunks[index];
-        if (signal?.aborted) {
-          throw createAbortError();
+      await localTtsSingleFlight.run(async () => {
+        for (let index = 0; index < chunks.length; index += 1) {
+          const chunk = chunks[index];
+          if (signal?.aborted) {
+            throw createAbortError();
+          }
+          totalBytesWritten += await streamSingleTextSegmentToWritable(chunk, voice, output, signal, {
+            requestId,
+            chunkIndex: index + 1
+          });
         }
-        totalBytesWritten += await streamSingleTextSegmentToWritable(chunk, voice, output, signal, {
-          requestId,
-          chunkIndex: index + 1
-        });
-      }
+      }, signal);
       output.end();
     } catch (error) {
       if ((error && error.name === 'AbortError') || signal?.aborted) {

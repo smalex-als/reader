@@ -46,7 +46,7 @@ export type StreamSequenceEnvironment = {
     replaceCurrent?: boolean;
   }) => Promise<void>;
   enqueueStream: (payload: { text: string; pageKey: string; voice: string }) => void;
-  stopStream: () => void;
+  stopStream: () => Promise<void>;
   pauseStream: () => Promise<void>;
   resumeStream: () => Promise<void>;
   pauseStreamAtStart: (pageKey: string) => void;
@@ -94,6 +94,7 @@ export function createStreamSequenceController({
   let autoAdvance = false;
   let studyReplayPageKey: string | null = null;
   let studyPausedAtStart = false;
+  let playbackIntentId = 0;
   const lookahead = new StreamLookaheadController<PageText>();
   const restartCoordinator = new StreamRestartCoordinator(scheduler, restartDelayMs);
   const studyReplayGuard = new StreamStudyReplayGuard();
@@ -171,6 +172,8 @@ export function createStreamSequenceController({
     continueAcrossPages = true,
     voiceOverride?: string
   ) {
+    const intentId = playbackIntentId + 1;
+    playbackIntentId = intentId;
     const current = getEnvironment();
     const voice = voiceOverride ?? current.streamVoice;
     const imagePageIndex = current.manifest.indexOf(imageUrl);
@@ -196,14 +199,20 @@ export function createStreamSequenceController({
     const replacingPausedStudyStream = studyPausedAtStart && current.streamState.status === 'paused';
     studyPausedAtStart = false;
     if (ACTIVE_STREAM_STATUSES.has(current.streamState.status) && !replacingPausedStudyStream) {
-      current.stopStream();
       stopStreamSequence();
+      await current.stopStream();
+      if (intentId !== playbackIntentId) {
+        return;
+      }
     }
     if (replacingPausedStudyStream) {
       current.stopAudio();
       stopStreamSequence();
     } else {
       resetCurrentSequence();
+    }
+    if (intentId !== playbackIntentId) {
+      return;
     }
     lastStreamSource = { type: 'page', fullText: pageText.plainText, startIndex: 0, baseKey: imageUrl };
     autoAdvance = false;
@@ -237,6 +246,7 @@ export function createStreamSequenceController({
     source: 'page' | 'chapter' | 'paragraph',
     voiceOverride?: string
   ) {
+    playbackIntentId += 1;
     const current = getEnvironment();
     studyReplayGuard.allowPlayback();
     const voice = voiceOverride ?? current.streamVoice;
@@ -356,6 +366,7 @@ export function createStreamSequenceController({
     payload: { text: string; pageKey: string },
     voiceOverride?: string
   ) {
+    playbackIntentId += 1;
     const current = getEnvironment();
     const voice = voiceOverride ?? current.streamVoice;
     const trimmed = stripMarkdown(payload.text).trim();
@@ -417,6 +428,7 @@ export function createStreamSequenceController({
   }
 
   function handleStopStream() {
+    playbackIntentId += 1;
     const current = getEnvironment();
     autoAdvance = false;
     studyReplayPageKey = null;

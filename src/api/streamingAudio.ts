@@ -64,7 +64,8 @@ export async function openStreamPcmReader({
   const responsePromise = fetch('/api/stream-audio/pcm', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, voice })
+    body: JSON.stringify({ text, voice }),
+    signal
   });
   const pcmPromise = responsePromise.then(async (response) => {
     if (!response.ok) {

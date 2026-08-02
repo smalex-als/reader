@@ -30,7 +30,7 @@ type StreamSequenceOptions = {
     replaceCurrent?: boolean;
   }) => Promise<void>;
   enqueueStream: (payload: { text: string; pageKey: string; voice: string }) => void;
-  stopStream: () => void;
+  stopStream: () => Promise<void>;
   pauseStream: () => Promise<void>;
   resumeStream: () => Promise<void>;
   pauseStreamAtStart: (pageKey: string) => void;

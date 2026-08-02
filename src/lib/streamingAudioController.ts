@@ -71,7 +71,7 @@ export type StreamingAudioController = {
   enqueueStream: (payload: EnqueueStreamPayload) => void;
   pauseStream: () => Promise<void>;
   resumeStream: () => Promise<void>;
-  stopStream: () => void;
+  stopStream: () => Promise<void>;
   stopAfterCurrentStream: () => void;
   pauseStreamAtStart: (pageKey: string) => void;
 };
@@ -131,6 +131,8 @@ export function createStreamingAudioController({
   let hasStartedPlayback = false;
   let silentFrames = 0;
   let audioShutdown = Promise.resolve();
+  let activeRequestTask: Promise<void> | null = null;
+  let streamStop: Promise<void> | null = null;
   const decoder = new Pcm16Decoder();
   const queue = new StreamAudioQueue();
   const cache = new StreamPcmCache(STREAM_PCM_CACHE_LIMIT);
@@ -214,14 +216,16 @@ export function createStreamingAudioController({
   function closeStreamRequest() {
     const staleReader = reader;
     reader = null;
-    if (staleReader) {
-      void staleReader.cancel().catch(() => {});
-    }
     const staleAbortController = requestAbortController;
     requestAbortController = null;
     staleAbortController?.abort();
+    const cancelReader = staleReader
+      ? staleReader.cancel().catch(() => {})
+      : Promise.resolve();
+    const settleRequest = activeRequestTask?.catch(() => {}) ?? Promise.resolve();
     requestInFlight = false;
     transition({ type: 'request-finished' });
+    return Promise.all([cancelReader, settleRequest]).then(() => undefined);
   }
 
   function finalizeStream(
@@ -400,7 +404,7 @@ export function createStreamingAudioController({
     }
   }
 
-  async function startQueuedRequest(sessionId: number): Promise<void> {
+  async function runQueuedRequest(sessionId: number): Promise<void> {
     if (!isCurrentStreamingSession(sessionMachine, sessionId) || reader || requestInFlight) {
       return;
     }
@@ -557,6 +561,17 @@ export function createStreamingAudioController({
     }
   }
 
+  function startQueuedRequest(sessionId: number): Promise<void> {
+    let task: Promise<void>;
+    task = runQueuedRequest(sessionId).finally(() => {
+      if (activeRequestTask === task) {
+        activeRequestTask = null;
+      }
+    });
+    activeRequestTask = task;
+    return task;
+  }
+
   async function startStream({
     text,
     pageKey,
@@ -564,6 +579,9 @@ export function createStreamingAudioController({
     pauseAtStartOnComplete = false,
     replaceCurrent = false
   }: StartStreamPayload) {
+    if (streamStop) {
+      await streamStop;
+    }
     const cleaned = stripMarkdown(text).trim();
     if (!cleaned) {
       callbacks.onToast('No text available to stream', 'error');
@@ -676,10 +694,37 @@ export function createStreamingAudioController({
   }
 
   function stopStream() {
+    if (streamStop) {
+      return streamStop;
+    }
     transition({ type: 'source-ended' });
     queue.clear();
-    closeStreamRequest();
-    finalizeStream('idle', undefined, false);
+    const completedSession = transition({
+      type: 'complete',
+      status: 'idle',
+      preservePauseAtStart: false
+    });
+    const playedSeconds = playbackSamples / SAMPLE_RATE;
+    silencePlayback();
+    const requestShutdown = closeStreamRequest();
+    const audioChainShutdown = audioShutdown;
+    const stoppedSessionId = completedSession.sessionId;
+    streamStop = Promise.all([requestShutdown, audioChainShutdown])
+      .then(() => {
+        if (
+          sessionMachine.status !== 'disposed' &&
+          sessionMachine.sessionId === stoppedSessionId
+        ) {
+          setState({
+            ...INITIAL_STREAM_STATE,
+            playbackSeconds: playedSeconds
+          });
+        }
+      })
+      .finally(() => {
+        streamStop = null;
+      });
+    return streamStop;
   }
 
   function stopAfterCurrentStream() {
