@@ -697,6 +697,9 @@ export function createStreamingAudioController({
     if (streamStop) {
       return streamStop;
     }
+    if (streamState.status === 'idle') {
+      return Promise.resolve();
+    }
     transition({ type: 'source-ended' });
     queue.clear();
     const completedSession = transition({
