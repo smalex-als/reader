@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildTranscriptionChunkArgs,
+  cleanTranscriptionText,
   extractOpenAITranscriptionText,
   OPENAI_TRANSCRIPTION_MODEL,
   OPENAI_TRANSCRIPTION_SAFE_FILE_BYTES
@@ -10,6 +11,13 @@ import {
 test('uses the requested OpenAI transcription model and stays below the upload limit', () => {
   assert.equal(OPENAI_TRANSCRIPTION_MODEL, 'gpt-transcribe');
   assert.ok(OPENAI_TRANSCRIPTION_SAFE_FILE_BYTES < 25 * 1024 * 1024);
+});
+
+test('cleans language markers and spacing from transcription text', () => {
+  assert.equal(
+    cleanTranscriptionText('Hello there. <en-US>  How are you?\n<en-US>Fine.'),
+    'Hello there.\nHow are you?\nFine.'
+  );
 });
 
 test('builds ffmpeg arguments for small mono transcription chunks', () => {

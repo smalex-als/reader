@@ -9,7 +9,7 @@ import {
   CHAPTER_NARRATION_PROMPT,
   CHAPTER_REVIEW_EXTRACT_PROMPT,
   DATA_DIR,
-  NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT,
+  TRANSCRIPT_CLEANUP_PROMPT,
   YOUTUBE_TRANSCRIPT_SUMMARY_PROMPT
 } from '../config.js';
 import { getOpenAI } from './openai.js';
@@ -54,9 +54,9 @@ function getDefaultPromptLibrary() {
         createdAt: new Date(0).toISOString()
       },
       {
-        id: 'nemotron-transcript-cleanup',
-        name: 'Clean Nemotron Transcript',
-        template: NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT,
+        id: 'transcript-cleanup',
+        name: 'Clean Transcript',
+        template: TRANSCRIPT_CLEANUP_PROMPT,
         model: 'gpt-5.6-sol',
         builtIn: true,
         createdAt: new Date(0).toISOString()

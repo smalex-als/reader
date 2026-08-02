@@ -8,8 +8,7 @@ import { createHttpError } from './errors.js';
 import { assertBookDirectory } from './books.js';
 import { safeStat, writeFileAtomic } from './fs.js';
 import { updateTocTitle } from './toc.js';
-import { cleanNemotronTranscript, requestNemotronTranscription } from './nemotronAsr.js';
-import { transcribeAudioWithOpenAI } from './openaiTranscription.js';
+import { cleanTranscriptionText, transcribeAudioWithOpenAI } from './openaiTranscription.js';
 import { createChapterTextVersion } from './chapterTextVersions.js';
 import {
   enqueueBackgroundJob,
@@ -26,7 +25,6 @@ const YOUTUBE_HOSTS = new Set([
   'music.youtube.com',
   'youtu.be'
 ]);
-const YOUTUBE_TRANSCRIPTION_MODELS = new Set(['nemotron-asr', 'gpt-transcribe']);
 
 function formatChapterPrefix(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}`;
@@ -45,16 +43,6 @@ export function normalizeYouTubeUrl(value) {
   }
   parsed.hash = '';
   return parsed.toString();
-}
-
-export function normalizeYouTubeTranscriptionModel(value) {
-  if (value === undefined || value === null || value === '') {
-    return 'nemotron-asr';
-  }
-  if (!YOUTUBE_TRANSCRIPTION_MODELS.has(value)) {
-    throw createHttpError(400, 'Unsupported YouTube transcription model');
-  }
-  return value;
 }
 
 export function formatChapterSourceAudioFilename(chapterNumber) {
@@ -155,7 +143,7 @@ export async function getYouTubeAudioDownload({ bookId, chapterNumber }) {
       const chapterTextPath = path.join(directory, `${formatChapterPrefix(chapterNumber)}.txt`);
       try {
         const chapterText = await fs.readFile(chapterTextPath, 'utf8');
-        const cleaned = cleanNemotronTranscript(chapterText);
+        const cleaned = cleanTranscriptionText(chapterText);
         if (cleaned && cleaned !== chapterText.trim()) {
           await writeFileAtomic(chapterTextPath, `${cleaned}\n`);
         }
@@ -188,14 +176,12 @@ export async function runYouTubeAudioDownloadJob({
   chapterNumber,
   sourceUrl,
   jobId,
-  transcriptionModel = 'nemotron-asr',
   postProcessPromptId = null,
   postProcessPromptName = null,
   postProcessOperationId = null
 }) {
   const directory = await assertBookDirectory(bookId);
   const normalizedUrl = normalizeYouTubeUrl(sourceUrl);
-  const normalizedTranscriptionModel = normalizeYouTubeTranscriptionModel(transcriptionModel);
   const current = await loadSourceMetadata(directory, chapterNumber);
   if (current?.jobId !== jobId) {
     return null;
@@ -206,8 +192,6 @@ export async function runYouTubeAudioDownloadJob({
   const temporaryMp3Path = path.join(directory, `${temporaryBase}.mp3`);
   const finalFilename = formatChapterSourceAudioFilename(chapterNumber);
   const finalPath = path.join(directory, finalFilename);
-  const transcriptFilename = `${prefix}.transcript.txt`;
-  const transcriptPath = path.join(directory, transcriptFilename);
   const chapterTextPath = path.join(directory, `${prefix}.txt`);
   const baseMetadata = {
     ...current,
@@ -215,7 +199,7 @@ export async function runYouTubeAudioDownloadJob({
     sourceUrl: normalizedUrl,
     jobId,
     status: 'running',
-    transcriptionModel: normalizedTranscriptionModel,
+    transcriptionModel: 'gpt-transcribe',
     startedAt: new Date().toISOString(),
     error: null
   };
@@ -254,7 +238,6 @@ export async function runYouTubeAudioDownloadJob({
     }
     const canReuseTranscript = Boolean(
       current?.transcriptReady &&
-      normalizeYouTubeTranscriptionModel(current?.transcriptionModel) === normalizedTranscriptionModel &&
       postProcessPromptId &&
       (await safeStat(chapterTextPath))?.isFile()
     );
@@ -269,25 +252,11 @@ export async function runYouTubeAudioDownloadJob({
     });
     let transcriptReady = canReuseTranscript;
     if (!transcriptReady) {
-      let transcript;
-      if (normalizedTranscriptionModel === 'gpt-transcribe') {
-        transcript = cleanNemotronTranscript(await transcribeAudioWithOpenAI(finalPath));
-      } else {
-        const asrJob = await requestNemotronTranscription({
-          audioPath: finalPath,
-          outputPath: transcriptPath,
-          jobId
-        });
-        if (!asrJob) {
-          throw createHttpError(503, 'NEMOTRON_ASR_URL is required for Nemotron transcription');
-        }
-        transcript = cleanNemotronTranscript(await fs.readFile(transcriptPath, 'utf8'));
-      }
+      const transcript = cleanTranscriptionText(await transcribeAudioWithOpenAI(finalPath));
       if (!transcript) {
-        throw createHttpError(502, `${normalizedTranscriptionModel} produced an empty transcript`);
+        throw createHttpError(502, 'gpt-transcribe produced an empty transcript');
       }
       await writeFileAtomic(chapterTextPath, `${transcript}\n`);
-      await fs.rm(transcriptPath, { force: true });
       transcriptReady = true;
     }
     let postProcessVersionId = null;
@@ -319,7 +288,6 @@ export async function runYouTubeAudioDownloadJob({
     });
   } catch (error) {
     await fs.rm(temporaryMp3Path, { force: true }).catch(() => {});
-    await fs.rm(transcriptPath, { force: true }).catch(() => {});
     const latest = await loadSourceMetadata(directory, chapterNumber);
     if (latest?.jobId === jobId) {
       await writeSourceMetadata(directory, chapterNumber, {
@@ -338,13 +306,11 @@ export async function enqueueYouTubeAudioDownload({
   bookId,
   chapterNumber,
   sourceUrl,
-  transcriptionModel = 'nemotron-asr',
   postProcessPromptId = null,
   postProcessPromptName = null
 }) {
   const directory = await assertBookDirectory(bookId);
   const normalizedUrl = normalizeYouTubeUrl(sourceUrl);
-  const normalizedTranscriptionModel = normalizeYouTubeTranscriptionModel(transcriptionModel);
   const existing = await loadSourceMetadata(directory, chapterNumber);
   const jobId = randomUUID();
   const postProcessOperationId = postProcessPromptId
@@ -358,14 +324,13 @@ export async function enqueueYouTubeAudioDownload({
     sourceUrl: normalizedUrl,
     jobId,
     status: 'queued',
-    transcriptionModel: normalizedTranscriptionModel,
+    transcriptionModel: 'gpt-transcribe',
     queuedAt: new Date().toISOString(),
     completedAt: null,
     failedAt: null,
     transcriptReady: Boolean(
       existing?.failureStage === 'post-processing' &&
-      existing?.transcriptReady &&
-      normalizeYouTubeTranscriptionModel(existing?.transcriptionModel) === normalizedTranscriptionModel
+      existing?.transcriptReady
     ),
     postProcessPromptId,
     postProcessPromptName,
@@ -379,7 +344,6 @@ export async function enqueueYouTubeAudioDownload({
     chapterNumber,
     sourceUrl: normalizedUrl,
     jobId,
-    transcriptionModel: normalizedTranscriptionModel,
     postProcessPromptId,
     postProcessPromptName,
     postProcessOperationId

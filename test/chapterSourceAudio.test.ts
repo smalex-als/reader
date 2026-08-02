@@ -8,7 +8,6 @@ import {
   extractYouTubeVideoTitle,
   formatChapterSourceAudioFilename,
   getYouTubeAudioDownload,
-  normalizeYouTubeTranscriptionModel,
   normalizeYouTubeUrl
 } from '../server/lib/chapterSourceAudio.js';
 
@@ -23,16 +22,6 @@ test('normalizes supported YouTube URLs and rejects other hosts', () => {
   );
   assert.throws(() => normalizeYouTubeUrl('https://example.com/video'), /Only YouTube URLs/);
   assert.throws(() => normalizeYouTubeUrl('not a URL'), /Valid YouTube URL/);
-});
-
-test('normalizes supported YouTube transcription models with a legacy default', () => {
-  assert.equal(normalizeYouTubeTranscriptionModel(undefined), 'nemotron-asr');
-  assert.equal(normalizeYouTubeTranscriptionModel('nemotron-asr'), 'nemotron-asr');
-  assert.equal(normalizeYouTubeTranscriptionModel('gpt-transcribe'), 'gpt-transcribe');
-  assert.throws(
-    () => normalizeYouTubeTranscriptionModel('whisper-1'),
-    /Unsupported YouTube transcription model/
-  );
 });
 
 test('builds a single-video MP3 yt-dlp command without invoking a shell', () => {

@@ -15,7 +15,7 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - Streaming audio via WebSocket (external stream server), including a floating stream control bubble.
 - Backend streaming audio test endpoints for raw PCM and experimental streaming WAV output.
 - Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
-- Text chapters can be created from a YouTube URL; `yt-dlp` downloads an MP3 through BullMQ, then the selected `Nemotron ASR` or OpenAI `gpt-transcribe` model replaces the temporary URL body with a transcript. The chapter shows persistent download/transcription/completed/failed status, playback, and retry controls.
+- Text chapters can be created from a YouTube URL; `yt-dlp` downloads an MP3 through BullMQ, then OpenAI `gpt-transcribe` replaces the temporary URL body with a transcript. The chapter shows persistent download/transcription/completed/failed status, playback, and retry controls.
 - Redis/BullMQ background processing for long-running chapter MP3 generation, with retries and durable queued work.
 - Study tools per chapter: `Quiz`, `Vocabulary`, and `Memory Card`.
 - Unit study sets: turn a chapter into standalone topic-based units, open topics by URL, stream topic paragraphs, mark topics read/unread, and create quizzes for individual topics.
@@ -118,9 +118,7 @@ want to delete that queued-job data as well.
 
 ## Server deployment
 
-`./deploy-local.sh` is the server deployment entrypoint. It pulls `origin/main`, starts Redis, the GPU-backed Nemotron ASR service, Reader, and the HTTPS nginx profile, then verifies their health endpoints. The Reader port is not published directly by the server Compose configuration.
-
-The server must have the NVIDIA driver and [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed. The first ASR run downloads `nvidia/nemotron-3.5-asr-streaming-0.6b` into the persistent `nemotron-cache` Docker volume.
+`./deploy-local.sh` is the server deployment entrypoint. It pulls `origin/main`, starts Redis, Reader, and the HTTPS nginx profile, then verifies their health endpoints. The Reader port is not published directly by the server Compose configuration.
 
 Run it from the repository checkout on the server:
 
@@ -134,7 +132,7 @@ Server stack commands:
 make server-up       # build and start Redis, Reader, and HTTPS nginx
 make server-start    # start existing server containers
 make server-ps       # container status
-make server-logs     # follow nginx, Reader, Redis, and Nemotron ASR logs
+make server-logs     # follow nginx, Reader, and Redis logs
 make server-health   # verify both Reader and the external HTTPS proxy
 make server-restart  # restart the complete server stack
 make server-stop     # stop containers without removing them
@@ -218,13 +216,7 @@ Server environment variables:
 - `REDIS_URL` (enables the BullMQ background queue, for example `redis://localhost:6379`)
 - `BACKGROUND_JOB_CONCURRENCY` (number of long-running jobs processed concurrently; default `1`)
 - `YT_DLP_BIN` (yt-dlp executable used by YouTube chapter imports; default `yt-dlp`)
-- `NEMOTRON_ASR_URL` (Nemotron job API base URL; server Docker defaults to `http://nemotron-asr:3300`, local Docker leaves it disabled)
-- `NEMOTRON_ASR_LANGUAGE` (transcription language; default `auto`)
-- `NEMOTRON_ASR_TIMEOUT_MS` (maximum time for a transcription; default one hour)
-- `NEMOTRON_ASR_MODEL`, `NEMOTRON_ASR_DEVICE`, `NEMOTRON_ASR_PRECISION`, and `NEMOTRON_ASR_CHUNK_SECONDS` configure the ASR container.
-- `NEMOTRON_ASR_KEEP_MODEL_LOADED=true` keeps Nemotron in VRAM between jobs; by default the service releases it after every transcription.
-
-YouTube imports default to `nemotron-asr` for compatibility. Choosing `gpt-transcribe` uploads the downloaded MP3 to OpenAI; recordings above the API file-size limit are converted into 15-minute mono chunks and transcribed sequentially.
+YouTube imports use `gpt-transcribe` and upload the downloaded MP3 to OpenAI; recordings above the API file-size limit are converted into 15-minute mono chunks and transcribed sequentially.
 
 Front-end environment variables:
 

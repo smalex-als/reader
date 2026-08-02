@@ -1,5 +1,5 @@
 LOCAL_COMPOSE := docker compose -f docker-compose.yml -f docker-compose.local.yml
-SERVER_COMPOSE := docker compose --profile https --profile asr
+SERVER_COMPOSE := docker compose --profile https
 READER_URL ?= http://localhost:$(or $(READER_PORT),3000)
 
 .PHONY: help local-up local-start local-down local-stop local-restart local-logs local-ps local-health local-open server-deploy server-up server-start server-down server-stop server-restart server-logs server-ps server-health lint test build check
@@ -16,7 +16,7 @@ help:
 		'make local-health   Check the Reader health endpoint' \
 		'make local-open     Open Reader in the default browser' \
 		'make server-deploy  Pull and deploy Reader on the server' \
-		'make server-up      Build and start server Redis + Nemotron ASR + Reader + HTTPS nginx' \
+		'make server-up      Build and start server Redis + Reader + HTTPS nginx' \
 		'make server-start   Start existing server containers' \
 		'make server-stop    Stop server containers without removing them' \
 		'make server-down    Stop and remove server containers' \
@@ -66,25 +66,25 @@ server-deploy:
 	./deploy-local.sh
 
 server-up:
-	$(SERVER_COMPOSE) up --build -d --wait redis nemotron-asr reader
+	$(SERVER_COMPOSE) up --build -d --wait redis reader
 	$(SERVER_COMPOSE) up -d --no-deps --force-recreate nginx
 
 server-start:
-	$(SERVER_COMPOSE) up -d --wait redis nemotron-asr reader
+	$(SERVER_COMPOSE) up -d --wait redis reader
 	$(SERVER_COMPOSE) up -d --no-deps --force-recreate nginx
 
 server-stop:
-	$(SERVER_COMPOSE) stop nginx reader nemotron-asr redis
+	$(SERVER_COMPOSE) stop nginx reader redis
 
 server-down:
 	$(SERVER_COMPOSE) down
 
 server-restart:
-	$(SERVER_COMPOSE) restart redis nemotron-asr reader
+	$(SERVER_COMPOSE) restart redis reader
 	$(SERVER_COMPOSE) restart nginx
 
 server-logs:
-	$(SERVER_COMPOSE) logs -f nginx reader nemotron-asr redis
+	$(SERVER_COMPOSE) logs -f nginx reader redis
 
 server-ps:
 	$(SERVER_COMPOSE) ps
@@ -93,9 +93,6 @@ server-health:
 	@printf 'Reader: '
 	$(SERVER_COMPOSE) exec -T reader curl --fail --silent --show-error http://127.0.0.1:3000/api/health
 	@printf '\n'
-	@printf 'Nemotron ASR: '
-	$(SERVER_COMPOSE) exec -T nemotron-asr python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3300/health', timeout=2)"
-	@printf 'ok\n'
 	@printf 'HTTPS proxy: '
 	curl --insecure --fail --silent --show-error https://127.0.0.1:3001/api/health
 	@printf '\n'

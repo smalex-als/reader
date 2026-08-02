@@ -22,16 +22,6 @@ export const BACKGROUND_JOB_CONCURRENCY =
     ? backgroundJobConcurrencyRaw
     : 1;
 export const YT_DLP_BIN = process.env.YT_DLP_BIN || 'yt-dlp';
-export const NEMOTRON_ASR_URL = (process.env.NEMOTRON_ASR_URL || '').replace(/\/$/, '');
-export const NEMOTRON_ASR_LANGUAGE = process.env.NEMOTRON_ASR_LANGUAGE || 'auto';
-export const NEMOTRON_ASR_TIMEOUT_MS = Number.parseInt(
-  process.env.NEMOTRON_ASR_TIMEOUT_MS || '3600000',
-  10
-);
-export const NEMOTRON_ASR_POLL_INTERVAL_MS = Number.parseInt(
-  process.env.NEMOTRON_ASR_POLL_INTERVAL_MS || '2000',
-  10
-);
 export const BOOKMARKS_FILENAME = 'bookmarks.txt';
 export const TOC_FILENAME = 'toc.json';
 export const DETAILED_TOC_FILENAME = 'toc.detailed.json';
@@ -140,7 +130,7 @@ export const CHAPTER_QUIZ_PROMPT = readPrompt('chapter-quiz.txt');
 export const CHAPTER_VOCAB_PROMPT = readPrompt('chapter-vocab.txt');
 export const CHAPTER_MEMORY_CARD_PROMPT = readPrompt('chapter-memory-card.txt');
 export const CHAPTER_REVIEW_EXTRACT_PROMPT = readPrompt('chapter-review-extract.txt');
-export const NEMOTRON_TRANSCRIPT_CLEANUP_PROMPT = readPrompt('nemotron-transcript-cleanup.txt');
+export const TRANSCRIPT_CLEANUP_PROMPT = readPrompt('transcript-cleanup.txt');
 export const YOUTUBE_TRANSCRIPT_SUMMARY_PROMPT = readPrompt('youtube-transcript-summary.txt');
 export const CHAPTER_UNITS_PROMPT = readPrompt('chapter-units.txt');
 export const getTextPrompt = ({ backend, model } = {}) => {

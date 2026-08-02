@@ -10,7 +10,6 @@ import {
   type CreateChapterSource,
   type UploadPdfResult
 } from '@/api/bookSession';
-import type { YouTubeTranscriptionModel } from '@/api/youtubeAudioImport';
 import { createActionHandlerRegistry } from '@/lib/actionHandlers';
 import { removeBookStorage } from '@/lib/storage';
 
@@ -27,7 +26,6 @@ type BookSessionPayloads = {
     isExisting: boolean;
     source: CreateChapterSource;
     sourceUrl: string;
-    transcriptionModel: YouTubeTranscriptionModel;
     postProcessPromptId: string;
   };
   deleteChapter: {

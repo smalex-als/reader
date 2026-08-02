@@ -45,6 +45,14 @@ export function extractOpenAITranscriptionText(result) {
   return typeof text === 'string' ? text.trim() : '';
 }
 
+export function cleanTranscriptionText(value) {
+  return String(value || '')
+    .replace(/(?:\r?\n)?[ \t]*<\s*[a-z]{2,3}[-_][a-z0-9]{2,8}\s*>[ \t]*/gi, '\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]*\n[ \t]*/g, '\n')
+    .trim();
+}
+
 async function transcribeFile(filePath) {
   const result = await getOpenAI().audio.transcriptions.create({
     file: createReadStream(filePath),

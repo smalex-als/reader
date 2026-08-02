@@ -1,10 +1,7 @@
-export type YouTubeTranscriptionModel = 'nemotron-asr' | 'gpt-transcribe';
-
 export type YouTubeAudioImportStatus = {
   source: 'youtube';
   sourceUrl: string;
   jobId: string;
-  transcriptionModel?: YouTubeTranscriptionModel;
   status: 'queued' | 'running' | 'transcribing' | 'post-processing' | 'completed' | 'failed';
   queuedAt?: string | null;
   startedAt?: string | null;

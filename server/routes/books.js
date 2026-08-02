@@ -71,7 +71,6 @@ import { createMemoryUpload } from '../lib/upload.js';
 import {
   enqueueYouTubeAudioDownload,
   getYouTubeAudioDownload,
-  normalizeYouTubeTranscriptionModel,
   normalizeYouTubeUrl
 } from '../lib/chapterSourceAudio.js';
 
@@ -89,14 +88,12 @@ function normalizeChapterSource(body) {
     return {
       source: 'blank',
       sourceUrl: null,
-      transcriptionModel: null,
       postProcessPromptId: null
     };
   }
   return {
     source: 'youtube',
     sourceUrl: normalizeYouTubeUrl(body?.sourceUrl),
-    transcriptionModel: normalizeYouTubeTranscriptionModel(body?.transcriptionModel),
     postProcessPromptId: typeof body?.postProcessPromptId === 'string'
       ? body.postProcessPromptId.trim()
       : null
@@ -130,7 +127,6 @@ async function createTextChapterFromSource(bookId, body) {
     bookId,
     chapterNumber: result.chapterNumber,
     sourceUrl: source.sourceUrl,
-    transcriptionModel: source.transcriptionModel,
     postProcessPromptId: postProcessPrompt?.id ?? null,
     postProcessPromptName: postProcessPrompt?.name ?? null
   });
@@ -676,7 +672,6 @@ router.post('/api/books/:id/chapters/:chapter/youtube-audio/retry', asyncHandler
     bookId,
     chapterNumber,
     sourceUrl: existing.sourceUrl,
-    transcriptionModel: normalizeYouTubeTranscriptionModel(existing.transcriptionModel),
     postProcessPromptId: existing.postProcessPromptId ?? null,
     postProcessPromptName: existing.postProcessPromptName ?? null
   });

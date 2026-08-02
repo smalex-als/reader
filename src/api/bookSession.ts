@@ -1,5 +1,4 @@
 import type { TocEntry } from '@/types/app';
-import type { YouTubeTranscriptionModel } from '@/api/youtubeAudioImport';
 
 export type BookManifestResult = {
   book: string;
@@ -21,7 +20,6 @@ export type TextChapterMutationResult = {
     jobId: string;
     source: 'youtube';
     sourceUrl: string;
-    transcriptionModel?: YouTubeTranscriptionModel;
     status: 'queued' | 'running' | 'completed' | 'failed';
     error?: string | null;
     audioUrl?: string | null;
@@ -125,7 +123,6 @@ export async function createEmptyTextChapter(input: {
   isExisting: boolean;
   source: CreateChapterSource;
   sourceUrl: string;
-  transcriptionModel: YouTubeTranscriptionModel;
   postProcessPromptId: string;
 }) {
   const response = input.isExisting
@@ -136,7 +133,6 @@ export async function createEmptyTextChapter(input: {
           chapterTitle: input.chapterTitle,
           source: input.source,
           sourceUrl: input.sourceUrl,
-          transcriptionModel: input.transcriptionModel,
           postProcessPromptId: input.postProcessPromptId
         })
       })
@@ -148,7 +144,6 @@ export async function createEmptyTextChapter(input: {
           chapterTitle: input.chapterTitle,
           source: input.source,
           sourceUrl: input.sourceUrl,
-          transcriptionModel: input.transcriptionModel,
           postProcessPromptId: input.postProcessPromptId
         })
       });

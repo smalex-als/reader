@@ -8,7 +8,6 @@ import {
 } from '@/hooks/bookSessionActions';
 import { clamp } from '@/lib/math';
 import type { CreateChapterSource } from '@/api/bookSession';
-import type { YouTubeTranscriptionModel } from '@/api/youtubeAudioImport';
 import { saveLastBook, saveLastPage } from '@/lib/storage';
 import {
   appActions,
@@ -80,7 +79,6 @@ export function useChapterActions() {
       chapterTitle: string;
       source?: CreateChapterSource;
       sourceUrl?: string;
-      transcriptionModel?: YouTubeTranscriptionModel;
       postProcessPromptId?: string;
     }) => {
       const bookName = details.bookName.trim();
@@ -88,7 +86,6 @@ export function useChapterActions() {
       const targetBookId = bookName || bookId || '';
       const source = details.source ?? 'blank';
       const sourceUrl = details.sourceUrl?.trim() ?? '';
-      const transcriptionModel = details.transcriptionModel ?? 'nemotron-asr';
       const postProcessPromptId = details.postProcessPromptId?.trim() ?? '';
       if (!targetBookId) {
         showToast('Book name is required for a new text book', 'error');
@@ -109,7 +106,6 @@ export function useChapterActions() {
         isExisting: books.includes(targetBookId),
         source,
         sourceUrl,
-        transcriptionModel,
         postProcessPromptId
       });
     },
