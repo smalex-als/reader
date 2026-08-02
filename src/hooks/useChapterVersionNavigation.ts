@@ -5,6 +5,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { getChapterVersionFromLocation } from '@/lib/bookUrl';
 import type { ChapterTextVersion } from '@/types/app';
 
 export function useChapterVersionNavigation() {
@@ -93,8 +94,7 @@ export function useChapterVersionSelectionNavigation({
     if (requestedNavigationVersion) {
       return;
     }
-    const params = new URLSearchParams(window.location.search);
-    const requestedVersionId = params.get('version')?.trim() || '';
+    const requestedVersionId = getChapterVersionFromLocation() ?? '';
     if (requestedVersionId && versions.some((version) => version.id === requestedVersionId)) {
       if (requestedVersionId !== selectedVersionId) {
         handleVersionChange(requestedVersionId);

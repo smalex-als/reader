@@ -4,6 +4,7 @@ import {
   type AudioJobStatus,
   type ChapterTextVersionActions
 } from '@/hooks/chapterTextVersionActions';
+import { getChapterVersionFromLocation } from '@/lib/bookUrl';
 import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
 
@@ -98,7 +99,7 @@ export function useChapterTextVersionLoadEffects({
   const resetVersionSelection = useCallback(() => {
     setVersions([]);
     setPromptLibrary([]);
-    setSelectedVersionId('base');
+    setSelectedVersionId(getChapterVersionFromLocation() ?? 'base');
     setSourceVersionId('base');
     setSelectedPromptId('');
   }, [setPromptLibrary, setSelectedPromptId, setSelectedVersionId, setSourceVersionId, setVersions]);

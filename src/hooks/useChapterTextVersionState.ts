@@ -4,6 +4,7 @@ import {
   getChapterTextVersionDisplayState,
   selectChapterTextVersion
 } from '@/hooks/chapterTextVersionState';
+import { getChapterVersionFromLocation } from '@/lib/bookUrl';
 import type { ChapterTextPrompt, ChapterTextVersion } from '@/types/app';
 import type { FloatingAudioSubchapter } from '@/types/floatingAudio';
 
@@ -26,7 +27,9 @@ export function useChapterTextVersionState({
   const [selectedTextVersionId, setSelectedTextVersionId] = useState<string | null>(null);
   const [versions, setVersions] = useState<ChapterTextVersion[]>([]);
   const [promptLibrary, setPromptLibrary] = useState<ChapterTextPrompt[]>([]);
-  const [selectedVersionId, setSelectedVersionId] = useState('base');
+  const [selectedVersionId, setSelectedVersionId] = useState(
+    () => getChapterVersionFromLocation() ?? 'base'
+  );
   const [loading, setLoading] = useState(false);
   const [versionLoading, setVersionLoading] = useState(false);
   const [generating, setGenerating] = useState(false);

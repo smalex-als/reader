@@ -1,5 +1,18 @@
 import type { ViewMode } from '@/lib/appConstants';
 
+export function getChapterVersionFromSearch(search: string): string | null {
+  const params = new URLSearchParams(search);
+  if (!params.get('book')?.trim()) {
+    return null;
+  }
+  const versionId = params.get('version')?.trim();
+  return versionId || null;
+}
+
+export function getChapterVersionFromLocation(): string | null {
+  return typeof window === 'undefined' ? null : getChapterVersionFromSearch(window.location.search);
+}
+
 export function getBookFromLocation(): string | null {
   const params = new URLSearchParams(window.location.search);
   const book = params.get('book')?.trim();
