@@ -1,8 +1,10 @@
 import {
+  createContext,
   createElement,
   type ComponentPropsWithoutRef,
   type MouseEvent as ReactMouseEvent,
-  type ReactNode
+  type ReactNode,
+  useContext
 } from 'react';
 import type { Element as HastElement } from 'hast';
 import type { Components, ExtraProps } from 'react-markdown';
@@ -43,6 +45,8 @@ type InteractiveMarkdownOptions = {
   sourceText: string;
 };
 
+const InteractiveListItemContext = createContext(false);
+
 export function shouldIgnoreInteractiveMarkdownClick(event: ReactMouseEvent<HTMLElement>) {
   const target = event.target;
   if (!(target instanceof Element)) {
@@ -80,6 +84,10 @@ export function createInteractiveMarkdownComponents({
 
   const renderTextBlock = <Tag extends Exclude<InteractiveMarkdownTag, 'ul' | 'ol'>>(tag: Tag) => {
     return ({ children, node, className, ...props }: ComponentPropsWithoutRef<Tag> & ExtraProps) => {
+      const insideInteractiveListItem = useContext(InteractiveListItemContext);
+      if (insideInteractiveListItem && tag !== 'li') {
+        return createElement(tag, { ...props, className }, children);
+      }
       const block = resolveBlock(tag, children, node);
       const attributes = getBlockAttributes?.(block) ?? {};
       const active = isBlockActive?.(block) ?? (
@@ -87,6 +95,11 @@ export function createInteractiveMarkdownComponents({
           ? activeStart === block.startIndex
           : isMarkdownRangeActive(activeStart, block.startIndex, block.endIndex)
       );
+      const renderedChildren = tag === 'li' ? (
+        <InteractiveListItemContext.Provider value={true}>
+          {children}
+        </InteractiveListItemContext.Provider>
+      ) : children;
       return createElement(tag, {
         ...props,
         ...attributes,
@@ -101,7 +114,7 @@ export function createInteractiveMarkdownComponents({
           event.stopPropagation();
           onBlockClick(block);
         }
-      }, children);
+      }, renderedChildren);
     };
   };
 
