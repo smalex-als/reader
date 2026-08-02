@@ -2217,6 +2217,8 @@ body {
   gap: 0.45rem;
   overflow: visible;
   padding: 0.25rem 0 1rem;
+  font-family: var(--text-viewer-font-family, inherit);
+  font-optical-sizing: auto;
 }
 
 .audio-library-cue {
@@ -2925,13 +2927,17 @@ body {
 .text-viewer-content {
   margin: 0;
   white-space: pre-wrap;
+  font-family: var(--text-viewer-font-family, inherit);
   font-size: var(--text-viewer-font-size, 1rem);
+  font-optical-sizing: auto;
   line-height: 1.7;
   color: var(--text-viewer-reading-fg);
 }
 
 .text-viewer-markdown {
+  font-family: var(--text-viewer-font-family, inherit);
   font-size: var(--text-viewer-font-size, 1rem);
+  font-optical-sizing: auto;
   line-height: 1.7;
   color: var(--text-viewer-reading-fg);
   min-width: 0;

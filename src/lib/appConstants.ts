@@ -1,4 +1,4 @@
-import type { AppSettings } from '@/types/app';
+import type { AppSettings, TextFontFamily } from '@/types/app';
 
 export const PLAYBACK_RATE_OPTIONS = [1, 1.25, 1.5] as const;
 export type PlaybackRate = (typeof PLAYBACK_RATE_OPTIONS)[number];
@@ -6,6 +6,20 @@ export type PlaybackRate = (typeof PLAYBACK_RATE_OPTIONS)[number];
 export const TEXT_FONT_SIZE_OPTIONS = [18, 20, 24, 26, 28, 30, 34];
 export const TEXT_FONT_SIZE_MIN = TEXT_FONT_SIZE_OPTIONS[0];
 export const TEXT_FONT_SIZE_MAX = TEXT_FONT_SIZE_OPTIONS[TEXT_FONT_SIZE_OPTIONS.length - 1];
+
+export const TEXT_FONT_FAMILY_OPTIONS = [
+  'literata',
+  'source-serif',
+  'atkinson',
+  'system'
+] as const satisfies readonly TextFontFamily[];
+
+const TEXT_FONT_FAMILY_CSS_VALUES: Record<TextFontFamily, string> = {
+  literata: "'Literata Variable', 'Source Serif 4 Variable', Georgia, serif",
+  'source-serif': "'Source Serif 4 Variable', 'Literata Variable', Georgia, serif",
+  atkinson: "'Atkinson Hyperlegible Next Variable', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  system: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+};
 
 export const TEXT_BRIGHTNESS_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 export const TEXT_BRIGHTNESS_PERCENTAGES = [50, 58, 66, 75, 84, 92, 100] as const;
@@ -42,6 +56,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dimOutsideBlocks: true,
   dimOutsideBlocksIntensity: 38,
   pan: { x: 0, y: 0 },
+  textFontFamily: 'literata',
   textFontSize: TEXT_FONT_SIZE_OPTIONS[0],
   textBrightness: TEXT_BRIGHTNESS_OPTIONS[TEXT_BRIGHTNESS_OPTIONS.length - 1],
   textTheme: 'dark',
@@ -66,6 +81,16 @@ export function normalizeTextFontSize(value: number): number {
     }
   }
   return closest;
+}
+
+export function normalizeTextFontFamily(value: unknown): TextFontFamily {
+  return TEXT_FONT_FAMILY_OPTIONS.includes(value as TextFontFamily)
+    ? value as TextFontFamily
+    : DEFAULT_SETTINGS.textFontFamily;
+}
+
+export function getTextFontFamilyCssValue(value: unknown): string {
+  return TEXT_FONT_FAMILY_CSS_VALUES[normalizeTextFontFamily(value)];
 }
 
 export function normalizeTextBrightness(value: number): number {

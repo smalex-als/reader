@@ -4,6 +4,7 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
+import { getTextFontFamilyCssValue } from '@/lib/appConstants';
 import type { AppSettings } from '@/types/app';
 
 interface TextSettingsPanelProps {
@@ -20,6 +21,16 @@ const FONT_SIZE_OPTIONS = [
   { label: 'Grand', value: 28 },
   { label: 'Theater', value: 30 },
   { label: 'Cinema', value: 34 }
+];
+
+const FONT_FAMILY_OPTIONS: Array<{
+  label: string;
+  value: AppSettings['textFontFamily'];
+}> = [
+  { label: 'Literata', value: 'literata' },
+  { label: 'Source Serif', value: 'source-serif' },
+  { label: 'Atkinson', value: 'atkinson' },
+  { label: 'System', value: 'system' }
 ];
 
 const TEXT_BRIGHTNESS_OPTIONS = [
@@ -50,8 +61,9 @@ export default function TextSettingsPanel({
 }: TextSettingsPanelProps) {
   const dispatch = useAppDispatch();
   const { settings } = useAppSelector(selectViewerWorkflow);
-  const { textBrightness, textFontSize, textTheme } = settings;
+  const { textBrightness, textFontFamily, textFontSize, textTheme } = settings;
   const panelClassName = ['text-viewer-settings', className].filter(Boolean).join(' ');
+  const fontFamilyName = `${controlPrefix}-font-family`;
   const fontSizeName = `${controlPrefix}-font-size`;
   const textBrightnessName = `${controlPrefix}-text-brightness`;
   const colorSchemeName = `${controlPrefix}-color-scheme`;
@@ -60,6 +72,12 @@ export default function TextSettingsPanel({
       return;
     }
     dispatch(appActions.setViewerSettings({ ...settings, textFontSize: nextSize }));
+  };
+  const updateTextFontFamily = (nextFamily: AppSettings['textFontFamily']) => {
+    if (textFontFamily === nextFamily) {
+      return;
+    }
+    dispatch(appActions.setViewerSettings({ ...settings, textFontFamily: nextFamily }));
   };
   const updateTextTheme = (nextTheme: AppSettings['textTheme']) => {
     if (textTheme === nextTheme) {
@@ -76,6 +94,29 @@ export default function TextSettingsPanel({
 
   return (
     <div className={panelClassName} id={id}>
+      <div className="text-viewer-setting">
+        <span className="text-viewer-setting-label">Font</span>
+        <div className="text-viewer-radio-group" role="radiogroup" aria-label="Text font">
+          {FONT_FAMILY_OPTIONS.map((option) => {
+            const inputId = `${fontFamilyName}-${option.value}`;
+            return (
+              <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
+                <input
+                  id={inputId}
+                  type="radio"
+                  name={fontFamilyName}
+                  value={option.value}
+                  checked={textFontFamily === option.value}
+                  onChange={() => updateTextFontFamily(option.value)}
+                />
+                <span style={{ fontFamily: getTextFontFamilyCssValue(option.value) }}>
+                  {option.label}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
       <div className="text-viewer-setting">
         <span className="text-viewer-setting-label">Font size</span>
         <div className="text-viewer-radio-group" role="radiogroup" aria-label="Text size">

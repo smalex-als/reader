@@ -9,7 +9,10 @@ import ScrollViewer from '@/components/ScrollViewer';
 import UnitsView from '@/components/UnitsView';
 import Viewer from '@/components/Viewer';
 import type { ReaderShellControls } from '@/hooks/useReaderShellControls';
-import { getTextBrightnessPercentage } from '@/lib/appConstants';
+import {
+  getTextBrightnessPercentage,
+  getTextFontFamilyCssValue
+} from '@/lib/appConstants';
 import {
   selectBookIds,
   selectBookManifest,
@@ -36,9 +39,10 @@ export default function ReaderMainContent({
   const manifest = useAppSelector(selectBookManifest);
   const { open: editorOpen } = useAppSelector(selectEditorState);
   const {
-    settings: { textBrightness, textTheme }
+    settings: { textBrightness, textFontFamily, textTheme }
   } = useAppSelector(selectViewerWorkflow);
   const viewerShellStyle = {
+    '--text-viewer-font-family': getTextFontFamilyCssValue(textFontFamily),
     '--text-viewer-reading-brightness': `${getTextBrightnessPercentage(textBrightness)}%`
   } as CSSProperties;
   const currentImage = manifest[currentPage] ?? null;

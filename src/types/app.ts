@@ -246,6 +246,12 @@ export interface ViewerMetrics {
   scale: number;
 }
 
+export type TextFontFamily =
+  | 'literata'
+  | 'source-serif'
+  | 'atkinson'
+  | 'system';
+
 export interface AppSettings {
   zoom: number;
   zoomMode: ZoomMode;
@@ -256,6 +262,7 @@ export interface AppSettings {
   dimOutsideBlocks: boolean;
   dimOutsideBlocksIntensity: number;
   pan: ViewerPan;
+  textFontFamily: TextFontFamily;
   textFontSize: number;
   textBrightness: number;
   textTheme:
