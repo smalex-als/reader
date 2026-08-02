@@ -3066,19 +3066,18 @@ body {
 .text-viewer-block[data-playing='true']::after {
   content: '';
   position: absolute;
-  inset: -0.12em -0.2em -0.12em -0.38em;
+  inset: -0.22em -0.35em -0.22em -0.5em;
   z-index: -1;
   border-radius: 0.3rem;
   background: color-mix(in srgb, var(--text-viewer-accent) 5%, transparent);
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--text-viewer-accent) 52%, transparent);
 }
 
 .text-viewer-markdown ol > li.text-viewer-block[data-playing='true']::after {
-  inset-inline-start: -1.35em;
+  inset-inline-start: -1.55em;
 }
 
 .text-viewer-markdown ul > li.text-viewer-block[data-playing='true']::after {
-  inset-inline-start: -1.15em;
+  inset-inline-start: -1.3em;
 }
 
 .text-viewer-markdown p.text-viewer-block {
