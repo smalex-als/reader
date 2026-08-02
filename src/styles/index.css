@@ -617,7 +617,7 @@ body {
   padding-right: 0.35rem;
   font-size: 1.40rem;
   line-height: 1.7;
-  color: var(--text-viewer-fg);
+  color: var(--text-viewer-reading-fg);
 }
 
 .memory-card-text > :first-child {
@@ -1012,6 +1012,22 @@ body {
   --text-viewer-accent: rgba(120, 180, 226, 0.9);
   --text-viewer-code-bg: rgba(22, 32, 44, 0.65);
   --text-viewer-pre-bg: rgba(20, 30, 42, 0.7);
+  --text-viewer-reading-brightness: 100%;
+  --text-viewer-reading-fg: color-mix(
+    in srgb,
+    var(--text-viewer-fg) var(--text-viewer-reading-brightness),
+    transparent
+  );
+  --text-viewer-reading-strong: color-mix(
+    in srgb,
+    var(--text-viewer-strong) var(--text-viewer-reading-brightness),
+    transparent
+  );
+  --text-viewer-reading-muted: color-mix(
+    in srgb,
+    var(--text-viewer-muted) var(--text-viewer-reading-brightness),
+    transparent
+  );
   background: var(--text-viewer-shell-bg);
   color: var(--text-viewer-fg);
 }
@@ -2209,7 +2225,7 @@ body {
   border: 0;
   border-radius: 0.45rem;
   background: transparent;
-  color: var(--text-viewer-muted);
+  color: var(--text-viewer-reading-muted);
   font: inherit;
   font-size: var(--text-viewer-font-size, 1rem);
   line-height: 1.55;
@@ -2218,7 +2234,7 @@ body {
 }
 
 .audio-library-cue:hover {
-  color: var(--text-viewer-strong);
+  color: var(--text-viewer-reading-strong);
   background: var(--text-viewer-button-hover);
 }
 
@@ -2911,13 +2927,13 @@ body {
   white-space: pre-wrap;
   font-size: var(--text-viewer-font-size, 1rem);
   line-height: 1.7;
-  color: var(--text-viewer-fg);
+  color: var(--text-viewer-reading-fg);
 }
 
 .text-viewer-markdown {
   font-size: var(--text-viewer-font-size, 1rem);
   line-height: 1.7;
-  color: var(--text-viewer-fg);
+  color: var(--text-viewer-reading-fg);
   min-width: 0;
 }
 
@@ -2990,25 +3006,42 @@ body {
 .text-viewer-markdown h4,
 .text-viewer-markdown h5,
 .text-viewer-markdown h6 {
-  margin: 1.6rem 0 0.75rem;
-  color: var(--text-viewer-strong);
+  color: var(--text-viewer-reading-strong);
   line-height: 1.2;
 }
 
 .text-viewer-markdown h1 {
-  font-size: 1.6rem;
+  margin: 1em 0 0.47em;
+  font-size: 160%;
 }
 
 .text-viewer-markdown h2 {
-  font-size: 1.4rem;
+  margin: 1.14em 0 0.54em;
+  font-size: 140%;
 }
 
 .text-viewer-markdown h3 {
-  font-size: 1.2rem;
+  margin: 1.33em 0 0.63em;
+  font-size: 120%;
+}
+
+.text-viewer-markdown h4 {
+  margin: 1.45em 0 0.68em;
+  font-size: 110%;
+}
+
+.text-viewer-markdown h5 {
+  margin: 1.6em 0 0.75em;
+  font-size: 100%;
+}
+
+.text-viewer-markdown h6 {
+  margin: 1.78em 0 0.83em;
+  font-size: 90%;
 }
 
 .text-viewer-markdown p {
-  margin: 0 0 0.9rem;
+  margin: 0 0 0.9em;
 }
 
 .text-viewer-block {
@@ -3031,7 +3064,7 @@ body {
 .text-viewer-block[data-playing='true']::before {
   content: '';
   position: absolute;
-  inset: -0.28rem -0.45rem -0.28rem -0.7rem;
+  inset: -0.28em -0.45em -0.28em -0.7em;
   z-index: -1;
   border-radius: 0.65rem;
   background:
@@ -3041,28 +3074,28 @@ body {
 }
 
 .text-viewer-markdown p.text-viewer-block {
-  margin: 0 0 0.9rem;
+  margin: 0 0 0.9em;
 }
 
 .text-viewer-list-block > ul,
 .text-viewer-list-block > ol {
-  margin: 0 0 0.75rem;
-  padding-left: 1.45rem;
+  margin: 0 0 0.75em;
+  padding-left: 1.45em;
 }
 
 .text-viewer-markdown ul,
 .text-viewer-markdown ol {
-  margin: 0 0 0.75rem;
-  padding-left: 1.45rem;
+  margin: 0 0 0.75em;
+  padding-left: 1.45em;
 }
 
 .text-viewer-markdown li {
-  margin-bottom: 0.18rem;
-  padding-left: 0.12rem;
+  margin-bottom: 0.18em;
+  padding-left: 0.12em;
 }
 
 .text-viewer-markdown li > p {
-  margin: 0.15rem 0 0.35rem;
+  margin: 0.15em 0 0.35em;
 }
 
 .text-viewer-markdown li > p:last-child {
@@ -3071,12 +3104,12 @@ body {
 
 .text-viewer-markdown li > ul,
 .text-viewer-markdown li > ol {
-  margin-top: 0.2rem;
-  margin-bottom: 0.28rem;
+  margin-top: 0.2em;
+  margin-bottom: 0.28em;
 }
 
 .text-viewer-markdown li + li {
-  margin-top: 0.14rem;
+  margin-top: 0.14em;
 }
 
 .text-viewer-markdown ol > li::marker {
@@ -3096,13 +3129,13 @@ body {
   content: '-';
   position: absolute;
   top: 0;
-  left: -0.95rem;
-  color: var(--text-viewer-muted);
+  left: -0.95em;
+  color: var(--text-viewer-reading-muted);
   opacity: 0.78;
 }
 
 .text-viewer-list-block + .text-viewer-list-block {
-  margin-top: -0.35rem;
+  margin-top: -0.35em;
 }
 
 .text-viewer-markdown p.text-viewer-block + .text-viewer-list-block,
@@ -3112,7 +3145,7 @@ body {
 .text-viewer-markdown h4.text-viewer-block + .text-viewer-list-block,
 .text-viewer-markdown h5.text-viewer-block + .text-viewer-list-block,
 .text-viewer-markdown h6.text-viewer-block + .text-viewer-list-block {
-  margin-top: -0.55rem;
+  margin-top: -0.55em;
 }
 
 .text-viewer-list-block > ul > li,
@@ -3122,11 +3155,11 @@ body {
 
 .text-viewer-list-block > ul > li + li,
 .text-viewer-list-block > ol > li + li {
-  margin-top: 0.24rem;
+  margin-top: 0.24em;
 }
 
 .text-viewer-list-block > ol > li {
-  padding-left: 0.22rem;
+  padding-left: 0.22em;
 }
 
 .text-viewer-list-block > ul > li {
@@ -3134,24 +3167,24 @@ body {
 }
 
 .text-viewer-markdown blockquote {
-  margin: 0 0 1rem;
-  padding: 0.75rem 1rem;
+  margin: 0 0 1em;
+  padding: 0.75em 1em;
   border-left: 3px solid var(--text-viewer-border);
   background: var(--text-viewer-bg-faint);
-  color: var(--text-viewer-muted);
+  color: var(--text-viewer-reading-muted);
 }
 
 .text-viewer-markdown code {
   font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   background: var(--text-viewer-code-bg);
-  padding: 0.1rem 0.3rem;
-  border-radius: 0.35rem;
+  padding: 0.1em 0.3em;
+  border-radius: 0.35em;
 }
 
 .text-viewer-markdown pre {
-  margin: 0 0 1rem;
-  padding: 0.9rem 1rem;
-  border-radius: 0.65rem;
+  margin: 0 0 1em;
+  padding: 0.9em 1em;
+  border-radius: 0.65em;
   background: var(--text-viewer-pre-bg);
   overflow-x: hidden;
   white-space: pre-wrap;
@@ -3168,13 +3201,13 @@ body {
 .text-viewer-markdown table {
   width: 100%;
   border-collapse: collapse;
-  margin: 0 0 1rem;
+  margin: 0 0 1em;
 }
 
 .text-viewer-markdown th,
 .text-viewer-markdown td {
   border: 1px solid var(--text-viewer-border-soft);
-  padding: 0.45rem 0.6rem;
+  padding: 0.45em 0.6em;
   text-align: left;
 }
 
@@ -3185,7 +3218,7 @@ body {
 .text-viewer-markdown hr {
   border: none;
   border-top: 1px solid var(--text-viewer-border);
-  margin: 1.5rem 0;
+  margin: 1.5em 0;
 }
 
 @media (max-width: 980px) {

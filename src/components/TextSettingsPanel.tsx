@@ -22,6 +22,16 @@ const FONT_SIZE_OPTIONS = [
   { label: 'Cinema', value: 34 }
 ];
 
+const TEXT_BRIGHTNESS_OPTIONS = [
+  { label: 'Dimmer', value: 1 },
+  { label: 'Dim', value: 2 },
+  { label: 'Soft', value: 3 },
+  { label: 'Balanced', value: 4 },
+  { label: 'Clear', value: 5 },
+  { label: 'Bright', value: 6 },
+  { label: 'Max', value: 7 }
+];
+
 const COLOR_OPTIONS: { label: string; value: AppSettings['textTheme'] }[] = [
   { label: 'Night', value: 'dark' },
   { label: 'Dracula', value: 'dracula' },
@@ -40,9 +50,10 @@ export default function TextSettingsPanel({
 }: TextSettingsPanelProps) {
   const dispatch = useAppDispatch();
   const { settings } = useAppSelector(selectViewerWorkflow);
-  const { textFontSize, textTheme } = settings;
+  const { textBrightness, textFontSize, textTheme } = settings;
   const panelClassName = ['text-viewer-settings', className].filter(Boolean).join(' ');
   const fontSizeName = `${controlPrefix}-font-size`;
+  const textBrightnessName = `${controlPrefix}-text-brightness`;
   const colorSchemeName = `${controlPrefix}-color-scheme`;
   const updateTextFontSize = (nextSize: number) => {
     if (textFontSize === nextSize) {
@@ -55,6 +66,12 @@ export default function TextSettingsPanel({
       return;
     }
     dispatch(appActions.setViewerSettings({ ...settings, textTheme: nextTheme }));
+  };
+  const updateTextBrightness = (nextBrightness: number) => {
+    if (textBrightness === nextBrightness) {
+      return;
+    }
+    dispatch(appActions.setViewerSettings({ ...settings, textBrightness: nextBrightness }));
   };
 
   return (
@@ -73,6 +90,31 @@ export default function TextSettingsPanel({
                   value={option.value}
                   checked={textFontSize === option.value}
                   onChange={() => updateTextFontSize(option.value)}
+                />
+                <span>{option.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+      <div className="text-viewer-setting">
+        <span className="text-viewer-setting-label">Text brightness</span>
+        <div
+          className="text-viewer-radio-group"
+          role="radiogroup"
+          aria-label="Text brightness"
+        >
+          {TEXT_BRIGHTNESS_OPTIONS.map((option) => {
+            const inputId = `${textBrightnessName}-${option.value}`;
+            return (
+              <label key={option.value} className="text-viewer-radio" htmlFor={inputId}>
+                <input
+                  id={inputId}
+                  type="radio"
+                  name={textBrightnessName}
+                  value={option.value}
+                  checked={textBrightness === option.value}
+                  onChange={() => updateTextBrightness(option.value)}
                 />
                 <span>{option.label}</span>
               </label>

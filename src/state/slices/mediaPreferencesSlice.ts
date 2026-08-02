@@ -1,5 +1,6 @@
 import {
   createDefaultSettings,
+  normalizeTextBrightness,
   normalizeTextFontSize,
   normalizeTextTheme,
   type StreamVoice,
@@ -171,6 +172,7 @@ export function reduceMediaPreferences(
           settings: {
             ...action.settings,
             textFontSize: normalizeTextFontSize(action.settings.textFontSize),
+            textBrightness: normalizeTextBrightness(action.settings.textBrightness),
             textTheme: normalizeTextTheme(action.settings.textTheme)
           }
         }

@@ -7,6 +7,9 @@ export const TEXT_FONT_SIZE_OPTIONS = [18, 20, 24, 26, 28, 30, 34];
 export const TEXT_FONT_SIZE_MIN = TEXT_FONT_SIZE_OPTIONS[0];
 export const TEXT_FONT_SIZE_MAX = TEXT_FONT_SIZE_OPTIONS[TEXT_FONT_SIZE_OPTIONS.length - 1];
 
+export const TEXT_BRIGHTNESS_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
+export const TEXT_BRIGHTNESS_PERCENTAGES = [50, 58, 66, 75, 84, 92, 100] as const;
+
 export const TEXT_THEME_OPTIONS = [
   'dark',
   'dracula',
@@ -40,6 +43,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dimOutsideBlocksIntensity: 38,
   pan: { x: 0, y: 0 },
   textFontSize: TEXT_FONT_SIZE_OPTIONS[0],
+  textBrightness: TEXT_BRIGHTNESS_OPTIONS[TEXT_BRIGHTNESS_OPTIONS.length - 1],
   textTheme: 'dark',
   studyMode: false
 };
@@ -62,6 +66,27 @@ export function normalizeTextFontSize(value: number): number {
     }
   }
   return closest;
+}
+
+export function normalizeTextBrightness(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_SETTINGS.textBrightness;
+  }
+  let closest: number = TEXT_BRIGHTNESS_OPTIONS[0];
+  let smallestDelta = Math.abs(value - closest);
+  for (const option of TEXT_BRIGHTNESS_OPTIONS) {
+    const delta = Math.abs(value - option);
+    if (delta < smallestDelta) {
+      smallestDelta = delta;
+      closest = option;
+    }
+  }
+  return closest;
+}
+
+export function getTextBrightnessPercentage(value: number): number {
+  const normalized = normalizeTextBrightness(value);
+  return TEXT_BRIGHTNESS_PERCENTAGES[normalized - 1];
 }
 
 export function normalizeTextTheme(value: string): TextTheme {

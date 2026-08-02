@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import ChapterEditor from '@/components/ChapterEditor';
 import AudioLibraryView from '@/components/AudioLibraryView';
 import AudioView from '@/components/AudioView';
@@ -8,6 +9,7 @@ import ScrollViewer from '@/components/ScrollViewer';
 import UnitsView from '@/components/UnitsView';
 import Viewer from '@/components/Viewer';
 import type { ReaderShellControls } from '@/hooks/useReaderShellControls';
+import { getTextBrightnessPercentage } from '@/lib/appConstants';
 import {
   selectBookIds,
   selectBookManifest,
@@ -34,8 +36,11 @@ export default function ReaderMainContent({
   const manifest = useAppSelector(selectBookManifest);
   const { open: editorOpen } = useAppSelector(selectEditorState);
   const {
-    settings: { textTheme }
+    settings: { textBrightness, textTheme }
   } = useAppSelector(selectViewerWorkflow);
+  const viewerShellStyle = {
+    '--text-viewer-reading-brightness': `${getTextBrightnessPercentage(textBrightness)}%`
+  } as CSSProperties;
   const currentImage = manifest[currentPage] ?? null;
   const footerMessage =
     viewMode === 'audio' || viewMode === 'text'
@@ -52,6 +57,7 @@ export default function ReaderMainContent({
     <main className="main">
       <div
         ref={viewerShellRef}
+        style={viewerShellStyle}
         className={`viewer-shell ${loading ? 'viewer-shell-loading' : ''} ${
           mainView === 'audio-library' || mainView === 'units' || viewMode === 'text' || viewMode === 'audio'
             ? `viewer-shell-text theme-${textTheme}`

@@ -257,6 +257,7 @@ export interface AppSettings {
   dimOutsideBlocksIntensity: number;
   pan: ViewerPan;
   textFontSize: number;
+  textBrightness: number;
   textTheme:
     | 'dark'
     | 'dracula'
