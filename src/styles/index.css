@@ -3063,19 +3063,22 @@ body {
   color: var(--text-viewer-reading-strong);
 }
 
-.text-viewer-block[data-playing='true']::before {
+.text-viewer-block[data-playing='true']::after {
   content: '';
   position: absolute;
   inset: -0.12em -0.2em -0.12em -0.38em;
   z-index: -1;
   border-radius: 0.3rem;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--text-viewer-accent) 9%, transparent),
-    color-mix(in srgb, var(--text-viewer-accent) 3%, transparent) 38%,
-    transparent 72%
-  );
+  background: color-mix(in srgb, var(--text-viewer-accent) 5%, transparent);
   box-shadow: inset 2px 0 0 color-mix(in srgb, var(--text-viewer-accent) 52%, transparent);
+}
+
+.text-viewer-markdown ol > li.text-viewer-block[data-playing='true']::after {
+  inset-inline-start: -1.35em;
+}
+
+.text-viewer-markdown ul > li.text-viewer-block[data-playing='true']::after {
+  inset-inline-start: -1.15em;
 }
 
 .text-viewer-markdown p.text-viewer-block {
