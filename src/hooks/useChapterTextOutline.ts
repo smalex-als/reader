@@ -24,17 +24,13 @@ export function useChapterTextOutline({
   textViewerRef: RefObject<HTMLDivElement | null>;
 }) {
   const [activeOutlineId, setActiveOutlineId] = useState<string | null>(null);
-  const [outlineOpen, setOutlineOpen] = useState(true);
+  const [outlineOpen, setOutlineOpen] = useState(false);
   const outlineItems = useMemo(() => parseTextOutline(displayText), [displayText]);
   const outlineByOffset = useMemo(() => new Map(outlineItems.map((item) => [item.offset, item])), [outlineItems]);
 
   useEffect(() => {
     setActiveOutlineId(outlineItems[0]?.id ?? null);
   }, [outlineItems]);
-
-  useEffect(() => {
-    setOutlineOpen(outlineItems.length > 0);
-  }, [outlineItems.length]);
 
   const handleOutlineSelect = useCallback((id: string) => {
     setActiveOutlineId(id);
