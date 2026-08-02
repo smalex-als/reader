@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/useToast';
 import { copyToClipboard } from '@/lib/clipboard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { remarkListItemBreaks } from '@/lib/remarkListItemBreaks';
 import {
   appActions,
   selectMemoryCardWorkflow,
@@ -136,7 +137,9 @@ export default function MemoryCardModal() {
                 <span className="toolbar-readout">Short chapter extraction</span>
               </div>
               <div className="memory-card-text">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{memoryCard.text}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkListItemBreaks]}>
+                  {memoryCard.text}
+                </ReactMarkdown>
               </div>
             </div>
           ) : null}

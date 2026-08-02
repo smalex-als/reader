@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { createInteractiveMarkdownComponents } from '@/lib/interactiveMarkdown';
+import { remarkListItemBreaks } from '@/lib/remarkListItemBreaks';
 
 const UNIT_MARKDOWN_BLOCK_TAGS = ['p', 'ul', 'ol', 'li'] as const;
 
@@ -25,7 +26,7 @@ export default function UnitTopicMarkdown({
   );
 
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+    <ReactMarkdown remarkPlugins={[remarkGfm, remarkListItemBreaks]} components={markdownComponents}>
       {text}
     </ReactMarkdown>
   );
