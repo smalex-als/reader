@@ -1284,10 +1284,6 @@ body {
   max-width: 100%;
 }
 
-.text-viewer-current-version {
-  flex: 1 1 18rem;
-}
-
 .text-viewer-actions .button {
   min-height: 2.2rem;
   padding: 0.45rem 0.72rem;
@@ -1307,6 +1303,16 @@ body {
   color: var(--text-viewer-accent);
 }
 
+.text-settings-icon {
+  display: inline-block;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.08em;
+  line-height: 1;
+  transform: translateX(-0.03em);
+}
+
 .text-viewer-source {
   flex-shrink: 0;
 }
@@ -1320,6 +1326,11 @@ body {
   max-width: 21rem;
   color: var(--text-viewer-muted);
   font-size: 0.85rem;
+}
+
+.text-viewer-current-version {
+  flex: 1 1 28rem;
+  max-width: 38rem;
 }
 
 .text-viewer-voice-select {

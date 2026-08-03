@@ -4,10 +4,12 @@ import ChapterTextMarkdownLayout from '@/components/ChapterTextMarkdownLayout';
 import AddChapterModal from '@/components/AddChapterModal';
 import ChapterToolsPanel from '@/components/ChapterToolsPanel';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
+import EditIcon from '@/components/EditIcon';
 import GenerateChapterModal from '@/components/GenerateChapterModal';
 import OutlineIcon from '@/components/OutlineIcon';
 import TextSettingsIcon from '@/components/TextSettingsIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
+import ToolsIcon from '@/components/ToolsIcon';
 import YouTubeAudioImportCard from '@/components/YouTubeAudioImportCard';
 import { useChapterActions } from '@/hooks/useBookMutations';
 import { useChapterTextPlaybackMarker } from '@/hooks/useChapterTextPlaybackMarker';
@@ -217,11 +219,13 @@ export default function ChapterViewer() {
           {allowEdit && chapterNumber ? (
             <button
               type="button"
-              className="button button-secondary"
+              className="button button-secondary modal-icon-button text-viewer-action-icon"
               onClick={openChapterEditor}
               disabled={!displayText?.trim() || displayLoading}
+              aria-label="Edit chapter"
+              title="Edit chapter"
             >
-              Edit
+              <EditIcon />
             </button>
           ) : null}
           <button
@@ -251,12 +255,15 @@ export default function ChapterViewer() {
           ) : null}
           <button
             type="button"
-            className="button button-secondary"
+            className="button button-secondary modal-icon-button text-viewer-action-icon"
             onClick={handleToolsToggle}
             aria-expanded={toolsOpen}
             aria-controls="text-viewer-tools"
+            aria-label={toolsOpen ? 'Hide chapter tools' : 'Show chapter tools'}
+            title={toolsOpen ? 'Hide tools' : 'Tools'}
+            aria-pressed={toolsOpen}
           >
-            Tools
+            <ToolsIcon />
           </button>
         </div>
         {toolsOpen ? (
