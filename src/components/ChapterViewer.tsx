@@ -3,7 +3,9 @@ import type { CSSProperties } from 'react';
 import ChapterTextMarkdownLayout from '@/components/ChapterTextMarkdownLayout';
 import AddChapterModal from '@/components/AddChapterModal';
 import ChapterToolsPanel from '@/components/ChapterToolsPanel';
+import CreateChapterIcon from '@/components/CreateChapterIcon';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
+import CreateVersionIcon from '@/components/CreateVersionIcon';
 import EditIcon from '@/components/EditIcon';
 import GenerateChapterModal from '@/components/GenerateChapterModal';
 import OutlineIcon from '@/components/OutlineIcon';
@@ -228,6 +230,28 @@ export default function ChapterViewer() {
               <EditIcon />
             </button>
           ) : null}
+          {bookType === 'text' ? (
+            <button
+              type="button"
+              className="button button-secondary modal-icon-button text-viewer-action-icon"
+              onClick={() => setAddChapterOpen(true)}
+              disabled={chapterCreating}
+              aria-label="Create chapter"
+              title="Create chapter"
+            >
+              <CreateChapterIcon />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="button button-secondary modal-icon-button text-viewer-action-icon"
+            onClick={openVersionModal}
+            disabled={!canCreateVersion || versionSaving}
+            aria-label="Create text version"
+            title="Create text version"
+          >
+            <CreateVersionIcon />
+          </button>
           <button
             type="button"
             className="button button-secondary modal-icon-button text-viewer-action-icon"
