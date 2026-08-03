@@ -5,6 +5,9 @@ import AddChapterModal from '@/components/AddChapterModal';
 import ChapterToolsPanel from '@/components/ChapterToolsPanel';
 import CreateTextVersionModal from '@/components/CreateTextVersionModal';
 import GenerateChapterModal from '@/components/GenerateChapterModal';
+import OutlineIcon from '@/components/OutlineIcon';
+import TextSettingsIcon from '@/components/TextSettingsIcon';
+import TextSettingsPanel from '@/components/TextSettingsPanel';
 import YouTubeAudioImportCard from '@/components/YouTubeAudioImportCard';
 import { useChapterActions } from '@/hooks/useBookMutations';
 import { useChapterTextPlaybackMarker } from '@/hooks/useChapterTextPlaybackMarker';
@@ -157,13 +160,13 @@ export default function ChapterViewer() {
   );
 
   const handleToolsToggle = useCallback(() => {
-    setToolsOpen((current) => {
-      const next = !current;
-      if (!next) {
-        setSettingsOpen(false);
-      }
-      return next;
-    });
+    setSettingsOpen(false);
+    setToolsOpen((current) => !current);
+  }, []);
+
+  const handleSettingsToggle = useCallback(() => {
+    setToolsOpen(false);
+    setSettingsOpen((current) => !current);
   }, []);
 
   const pageMeta = useMemo(() => {
@@ -223,6 +226,31 @@ export default function ChapterViewer() {
           ) : null}
           <button
             type="button"
+            className="button button-secondary modal-icon-button text-viewer-action-icon"
+            onClick={handleSettingsToggle}
+            aria-label={settingsOpen ? 'Hide text settings' : 'Show text settings'}
+            title={settingsOpen ? 'Hide text settings' : 'Text settings'}
+            aria-expanded={settingsOpen}
+            aria-controls="text-viewer-settings"
+            aria-pressed={settingsOpen}
+          >
+            <TextSettingsIcon />
+          </button>
+          {outlineItems.length > 0 ? (
+            <button
+              type="button"
+              className="button button-secondary modal-icon-button text-viewer-action-icon"
+              onClick={() => setOutlineOpen((current) => !current)}
+              aria-label={outlineOpen ? 'Hide outline' : 'Show outline'}
+              title={outlineOpen ? 'Hide outline' : 'Show outline'}
+              aria-controls="text-viewer-outline"
+              aria-pressed={outlineOpen}
+            >
+              <OutlineIcon />
+            </button>
+          ) : null}
+          <button
+            type="button"
             className="button button-secondary"
             onClick={handleToolsToggle}
             aria-expanded={toolsOpen}
@@ -233,15 +261,6 @@ export default function ChapterViewer() {
         </div>
         {toolsOpen ? (
           <ChapterToolsPanel
-            settings={{
-              open: settingsOpen,
-              onToggle: () => setSettingsOpen((current) => !current)
-            }}
-            outline={{
-              available: outlineItems.length > 0,
-              open: outlineOpen,
-              onToggle: () => setOutlineOpen((current) => !current)
-            }}
             chapter={{
               visible: bookType === 'text',
               number: chapterNumber,
@@ -293,6 +312,7 @@ export default function ChapterViewer() {
             }}
           />
         ) : null}
+        {settingsOpen ? <TextSettingsPanel id="text-viewer-settings" controlPrefix="text" /> : null}
       </header>
       <section className="text-viewer-body">
         {tocLoading && <p className="text-viewer-status">Loading table of contents…</p>}

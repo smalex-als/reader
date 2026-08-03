@@ -1301,6 +1301,12 @@ body {
   padding: 0;
 }
 
+.text-viewer-action-icon[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--text-viewer-accent) 38%, transparent);
+  background: var(--text-viewer-button-hover);
+  color: var(--text-viewer-accent);
+}
+
 .text-viewer-source {
   flex-shrink: 0;
 }

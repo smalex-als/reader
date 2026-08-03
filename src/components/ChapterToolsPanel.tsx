@@ -1,6 +1,5 @@
 import AddIcon from '@/components/AddIcon';
 import ChapterAudioTools, { type ChapterAudioToolsProps } from '@/components/ChapterAudioTools';
-import TextSettingsPanel from '@/components/TextSettingsPanel';
 import TrashIcon from '@/components/TrashIcon';
 
 type ChapterToolsPanelProps = {
@@ -12,15 +11,6 @@ type ChapterToolsPanelProps = {
     onCreate: () => void;
     onDelete: () => void;
     visible: boolean;
-  };
-  settings: {
-    open: boolean;
-    onToggle: () => void;
-  };
-  outline: {
-    available: boolean;
-    open: boolean;
-    onToggle: () => void;
   };
   study: {
     creating: boolean;
@@ -39,41 +29,12 @@ type ChapterToolsPanelProps = {
 export default function ChapterToolsPanel({
   audio,
   chapter,
-  outline,
-  settings,
   study,
   versions
 }: ChapterToolsPanelProps) {
   return (
     <>
       <div className="text-viewer-tools-panel" id="text-viewer-tools">
-        <section className="text-viewer-tools-section" aria-label="View tools">
-          <h3 className="text-viewer-tools-title">View</h3>
-          <div className="text-viewer-tools-body">
-            <div className="text-viewer-tools-row">
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={settings.onToggle}
-                aria-expanded={settings.open}
-                aria-controls="text-viewer-settings"
-              >
-                {settings.open ? 'Hide settings' : 'Text settings'}
-              </button>
-              {outline.available ? (
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={outline.onToggle}
-                  aria-expanded={outline.open}
-                  aria-controls="text-viewer-outline"
-                >
-                  {outline.open ? 'Hide outline' : 'Show outline'}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </section>
         {chapter.visible ? (
           <section className="text-viewer-tools-section" aria-label="Chapter tools">
             <h3 className="text-viewer-tools-title">Chapter</h3>
@@ -151,7 +112,6 @@ export default function ChapterToolsPanel({
           </div>
         </section>
       </div>
-      {settings.open ? <TextSettingsPanel id="text-viewer-settings" controlPrefix="text" /> : null}
     </>
   );
 }
