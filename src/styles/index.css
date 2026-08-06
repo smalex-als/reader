@@ -1279,7 +1279,7 @@ body {
   justify-content: flex-end;
   gap: 0.45rem;
   flex-wrap: wrap;
-  flex: 0 1 auto;
+  flex: 1 1 100%;
   min-width: 0;
   max-width: 100%;
 }
@@ -1331,6 +1331,7 @@ body {
 .text-viewer-current-version {
   flex: 1 1 28rem;
   max-width: 38rem;
+  margin-right: auto;
 }
 
 .text-viewer-voice-select {
@@ -3264,7 +3265,6 @@ body {
 
   .text-viewer-actions {
     justify-content: flex-start;
-    flex-basis: 100%;
   }
 
   .text-viewer-tools-panel {
