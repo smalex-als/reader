@@ -1,5 +1,8 @@
 import { normalizeFencedCodeBlocksForSpeech, splitStreamChunks, stripMarkdown } from '@/lib/streamText';
-import { splitMarkdownPlaybackBlocks } from '@/lib/markdownPlaybackBlocks';
+import {
+  splitMarkdownPlaybackBlocks,
+  type MarkdownPlaybackBlock
+} from '@/lib/markdownPlaybackBlocks';
 import type { PageText } from '@/types/app';
 
 export type PageStreamSegment = {
@@ -12,6 +15,17 @@ export type ParagraphStreamSegment = {
   text: string;
   pageKey: string;
   pauseAfterMs?: number;
+  voice?: string;
+  stopAfter?: boolean;
+};
+
+export type ParagraphSegmentOptions = {
+  resolveVoice?: (name: string) => string | null;
+};
+
+type CommandState = {
+  skipping: boolean;
+  voice: string | null;
 };
 
 function getTextModeFromBaseKey(baseKey: string) {
@@ -36,23 +50,72 @@ export function parseParagraphPageKey(pageKey: string) {
     : null;
 }
 
+function applyCommandState(
+  state: CommandState,
+  command: NonNullable<MarkdownPlaybackBlock['command']>,
+  options: ParagraphSegmentOptions
+) {
+  if (command.name === 'skip') {
+    state.skipping = true;
+    return;
+  }
+  if (command.name === 'skip-end') {
+    state.skipping = false;
+    return;
+  }
+  if (command.name === 'voice') {
+    // A bare `::voice` returns to whatever voice the session started with.
+    state.voice = command.voice ? options.resolveVoice?.(command.voice) ?? null : null;
+  }
+}
+
+/**
+ * Replays the commands before `startIndex` so a stream started from the middle
+ * of a chapter inherits the voice and skip region that were already in effect.
+ */
+function resolveCommandStateAt(
+  fullText: string,
+  startIndex: number,
+  options: ParagraphSegmentOptions
+): CommandState {
+  const state: CommandState = { skipping: false, voice: null };
+  if (startIndex <= 0) {
+    return state;
+  }
+  for (const block of splitMarkdownPlaybackBlocks(fullText.slice(0, startIndex))) {
+    if (block.command) {
+      applyCommandState(state, block.command, options);
+    }
+  }
+  return state;
+}
+
 export function createParagraphStreamSegments(
   fullText: string,
   startIndex: number,
-  baseKey: string
+  baseKey: string,
+  options: ParagraphSegmentOptions = {}
 ): ParagraphStreamSegment[] {
   const input = normalizeFencedCodeBlocksForSpeech(fullText.slice(Math.max(0, startIndex)));
   const segments: ParagraphStreamSegment[] = [];
   const playbackBlocks = splitMarkdownPlaybackBlocks(input);
+  const state = resolveCommandStateAt(fullText, startIndex, options);
 
   for (const block of playbackBlocks) {
     if (block.command) {
-      // A pause lengthens the gap after whatever was spoken before it; notes
-      // are editorial asides and are never spoken.
+      // A pause lengthens the gap after whatever was spoken before it, a stop
+      // parks playback there, and notes are never spoken.
       const previousSegment = segments[segments.length - 1];
       if (block.command.name === 'pause' && previousSegment) {
         previousSegment.pauseAfterMs = (previousSegment.pauseAfterMs ?? 0) + block.command.durationMs;
       }
+      if (block.command.name === 'stop' && previousSegment) {
+        previousSegment.stopAfter = true;
+      }
+      applyCommandState(state, block.command, options);
+      continue;
+    }
+    if (state.skipping) {
       continue;
     }
     const spokenParagraph = stripMarkdown(block.rawText).trim();
@@ -61,13 +124,18 @@ export function createParagraphStreamSegments(
     }
     const absoluteStart = startIndex + block.startIndex;
     const pageKey = formatParagraphPageKey(baseKey, absoluteStart);
+    const pushSegment = (text: string) => {
+      const segment: ParagraphStreamSegment = { text, pageKey };
+      if (state.voice) {
+        segment.voice = state.voice;
+      }
+      segments.push(segment);
+    };
     if (spokenParagraph.length <= 1240) {
-      segments.push({ text: spokenParagraph, pageKey });
+      pushSegment(spokenParagraph);
       continue;
     }
-    splitStreamChunks(spokenParagraph, 0).forEach((text) => {
-      segments.push({ text, pageKey });
-    });
+    splitStreamChunks(spokenParagraph, 0).forEach(pushSegment);
   }
   return segments;
 }

@@ -14,6 +14,8 @@ import {
   parseParagraphPageKey
 } from '@/lib/streamSequenceSegments';
 import { splitStreamChunks, stripMarkdown } from '@/lib/streamText';
+import { resolveVoiceCommandId } from '@/lib/streamVoiceCommands';
+import type { StreamVoiceOption } from '@/lib/appConstants';
 import type { PageText, StreamState } from '@/types/app';
 
 type StreamSource =
@@ -37,6 +39,7 @@ export type StreamSequenceEnvironment = {
   streamState: Pick<StreamState, 'status' | 'pageKey' | 'playbackSeconds'>;
   studyMode: boolean;
   streamVoice: string;
+  streamVoiceOptions: readonly StreamVoiceOption[];
   textCache: Record<string, PageText>;
   startStream: (payload: {
     text: string;
@@ -98,8 +101,9 @@ export function createStreamSequenceController({
   let sequenceMachine = createStreamSequenceMachineState();
   let streamSequenceActive = false;
   let autoAdvance = false;
-  let studyReplayPageKey: string | null = null;
-  let studyPausedAtStart = false;
+  let parkedBlockPageKey: string | null = null;
+  let parkedAtBlockStart = false;
+  let stopBreakpointPageKey: string | null = null;
   let playbackIntentId = 0;
   const lookahead = new StreamLookaheadController<PageText>();
   const restartCoordinator = new StreamRestartCoordinator(scheduler, restartDelayMs);
@@ -135,11 +139,18 @@ export function createStreamSequenceController({
         current.enqueueStream({
           text: segment.text,
           pageKey: segment.pageKey,
-          voice,
+          voice: segment.voice ?? voice,
           pauseAfterMs: segment.pauseAfterMs
         });
       }
     };
+  }
+
+  function buildParagraphSegments(fullText: string, startIndex: number, baseKey: string) {
+    const current = getEnvironment();
+    return createParagraphStreamSegments(fullText, startIndex, baseKey, {
+      resolveVoice: (name) => resolveVoiceCommandId(name, current.streamVoiceOptions)
+    });
   }
 
   function stopStreamSequence(clearPending = false) {
@@ -147,6 +158,7 @@ export function createStreamSequenceController({
     transition({ type: 'stop', clearPending });
     autoAdvance = false;
     lastStreamSource = null;
+    stopBreakpointPageKey = null;
     lookahead.clear();
     streamSequence = null;
     streamSequenceActive = false;
@@ -207,8 +219,8 @@ export function createStreamSequenceController({
     }
     studyReplayGuard.allowPlayback();
 
-    const replacingPausedStudyStream = studyPausedAtStart && current.streamState.status === 'paused';
-    studyPausedAtStart = false;
+    const replacingPausedStudyStream = parkedAtBlockStart && current.streamState.status === 'paused';
+    parkedAtBlockStart = false;
     if (ACTIVE_STREAM_STATUSES.has(current.streamState.status) && !replacingPausedStudyStream) {
       stopStreamSequence();
       await current.stopStream();
@@ -261,8 +273,8 @@ export function createStreamSequenceController({
     const current = getEnvironment();
     studyReplayGuard.allowPlayback();
     const voice = voiceOverride ?? current.streamVoice;
-    const replacingPausedStudyStream = studyPausedAtStart && current.streamState.status === 'paused';
-    studyPausedAtStart = false;
+    const replacingPausedStudyStream = parkedAtBlockStart && current.streamState.status === 'paused';
+    parkedAtBlockStart = false;
     if (ACTIVE_STREAM_STATUSES.has(current.streamState.status) && !replacingPausedStudyStream) {
       transition({
         type: 'queue-restart',
@@ -274,8 +286,17 @@ export function createStreamSequenceController({
       return;
     }
     const paragraphMode = source === 'chapter' || source === 'paragraph';
-    const paragraphSegments = paragraphMode
-      ? createParagraphStreamSegments(fullText, startIndex, baseKey)
+    const allParagraphSegments = paragraphMode
+      ? buildParagraphSegments(fullText, startIndex, baseKey)
+      : null;
+    // A `::stop` truncates the run so nothing past the breakpoint is ever
+    // requested; the block after it is parked ready for the next play press.
+    const stopIndex = allParagraphSegments?.findIndex((segment) => segment.stopAfter) ?? -1;
+    const paragraphSegments = allParagraphSegments && stopIndex >= 0
+      ? allParagraphSegments.slice(0, stopIndex + 1)
+      : allParagraphSegments;
+    const nextStopBreakpointPageKey = stopIndex >= 0
+      ? allParagraphSegments?.[stopIndex + 1]?.pageKey ?? null
       : null;
     const chunks = paragraphMode ? null : splitStreamChunks(fullText, startIndex);
     if (paragraphMode && paragraphSegments?.length === 0) {
@@ -293,6 +314,7 @@ export function createStreamSequenceController({
       resetCurrentSequence();
     }
     lastStreamSource = { type: source, fullText, startIndex, baseKey };
+    stopBreakpointPageKey = nextStopBreakpointPageKey;
     autoAdvance = (source === 'page' || source === 'chapter') && current.viewMode !== 'scroll';
     const runId = transition({ type: 'begin' }).runId;
     streamSequence = { source, baseKey };
@@ -307,7 +329,7 @@ export function createStreamSequenceController({
       const startPromise = current.startStream({
         text: paragraphSegments[0].text,
         pageKey: paragraphSegments[0].pageKey,
-        voice,
+        voice: paragraphSegments[0].voice ?? voice,
         pauseAfterMs: paragraphSegments[0].pauseAfterMs,
         pauseAtStartOnComplete: current.studyMode,
         replaceCurrent: replacingPausedStudyStream
@@ -387,8 +409,8 @@ export function createStreamSequenceController({
       return;
     }
     studyReplayGuard.allowPlayback();
-    const replacingPausedStudyStream = studyPausedAtStart && current.streamState.status === 'paused';
-    studyPausedAtStart = false;
+    const replacingPausedStudyStream = parkedAtBlockStart && current.streamState.status === 'paused';
+    parkedAtBlockStart = false;
     if (ACTIVE_STREAM_STATUSES.has(current.streamState.status) && !replacingPausedStudyStream) {
       transition({
         type: 'queue-restart',
@@ -443,8 +465,8 @@ export function createStreamSequenceController({
     playbackIntentId += 1;
     const current = getEnvironment();
     autoAdvance = false;
-    studyReplayPageKey = null;
-    studyPausedAtStart = false;
+    parkedBlockPageKey = null;
+    parkedAtBlockStart = false;
     studyReplayGuard.blockUntilIdle();
     current.stopStream();
     stopStreamSequence(true);
@@ -504,7 +526,7 @@ export function createStreamSequenceController({
     if (!current.studyMode) {
       return;
     }
-    const pageKey = current.streamState.pageKey ?? studyReplayPageKey;
+    const pageKey = current.streamState.pageKey ?? parkedBlockPageKey;
     if (!pageKey) {
       return;
     }
@@ -524,7 +546,7 @@ export function createStreamSequenceController({
       if (!textSource) {
         return;
       }
-      const segments = createParagraphStreamSegments(
+      const segments = buildParagraphSegments(
         textSource.fullText,
         textSource.startIndex,
         textSource.baseKey
@@ -581,11 +603,11 @@ export function createStreamSequenceController({
     const current = getEnvironment();
     if (current.streamState.status === 'paused') {
       if (
-        studyPausedAtStart &&
-        studyReplayPageKey &&
-        current.streamState.pageKey === studyReplayPageKey
+        parkedAtBlockStart &&
+        parkedBlockPageKey &&
+        current.streamState.pageKey === parkedBlockPageKey
       ) {
-        await restartStreamFromPageKey(studyReplayPageKey, current.streamVoice);
+        await restartStreamFromPageKey(parkedBlockPageKey, current.streamVoice);
         return;
       }
       await current.resumeStream();
@@ -608,7 +630,7 @@ export function createStreamSequenceController({
     if (current.studyMode) {
       lookahead.suppressForStudy(current.manifest.length);
       if (current.streamState.pageKey) {
-        studyReplayPageKey = current.streamState.pageKey;
+        parkedBlockPageKey = current.streamState.pageKey;
       }
     }
 
@@ -622,9 +644,9 @@ export function createStreamSequenceController({
       current.streamState.status === 'paused' &&
       current.streamState.playbackSeconds === 0 &&
       current.streamState.pageKey &&
-      studyReplayPageKey === current.streamState.pageKey
+      parkedBlockPageKey === current.streamState.pageKey
     ) {
-      studyPausedAtStart = true;
+      parkedAtBlockStart = true;
       stopStreamSequence();
     }
 
@@ -636,10 +658,17 @@ export function createStreamSequenceController({
       if (!streamSequence) {
         streamSequenceActive = false;
       } else if (current.studyMode) {
-        if (studyReplayPageKey) {
-          studyPausedAtStart = true;
-          current.pauseStreamAtStart(studyReplayPageKey);
+        if (parkedBlockPageKey) {
+          parkedAtBlockStart = true;
+          current.pauseStreamAtStart(parkedBlockPageKey);
         }
+        stopStreamSequence();
+      } else if (stopBreakpointPageKey) {
+        // `::stop` reached: park at the following block so play resumes there.
+        const breakpointPageKey = stopBreakpointPageKey;
+        parkedBlockPageKey = breakpointPageKey;
+        parkedAtBlockStart = true;
+        current.pauseStreamAtStart(breakpointPageKey);
         stopStreamSequence();
       } else {
         if (autoAdvance && lastStreamSource &&
@@ -657,10 +686,10 @@ export function createStreamSequenceController({
       !streamSequenceActive &&
       current.streamState.status === 'idle' &&
       !sequenceMachine.pendingRestart &&
-      studyReplayPageKey
+      parkedBlockPageKey
     ) {
-      studyPausedAtStart = true;
-      current.pauseStreamAtStart(studyReplayPageKey);
+      parkedAtBlockStart = true;
+      current.pauseStreamAtStart(parkedBlockPageKey);
     }
 
     restartCoordinator.sync({

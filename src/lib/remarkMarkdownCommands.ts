@@ -41,11 +41,10 @@ function transformCommands(node: MarkdownNode) {
   const nextChildren: MarkdownNode[] = [];
   for (const child of node.children) {
     const command = resolveParagraphCommand(child);
-    if (command?.name === 'pause') {
-      continue;
-    }
-    if (command?.name === 'note') {
-      if (command.text) {
+    if (command) {
+      // Notes are the only command with a visible counterpart; every other
+      // marker is a playback instruction and leaves no trace in the document.
+      if (command.name === 'note' && command.text) {
         nextChildren.push(toNoteNode(child, command.text));
       }
       continue;

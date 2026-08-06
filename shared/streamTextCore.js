@@ -1,4 +1,4 @@
-import { removeMarkdownCommandLines } from './markdownCommandsCore.js';
+import { removeMarkdownCommandLines, removeSkippedRegions } from './markdownCommandsCore.js';
 
 const STREAM_CHUNK_SIZE = 1000;
 const STREAM_CHUNK_LOOKAHEAD = 240;
@@ -289,7 +289,8 @@ export function normalizeFencedCodeBlocksForSpeech(text) {
 }
 
 export function stripMarkdown(text) {
-  let output = removeMarkdownCommandLines(removeExcludedOcrBlocks(text));
+  // Skip regions are consumed first: they need their own markers still present.
+  let output = removeMarkdownCommandLines(removeSkippedRegions(removeExcludedOcrBlocks(text)));
   output = normalizeFencedCodeBlocksForSpeech(output);
   output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
   output = output.replace(MARKDOWN_LINK_PATTERN, '$1');

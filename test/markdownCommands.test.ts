@@ -3,8 +3,10 @@ import test from 'node:test';
 import {
   parseMarkdownCommandLine,
   parsePauseDurationMs,
-  removeMarkdownCommandLines
+  removeMarkdownCommandLines,
+  removeSkippedRegions
 } from '../shared/markdownCommandsCore.js';
+import { stripMarkdown } from '../shared/streamTextCore.js';
 
 test('parses pause durations in seconds, milliseconds and bare numbers', () => {
   assert.deepEqual(parseMarkdownCommandLine('::pause 2s'), { name: 'pause', durationMs: 2000 });
@@ -62,4 +64,50 @@ test('removes standalone command lines from speech text', () => {
 test('keeps command-looking lines that are part of a surrounding paragraph', () => {
   const input = 'First line.\n::pause 2s\nSecond line.';
   assert.equal(removeMarkdownCommandLines(input), input);
+});
+
+test('parses the skip, stop and voice commands', () => {
+  assert.deepEqual(parseMarkdownCommandLine('::skip'), { name: 'skip' });
+  assert.deepEqual(parseMarkdownCommandLine('::skip-end'), { name: 'skip-end' });
+  assert.deepEqual(parseMarkdownCommandLine('::stop'), { name: 'stop' });
+  assert.deepEqual(parseMarkdownCommandLine('::voice mike'), { name: 'voice', voice: 'mike' });
+});
+
+test('a bare voice command means "back to the default voice"', () => {
+  assert.deepEqual(parseMarkdownCommandLine('::voice'), { name: 'voice', voice: null });
+});
+
+test('removes a skip region together with its markers', () => {
+  const input = [
+    'Spoken intro.',
+    '',
+    '::skip',
+    '',
+    'A table nobody wants read aloud.',
+    '',
+    '::skip-end',
+    '',
+    'Spoken outro.'
+  ].join('\n');
+
+  const output = removeSkippedRegions(input);
+  assert.ok(!output.includes('A table nobody'));
+  assert.ok(!output.includes('::skip'));
+  assert.ok(output.includes('Spoken intro.'));
+  assert.ok(output.includes('Spoken outro.'));
+});
+
+test('an unterminated skip region runs to the end of the text', () => {
+  const input = 'Spoken intro.\n\n::skip\n\nEverything after this is silent.';
+
+  const output = removeSkippedRegions(input);
+  assert.ok(output.includes('Spoken intro.'));
+  assert.ok(!output.includes('Everything after'));
+});
+
+test('stripMarkdown drops skipped regions and command markers together', () => {
+  const input = 'Intro.\n\n::skip\n\nHidden from speech.\n\n::skip-end\n\n::note aside\n\nOutro.';
+
+  const output = stripMarkdown(input);
+  assert.equal(output, 'Intro.\n\nOutro.');
 });

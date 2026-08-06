@@ -206,15 +206,42 @@ The narrator finishes a thought here.
 
 ::note double-check this against the plate on page 114
 
-The next section begins.
+::voice sara
+
+The next section begins in another voice.
+
+::skip
+
+| Year | Yield |
+| ---- | ----- |
+| 1801 | 412   |
+
+::skip-end
+
+::stop
+
+Playback parks here until you press play again.
 ```
 
 - `::pause <duration>` inserts extra silence after the preceding block during
   streaming playback. Durations accept `2s`, `1.5s`, `500ms`, or a bare number of
   seconds (`::pause 3`). Without an argument it defaults to 1s, and values are
-  clamped to 30s. The command is not shown in the reader.
+  clamped to 30s.
+- `::stop` is a breakpoint rather than silence: playback parks at the following
+  block, and the next play press resumes from there.
 - `::note <text>` (alias `::comment <text>`) renders as a muted aside in the text
   view and is never spoken.
+- `::skip` … `::skip-end` marks a region that still renders normally but is never
+  spoken — useful for tables, code and figure captions. An unterminated `::skip`
+  runs to the end of the chapter.
+- `::voice <name>` switches the narration voice from that point on. The name
+  matches a voice id (`en-Sara_woman`), its label (`Sara`), or just the bare name
+  (`sara`). A bare `::voice` returns to the voice selected in the reader, and an
+  unknown name leaves the current voice alone.
+
+Except for `::note`, commands leave no trace in the rendered document. Starting
+playback from the middle of a chapter replays the earlier commands first, so the
+voice and any open `::skip` region are still in effect.
 
 A `::` line that sits inside a paragraph is ordinary text, not a command, which
 matches how Markdown already treats it as a soft-wrapped line. Unknown command

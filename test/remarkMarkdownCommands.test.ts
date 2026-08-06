@@ -52,3 +52,19 @@ test('drops a note that carries no text', () => {
   assert.doesNotMatch(html, /::note/);
   assert.doesNotMatch(html, /<aside/);
 });
+
+test('keeps skipped text visible while hiding its markers', () => {
+  const html = renderMarkdown('Intro.\n\n::skip\n\nA table nobody reads aloud.\n\n::skip-end\n\nOutro.');
+
+  assert.match(html, /A table nobody reads aloud\./);
+  assert.doesNotMatch(html, /::skip/);
+});
+
+test('hides stop and voice markers', () => {
+  const html = renderMarkdown('Intro.\n\n::stop\n\n::voice sara\n\nOutro.');
+
+  assert.doesNotMatch(html, /::stop/);
+  assert.doesNotMatch(html, /::voice/);
+  assert.doesNotMatch(html, /sara/);
+  assert.match(html, /<p>Outro\.<\/p>/);
+});

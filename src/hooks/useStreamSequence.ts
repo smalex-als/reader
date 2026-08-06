@@ -74,7 +74,7 @@ export function useStreamSequence({
   const { firstChapterParagraph } = useAppSelector(selectChapterTextContext);
   const streamState = useStreamRuntimeSelector(selectStreamSequenceRuntime, streamSequenceRuntimeEqual);
   const { settings } = useAppSelector(selectViewerWorkflow);
-  const { streamVoice } = useAppSelector(selectVoiceWorkflow);
+  const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const { cache: textCache } = useAppSelector(selectPageTextWorkflow);
   const controllerRef = useRef<StreamSequenceController | null>(null);
 
@@ -98,6 +98,7 @@ export function useStreamSequence({
     streamState,
     studyMode: settings.studyMode,
     streamVoice,
+    streamVoiceOptions,
     textCache,
     startStream,
     enqueueStream,

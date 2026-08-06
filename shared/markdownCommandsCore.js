@@ -38,6 +38,18 @@ export function parseMarkdownCommandLine(line) {
   if (name === 'note' || name === 'comment') {
     return { name: 'note', text: argument };
   }
+  if (name === 'stop') {
+    return { name: 'stop' };
+  }
+  if (name === 'skip') {
+    return { name: 'skip' };
+  }
+  if (name === 'skip-end') {
+    return { name: 'skip-end' };
+  }
+  if (name === 'voice') {
+    return { name: 'voice', voice: argument || null };
+  }
   return null;
 }
 
@@ -54,6 +66,38 @@ export function isStandaloneCommandLine(lines, index) {
   const previousIsBlank = index === 0 || isBlankLine(lines[index - 1]);
   const nextIsBlank = index === lines.length - 1 || isBlankLine(lines[index + 1]);
   return previousIsBlank && nextIsBlank && parseMarkdownCommandLine(lines[index]) !== null;
+}
+
+/**
+ * Drops `::skip` regions along with their markers. Text-level pipelines use
+ * this; the streaming pipeline tracks the region across blocks instead so that
+ * source offsets keep pointing at the raw document.
+ */
+export function removeSkippedRegions(text) {
+  const input = typeof text === 'string' ? text : '';
+  if (!input.includes('::skip')) {
+    return input;
+  }
+  const lines = input.split('\n');
+  const kept = [];
+  let skipping = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const command = isStandaloneCommandLine(lines, index)
+      ? parseMarkdownCommandLine(lines[index])
+      : null;
+    if (command?.name === 'skip') {
+      skipping = true;
+      continue;
+    }
+    if (command?.name === 'skip-end') {
+      skipping = false;
+      continue;
+    }
+    if (!skipping) {
+      kept.push(lines[index]);
+    }
+  }
+  return kept.length === lines.length ? input : kept.join('\n');
 }
 
 export function removeMarkdownCommandLines(text) {

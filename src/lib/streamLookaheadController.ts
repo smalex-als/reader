@@ -2,6 +2,7 @@ export type StreamLookaheadSegment = {
   text: string;
   pageKey: string;
   pauseAfterMs?: number;
+  voice?: string;
 };
 
 export type StreamLookaheadPageSegment = StreamLookaheadSegment & {
