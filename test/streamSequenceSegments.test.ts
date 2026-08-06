@@ -74,3 +74,38 @@ test('keeps regular Markdown paragraphs as paragraph playback blocks', () => {
     }
   ]);
 });
+
+test('treats a standalone command line as its own playback block', () => {
+  const input = [
+    'First paragraph.',
+    '',
+    '::pause 2s',
+    '',
+    '::note verify against page 114',
+    '',
+    'Second paragraph.'
+  ].join('\n');
+
+  assert.deepEqual(splitMarkdownPlaybackBlocks(input), [
+    { rawText: 'First paragraph.', startIndex: 0 },
+    {
+      rawText: '::pause 2s',
+      startIndex: input.indexOf('::pause'),
+      command: { name: 'pause', durationMs: 2000 }
+    },
+    {
+      rawText: '::note verify against page 114',
+      startIndex: input.indexOf('::note'),
+      command: { name: 'note', text: 'verify against page 114' }
+    },
+    { rawText: 'Second paragraph.', startIndex: input.indexOf('Second') }
+  ]);
+});
+
+test('keeps a command-looking line inside its surrounding paragraph', () => {
+  const input = 'First line.\n::pause 2s\nSecond line.';
+
+  assert.deepEqual(splitMarkdownPlaybackBlocks(input), [
+    { rawText: 'First line.\n::pause 2s\nSecond line.', startIndex: 0 }
+  ]);
+});

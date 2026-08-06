@@ -42,10 +42,16 @@ export type StreamSequenceEnvironment = {
     text: string;
     pageKey: string;
     voice: string;
+    pauseAfterMs?: number;
     pauseAtStartOnComplete?: boolean;
     replaceCurrent?: boolean;
   }) => Promise<void>;
-  enqueueStream: (payload: { text: string; pageKey: string; voice: string }) => void;
+  enqueueStream: (payload: {
+    text: string;
+    pageKey: string;
+    voice: string;
+    pauseAfterMs?: number;
+  }) => void;
   stopStream: () => Promise<void>;
   pauseStream: () => Promise<void>;
   resumeStream: () => Promise<void>;
@@ -126,7 +132,12 @@ export function createStreamSequenceController({
       ),
       getImageUrlFromPageKey: (pageKey) => parseStreamLocator(pageKey)?.imageUrl ?? null,
       enqueue: (segment, voice) => {
-        current.enqueueStream({ text: segment.text, pageKey: segment.pageKey, voice });
+        current.enqueueStream({
+          text: segment.text,
+          pageKey: segment.pageKey,
+          voice,
+          pauseAfterMs: segment.pauseAfterMs
+        });
       }
     };
   }
@@ -297,6 +308,7 @@ export function createStreamSequenceController({
         text: paragraphSegments[0].text,
         pageKey: paragraphSegments[0].pageKey,
         voice,
+        pauseAfterMs: paragraphSegments[0].pauseAfterMs,
         pauseAtStartOnComplete: current.studyMode,
         replaceCurrent: replacingPausedStudyStream
       });

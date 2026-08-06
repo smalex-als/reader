@@ -11,6 +11,7 @@ export type PageStreamSegment = {
 export type ParagraphStreamSegment = {
   text: string;
   pageKey: string;
+  pauseAfterMs?: number;
 };
 
 function getTextModeFromBaseKey(baseKey: string) {
@@ -45,6 +46,15 @@ export function createParagraphStreamSegments(
   const playbackBlocks = splitMarkdownPlaybackBlocks(input);
 
   for (const block of playbackBlocks) {
+    if (block.command) {
+      // A pause lengthens the gap after whatever was spoken before it; notes
+      // are editorial asides and are never spoken.
+      const previousSegment = segments[segments.length - 1];
+      if (block.command.name === 'pause' && previousSegment) {
+        previousSegment.pauseAfterMs = (previousSegment.pauseAfterMs ?? 0) + block.command.durationMs;
+      }
+      continue;
+    }
     const spokenParagraph = stripMarkdown(block.rawText).trim();
     if (!spokenParagraph) {
       continue;

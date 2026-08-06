@@ -53,6 +53,7 @@ export type StartStreamPayload = {
   text: string;
   pageKey: string;
   voice?: string;
+  pauseAfterMs?: number;
   pauseAtStartOnComplete?: boolean;
   replaceCurrent?: boolean;
 };
@@ -61,6 +62,7 @@ export type EnqueueStreamPayload = {
   text: string;
   pageKey: string;
   voice?: string;
+  pauseAfterMs?: number;
 };
 
 export type StreamingAudioController = {
@@ -101,6 +103,13 @@ function getInterSegmentPauseMs(text: string) {
     return MEDIUM_SEGMENT_PAUSE_MS;
   }
   return LONG_SEGMENT_PAUSE_MS;
+}
+
+function resolveSegmentPauseMs(text: string, explicitPauseMs?: number) {
+  if (typeof explicitPauseMs === 'number' && Number.isFinite(explicitPauseMs) && explicitPauseMs >= 0) {
+    return Math.round(explicitPauseMs);
+  }
+  return getInterSegmentPauseMs(text);
 }
 
 function createAudioContext() {
@@ -576,6 +585,7 @@ export function createStreamingAudioController({
     text,
     pageKey,
     voice,
+    pauseAfterMs,
     pauseAtStartOnComplete = false,
     replaceCurrent = false
   }: StartStreamPayload) {
@@ -608,7 +618,7 @@ export function createStreamingAudioController({
       text: cleaned,
       pageKey,
       voice: resolvedVoice,
-      pauseAfterMs: getInterSegmentPauseMs(cleaned)
+      pauseAfterMs: resolveSegmentPauseMs(cleaned, pauseAfterMs)
     });
     setState({
       status: 'connecting',
@@ -635,7 +645,7 @@ export function createStreamingAudioController({
     }
   }
 
-  function enqueueStream({ text, pageKey, voice }: EnqueueStreamPayload) {
+  function enqueueStream({ text, pageKey, voice, pauseAfterMs }: EnqueueStreamPayload) {
     const cleaned = stripMarkdown(text).trim();
     if (!cleaned || !canEnqueueStreamingAudio(sessionMachine)) {
       return;
@@ -644,7 +654,7 @@ export function createStreamingAudioController({
       text: cleaned,
       pageKey,
       voice: voice || DEFAULT_STREAM_VOICE,
-      pauseAfterMs: getInterSegmentPauseMs(cleaned)
+      pauseAfterMs: resolveSegmentPauseMs(cleaned, pauseAfterMs)
     });
     if (worklet && !reader && !requestInFlight) {
       void startQueuedRequest(sessionMachine.sessionId);

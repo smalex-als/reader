@@ -1,3 +1,5 @@
+import { removeMarkdownCommandLines } from './markdownCommandsCore.js';
+
 const STREAM_CHUNK_SIZE = 1000;
 const STREAM_CHUNK_LOOKAHEAD = 240;
 const MARKDOWN_LINK_PATTERN = /\[([^\]]+)\]\([^)]+\)/g;
@@ -287,7 +289,7 @@ export function normalizeFencedCodeBlocksForSpeech(text) {
 }
 
 export function stripMarkdown(text) {
-  let output = removeExcludedOcrBlocks(text);
+  let output = removeMarkdownCommandLines(removeExcludedOcrBlocks(text));
   output = normalizeFencedCodeBlocksForSpeech(output);
   output = output.replace(MARKDOWN_IMAGE_PATTERN, '$1');
   output = output.replace(MARKDOWN_LINK_PATTERN, '$1');
