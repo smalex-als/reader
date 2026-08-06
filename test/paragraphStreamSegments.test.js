@@ -160,3 +160,89 @@ test('a stop command marks the preceding segment as a breakpoint', () => {
   assert.equal(segments[1].stopAfter, undefined);
   assert.deepEqual(segments.map((segment) => segment.text), ['First block.', 'Second block.']);
 });
+
+test('a say command is spoken but has no paragraph of its own', () => {
+  const input = 'Intro.\n\n::say A table of yields follows.\n\nOutro.';
+
+  const segments = createParagraphStreamSegments(input, 0, 'chapter-1');
+
+  assert.deepEqual(segments.map((segment) => segment.text), [
+    'Intro.',
+    'A table of yields follows.',
+    'Outro.'
+  ]);
+});
+
+test('a say inside a skip region stands in for the skipped content', () => {
+  const input = [
+    'Intro.',
+    '',
+    '::skip',
+    '',
+    'A table nobody wants read aloud.',
+    '',
+    '::say A table of yields follows.',
+    '',
+    '::skip-end',
+    '',
+    'Outro.'
+  ].join('\n');
+
+  const segments = createParagraphStreamSegments(input, 0, 'chapter-1');
+
+  assert.deepEqual(segments.map((segment) => segment.text), [
+    'Intro.',
+    'A table of yields follows.',
+    'Outro.'
+  ]);
+});
+
+test('a say command follows the active voice', () => {
+  const input = '::voice sara\n\n::say Spoken in her voice.';
+
+  const segments = createParagraphStreamSegments(input, 0, 'chapter-1', options);
+
+  assert.equal(segments[0].voice, 'en-Sara_woman');
+});
+
+test('a pause after a say attaches to the spoken line', () => {
+  const input = '::say A table of yields follows.\n\n::pause 2s\n\nOutro.';
+
+  const segments = createParagraphStreamSegments(input, 0, 'chapter-1');
+
+  assert.equal(segments[0].pauseAfterMs, 2000);
+});
+
+test('a say command carries a real source offset in its page key', () => {
+  const input = 'Intro.\n\n::say A table of yields follows.\n\nOutro.';
+
+  const segments = createParagraphStreamSegments(input, 0, 'chapter-1');
+
+  assert.equal(segments[1].pageKey, `chapter::paragraph-start-${input.indexOf('::say')}`);
+});
+
+test('the skip/say shape prescribed to the chapter prompts speaks only the description', () => {
+  const chapter = [
+    'Intro paragraph.',
+    '',
+    '::skip',
+    '',
+    '::say A table of yields from 1801 onwards.',
+    '',
+    '| Year | Yield |',
+    '| ---- | ----- |',
+    '| 1801 | 412   |',
+    '',
+    '::skip-end',
+    '',
+    'Outro paragraph.'
+  ].join('\n');
+
+  const segments = createParagraphStreamSegments(chapter, 0, 'chapter-1');
+
+  assert.deepEqual(segments.map((segment) => segment.text), [
+    'Intro paragraph.',
+    'A table of yields from 1801 onwards.',
+    'Outro paragraph.'
+  ]);
+});

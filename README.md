@@ -216,6 +216,8 @@ The next section begins in another voice.
 | ---- | ----- |
 | 1801 | 412   |
 
+::say A table of yields from 1801 onwards follows.
+
 ::skip-end
 
 ::stop
@@ -234,6 +236,9 @@ Playback parks here until you press play again.
 - `::skip` … `::skip-end` marks a region that still renders normally but is never
   spoken — useful for tables, code and figure captions. An unterminated `::skip`
   runs to the end of the chapter.
+- `::say <text>` is the mirror of `::note`: spoken but never rendered. It is
+  spoken even inside a `::skip` region, so a spoken summary can sit next to the
+  content it stands in for.
 - `::voice <name>` switches the narration voice from that point on. The name
   matches a voice id (`en-Sara_woman`), its label (`Sara`), or just the bare name
   (`sara`). A bare `::voice` returns to the voice selected in the reader, and an

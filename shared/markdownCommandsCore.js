@@ -50,6 +50,9 @@ export function parseMarkdownCommandLine(line) {
   if (name === 'voice') {
     return { name: 'voice', voice: argument || null };
   }
+  if (name === 'say') {
+    return { name: 'say', text: argument };
+  }
   return null;
 }
 
@@ -72,6 +75,10 @@ export function isStandaloneCommandLine(lines, index) {
  * Drops `::skip` regions along with their markers. Text-level pipelines use
  * this; the streaming pipeline tracks the region across blocks instead so that
  * source offsets keep pointing at the raw document.
+ *
+ * `::say` survives a skip region: it is an explicit instruction to speak, so it
+ * can sit right next to the content it stands in for. The blank lines keep it a
+ * standalone block once its neighbours are gone.
  */
 export function removeSkippedRegions(text) {
   const input = typeof text === 'string' ? text : '';
@@ -81,31 +88,57 @@ export function removeSkippedRegions(text) {
   const lines = input.split('\n');
   const kept = [];
   let skipping = false;
+  let changed = false;
   for (let index = 0; index < lines.length; index += 1) {
     const command = isStandaloneCommandLine(lines, index)
       ? parseMarkdownCommandLine(lines[index])
       : null;
     if (command?.name === 'skip') {
       skipping = true;
+      changed = true;
       continue;
     }
     if (command?.name === 'skip-end') {
       skipping = false;
+      changed = true;
       continue;
     }
     if (!skipping) {
       kept.push(lines[index]);
+      continue;
+    }
+    changed = true;
+    if (command?.name === 'say') {
+      kept.push('', lines[index], '');
     }
   }
-  return kept.length === lines.length ? input : kept.join('\n');
+  return changed ? kept.join('\n') : input;
 }
 
-export function removeMarkdownCommandLines(text) {
+/**
+ * Resolves command lines for text-level speech pipelines: every marker leaves
+ * the text, except `::say`, which is replaced by the words it carries.
+ */
+export function resolveMarkdownCommandLines(text) {
   const input = typeof text === 'string' ? text : '';
   if (!input.includes('::')) {
     return input;
   }
   const lines = input.split('\n');
-  const kept = lines.filter((_, index) => !isStandaloneCommandLine(lines, index));
-  return kept.length === lines.length ? input : kept.join('\n');
+  const kept = [];
+  let changed = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const command = isStandaloneCommandLine(lines, index)
+      ? parseMarkdownCommandLine(lines[index])
+      : null;
+    if (!command) {
+      kept.push(lines[index]);
+      continue;
+    }
+    changed = true;
+    if (command.name === 'say' && command.text) {
+      kept.push(command.text);
+    }
+  }
+  return changed ? kept.join('\n') : input;
 }

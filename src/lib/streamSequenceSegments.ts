@@ -101,6 +101,22 @@ export function createParagraphStreamSegments(
   const playbackBlocks = splitMarkdownPlaybackBlocks(input);
   const state = resolveCommandStateAt(fullText, startIndex, options);
 
+  const emitSpeech = (spokenText: string, absoluteStart: number) => {
+    const pageKey = formatParagraphPageKey(baseKey, absoluteStart);
+    const pushSegment = (text: string) => {
+      const segment: ParagraphStreamSegment = { text, pageKey };
+      if (state.voice) {
+        segment.voice = state.voice;
+      }
+      segments.push(segment);
+    };
+    if (spokenText.length <= 1240) {
+      pushSegment(spokenText);
+      return;
+    }
+    splitStreamChunks(spokenText, 0).forEach(pushSegment);
+  };
+
   for (const block of playbackBlocks) {
     if (block.command) {
       // A pause lengthens the gap after whatever was spoken before it, a stop
@@ -112,6 +128,13 @@ export function createParagraphStreamSegments(
       if (block.command.name === 'stop' && previousSegment) {
         previousSegment.stopAfter = true;
       }
+      if (block.command.name === 'say') {
+        // Spoken even inside a skip region: it stands in for what was skipped.
+        const spokenText = stripMarkdown(block.command.text).trim();
+        if (spokenText) {
+          emitSpeech(spokenText, startIndex + block.startIndex);
+        }
+      }
       applyCommandState(state, block.command, options);
       continue;
     }
@@ -122,20 +145,7 @@ export function createParagraphStreamSegments(
     if (!spokenParagraph) {
       continue;
     }
-    const absoluteStart = startIndex + block.startIndex;
-    const pageKey = formatParagraphPageKey(baseKey, absoluteStart);
-    const pushSegment = (text: string) => {
-      const segment: ParagraphStreamSegment = { text, pageKey };
-      if (state.voice) {
-        segment.voice = state.voice;
-      }
-      segments.push(segment);
-    };
-    if (spokenParagraph.length <= 1240) {
-      pushSegment(spokenParagraph);
-      continue;
-    }
-    splitStreamChunks(spokenParagraph, 0).forEach(pushSegment);
+    emitSpeech(spokenParagraph, startIndex + block.startIndex);
   }
   return segments;
 }

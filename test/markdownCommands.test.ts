@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   parseMarkdownCommandLine,
   parsePauseDurationMs,
-  removeMarkdownCommandLines,
+  resolveMarkdownCommandLines,
   removeSkippedRegions
 } from '../shared/markdownCommandsCore.js';
 import { stripMarkdown } from '../shared/streamTextCore.js';
@@ -58,12 +58,12 @@ test('removes standalone command lines from speech text', () => {
     'Second paragraph.'
   ].join('\n');
 
-  assert.equal(removeMarkdownCommandLines(input), 'First paragraph.\n\n\n\nSecond paragraph.');
+  assert.equal(resolveMarkdownCommandLines(input), 'First paragraph.\n\n\n\nSecond paragraph.');
 });
 
 test('keeps command-looking lines that are part of a surrounding paragraph', () => {
   const input = 'First line.\n::pause 2s\nSecond line.';
-  assert.equal(removeMarkdownCommandLines(input), input);
+  assert.equal(resolveMarkdownCommandLines(input), input);
 });
 
 test('parses the skip, stop and voice commands', () => {
@@ -110,4 +110,43 @@ test('stripMarkdown drops skipped regions and command markers together', () => {
 
   const output = stripMarkdown(input);
   assert.equal(output, 'Intro.\n\nOutro.');
+});
+
+test('parses a say command', () => {
+  assert.deepEqual(parseMarkdownCommandLine('::say A table of yields follows.'), {
+    name: 'say',
+    text: 'A table of yields follows.'
+  });
+});
+
+test('say text replaces the marker for text-level speech pipelines', () => {
+  const input = 'Intro.\n\n::say A table of yields follows.\n\nOutro.';
+
+  assert.equal(
+    resolveMarkdownCommandLines(input),
+    'Intro.\n\nA table of yields follows.\n\nOutro.'
+  );
+});
+
+test('a say inside a skip region survives the region', () => {
+  const input = [
+    'Intro.',
+    '',
+    '::skip',
+    '',
+    '| Year | Yield |',
+    '',
+    '::say A table of yields follows.',
+    '',
+    '::skip-end',
+    '',
+    'Outro.'
+  ].join('\n');
+
+  const output = stripMarkdown(input);
+  assert.equal(output, 'Intro.\n\nA table of yields follows.\n\nOutro.');
+});
+
+test('an empty say command leaves nothing behind', () => {
+  assert.equal(resolveMarkdownCommandLines('Intro.\n\n::say\n\nOutro.'), 'Intro.\n\n\nOutro.');
 });

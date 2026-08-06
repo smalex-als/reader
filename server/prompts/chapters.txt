@@ -40,6 +40,27 @@ Structure:
 - Do not use markdown tables unless they are essential to preserve meaning.
 - Avoid bullet-heavy output; use prose by default.
 
+Visual Content:
+- The chapter is also read aloud, and tables, diagrams, figures, images, and ASCII art make no sense as speech.
+- Wrap every such block so it stays visible but is skipped by narration:
+
+    ::skip
+
+    ::say One sentence naming what the reader is looking at.
+
+    | Year | Yield |
+    | ---- | ----- |
+    | 1801 | 412   |
+
+    ::skip-end
+
+- Put `::skip` before the block and `::skip-end` after it, and place the `::say` line directly after `::skip` so the listener hears the description before the skipped content.
+- Each of these lines must stand alone, with a blank line before and after it, and must start at the beginning of the line.
+- Write the `::say` sentence in the original language of the chapter.
+- The `::say` sentence names only what the block actually shows. Do not restate its numbers, invent labels, or draw conclusions the block does not state.
+- Do not wrap prose, headings, or lists in `::skip`. Only wrap content that is meaningless when spoken.
+- Do not use any other `::` command lines.
+
 Output:
 - Output only the rewritten chapter note.
 - Do not add preambles, process notes, or commentary outside the write-up.

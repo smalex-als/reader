@@ -68,3 +68,11 @@ test('hides stop and voice markers', () => {
   assert.doesNotMatch(html, /sara/);
   assert.match(html, /<p>Outro\.<\/p>/);
 });
+
+test('never renders say text into the document', () => {
+  const html = renderMarkdown('Intro.\n\n::say A table of yields follows.\n\nOutro.');
+
+  assert.doesNotMatch(html, /::say/);
+  assert.doesNotMatch(html, /A table of yields follows/);
+  assert.match(html, /<p>Outro\.<\/p>/);
+});
