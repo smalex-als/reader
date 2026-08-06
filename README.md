@@ -193,6 +193,33 @@ data/
 - `.stream-history.log` stores listening history used by the dashboard.
 - `.units/` stores standalone unit sets. Each unit set is a `unit-###` directory with a `manifest.json`, one JSON file per topic, optional topic quizzes beside the topic files using the same filename prefix, and read/unread state in `progress.json`.
 
+## Chapter commands
+
+Chapter Markdown supports a small set of playback directives. A command is a line
+that starts with `::` and stands alone as its own Markdown block, meaning it has a
+blank line before and after it:
+
+```
+The narrator finishes a thought here.
+
+::pause 2s
+
+::note double-check this against the plate on page 114
+
+The next section begins.
+```
+
+- `::pause <duration>` inserts extra silence after the preceding block during
+  streaming playback. Durations accept `2s`, `1.5s`, `500ms`, or a bare number of
+  seconds (`::pause 3`). Without an argument it defaults to 1s, and values are
+  clamped to 30s. The command is not shown in the reader.
+- `::note <text>` (alias `::comment <text>`) renders as a muted aside in the text
+  view and is never spoken.
+
+A `::` line that sits inside a paragraph is ordinary text, not a command, which
+matches how Markdown already treats it as a soft-wrapped line. Unknown command
+names are left alone and render as written.
+
 ## Configuration
 
 Server environment variables:

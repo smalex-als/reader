@@ -3072,6 +3072,18 @@ body {
   isolation: isolate;
 }
 
+.text-viewer-markdown .text-viewer-note {
+  margin: 0 0 0.9em;
+  padding: 0.5em 0.85em;
+  border-inline-start: 2px solid color-mix(in srgb, var(--text-viewer-accent) 45%, transparent);
+  border-radius: 0 0.3rem 0.3rem 0;
+  background: color-mix(in srgb, var(--text-viewer-accent) 6%, transparent);
+  color: color-mix(in srgb, var(--text-viewer-reading-fg) 75%, transparent);
+  font-size: 92%;
+  font-style: italic;
+  line-height: 1.55;
+}
+
 .text-viewer-block[data-streamable='true'] {
   cursor: pointer;
 }
