@@ -159,6 +159,7 @@ export interface ChapterTextPrompt {
   name: string;
   template: string;
   model: ChapterTextVersionModel;
+  reasoningEffort: ChapterTextVersionEffort;
   builtIn?: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -168,6 +169,7 @@ export interface ChapterTextPromptDraft {
   name: string;
   template: string;
   model: ChapterTextVersionModel;
+  reasoningEffort: ChapterTextVersionEffort;
 }
 
 export const CHAPTER_TEXT_VERSION_MODELS = [
@@ -177,6 +179,24 @@ export const CHAPTER_TEXT_VERSION_MODELS = [
 ] as const;
 
 export type ChapterTextVersionModel = (typeof CHAPTER_TEXT_VERSION_MODELS)[number];
+
+/**
+ * How hard the model reasons before answering — sent as `reasoning_effort`.
+ * Keep in sync with CHAPTER_TEXT_VERSION_EFFORTS in
+ * server/lib/chapterTextVersions.js.
+ */
+export const CHAPTER_TEXT_VERSION_EFFORTS = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh'
+] as const;
+
+export type ChapterTextVersionEffort = (typeof CHAPTER_TEXT_VERSION_EFFORTS)[number];
+
+export const DEFAULT_CHAPTER_TEXT_VERSION_EFFORT: ChapterTextVersionEffort = 'medium';
 
 export interface ChapterTextVersion {
   id: string;
@@ -193,6 +213,7 @@ export interface ChapterTextVersion {
   createdAt?: string | null;
   promptId?: string | null;
   promptName?: string | null;
+  reasoningEffort?: ChapterTextVersionEffort | null;
   deletable: boolean;
 }
 

@@ -274,7 +274,8 @@ router.post('/api/chapter-text-prompts', asyncHandler(async (req, res) => {
   const { library, prompt } = await addPromptToLibrary({
     name: typeof req.body?.name === 'string' ? req.body.name : '',
     template: typeof req.body?.template === 'string' ? req.body.template : '',
-    model: typeof req.body?.model === 'string' ? req.body.model : ''
+    model: typeof req.body?.model === 'string' ? req.body.model : '',
+    reasoningEffort: typeof req.body?.reasoningEffort === 'string' ? req.body.reasoningEffort : ''
   });
   res.json({ ...library, prompt });
 }));
@@ -284,7 +285,8 @@ router.put('/api/chapter-text-prompts/:promptId', asyncHandler(async (req, res) 
     promptId: req.params.promptId,
     name: typeof req.body?.name === 'string' ? req.body.name : '',
     template: typeof req.body?.template === 'string' ? req.body.template : '',
-    model: typeof req.body?.model === 'string' ? req.body.model : ''
+    model: typeof req.body?.model === 'string' ? req.body.model : '',
+    reasoningEffort: typeof req.body?.reasoningEffort === 'string' ? req.body.reasoningEffort : ''
   });
   res.json(library);
 }));
@@ -711,6 +713,8 @@ router.post('/api/books/:id/chapters/:chapter/text-versions', asyncHandler(async
     chapterNumber,
     sourceVersionId: typeof req.body?.sourceVersionId === 'string' ? req.body.sourceVersionId.trim() : 'base',
     model: typeof req.body?.model === 'string' ? req.body.model.trim() : 'gpt-5.6-sol',
+    reasoningEffort:
+      typeof req.body?.reasoningEffort === 'string' ? req.body.reasoningEffort.trim() : '',
     promptId: typeof req.body?.promptId === 'string' ? req.body.promptId.trim() : null,
     customPrompt: typeof req.body?.customPrompt === 'string' ? req.body.customPrompt : '',
     addToLibrary: req.body?.addToLibrary === true,

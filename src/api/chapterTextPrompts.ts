@@ -1,7 +1,10 @@
 import {
+  CHAPTER_TEXT_VERSION_EFFORTS,
   CHAPTER_TEXT_VERSION_MODELS,
+  DEFAULT_CHAPTER_TEXT_VERSION_EFFORT,
   type ChapterTextPrompt,
   type ChapterTextPromptDraft,
+  type ChapterTextVersionEffort,
   type ChapterTextVersionModel
 } from '@/types/app';
 
@@ -38,6 +41,11 @@ function normalizePrompt(value: unknown): ChapterTextPrompt | null {
   const model = CHAPTER_TEXT_VERSION_MODELS.includes(value.model as ChapterTextVersionModel)
     ? value.model as ChapterTextVersionModel
     : 'gpt-5.6-sol';
+  const reasoningEffort = CHAPTER_TEXT_VERSION_EFFORTS.includes(
+    value.reasoningEffort as ChapterTextVersionEffort
+  )
+    ? (value.reasoningEffort as ChapterTextVersionEffort)
+    : DEFAULT_CHAPTER_TEXT_VERSION_EFFORT;
   if (!id || !name || !template) {
     return null;
   }
@@ -46,6 +54,7 @@ function normalizePrompt(value: unknown): ChapterTextPrompt | null {
     name,
     template,
     model,
+    reasoningEffort,
     builtIn: value.builtIn === true,
     createdAt: typeof value.createdAt === 'string' ? value.createdAt : null,
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : null

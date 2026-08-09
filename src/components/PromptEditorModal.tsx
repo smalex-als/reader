@@ -9,7 +9,13 @@ import {
   useAppDispatch,
   useAppSelector
 } from '@/state/appState';
-import { CHAPTER_TEXT_VERSION_MODELS, type ChapterTextVersionModel } from '@/types/app';
+import {
+  CHAPTER_TEXT_VERSION_EFFORTS,
+  CHAPTER_TEXT_VERSION_MODELS,
+  DEFAULT_CHAPTER_TEXT_VERSION_EFFORT,
+  type ChapterTextVersionEffort,
+  type ChapterTextVersionModel
+} from '@/types/app';
 
 const NEW_PROMPT_TEMPLATE = `Rewrite the chapter into a clean article version.
 
@@ -40,6 +46,9 @@ export default function PromptEditorModal() {
   const [draftName, setDraftName] = useState('');
   const [draftTemplate, setDraftTemplate] = useState('');
   const [draftModel, setDraftModel] = useState<ChapterTextVersionModel>('gpt-5.6-sol');
+  const [draftEffort, setDraftEffort] = useState<ChapterTextVersionEffort>(
+    DEFAULT_CHAPTER_TEXT_VERSION_EFFORT
+  );
 
   const selectedPrompt = useMemo(
     () => prompts.find((prompt) => prompt.id === selectedId) ?? prompts[0] ?? null,
@@ -49,7 +58,8 @@ export default function PromptEditorModal() {
     selectedPrompt !== null &&
     (draftName.trim() !== selectedPrompt.name ||
       draftTemplate.trim() !== selectedPrompt.template ||
-      draftModel !== selectedPrompt.model);
+      draftModel !== selectedPrompt.model ||
+      draftEffort !== selectedPrompt.reasoningEffort);
   const canSave = selectedPrompt !== null && draftName.trim().length > 0 && draftTemplate.trim().length > 0 && isDirty;
   const handleClose = () => {
     dispatch(appActions.closeModal('promptEditor'));
@@ -67,18 +77,21 @@ export default function PromptEditorModal() {
       setDraftName('');
       setDraftTemplate('');
       setDraftModel('gpt-5.6-sol');
+      setDraftEffort(DEFAULT_CHAPTER_TEXT_VERSION_EFFORT);
       return;
     }
     setDraftName(selectedPrompt.name);
     setDraftTemplate(selectedPrompt.template);
     setDraftModel(selectedPrompt.model);
+    setDraftEffort(selectedPrompt.reasoningEffort ?? DEFAULT_CHAPTER_TEXT_VERSION_EFFORT);
   }, [selectedPrompt]);
 
   const handleCreate = () => {
     void createPrompt({
       name: 'New article version prompt',
       template: NEW_PROMPT_TEMPLATE,
-      model: 'gpt-5.6-sol'
+      model: 'gpt-5.6-sol',
+      reasoningEffort: DEFAULT_CHAPTER_TEXT_VERSION_EFFORT
     });
   };
 
@@ -89,7 +102,8 @@ export default function PromptEditorModal() {
     void savePrompt(selectedPrompt.id, {
       name: draftName,
       template: draftTemplate,
-      model: draftModel
+      model: draftModel,
+      reasoningEffort: draftEffort
     });
   };
 
@@ -174,6 +188,21 @@ export default function PromptEditorModal() {
                   >
                     {CHAPTER_TEXT_VERSION_MODELS.map((model) => (
                       <option key={model} value={model}>{model}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-viewer-setting text-version-modal-field text-version-modal-field-compact">
+                  <span className="text-viewer-setting-label">Thinking level</span>
+                  <select
+                    className="text-viewer-select"
+                    value={draftEffort}
+                    onChange={(event) =>
+                      setDraftEffort(event.target.value as ChapterTextVersionEffort)
+                    }
+                    disabled={saving}
+                  >
+                    {CHAPTER_TEXT_VERSION_EFFORTS.map((effort) => (
+                      <option key={effort} value={effort}>{effort}</option>
                     ))}
                   </select>
                 </label>

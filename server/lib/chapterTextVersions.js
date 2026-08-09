@@ -17,6 +17,11 @@ import { getOpenAI } from './openai.js';
 const CHAPTER_PAD_LENGTH = 3;
 const GLOBAL_PROMPTS_PATH = path.join(DATA_DIR, '.chapter-text-prompts.json');
 const CHAPTER_TEXT_VERSION_MODELS = new Set(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']);
+// How hard the model reasons before answering. Sent as `reasoning_effort` on
+// chat.completions. Keep in sync with CHAPTER_TEXT_VERSION_EFFORTS in
+// src/types/app.ts.
+const CHAPTER_TEXT_VERSION_EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh']);
+const DEFAULT_VERSION_EFFORT = 'medium';
 
 function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
@@ -42,6 +47,7 @@ function getDefaultPromptLibrary() {
         name: 'Narration',
         template: CHAPTER_NARRATION_PROMPT,
         model: 'gpt-5.6-sol',
+        reasoningEffort: DEFAULT_VERSION_EFFORT,
         builtIn: true,
         createdAt: new Date(0).toISOString()
       },
@@ -50,6 +56,7 @@ function getDefaultPromptLibrary() {
         name: 'Review Extract',
         template: CHAPTER_REVIEW_EXTRACT_PROMPT,
         model: 'gpt-5.6-sol',
+        reasoningEffort: DEFAULT_VERSION_EFFORT,
         builtIn: true,
         createdAt: new Date(0).toISOString()
       },
@@ -58,6 +65,7 @@ function getDefaultPromptLibrary() {
         name: 'Clean Transcript',
         template: TRANSCRIPT_CLEANUP_PROMPT,
         model: 'gpt-5.6-sol',
+        reasoningEffort: DEFAULT_VERSION_EFFORT,
         builtIn: true,
         createdAt: new Date(0).toISOString()
       },
@@ -66,6 +74,7 @@ function getDefaultPromptLibrary() {
         name: 'Summarize YouTube Transcript',
         template: YOUTUBE_TRANSCRIPT_SUMMARY_PROMPT,
         model: 'gpt-5.6-sol',
+        reasoningEffort: DEFAULT_VERSION_EFFORT,
         builtIn: true,
         createdAt: new Date(0).toISOString()
       }
@@ -85,6 +94,7 @@ function normalizePromptEntry(prompt, fallback = {}) {
     name,
     template,
     model: sanitizeVersionModel(prompt?.model || fallback.model),
+    reasoningEffort: sanitizeVersionEffort(prompt?.reasoningEffort || fallback.reasoningEffort),
     builtIn: Boolean(fallback.builtIn || prompt?.builtIn),
     createdAt:
       typeof prompt?.createdAt === 'string'
@@ -138,6 +148,11 @@ function sanitizeVersionModel(value) {
   return CHAPTER_TEXT_VERSION_MODELS.has(model) ? model : 'gpt-5.6-sol';
 }
 
+function sanitizeVersionEffort(value) {
+  const effort = typeof value === 'string' ? value.trim() : '';
+  return CHAPTER_TEXT_VERSION_EFFORTS.has(effort) ? effort : DEFAULT_VERSION_EFFORT;
+}
+
 async function readJsonFile(filePath, fallback) {
   try {
     const raw = await fs.readFile(filePath, 'utf8');
@@ -168,7 +183,7 @@ export async function listChapterTextPromptLibrary() {
   return ensurePromptLibrary();
 }
 
-export async function addPromptToLibrary({ name, template, model }) {
+export async function addPromptToLibrary({ name, template, model, reasoningEffort }) {
   const promptName = sanitizePromptName(name);
   const promptTemplate = sanitizeTemplate(template);
   if (!promptName) {
@@ -190,6 +205,7 @@ export async function addPromptToLibrary({ name, template, model }) {
     name: promptName,
     template: promptTemplate,
     model: sanitizeVersionModel(model),
+    reasoningEffort: sanitizeVersionEffort(reasoningEffort),
     builtIn: false,
     createdAt: new Date().toISOString()
   };
@@ -200,7 +216,7 @@ export async function addPromptToLibrary({ name, template, model }) {
   return { library: nextLibrary, prompt };
 }
 
-export async function updatePromptInLibrary({ promptId, name, template, model }) {
+export async function updatePromptInLibrary({ promptId, name, template, model, reasoningEffort }) {
   const id = typeof promptId === 'string' ? promptId.trim() : '';
   if (!id) {
     throw createHttpError(400, 'Prompt id is required');
@@ -223,6 +239,7 @@ export async function updatePromptInLibrary({ promptId, name, template, model })
     name: promptName,
     template: promptTemplate,
     model: sanitizeVersionModel(model),
+    reasoningEffort: sanitizeVersionEffort(reasoningEffort),
     updatedAt: new Date().toISOString()
   };
   const nextLibrary = {
@@ -491,6 +508,7 @@ export async function createChapterTextVersion({
   chapterNumber,
   sourceVersionId = 'base',
   model = null,
+  reasoningEffort = null,
   promptId = null,
   customPrompt = '',
   addToLibrary = false,
@@ -553,6 +571,8 @@ export async function createChapterTextVersion({
   }
 
   const selectedModel = sanitizeVersionModel(model || selectedPrompt?.model);
+  // An explicit request wins; otherwise fall back to what the prompt was saved with.
+  const selectedEffort = sanitizeVersionEffort(reasoningEffort || selectedPrompt?.reasoningEffort);
   const openai = getOpenAI();
   // eslint-disable-next-line no-console
   console.log('Creating chapter text version via OpenAI', {
@@ -560,6 +580,7 @@ export async function createChapterTextVersion({
     chapterNumber,
     sourceVersionId: sourceTextVersion.versionId,
     model: selectedModel,
+    reasoningEffort: selectedEffort,
     promptId: selectedPrompt?.id ?? null,
     promptName: selectedPrompt?.name ?? sanitizePromptName(promptName) ?? null,
     customPrompt: Boolean(explicitPrompt),
@@ -569,6 +590,7 @@ export async function createChapterTextVersion({
   });
   const response = await openai.chat.completions.create({
     model: selectedModel,
+    reasoning_effort: selectedEffort,
     messages: [
       {
         role: 'developer',
@@ -601,6 +623,7 @@ export async function createChapterTextVersion({
     createdAt: new Date().toISOString(),
     sourceVersionId: sourceTextVersion.versionId,
     model: selectedModel,
+    reasoningEffort: selectedEffort,
     promptId: selectedPrompt?.id ?? null,
     promptName: selectedPrompt?.name ?? sanitizePromptName(promptName) ?? null,
     operationId: normalizedOperationId || null
