@@ -242,7 +242,9 @@ Playback parks here until you press play again.
 - `::voice <name>` switches the narration voice from that point on. The name
   matches a voice id (`en-Sara_woman`), its label (`Sara`), or just the bare name
   (`sara`). A bare `::voice` returns to the voice selected in the reader, and an
-  unknown name leaves the current voice alone.
+  unknown name leaves the current voice alone. The text view marks the switch
+  with a small badge on the first block that is actually spoken in the new voice,
+  so a `::skip` region or a `::say` line does not take the badge.
 
 Except for `::note`, commands leave no trace in the rendered document. Starting
 playback from the middle of a chapter replays the earlier commands first, so the

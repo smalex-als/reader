@@ -3073,6 +3073,23 @@ body {
   isolation: isolate;
 }
 
+.text-viewer-markdown [data-voice]::before {
+  content: attr(data-voice);
+  display: inline-block;
+  margin-inline-end: 0.45em;
+  padding: 0 0.4em;
+  border: 1px solid color-mix(in srgb, var(--text-viewer-accent) 35%, transparent);
+  border-radius: 0.7em;
+  background: color-mix(in srgb, var(--text-viewer-accent) 7%, transparent);
+  color: color-mix(in srgb, var(--text-viewer-reading-fg) 65%, transparent);
+  font-size: 0.7em;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.6;
+  vertical-align: 0.16em;
+  white-space: nowrap;
+}
+
 .text-viewer-markdown .text-viewer-note {
   margin: 0 0 0.9em;
   padding: 0.5em 0.85em;

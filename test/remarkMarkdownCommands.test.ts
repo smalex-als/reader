@@ -60,13 +60,12 @@ test('keeps skipped text visible while hiding its markers', () => {
   assert.doesNotMatch(html, /::skip/);
 });
 
-test('hides stop and voice markers', () => {
+test('hides stop and voice markers, leaving the voice only as a badge', () => {
   const html = renderMarkdown('Intro.\n\n::stop\n\n::voice sara\n\nOutro.');
 
   assert.doesNotMatch(html, /::stop/);
   assert.doesNotMatch(html, /::voice/);
-  assert.doesNotMatch(html, /sara/);
-  assert.match(html, /<p>Outro\.<\/p>/);
+  assert.match(html, /<p data-voice="sara">Outro\.<\/p>/);
 });
 
 test('never renders say text into the document', () => {
@@ -75,4 +74,61 @@ test('never renders say text into the document', () => {
   assert.doesNotMatch(html, /::say/);
   assert.doesNotMatch(html, /A table of yields follows/);
   assert.match(html, /<p>Outro\.<\/p>/);
+});
+
+function renderWithVoiceLabels(markdown: string) {
+  return renderToStaticMarkup(createElement(ReactMarkdown, {
+    children: markdown,
+    remarkPlugins: [[remarkMarkdownCommands, {
+      resolveVoiceLabel: (voice: string | null) => voice === null ? 'Mike' : `${voice[0].toUpperCase()}${voice.slice(1)}`
+    }]]
+  }));
+}
+
+test('marks the first spoken paragraph after a voice change', () => {
+  const html = renderWithVoiceLabels('Narrator line.\n\n::voice sara\n\nHer line.\n\nStill her line.');
+
+  assert.match(html, /<p data-voice="Sara">Her line\.<\/p>/);
+  assert.match(html, /<p>Still her line\.<\/p>/);
+  assert.match(html, /<p>Narrator line\.<\/p>/);
+});
+
+test('a bare voice command is labelled with the reader voice', () => {
+  const html = renderWithVoiceLabels('::voice sara\n\nHer line.\n\n::voice\n\nNarrator again.');
+
+  assert.match(html, /<p data-voice="Sara">Her line\.<\/p>/);
+  assert.match(html, /<p data-voice="Mike">Narrator again\.<\/p>/);
+});
+
+test('a skipped block does not absorb the voice badge', () => {
+  const html = renderWithVoiceLabels(
+    'Intro.\n\n::voice sara\n\n::skip\n\nA skipped table.\n\n::skip-end\n\nHer line.'
+  );
+
+  assert.match(html, /<p>A skipped table\.<\/p>/);
+  assert.match(html, /<p data-voice="Sara">Her line\.<\/p>/);
+});
+
+test('a say command does not absorb the voice badge', () => {
+  const html = renderWithVoiceLabels('::voice sara\n\n::say Spoken only.\n\nHer line.');
+
+  assert.match(html, /<p data-voice="Sara">Her line\.<\/p>/);
+});
+
+test('marks a heading when it is the first block after the change', () => {
+  const html = renderWithVoiceLabels('::voice sara\n\n## Her section\n\nHer line.');
+
+  assert.match(html, /<h2 data-voice="Sara">Her section<\/h2>/);
+});
+
+test('a voice change with nothing spoken after it marks nothing', () => {
+  const html = renderWithVoiceLabels('Narrator line.\n\n::voice sara');
+
+  assert.doesNotMatch(html, /data-voice/);
+});
+
+test('renders no badge when no label resolver is supplied for a bare voice', () => {
+  const html = renderMarkdown('::voice\n\nA line.');
+
+  assert.doesNotMatch(html, /data-voice/);
 });

@@ -5,9 +5,18 @@ import type { TextOutlineItem } from '@/lib/chapterTextOutline';
 import { createInteractiveMarkdownComponents } from '@/lib/interactiveMarkdown';
 import { remarkLegacyCenteredHtml } from '@/lib/legacyMarkdown';
 import { remarkListItemBreaks } from '@/lib/remarkListItemBreaks';
-import { remarkMarkdownCommands } from '@/lib/remarkMarkdownCommands';
+import {
+  remarkMarkdownCommands,
+  type RemarkMarkdownCommandsOptions
+} from '@/lib/remarkMarkdownCommands';
+import { resolveVoiceCommandId } from '@/lib/streamVoiceCommands';
 import { hashText } from '@/lib/textHash';
-import { appActions, useAppDispatch } from '@/state/appState';
+import {
+  appActions,
+  selectVoiceWorkflow,
+  useAppDispatch,
+  useAppSelector
+} from '@/state/appState';
 
 const CHAPTER_MARKDOWN_BLOCK_TAGS = ['p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const;
 
@@ -53,6 +62,18 @@ export default function ChapterTextMarkdownLayout({
   tocLoading
 }: ChapterTextMarkdownLayoutProps) {
   const dispatch = useAppDispatch();
+  const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
+
+  // A bare `::voice` returns to the voice the reader has selected, so the badge
+  // names that one rather than showing nothing.
+  const commandPlugin = useMemo<[typeof remarkMarkdownCommands, RemarkMarkdownCommandsOptions]>(() => {
+    const resolveVoiceLabel = (voice: string | null) => {
+      const voiceId = resolveVoiceCommandId(voice, streamVoiceOptions) ?? streamVoice;
+      const option = streamVoiceOptions.find((candidate) => candidate.id === voiceId);
+      return option?.label || voiceId || null;
+    };
+    return [remarkMarkdownCommands, { resolveVoiceLabel }];
+  }, [streamVoice, streamVoiceOptions]);
 
   useEffect(() => {
     if (playingParagraphMode !== 'chapter' || playingParagraphStart === null) {
@@ -139,7 +160,7 @@ export default function ChapterTextMarkdownLayout({
             remarkGfm,
             remarkLegacyCenteredHtml,
             remarkListItemBreaks,
-            remarkMarkdownCommands
+            commandPlugin
           ]}
           components={markdownComponents}
         >
