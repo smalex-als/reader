@@ -9,7 +9,7 @@ import {
   remarkMarkdownCommands,
   type RemarkMarkdownCommandsOptions
 } from '@/lib/remarkMarkdownCommands';
-import { resolveVoiceCommandId } from '@/lib/streamVoiceCommands';
+import { formatVoiceBadgeLabel, resolveVoiceCommandId } from '@/lib/streamVoiceCommands';
 import { hashText } from '@/lib/textHash';
 import {
   appActions,
@@ -70,7 +70,8 @@ export default function ChapterTextMarkdownLayout({
     const resolveVoiceLabel = (voice: string | null) => {
       const voiceId = resolveVoiceCommandId(voice, streamVoiceOptions) ?? streamVoice;
       const option = streamVoiceOptions.find((candidate) => candidate.id === voiceId);
-      return option?.label || voiceId || null;
+      const label = option?.label || voiceId;
+      return label ? formatVoiceBadgeLabel(label) : null;
     };
     return [remarkMarkdownCommands, { resolveVoiceLabel }];
   }, [streamVoice, streamVoiceOptions]);
