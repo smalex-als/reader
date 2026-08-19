@@ -335,3 +335,36 @@ test('keeps trailing brackets with sentence-ending chunks', () => {
   assert.equal(output[0], firstSentence);
   assert.equal(output[1], secondSentence);
 });
+
+test('speaks inline code that is made of plain words and numbers', () => {
+  const input = 'But an index on `score` and `LIMIT 10` should solve it, shouldn\'t it?';
+
+  const output = stripMarkdown(input);
+
+  assert.equal(output, 'But an index on score and LIMIT 10 should solve it, shouldn\'t it?');
+});
+
+test('reads underscores in inline code as word breaks', () => {
+  const output = stripMarkdown('Group the rows by `user_id` first.');
+
+  assert.equal(output, 'Group the rows by user id first.');
+});
+
+test('still drops inline code that a voice cannot read', () => {
+  const cases = [
+    ['Call `Array.prototype.map()` on it.', 'Call on it.'],
+    ['Use `SELECT * FROM t WHERE x=1` here.', 'Use here.'],
+    ['Include `<stdio.h>` at the top.', 'Include at the top.'],
+    ['Set `--max-old-space-size=4096` now.', 'Set now.']
+  ];
+
+  for (const [input, expected] of cases) {
+    assert.equal(stripMarkdown(input), expected, input);
+  }
+});
+
+test('drops inline code that is too long to be a phrase', () => {
+  const input = `Run \`${'word '.repeat(12).trim()}\` now.`;
+
+  assert.equal(stripMarkdown(input), 'Run now.');
+});

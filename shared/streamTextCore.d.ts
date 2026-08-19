@@ -1,4 +1,5 @@
 export function normalizeFencedCodeBlocksForSpeech(text: string): string;
+export function normalizeInlineCodeForSpeech(text: string): string;
 export function stripMarkdown(text: string): string;
 export function splitStreamChunks(
   text: string,

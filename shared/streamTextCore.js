@@ -288,6 +288,28 @@ export function normalizeFencedCodeBlocksForSpeech(text) {
   });
 }
 
+// Inline code is dropped by default because most of it is unspeakable — call
+// signatures, paths, operator soup. But plenty of it is ordinary words and
+// numbers (`LIMIT 10`, `score`, `npm run dev`), and dropping those leaves a
+// hole in the sentence: "an index on score and should solve it". Keep a span
+// when everything in it is a word, a number, or a separator a voice can read.
+const SPEAKABLE_INLINE_CODE_MAX_LENGTH = 40;
+const SPEAKABLE_INLINE_CODE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} _.,'-]*$/u;
+
+export function normalizeInlineCodeForSpeech(text) {
+  return text.replace(/`([^`\r\n]*)`/g, (match, content) => {
+    const trimmed = String(content || '').trim();
+    if (!trimmed || trimmed.length > SPEAKABLE_INLINE_CODE_MAX_LENGTH) {
+      return '';
+    }
+    if (!SPEAKABLE_INLINE_CODE_PATTERN.test(trimmed)) {
+      return '';
+    }
+    // `user_id` reads better as two words than as "user underscore id".
+    return trimmed.replace(/_+/g, ' ').replace(/\s{2,}/g, ' ');
+  });
+}
+
 export function stripMarkdown(text) {
   // Skip regions are consumed first: they need their own markers still present.
   let output = resolveMarkdownCommandLines(removeSkippedRegions(removeExcludedOcrBlocks(text)));
@@ -304,6 +326,7 @@ export function stripMarkdown(text) {
   output = normalizeSpokenTemperatureUnits(output);
   output = output.replace(NUMERIC_CITATION_PATTERN, (_, refs) => `reference ${refs.replace(/\s*,\s*/g, ', ')}`);
   output = output.replace(/```[\s\S]*?```/g, '');
+  output = normalizeInlineCodeForSpeech(output);
   output = output.replace(/`[^`]*`/g, '');
   output = output.replace(/<script[\s\S]*?<\/script>/gi, ' ');
   output = output.replace(/<style[\s\S]*?<\/style>/gi, ' ');
