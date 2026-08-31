@@ -4,6 +4,7 @@ import AudioLibraryView from '@/components/AudioLibraryView';
 import AudioView from '@/components/AudioView';
 import FloatingAudioPlayer from '@/components/FloatingAudioPlayer';
 import ChapterViewer from '@/components/ChapterViewer';
+import ReaderContextToolbar from '@/components/ReaderContextToolbar';
 import StreamBubble from '@/components/StreamBubble';
 import ScrollViewer from '@/components/ScrollViewer';
 import UnitsView from '@/components/UnitsView';
@@ -58,7 +59,8 @@ export default function ReaderMainContent({
     mainView === 'audio-library' ? 'MP3 Library' : mainView === 'units' ? 'Units' : footerMessage;
 
   return (
-    <main className="main">
+    <main className={`main ${mainView === 'reader' ? 'reader-main-reader' : ''}`}>
+      {mainView === 'reader' ? <ReaderContextToolbar /> : null}
       <div
         ref={viewerShellRef}
         style={viewerShellStyle}
