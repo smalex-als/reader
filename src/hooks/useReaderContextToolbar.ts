@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useShowBookmarks, useToggleBookmark } from '@/hooks/useBookmarks';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import type { ViewMode } from '@/lib/appConstants';
@@ -9,6 +9,7 @@ import {
   selectBookManifest,
   selectBookType,
   selectReaderSession,
+  selectTocWorkflow,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
@@ -26,6 +27,7 @@ export function useReaderContextToolbar() {
   const bookType = useAppSelector(selectBookType);
   const chapterCount = useAppSelector(selectBookChapterCount);
   const manifest = useAppSelector(selectBookManifest);
+  const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
   const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
   const streamStatus = useStreamRuntimeSelector((state) => state.status);
@@ -40,7 +42,48 @@ export function useReaderContextToolbar() {
     streamStatus === 'connecting' ||
     streamStatus === 'paused';
   const displayPage = navigationCount === 0 ? 0 : currentPage + 1;
-  const progress = navigationCount === 0 ? 0 : Math.min(100, (displayPage / navigationCount) * 100);
+  const chapterNavigation = useMemo(() => {
+    const sortedEntries = [...tocEntries]
+      .filter((entry) => Number.isInteger(entry.page))
+      .sort((left, right) => left.page - right.page);
+
+    if (sortedEntries.length === 0) {
+      const total = isTextBook ? chapterCount : 0;
+      const position = total > 0 ? Math.min(total, currentPage + 1) : 0;
+      return {
+        hasPrevious: position > 1,
+        hasNext: position > 0 && position < total,
+        previousLabel: position > 1 ? `Chapter ${position - 1}` : null,
+        nextLabel: position > 0 && position < total ? `Chapter ${position + 1}` : null,
+        position,
+        total
+      };
+    }
+
+    const nextEntryIndex = sortedEntries.findIndex((entry) => entry.page > currentPage);
+    const currentIndex = nextEntryIndex === -1
+      ? sortedEntries.length - 1
+      : Math.max(0, nextEntryIndex - 1);
+    const previousEntry = sortedEntries[currentIndex - 1] ?? null;
+    const nextEntry = sortedEntries[currentIndex + 1] ?? null;
+    const entryLabel = (entry: (typeof sortedEntries)[number] | null, index: number) =>
+      entry?.title?.trim() || (entry ? `Chapter ${index + 1}` : null);
+
+    return {
+      hasPrevious: Boolean(previousEntry),
+      hasNext: Boolean(nextEntry),
+      previousLabel: entryLabel(previousEntry, currentIndex - 1),
+      nextLabel: entryLabel(nextEntry, currentIndex + 1),
+      position: currentIndex + 1,
+      total: sortedEntries.length
+    };
+  }, [chapterCount, currentPage, isTextBook, tocEntries]);
+  const isChapterNavigation = viewMode === 'text';
+  const progressPosition = isChapterNavigation ? chapterNavigation.position : displayPage;
+  const progressCount = isChapterNavigation ? chapterNavigation.total : navigationCount;
+  const progress = progressCount === 0
+    ? 0
+    : Math.min(100, (progressPosition / progressCount) * 100);
 
   useEffect(() => {
     setPageDraft('');
@@ -112,12 +155,14 @@ export function useReaderContextToolbar() {
     activePanel,
     bookId,
     chapterLabel: chapterNumber ? chapterLabel : null,
+    chapterNavigation,
     closePanel,
     controlsDisabled,
     displayPage,
     handleShowBookmarks,
     handleToggleBookmark,
     isBookmarked,
+    isChapterNavigation,
     isTextBook,
     navigationCount,
     openAudioLibrary,

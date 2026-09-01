@@ -262,6 +262,7 @@ body {
 
 .reader-context-modes,
 .reader-context-pager,
+.reader-context-chapter-pager,
 .reader-context-actions {
   display: flex;
   align-items: center;
@@ -269,7 +270,8 @@ body {
 }
 
 .reader-context-modes,
-.reader-context-pager {
+.reader-context-pager,
+.reader-context-chapter-pager {
   padding-right: 0.5rem;
   border-right: 1px solid rgba(213, 229, 242, 0.1);
 }
@@ -321,6 +323,39 @@ body {
 .reader-context-icon-button {
   width: 36px;
   padding: 0;
+}
+
+.reader-context-chapter-pager {
+  min-width: 0;
+}
+
+.reader-context-chapter-button {
+  min-width: 9rem;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.reader-context-chapter-button-next {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.reader-context-chapter-button-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.05rem;
+  line-height: 1.15;
+}
+
+.reader-context-chapter-button-copy strong {
+  max-width: 10rem;
+  overflow: hidden;
+  color: rgba(238, 246, 255, 0.9);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .reader-context-page-form {
@@ -5513,7 +5548,8 @@ body {
     display: none;
   }
 
-  .reader-context-pager {
+  .reader-context-pager,
+  .reader-context-chapter-pager {
     justify-content: center;
     padding-right: 0;
     border-right: 0;
@@ -5676,6 +5712,17 @@ body {
 }
 
 @media (max-width: 420px) {
+  .reader-context-chapter-button {
+    min-width: 0;
+    flex: 1;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .reader-context-chapter-button-copy strong {
+    display: none;
+  }
+
   .reader-context-mode-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

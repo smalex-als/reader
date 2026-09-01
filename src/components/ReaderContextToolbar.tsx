@@ -12,7 +12,11 @@ const VIEW_MODES: Array<{ mode: ViewMode; label: string; icon: ReaderIconName }>
 export default function ReaderContextToolbar() {
   const toolbar = useReaderContextToolbar();
   const activeMode = VIEW_MODES.find((item) => item.mode === toolbar.viewMode) ?? VIEW_MODES[0];
-  const pageLabel = `${toolbar.displayPage} / ${toolbar.navigationCount}`;
+  const positionLabel = toolbar.isChapterNavigation
+    ? toolbar.chapterNavigation.total > 0
+      ? `Chapter ${toolbar.chapterNavigation.position} / ${toolbar.chapterNavigation.total}`
+      : 'No chapters'
+    : `${toolbar.displayPage} / ${toolbar.navigationCount}`;
 
   return (
     <section className="reader-context" aria-label="Reading controls">
@@ -23,7 +27,7 @@ export default function ReaderContextToolbar() {
             {toolbar.chapterLabel ?? (toolbar.bookId ? activeMode.label : 'No book selected')}
           </span>
         </div>
-        <span className="reader-context-progress-label">{pageLabel}</span>
+        <span className="reader-context-progress-label">{positionLabel}</span>
       </header>
 
       <div className="reader-context-toolbar" role="toolbar" aria-label="Reader toolbar">
@@ -46,45 +50,84 @@ export default function ReaderContextToolbar() {
           ))}
         </div>
 
-        <div className="reader-context-pager" aria-label="Page navigation">
-          <button
-            type="button"
-            className="reader-context-button reader-context-icon-button"
-            onClick={toolbar.requestPreviousPage}
-            disabled={toolbar.controlsDisabled || toolbar.displayPage <= 1}
-            aria-label="Previous page"
-          >
-            <ReaderIcon name="chevron-left" />
-          </button>
-          <form
-            className="reader-context-page-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              toolbar.submitPage();
-            }}
-          >
-            <input
-              type="number"
-              min={1}
-              max={Math.max(1, toolbar.navigationCount)}
-              value={toolbar.pageDraft}
-              placeholder={String(toolbar.displayPage)}
-              disabled={toolbar.controlsDisabled}
-              onChange={(event) => toolbar.setPageDraft(event.currentTarget.value)}
-              aria-label="Go to page"
-            />
-            <span>/ {toolbar.navigationCount}</span>
-          </form>
-          <button
-            type="button"
-            className="reader-context-button reader-context-icon-button"
-            onClick={toolbar.requestNextPage}
-            disabled={toolbar.controlsDisabled || toolbar.displayPage >= toolbar.navigationCount}
-            aria-label="Next page"
-          >
-            <ReaderIcon name="chevron-right" />
-          </button>
-        </div>
+        {toolbar.isChapterNavigation ? (
+          <div className="reader-context-chapter-pager" aria-label="Chapter navigation">
+            <button
+              type="button"
+              className="reader-context-button reader-context-chapter-button"
+              onClick={toolbar.requestPreviousPage}
+              disabled={toolbar.controlsDisabled || !toolbar.chapterNavigation.hasPrevious}
+              aria-label={toolbar.chapterNavigation.previousLabel
+                ? `Previous chapter: ${toolbar.chapterNavigation.previousLabel}`
+                : 'Previous chapter'}
+            >
+              <ReaderIcon name="chevron-left" />
+              <span className="reader-context-chapter-button-copy">
+                <span>Previous chapter</span>
+                {toolbar.chapterNavigation.previousLabel ? (
+                  <strong>{toolbar.chapterNavigation.previousLabel}</strong>
+                ) : null}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="reader-context-button reader-context-chapter-button reader-context-chapter-button-next"
+              onClick={toolbar.requestNextPage}
+              disabled={toolbar.controlsDisabled || !toolbar.chapterNavigation.hasNext}
+              aria-label={toolbar.chapterNavigation.nextLabel
+                ? `Next chapter: ${toolbar.chapterNavigation.nextLabel}`
+                : 'Next chapter'}
+            >
+              <span className="reader-context-chapter-button-copy">
+                <span>Next chapter</span>
+                {toolbar.chapterNavigation.nextLabel ? (
+                  <strong>{toolbar.chapterNavigation.nextLabel}</strong>
+                ) : null}
+              </span>
+              <ReaderIcon name="chevron-right" />
+            </button>
+          </div>
+        ) : (
+          <div className="reader-context-pager" aria-label="Page navigation">
+            <button
+              type="button"
+              className="reader-context-button reader-context-icon-button"
+              onClick={toolbar.requestPreviousPage}
+              disabled={toolbar.controlsDisabled || toolbar.displayPage <= 1}
+              aria-label="Previous page"
+            >
+              <ReaderIcon name="chevron-left" />
+            </button>
+            <form
+              className="reader-context-page-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                toolbar.submitPage();
+              }}
+            >
+              <input
+                type="number"
+                min={1}
+                max={Math.max(1, toolbar.navigationCount)}
+                value={toolbar.pageDraft}
+                placeholder={String(toolbar.displayPage)}
+                disabled={toolbar.controlsDisabled}
+                onChange={(event) => toolbar.setPageDraft(event.currentTarget.value)}
+                aria-label="Go to page"
+              />
+              <span>/ {toolbar.navigationCount}</span>
+            </form>
+            <button
+              type="button"
+              className="reader-context-button reader-context-icon-button"
+              onClick={toolbar.requestNextPage}
+              disabled={toolbar.controlsDisabled || toolbar.displayPage >= toolbar.navigationCount}
+              aria-label="Next page"
+            >
+              <ReaderIcon name="chevron-right" />
+            </button>
+          </div>
+        )}
 
         <div className="reader-context-actions">
           <button type="button" className="reader-context-button" onClick={toolbar.openSearch} disabled={!toolbar.bookId}>
