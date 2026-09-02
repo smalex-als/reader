@@ -42,6 +42,7 @@ type ModalShellLabel =
   | { ariaLabel?: never; ariaLabelledBy: string };
 
 type ModalShellProps = ModalShellLabel & {
+  backdropClassName?: string;
   children: ReactNode;
   className?: string;
   closeOnBackdrop?: boolean;
@@ -53,6 +54,7 @@ type ModalShellProps = ModalShellLabel & {
 export default function ModalShell({
   ariaLabel,
   ariaLabelledBy,
+  backdropClassName,
   children,
   className,
   closeOnBackdrop = true,
@@ -146,7 +148,7 @@ export default function ModalShell({
 
   return (
     <div
-      className="modal-backdrop"
+      className={['modal-backdrop', backdropClassName].filter(Boolean).join(' ')}
       onMouseDown={(event) => {
         backdropMouseDownRef.current = event.target === event.currentTarget;
       }}

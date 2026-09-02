@@ -2,14 +2,12 @@ import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import Toast from '@/components/Toast';
 import TextModal from '@/components/TextModal';
-import BookmarksModal from '@/components/BookmarksModal';
 import PrintModal from '@/components/PrintModal';
 import HelpModal from '@/components/HelpModal';
 import BookSelectModal from '@/components/BookSelectModal';
 import OcrQueueModal from '@/components/OcrQueueModal';
 import TocModal from '@/components/TocModal';
-import TocNavModal from '@/components/TocNavModal';
-import SearchModal from '@/components/SearchModal';
+import ReaderNavigator from '@/components/ReaderNavigator';
 import BookCardModal from '@/components/BookCardModal';
 import SettingsModal from '@/components/SettingsModal';
 import QuizModal from '@/components/QuizModal';
@@ -42,11 +40,9 @@ export default function AppModals({
       <PrintModal />
       <BookSelectModal />
       {renderInPortal(<HelpModal />, portalTarget)}
-      <BookmarksModal />
+      {renderInPortal(<ReaderNavigator />, portalTarget)}
       {renderInPortal(<TextModal />, portalTarget)}
-      {renderInPortal(<TocNavModal />, portalTarget)}
       {renderInPortal(<TocModal />, portalTarget)}
-      {renderInPortal(<SearchModal />, portalTarget)}
       {renderInPortal(<BookCardModal />, portalTarget)}
       {renderInPortal(<SettingsModal />, portalTarget)}
       {renderInPortal(<QuizModal />, portalTarget)}
