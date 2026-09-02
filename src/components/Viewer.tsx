@@ -301,11 +301,6 @@ export default function Viewer() {
                 : { label: bookId ? 'Change book' : 'Select book', onClick: () => dispatch(appActions.openModal('bookSelect')) }}
             />
         )}
-        {metrics.naturalWidth > 0 && (
-            <div className="viewer-overlay">
-              {Math.round(metrics.naturalWidth)} × {Math.round(metrics.naturalHeight)}
-            </div>
-        )}
       </div>
   );
 }

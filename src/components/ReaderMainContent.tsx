@@ -16,7 +16,6 @@ import {
   getTextFontFamilyCssValue
 } from '@/lib/appConstants';
 import {
-  selectBookManifest,
   selectBookSessionLoading,
   selectEditorState,
   selectNavigationState,
@@ -34,9 +33,8 @@ export default function ReaderMainContent({
 }: ReaderMainContentProps) {
   const { viewerShellRef, modalHostRef } = shellControls;
   const { mainView } = useAppSelector(selectNavigationState);
-  const { currentPage, viewMode } = useAppSelector(selectReaderSession);
+  const { viewMode } = useAppSelector(selectReaderSession);
   const loading = useAppSelector(selectBookSessionLoading);
-  const manifest = useAppSelector(selectBookManifest);
   const { open: editorOpen } = useAppSelector(selectEditorState);
   const {
     settings: { textBrightness, textFontFamily, textTheme }
@@ -45,16 +43,6 @@ export default function ReaderMainContent({
     '--text-viewer-font-family': getTextFontFamilyCssValue(textFontFamily),
     '--text-viewer-reading-brightness': `${getTextBrightnessPercentage(textBrightness)}%`
   } as CSSProperties;
-  const currentImage = manifest[currentPage] ?? null;
-  const footerMessage =
-    viewMode === 'audio' || viewMode === 'text'
-      ? ''
-      : currentImage
-      ? currentImage
-      : '';
-  const displayFooterMessage =
-    mainView === 'audio-library' ? 'MP3 Library' : mainView === 'units' ? 'Units' : footerMessage;
-
   return (
     <main className={`main ${mainView === 'reader' ? 'reader-main-reader' : ''}`}>
       {mainView === 'reader' ? <ReaderContextToolbar /> : null}
@@ -96,9 +84,6 @@ export default function ReaderMainContent({
         <StreamBubble />
         <FloatingAudioPlayer />
         <div ref={modalHostRef} className="modal-portal" />
-      </div>
-      <div className="page-footer">
-        <span className="page-path">{displayFooterMessage}</span>
       </div>
     </main>
   );

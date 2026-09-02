@@ -360,6 +360,38 @@ export default function ReaderContextToolbar() {
           aria-label="More reading tools"
           tabIndex={-1}
         >
+          {toolbar.pageInfoAvailable ? (
+            <div className="reader-context-page-info">
+              <div className="reader-context-page-info-copy">
+                <span className="reader-context-page-info-title">
+                  <ReaderIcon name="pages" />
+                  Page info
+                </span>
+                <strong title={toolbar.pageSource ?? undefined}>{toolbar.pageFilename}</strong>
+                <span>
+                  Page {toolbar.displayPage} of {toolbar.navigationCount}
+                  {' · '}
+                  {toolbar.pageDimensions ?? 'Dimensions unavailable in this view'}
+                </span>
+              </div>
+              <div className="reader-context-page-info-actions">
+                <button
+                  type="button"
+                  className="reader-context-panel-button"
+                  onClick={() => void toolbar.copyPageFilename()}
+                >
+                  Copy filename
+                </button>
+                <button
+                  type="button"
+                  className="reader-context-panel-button"
+                  onClick={() => void toolbar.copyPageLink()}
+                >
+                  Copy link
+                </button>
+              </div>
+            </div>
+          ) : null}
           <button
             type="button"
             className="reader-context-panel-button"

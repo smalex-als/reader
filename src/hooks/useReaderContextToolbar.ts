@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useShowBookmarks, useToggleBookmark } from '@/hooks/useBookmarks';
 import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
+import { useToast } from '@/hooks/useToast';
 import type { ViewMode } from '@/lib/appConstants';
+import { copyToClipboard } from '@/lib/clipboard';
 import {
   appActions,
   selectBookmarkWorkflow,
@@ -10,6 +12,7 @@ import {
   selectBookType,
   selectReaderSession,
   selectTocWorkflow,
+  selectViewerWorkflow,
   selectVoiceWorkflow,
   useAppDispatch,
   useAppSelector
@@ -18,10 +21,21 @@ import { useStreamRuntimeSelector } from '@/state/streamRuntimeStore';
 
 export type ReaderContextPanel = 'listen' | 'mode' | 'more' | null;
 
+function getPageFilename(imagePath: string) {
+  const pathParts = imagePath.split('/').filter(Boolean);
+  const filename = pathParts[pathParts.length - 1] ?? imagePath;
+  try {
+    return decodeURIComponent(filename);
+  } catch {
+    return filename;
+  }
+}
+
 export function useReaderContextToolbar() {
   const dispatch = useAppDispatch();
   const showBookmarks = useShowBookmarks();
   const toggleBookmark = useToggleBookmark();
+  const { showToast } = useToast();
   const { chapterLabel, chapterNumber } = useCurrentChapterContext();
   const { bookId, currentPage, viewMode } = useAppSelector(selectReaderSession);
   const bookType = useAppSelector(selectBookType);
@@ -30,6 +44,7 @@ export function useReaderContextToolbar() {
   const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
   const { items: bookmarks } = useAppSelector(selectBookmarkWorkflow);
   const { streamVoice, streamVoiceOptions } = useAppSelector(selectVoiceWorkflow);
+  const { metrics } = useAppSelector(selectViewerWorkflow);
   const streamStatus = useStreamRuntimeSelector((state) => state.status);
   const [activePanel, setActivePanel] = useState<ReaderContextPanel>(null);
   const [pageDraft, setPageDraft] = useState('');
@@ -37,6 +52,14 @@ export function useReaderContextToolbar() {
   const navigationCount = isTextBook ? chapterCount : manifest.length;
   const controlsDisabled = navigationCount === 0 || !bookId;
   const isBookmarked = bookmarks.some((entry) => entry.page === currentPage);
+  const currentImage = manifest[currentPage] ?? null;
+  const pageFilename = currentImage ? getPageFilename(currentImage) : null;
+  const pageDimensions =
+    viewMode === 'pages' && metrics && metrics.naturalWidth > 0 && metrics.naturalHeight > 0
+      ? `${Math.round(metrics.naturalWidth)} × ${Math.round(metrics.naturalHeight)}`
+      : null;
+  const pageInfoAvailable =
+    Boolean(currentImage) && (viewMode === 'pages' || viewMode === 'scroll');
   const streamActive =
     streamStatus === 'streaming' ||
     streamStatus === 'connecting' ||
@@ -150,6 +173,25 @@ export function useReaderContextToolbar() {
   const toggleStream = () => {
     dispatch(streamActive ? appActions.requestStopStream() : appActions.requestPlayVisibleStream());
   };
+  const copyPageFilename = async () => {
+    if (!pageFilename) {
+      return;
+    }
+    const copied = await copyToClipboard(pageFilename);
+    showToast(copied ? 'Filename copied' : 'Unable to copy filename', copied ? 'success' : 'error');
+  };
+  const copyPageLink = async () => {
+    if (!bookId || !pageInfoAvailable) {
+      return;
+    }
+    const pageUrl = new URL(window.location.href);
+    pageUrl.searchParams.set('book', bookId);
+    pageUrl.searchParams.set('page', String(currentPage + 1));
+    pageUrl.searchParams.set('view', viewMode);
+    pageUrl.searchParams.delete('src');
+    const copied = await copyToClipboard(pageUrl.toString());
+    showToast(copied ? 'Page link copied' : 'Unable to copy page link', copied ? 'success' : 'error');
+  };
 
   return {
     activePanel,
@@ -158,6 +200,8 @@ export function useReaderContextToolbar() {
     chapterNavigation,
     closePanel,
     controlsDisabled,
+    copyPageFilename,
+    copyPageLink,
     displayPage,
     handleShowBookmarks,
     handleToggleBookmark,
@@ -173,6 +217,10 @@ export function useReaderContextToolbar() {
     openToc,
     openUnits,
     pageDraft,
+    pageDimensions,
+    pageFilename,
+    pageInfoAvailable,
+    pageSource: currentImage,
     progress,
     requestNextPage: () => dispatch(appActions.requestNextPageNavigation()),
     requestPreviousPage: () => dispatch(appActions.requestPreviousPageNavigation()),
