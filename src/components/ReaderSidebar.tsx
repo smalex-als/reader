@@ -58,6 +58,7 @@ export default function ReaderSidebar() {
             className={`reader-sidebar-action ${readerOpen ? 'reader-sidebar-action-active' : ''}`}
             onClick={openReader}
             aria-label="Reader"
+            aria-current={readerOpen ? 'page' : undefined}
             title="Reader"
             data-tooltip="Reader"
           >
@@ -68,6 +69,7 @@ export default function ReaderSidebar() {
             className={`reader-sidebar-action ${audioLibraryOpen ? 'reader-sidebar-action-active' : ''}`}
             onClick={openAudioLibrary}
             aria-label="MP3 Library"
+            aria-current={audioLibraryOpen ? 'page' : undefined}
             title="MP3 Library"
             data-tooltip="MP3 Library"
           >
@@ -78,6 +80,7 @@ export default function ReaderSidebar() {
             className={`reader-sidebar-action ${unitsLibraryOpen ? 'reader-sidebar-action-active' : ''}`}
             onClick={openUnits}
             aria-label="Units"
+            aria-current={unitsLibraryOpen ? 'page' : undefined}
             title="Units"
             data-tooltip="Units"
           >

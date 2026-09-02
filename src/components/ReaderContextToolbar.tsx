@@ -43,6 +43,8 @@ export default function ReaderContextToolbar() {
                 (toolbar.isTextBook && (item.mode === 'pages' || item.mode === 'scroll'))
               }
               aria-pressed={toolbar.viewMode === item.mode}
+              aria-label={`${item.label} reading mode`}
+              title={`${item.label} reading mode`}
             >
               <ReaderIcon name={item.icon} />
               <span>{item.label}</span>
@@ -130,11 +132,25 @@ export default function ReaderContextToolbar() {
         )}
 
         <div className="reader-context-actions">
-          <button type="button" className="reader-context-button" onClick={toolbar.openSearch} disabled={!toolbar.bookId}>
+          <button
+            type="button"
+            className="reader-context-button"
+            onClick={toolbar.openSearch}
+            disabled={!toolbar.bookId}
+            aria-label="Search this book"
+            title="Search this book"
+          >
             <ReaderIcon name="search" />
             <span>Search</span>
           </button>
-          <button type="button" className="reader-context-button" onClick={toolbar.openToc} disabled={toolbar.controlsDisabled}>
+          <button
+            type="button"
+            className="reader-context-button reader-context-keep-label"
+            onClick={toolbar.openToc}
+            disabled={toolbar.controlsDisabled}
+            aria-label="Table of contents"
+            title="Table of contents"
+          >
             <ReaderIcon name="toc" />
             <span>TOC</span>
           </button>
@@ -144,18 +160,22 @@ export default function ReaderContextToolbar() {
             onClick={toolbar.handleToggleBookmark}
             disabled={toolbar.controlsDisabled}
             aria-pressed={toolbar.isBookmarked}
+            aria-label={toolbar.isBookmarked ? 'Remove bookmark' : 'Save bookmark'}
+            title={toolbar.isBookmarked ? 'Remove bookmark' : 'Save bookmark'}
           >
-            <ReaderIcon name="bookmark" />
+            <ReaderIcon name={toolbar.isBookmarked ? 'bookmark-saved' : 'bookmark'} />
             <span>{toolbar.isBookmarked ? 'Saved' : 'Save'}</span>
           </button>
           <button
             type="button"
-            className="reader-context-button"
+            className="reader-context-button reader-context-keep-label reader-context-listen-trigger"
             onClick={() => toolbar.setPanel('listen')}
             disabled={toolbar.controlsDisabled}
             aria-expanded={toolbar.activePanel === 'listen'}
+            aria-label="Listen to visible content"
+            title="Listen to visible content"
           >
-            <ReaderIcon name="audio" />
+            <ReaderIcon name="listen" />
             <span>Listen</span>
           </button>
           <button
@@ -164,6 +184,7 @@ export default function ReaderContextToolbar() {
             onClick={() => toolbar.setPanel('more')}
             aria-label="More reading tools"
             aria-expanded={toolbar.activePanel === 'more'}
+            title="More reading tools"
           >
             <ReaderIcon name="more" />
           </button>
@@ -189,6 +210,7 @@ export default function ReaderContextToolbar() {
                 (toolbar.isTextBook && (item.mode === 'pages' || item.mode === 'scroll'))
               }
               aria-pressed={toolbar.viewMode === item.mode}
+              aria-label={`${item.label} reading mode`}
             >
               <ReaderIcon name={item.icon} />
               {item.label}
@@ -200,7 +222,7 @@ export default function ReaderContextToolbar() {
       {toolbar.activePanel === 'listen' ? (
         <div className="reader-context-panel reader-context-listen-panel">
           <span className="reader-context-panel-title">
-            <ReaderIcon name="audio" />
+            <ReaderIcon name="listen" />
             Read visible content
           </span>
           <label className="reader-context-voice">
@@ -273,7 +295,7 @@ export default function ReaderContextToolbar() {
           <span>TOC</span>
         </button>
         <button type="button" onClick={() => toolbar.setPanel('listen')} disabled={toolbar.controlsDisabled} aria-expanded={toolbar.activePanel === 'listen'}>
-          <ReaderIcon name="audio" />
+          <ReaderIcon name="listen" />
           <span>Listen</span>
         </button>
         <button type="button" onClick={() => toolbar.setPanel('more')} aria-expanded={toolbar.activePanel === 'more'}>

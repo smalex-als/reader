@@ -125,7 +125,8 @@ body {
   text-align: left;
 }
 
-.reader-sidebar-action-active {
+.reader-sidebar-action-active,
+.reader-sidebar-action[aria-current='page'] {
   border-color: rgba(0, 200, 120, 0.58);
   background: rgba(0, 145, 96, 0.22);
   color: #f0fff8;
@@ -313,7 +314,9 @@ body {
 }
 
 .reader-context-button[aria-pressed='true'],
+.reader-context-button[aria-expanded='true'],
 .reader-context-panel-button[aria-pressed='true'],
+.reader-context-panel-button[aria-expanded='true'],
 .reader-context-mobile-nav button[aria-expanded='true'] {
   border-color: rgba(0, 200, 120, 0.5);
   background: rgba(0, 145, 96, 0.2);
@@ -5574,7 +5577,7 @@ body {
 
 @media (max-width: 1180px) {
   .reader-context-modes .reader-context-button span,
-  .reader-context-actions .reader-context-button span {
+  .reader-context-actions .reader-context-button:not(.reader-context-keep-label) span {
     display: none;
   }
 

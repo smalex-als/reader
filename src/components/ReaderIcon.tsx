@@ -1,12 +1,14 @@
 export type ReaderIconName =
   | 'audio'
   | 'bookmark'
+  | 'bookmark-saved'
   | 'bookmarks'
   | 'book'
   | 'chevron-left'
   | 'chevron-right'
   | 'dashboard'
   | 'headphones'
+  | 'listen'
   | 'more'
   | 'pages'
   | 'play'
@@ -22,12 +24,14 @@ export type ReaderIconName =
 const ICON_PATHS: Record<ReaderIconName, string[]> = {
   audio: ['M5 15h4l5 4V5L9 9H5v6Z', 'M17 9a4 4 0 0 1 0 6'],
   bookmark: ['M7 4h10v16l-5-3-5 3V4Z', 'M12 8v6M9 11h6'],
+  'bookmark-saved': ['M7 4h10v16l-5-3-5 3V4Z', 'M9 10.5l2 2 4-4'],
   bookmarks: ['M6 5h10v15l-5-3-5 3V5Z', 'M9 3h10v15'],
   book: ['M5 4h10a4 4 0 0 1 4 4v12H8a3 3 0 0 0-3 3V4Z', 'M5 4v19'],
   'chevron-left': ['M15 6 9 12l6 6'],
   'chevron-right': ['M9 6l6 6-6 6'],
   dashboard: ['M5 19V9M12 19V5M19 19v-7'],
   headphones: ['M4 13v5a2 2 0 0 0 2 2h2v-7H4Z', 'M16 13v7h2a2 2 0 0 0 2-2v-5h-4Z', 'M4 13a8 8 0 0 1 16 0'],
+  listen: ['M4 12h2M8 8v8M12 5v14M16 8v8M20 11v2'],
   more: ['M5 12h.01M12 12h.01M19 12h.01'],
   pages: ['M7 4h10v16H7z', 'M10 8h4M10 12h4M10 16h3'],
   play: ['M8 5v14l11-7-11-7Z'],
