@@ -1,22 +1,87 @@
+import { useEffect, useRef, type MouseEvent } from 'react';
 import ReaderIcon, { type ReaderIconName } from '@/components/ReaderIcon';
-import { useReaderContextToolbar } from '@/hooks/useReaderContextToolbar';
+import {
+  useReaderContextToolbar,
+  type ReaderContextPanel
+} from '@/hooks/useReaderContextToolbar';
 import type { ViewMode } from '@/lib/appConstants';
 
-const VIEW_MODES: Array<{ mode: ViewMode; label: string; icon: ReaderIconName }> = [
-  { mode: 'pages', label: 'Pages', icon: 'pages' },
-  { mode: 'scroll', label: 'Scroll', icon: 'scroll' },
-  { mode: 'text', label: 'Text', icon: 'text' },
+const VIEW_MODES: Array<{
+  mode: ViewMode;
+  label: string;
+  icon: ReaderIconName;
+  shortcut?: string;
+}> = [
+  { mode: 'pages', label: 'Pages', icon: 'pages', shortcut: '1' },
+  { mode: 'scroll', label: 'Scroll', icon: 'scroll', shortcut: '2' },
+  { mode: 'text', label: 'Text', icon: 'text', shortcut: '3' },
   { mode: 'audio', label: 'Audio', icon: 'audio' }
 ];
 
+const PANEL_FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  'select:not([disabled])',
+  'input:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])'
+].join(',');
+
 export default function ReaderContextToolbar() {
   const toolbar = useReaderContextToolbar();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const panelTriggerRef = useRef<HTMLButtonElement | null>(null);
   const activeMode = VIEW_MODES.find((item) => item.mode === toolbar.viewMode) ?? VIEW_MODES[0];
   const positionLabel = toolbar.isChapterNavigation
     ? toolbar.chapterNavigation.total > 0
       ? `Chapter ${toolbar.chapterNavigation.position} / ${toolbar.chapterNavigation.total}`
       : 'No chapters'
     : `${toolbar.displayPage} / ${toolbar.navigationCount}`;
+
+  const restorePanelTrigger = () => {
+    panelTriggerRef.current?.focus({ preventScroll: true });
+  };
+
+  const closePanelAndRestoreFocus = () => {
+    const trigger = panelTriggerRef.current;
+    toolbar.closePanel();
+    window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
+  };
+
+  useEffect(() => {
+    if (!toolbar.activePanel) {
+      return;
+    }
+    const focusFrame = window.requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      const focusTarget = panel?.querySelector<HTMLElement>(PANEL_FOCUSABLE_SELECTOR) ?? panel;
+      focusTarget?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [toolbar.activePanel]);
+
+  useEffect(() => {
+    if (!toolbar.activePanel) {
+      return;
+    }
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+      event.preventDefault();
+      closePanelAndRestoreFocus();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [toolbar.activePanel]);
+
+  const togglePanel = (
+    panel: Exclude<ReaderContextPanel, null>,
+    event: MouseEvent<HTMLButtonElement>
+  ) => {
+    if (toolbar.activePanel !== panel) {
+      panelTriggerRef.current = event.currentTarget;
+    }
+    toolbar.setPanel(panel);
+  };
 
   return (
     <section className="reader-context" aria-label="Reading controls">
@@ -44,7 +109,8 @@ export default function ReaderContextToolbar() {
               }
               aria-pressed={toolbar.viewMode === item.mode}
               aria-label={`${item.label} reading mode`}
-              title={`${item.label} reading mode`}
+              aria-keyshortcuts={item.shortcut}
+              title={`${item.label} reading mode${item.shortcut ? ` (${item.shortcut})` : ''}`}
             >
               <ReaderIcon name={item.icon} />
               <span>{item.label}</span>
@@ -62,6 +128,8 @@ export default function ReaderContextToolbar() {
               aria-label={toolbar.chapterNavigation.previousLabel
                 ? `Previous chapter: ${toolbar.chapterNavigation.previousLabel}`
                 : 'Previous chapter'}
+              aria-keyshortcuts="K PageUp"
+              title="Previous chapter (K / PageUp)"
             >
               <ReaderIcon name="chevron-left" />
               <span className="reader-context-chapter-button-copy">
@@ -79,6 +147,8 @@ export default function ReaderContextToolbar() {
               aria-label={toolbar.chapterNavigation.nextLabel
                 ? `Next chapter: ${toolbar.chapterNavigation.nextLabel}`
                 : 'Next chapter'}
+              aria-keyshortcuts="J PageDown"
+              title="Next chapter (J / PageDown)"
             >
               <span className="reader-context-chapter-button-copy">
                 <span>Next chapter</span>
@@ -97,6 +167,8 @@ export default function ReaderContextToolbar() {
               onClick={toolbar.requestPreviousPage}
               disabled={toolbar.controlsDisabled || toolbar.displayPage <= 1}
               aria-label="Previous page"
+              aria-keyshortcuts="K PageUp"
+              title="Previous page (K / PageUp)"
             >
               <ReaderIcon name="chevron-left" />
             </button>
@@ -116,6 +188,8 @@ export default function ReaderContextToolbar() {
                 disabled={toolbar.controlsDisabled}
                 onChange={(event) => toolbar.setPageDraft(event.currentTarget.value)}
                 aria-label="Go to page"
+                aria-keyshortcuts="G"
+                title="Go to page (G)"
               />
               <span>/ {toolbar.navigationCount}</span>
             </form>
@@ -125,6 +199,8 @@ export default function ReaderContextToolbar() {
               onClick={toolbar.requestNextPage}
               disabled={toolbar.controlsDisabled || toolbar.displayPage >= toolbar.navigationCount}
               aria-label="Next page"
+              aria-keyshortcuts="J PageDown"
+              title="Next page (J / PageDown)"
             >
               <ReaderIcon name="chevron-right" />
             </button>
@@ -138,7 +214,8 @@ export default function ReaderContextToolbar() {
             onClick={toolbar.openSearch}
             disabled={!toolbar.bookId}
             aria-label="Search this book"
-            title="Search this book"
+            aria-keyshortcuts="/"
+            title="Search this book (/)"
           >
             <ReaderIcon name="search" />
             <span>Search</span>
@@ -149,7 +226,8 @@ export default function ReaderContextToolbar() {
             onClick={toolbar.openToc}
             disabled={toolbar.controlsDisabled}
             aria-label="Table of contents"
-            title="Table of contents"
+            aria-keyshortcuts="C"
+            title="Table of contents (C)"
           >
             <ReaderIcon name="toc" />
             <span>TOC</span>
@@ -169,11 +247,13 @@ export default function ReaderContextToolbar() {
           <button
             type="button"
             className="reader-context-button reader-context-keep-label reader-context-listen-trigger"
-            onClick={() => toolbar.setPanel('listen')}
+            onClick={(event) => togglePanel('listen', event)}
             disabled={toolbar.controlsDisabled}
             aria-expanded={toolbar.activePanel === 'listen'}
+            aria-controls="reader-listen-panel"
             aria-label="Listen to visible content"
-            title="Listen to visible content"
+            aria-keyshortcuts="S"
+            title="Listen controls (S to play or stop)"
           >
             <ReaderIcon name="listen" />
             <span>Listen</span>
@@ -181,9 +261,10 @@ export default function ReaderContextToolbar() {
           <button
             type="button"
             className="reader-context-button reader-context-icon-button"
-            onClick={() => toolbar.setPanel('more')}
+            onClick={(event) => togglePanel('more', event)}
             aria-label="More reading tools"
             aria-expanded={toolbar.activePanel === 'more'}
+            aria-controls="reader-more-panel"
             title="More reading tools"
           >
             <ReaderIcon name="more" />
@@ -198,19 +279,30 @@ export default function ReaderContextToolbar() {
       </div>
 
       {toolbar.activePanel === 'mode' ? (
-        <div className="reader-context-panel reader-context-mode-panel">
+        <div
+          ref={panelRef}
+          id="reader-mode-panel"
+          className="reader-context-panel reader-context-mode-panel"
+          role="group"
+          aria-label="Reading mode"
+          tabIndex={-1}
+        >
           {VIEW_MODES.map((item) => (
             <button
               key={item.mode}
               type="button"
               className="reader-context-panel-button"
-              onClick={() => toolbar.setViewMode(item.mode)}
+              onClick={() => {
+                restorePanelTrigger();
+                toolbar.setViewMode(item.mode);
+              }}
               disabled={
                 toolbar.controlsDisabled ||
                 (toolbar.isTextBook && (item.mode === 'pages' || item.mode === 'scroll'))
               }
               aria-pressed={toolbar.viewMode === item.mode}
               aria-label={`${item.label} reading mode`}
+              aria-keyshortcuts={item.shortcut}
             >
               <ReaderIcon name={item.icon} />
               {item.label}
@@ -220,7 +312,14 @@ export default function ReaderContextToolbar() {
       ) : null}
 
       {toolbar.activePanel === 'listen' ? (
-        <div className="reader-context-panel reader-context-listen-panel">
+        <div
+          ref={panelRef}
+          id="reader-listen-panel"
+          className="reader-context-panel reader-context-listen-panel"
+          role="group"
+          aria-label="Listen controls"
+          tabIndex={-1}
+        >
           <span className="reader-context-panel-title">
             <ReaderIcon name="listen" />
             Read visible content
@@ -244,6 +343,7 @@ export default function ReaderContextToolbar() {
             className="reader-context-panel-button reader-context-primary-button"
             onClick={toolbar.toggleStream}
             disabled={toolbar.controlsDisabled}
+            aria-keyshortcuts="S"
           >
             <ReaderIcon name={toolbar.streamActive ? 'stop' : 'play'} />
             {toolbar.streamActive ? 'Stop' : 'Play'}
@@ -252,17 +352,46 @@ export default function ReaderContextToolbar() {
       ) : null}
 
       {toolbar.activePanel === 'more' ? (
-        <div className="reader-context-panel reader-context-more-panel">
-          <button type="button" className="reader-context-panel-button" onClick={toolbar.handleShowBookmarks} disabled={!toolbar.bookId}>
+        <div
+          ref={panelRef}
+          id="reader-more-panel"
+          className="reader-context-panel reader-context-more-panel"
+          role="group"
+          aria-label="More reading tools"
+          tabIndex={-1}
+        >
+          <button
+            type="button"
+            className="reader-context-panel-button"
+            onClick={() => {
+              restorePanelTrigger();
+              toolbar.handleShowBookmarks();
+            }}
+            disabled={!toolbar.bookId}
+          >
             <ReaderIcon name="bookmarks" />
             Bookmarks
           </button>
-          <button type="button" className="reader-context-panel-button" onClick={toolbar.openListeningDashboard}>
+          <button
+            type="button"
+            className="reader-context-panel-button"
+            onClick={() => {
+              restorePanelTrigger();
+              toolbar.openListeningDashboard();
+            }}
+          >
             <ReaderIcon name="dashboard" />
             Dashboard
           </button>
           <span className="reader-context-mobile-divider" />
-          <button type="button" className="reader-context-panel-button reader-context-mobile-global" onClick={toolbar.openBookSelect}>
+          <button
+            type="button"
+            className="reader-context-panel-button reader-context-mobile-global"
+            onClick={() => {
+              restorePanelTrigger();
+              toolbar.openBookSelect();
+            }}
+          >
             <ReaderIcon name="book" />
             {toolbar.bookId ? 'Change book' : 'Select book'}
           </button>
@@ -274,7 +403,14 @@ export default function ReaderContextToolbar() {
             <ReaderIcon name="units" />
             Units
           </button>
-          <button type="button" className="reader-context-panel-button reader-context-mobile-global" onClick={toolbar.openSettings}>
+          <button
+            type="button"
+            className="reader-context-panel-button reader-context-mobile-global"
+            onClick={() => {
+              restorePanelTrigger();
+              toolbar.openSettings();
+            }}
+          >
             <ReaderIcon name="settings" />
             Settings
           </button>
@@ -282,23 +418,53 @@ export default function ReaderContextToolbar() {
       ) : null}
 
       <nav className="reader-context-mobile-nav" aria-label="Mobile reading controls">
-        <button type="button" onClick={() => toolbar.setPanel('mode')} aria-expanded={toolbar.activePanel === 'mode'}>
+        <button
+          type="button"
+          onClick={(event) => togglePanel('mode', event)}
+          aria-expanded={toolbar.activePanel === 'mode'}
+          aria-controls="reader-mode-panel"
+        >
           <ReaderIcon name={activeMode.icon} />
           <span>{activeMode.label}</span>
         </button>
-        <button type="button" onClick={toolbar.openSearch} disabled={!toolbar.bookId}>
+        <button
+          type="button"
+          onClick={toolbar.openSearch}
+          disabled={!toolbar.bookId}
+          aria-keyshortcuts="/"
+          title="Search this book (/)"
+        >
           <ReaderIcon name="search" />
           <span>Search</span>
         </button>
-        <button type="button" onClick={toolbar.openToc} disabled={toolbar.controlsDisabled}>
+        <button
+          type="button"
+          onClick={toolbar.openToc}
+          disabled={toolbar.controlsDisabled}
+          aria-keyshortcuts="C"
+          title="Table of contents (C)"
+        >
           <ReaderIcon name="toc" />
           <span>TOC</span>
         </button>
-        <button type="button" onClick={() => toolbar.setPanel('listen')} disabled={toolbar.controlsDisabled} aria-expanded={toolbar.activePanel === 'listen'}>
+        <button
+          type="button"
+          onClick={(event) => togglePanel('listen', event)}
+          disabled={toolbar.controlsDisabled}
+          aria-expanded={toolbar.activePanel === 'listen'}
+          aria-controls="reader-listen-panel"
+          aria-keyshortcuts="S"
+          title="Listen controls (S to play or stop)"
+        >
           <ReaderIcon name="listen" />
           <span>Listen</span>
         </button>
-        <button type="button" onClick={() => toolbar.setPanel('more')} aria-expanded={toolbar.activePanel === 'more'}>
+        <button
+          type="button"
+          onClick={(event) => togglePanel('more', event)}
+          aria-expanded={toolbar.activePanel === 'more'}
+          aria-controls="reader-more-panel"
+        >
           <ReaderIcon name="more" />
           <span>More</span>
         </button>

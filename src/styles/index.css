@@ -306,6 +306,21 @@ body {
   color: rgba(238, 246, 255, 0.96);
 }
 
+.reader-sidebar-action:focus-visible,
+.reader-context-button:focus-visible,
+.reader-context-panel-button:focus-visible,
+.reader-context-mobile-nav button:focus-visible,
+.reader-context-page-form input:focus-visible,
+.reader-context-voice select:focus-visible {
+  outline: 2px solid rgba(96, 180, 255, 0.94);
+  outline-offset: 2px;
+}
+
+.reader-context-panel:focus-visible {
+  outline: 2px solid rgba(96, 180, 255, 0.78);
+  outline-offset: 2px;
+}
+
 .reader-context-button:disabled,
 .reader-context-panel-button:disabled,
 .reader-context-mobile-nav button:disabled {

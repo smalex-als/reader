@@ -48,8 +48,9 @@ export default function ReaderSidebar() {
             className="reader-sidebar-action"
             onClick={openBookSelect}
             aria-label={currentBook ? 'Change book' : 'Select book'}
-            title={currentBook ? 'Change book' : 'Select book'}
-            data-tooltip={currentBook ? 'Change book' : 'Select book'}
+            aria-keyshortcuts="B"
+            title={`${currentBook ? 'Change book' : 'Select book'} (B)`}
+            data-tooltip={`${currentBook ? 'Change book' : 'Select book'} · B`}
           >
             <ReaderIcon name="book" />
           </button>
@@ -95,8 +96,9 @@ export default function ReaderSidebar() {
           className="reader-sidebar-action"
           onClick={() => dispatch(appActions.openModal('settings'))}
           aria-label="Settings"
-          title="Settings"
-          data-tooltip="Settings"
+          aria-keyshortcuts=","
+          title="Settings (,)"
+          data-tooltip="Settings · ,"
         >
           <ReaderIcon name="settings" />
         </button>
