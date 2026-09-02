@@ -5,6 +5,7 @@ import AudioView from '@/components/AudioView';
 import FloatingAudioPlayer from '@/components/FloatingAudioPlayer';
 import ChapterViewer from '@/components/ChapterViewer';
 import ReaderContextToolbar from '@/components/ReaderContextToolbar';
+import ReaderStateCard from '@/components/ReaderStateCard';
 import StreamBubble from '@/components/StreamBubble';
 import ScrollViewer from '@/components/ScrollViewer';
 import UnitsView from '@/components/UnitsView';
@@ -15,7 +16,6 @@ import {
   getTextFontFamilyCssValue
 } from '@/lib/appConstants';
 import {
-  selectBookIds,
   selectBookManifest,
   selectBookSessionLoading,
   selectEditorState,
@@ -35,7 +35,6 @@ export default function ReaderMainContent({
   const { viewerShellRef, modalHostRef } = shellControls;
   const { mainView } = useAppSelector(selectNavigationState);
   const { currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const books = useAppSelector(selectBookIds);
   const loading = useAppSelector(selectBookSessionLoading);
   const manifest = useAppSelector(selectBookManifest);
   const { open: editorOpen } = useAppSelector(selectEditorState);
@@ -52,9 +51,7 @@ export default function ReaderMainContent({
       ? ''
       : currentImage
       ? currentImage
-      : books.length > 0
-      ? 'Choose a book to begin reading.'
-      : 'No books found. Add files to /data to begin.';
+      : '';
   const displayFooterMessage =
     mainView === 'audio-library' ? 'MP3 Library' : mainView === 'units' ? 'Units' : footerMessage;
 
@@ -87,7 +84,15 @@ export default function ReaderMainContent({
         ) : (
           <AudioView />
         )}
-        {loading && <div className="viewer-status">Loading...</div>}
+        {loading ? (
+          <div className="reader-state-overlay">
+            <ReaderStateCard
+              tone="loading"
+              title="Opening book"
+              description="Loading pages, chapters, and reading progress."
+            />
+          </div>
+        ) : null}
         <StreamBubble />
         <FloatingAudioPlayer />
         <div ref={modalHostRef} className="modal-portal" />

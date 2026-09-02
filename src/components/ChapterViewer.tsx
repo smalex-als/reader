@@ -9,6 +9,7 @@ import CreateVersionIcon from '@/components/CreateVersionIcon';
 import EditIcon from '@/components/EditIcon';
 import GenerateChapterModal from '@/components/GenerateChapterModal';
 import OutlineIcon from '@/components/OutlineIcon';
+import ReaderStateCard from '@/components/ReaderStateCard';
 import TextSettingsIcon from '@/components/TextSettingsIcon';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
 import ToolsIcon from '@/components/ToolsIcon';
@@ -26,17 +27,20 @@ import { useUnitActions } from '@/hooks/useUnitActions';
 import { useYouTubeAudioImport } from '@/hooks/useYouTubeAudioImport';
 import { formatListeningTime } from '@/lib/listeningTime';
 import {
+  appActions,
   selectBookDeletingChapter,
   selectBookType,
   selectBookUploadingChapter,
   selectTocWorkflow,
   selectViewerWorkflow,
   selectVoiceWorkflow,
+  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { ChapterTextVersionModel } from '@/types/app';
 
 export default function ChapterViewer() {
+  const dispatch = useAppDispatch();
   const { handleCreateChapter, handleDeleteChapter } = useChapterActions();
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { loading: tocLoading } = useAppSelector(selectTocWorkflow);
@@ -346,31 +350,54 @@ export default function ChapterViewer() {
         {settingsOpen ? <TextSettingsPanel id="text-viewer-settings" controlPrefix="text" /> : null}
       </header>
       <section className="text-viewer-body">
-        {tocLoading && <p className="text-viewer-status">Loading table of contents…</p>}
+        {tocLoading ? (
+          <ReaderStateCard
+            tone="loading"
+            title="Loading chapters"
+            description="Reading the table of contents for this book."
+          />
+        ) : null}
         {!tocLoading && !chapterNumber && (
-          <p className="text-viewer-status">No table of contents found. Use Edit TOC to add chapters.</p>
+          <ReaderStateCard
+            title="No chapters yet"
+            description="Add a table of contents before opening the book in Text mode."
+            action={{
+              label: 'Edit TOC',
+              onClick: () => dispatch(appActions.openModal('tocManage'))
+            }}
+          />
         )}
         {!tocLoading && chapterNumber && displayLoading && (
-          <p className="text-viewer-status">Loading chapter text…</p>
+          <ReaderStateCard
+            tone="loading"
+            title="Loading chapter text"
+            description={visibleChapterTitle ?? `Chapter ${chapterNumber}`}
+          />
         )}
         {!tocLoading && allowGenerate && chapterNumber && !displayLoading && missingFile && (
-          <div className="text-viewer-action">
-            <p className="text-viewer-status">{missingFile} is missing. Generate it now?</p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => setChapterGenerationOpen(true)}
-              disabled={!canGenerate || generating}
-            >
-              {generating ? 'Generating…' : 'Generate Chapter'}
-            </button>
-          </div>
+          <ReaderStateCard
+            title="Chapter text is not generated"
+            description={`${missingFile} is missing. Generate a readable chapter from the scanned pages.`}
+            action={{
+              label: generating ? 'Generating…' : 'Generate chapter',
+              onClick: () => setChapterGenerationOpen(true),
+              disabled: !canGenerate || generating
+            }}
+          />
         )}
         {!tocLoading && !allowGenerate && chapterNumber && !displayLoading && missingFile && (
-          <p className="text-viewer-status">{missingFile} is missing.</p>
+          <ReaderStateCard
+            tone="error"
+            title="Chapter text is missing"
+            description={`${missingFile} could not be found for this text book.`}
+          />
         )}
         {!tocLoading && chapterNumber && !displayLoading && !missingFile && displayError && (
-          <p className="text-viewer-status">{displayError}</p>
+          <ReaderStateCard
+            tone="error"
+            title="Chapter could not be opened"
+            description={displayError}
+          />
         )}
         {youtubeAudioImport.status ? (
           <YouTubeAudioImportCard

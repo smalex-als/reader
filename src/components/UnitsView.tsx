@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
 import ModalShell from '@/components/ModalShell';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
+import ReaderStateCard from '@/components/ReaderStateCard';
 import UnitTopicMarkdown from '@/components/UnitTopicMarkdown';
 import { useUnitSelfCheckRuntime } from '@/hooks/useUnitSelfCheckRuntime';
 import { useUnitTopicPlayback } from '@/hooks/useUnitTopicPlayback';
@@ -9,8 +10,10 @@ import { useUnitsNavigationActions } from '@/hooks/useUnitsNavigationActions';
 import { useUnitsViewActions } from '@/hooks/useUnitsViewActions';
 import { useUnitsViewModel } from '@/hooks/useUnitsViewModel';
 import {
+  appActions,
   selectUnitWorkflow,
   selectViewerWorkflow,
+  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 import type { UnitSet } from '@/types/app';
@@ -85,6 +88,7 @@ function ReadStatusIcon({ read }: { read: boolean }) {
 }
 
 export default function UnitsView() {
+  const dispatch = useAppDispatch();
   const {
     selectedSetId,
     selectedTopicId,
@@ -472,10 +476,33 @@ export default function UnitsView() {
       </header>
 
       <section className="audio-library-body">
-        {loading && items.length === 0 ? <p className="audio-viewer-status">Loading units...</p> : null}
-        {!loading && items.length === 0 ? <p className="audio-viewer-status">No units created yet.</p> : null}
+        {loading && items.length === 0 ? (
+          <ReaderStateCard
+            tone="loading"
+            title="Loading units"
+            description="Opening your saved study sets."
+          />
+        ) : null}
+        {!loading && items.length === 0 ? (
+          <ReaderStateCard
+            title="No units created yet"
+            description="Open a chapter in Text mode and create a unit from its Tools panel."
+            action={{
+              label: 'Open Reader',
+              onClick: () => {
+                dispatch(appActions.setMainView('reader'));
+                dispatch(appActions.setReaderViewMode('text'));
+              }
+            }}
+          />
+        ) : null}
         {items.length > 0 && filteredItems.length === 0 ? (
-          <p className="audio-viewer-status">No units match this search.</p>
+          <ReaderStateCard
+            compact
+            title="No units match this search"
+            description="Try another title, source, or keyword."
+            action={{ label: 'Clear search', onClick: () => setQuery('') }}
+          />
         ) : null}
 
         <div className="audio-library-list">

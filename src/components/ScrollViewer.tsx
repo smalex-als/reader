@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, type HTMLAttributes } from 'react';
 import { Virtuoso, type ListRange, type VirtuosoHandle } from 'react-virtuoso';
 import OcrOverlay from '@/components/OcrOverlay';
+import ReaderStateCard from '@/components/ReaderStateCard';
 import { usePageText } from '@/hooks/usePageText';
 import { saveLastPage } from '@/lib/storage';
 import { parseStreamLocator } from '@/lib/streamLocator';
@@ -324,7 +325,20 @@ export default function ScrollViewer() {
   }, [updateCurrentPageFromViewport]);
 
   if (manifest.length === 0) {
-    return <div className="viewer-empty">No pages available.</div>;
+    return (
+      <div className="viewer-empty">
+        <ReaderStateCard
+          title={bookId ? 'No pages available' : 'Choose a book to begin'}
+          description={bookId
+            ? 'This book does not contain scanned pages for continuous scrolling.'
+            : 'Select a book from your library to start reading.'}
+          action={{
+            label: bookId ? 'Change book' : 'Select book',
+            onClick: () => dispatch(appActions.openModal('bookSelect'))
+          }}
+        />
+      </div>
+    );
   }
 
   return (

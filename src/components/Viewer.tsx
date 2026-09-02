@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ZOOM_STEP } from '@/lib/hotkeys';
 import { clampPan } from '@/lib/math';
 import OcrOverlay from '@/components/OcrOverlay';
+import ReaderStateCard from '@/components/ReaderStateCard';
 import {
   appActions,
   selectBookManifest,
@@ -25,7 +26,7 @@ const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 6;
 export default function Viewer() {
   const dispatch = useAppDispatch();
-  const { currentPage } = useAppSelector(selectReaderSession);
+  const { bookId, currentPage } = useAppSelector(selectReaderSession);
   const manifest = useAppSelector(selectBookManifest);
   const { settings } = useAppSelector(selectViewerWorkflow);
   const imageUrl = manifest[currentPage] ?? null;
@@ -39,6 +40,13 @@ export default function Viewer() {
     pan: { x: 0, y: 0 }
   });
   const [metrics, setMetrics] = useState<ViewerMetrics>(INITIAL_METRICS);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
+
+  useEffect(() => {
+    setImageFailed(false);
+    setRetryToken(0);
+  }, [imageUrl]);
 
   const filters = useMemo(() => {
     const invertFilter = settings.invert ? 'invert(1)' : 'invert(0)';
@@ -241,6 +249,7 @@ export default function Viewer() {
   }, [imageUrl, updateMetrics]);
 
   const handleImageError = useCallback(() => {
+    setImageFailed(true);
     setMetrics(INITIAL_METRICS);
     dispatch(appActions.setViewerMetrics({ ...INITIAL_METRICS, scale: settings.zoom }));
   }, [dispatch, settings.zoom]);
@@ -252,7 +261,7 @@ export default function Viewer() {
           onPointerDown={handlePointerDown}
           role="presentation"
       >
-        {imageUrl ? (
+        {imageUrl && !imageFailed ? (
             <div
                 className="viewer-stage"
                 style={{
@@ -262,7 +271,7 @@ export default function Viewer() {
             >
               <img
                   ref={imageRef}
-                  src={imageUrl}
+                  src={retryToken ? `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}retry=${retryToken}` : imageUrl}
                   alt=""
                   className="viewer-image"
                   style={{ filter: filters }}
@@ -279,7 +288,18 @@ export default function Viewer() {
               ) : null}
             </div>
         ) : (
-            <div className="viewer-empty">Select a book to begin</div>
+            <ReaderStateCard
+              tone={imageFailed ? 'error' : 'empty'}
+              title={imageFailed ? 'Page image could not load' : bookId ? 'No pages available' : 'Choose a book to begin'}
+              description={imageFailed
+                ? 'The image may be temporarily unavailable or the source file may have moved.'
+                : bookId
+                  ? 'This book does not contain scanned pages.'
+                  : 'Select a book from your library to start reading.'}
+              action={imageFailed && imageUrl
+                ? { label: 'Try again', onClick: () => { setImageFailed(false); setRetryToken(Date.now()); } }
+                : { label: bookId ? 'Change book' : 'Select book', onClick: () => dispatch(appActions.openModal('bookSelect')) }}
+            />
         )}
         {metrics.naturalWidth > 0 && (
             <div className="viewer-overlay">

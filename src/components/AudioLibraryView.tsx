@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import TextSettingsPanel from '@/components/TextSettingsPanel';
+import ReaderStateCard from '@/components/ReaderStateCard';
 import { useAudioLibraryActions } from '@/hooks/useAudioLibraryActions';
 import {
   appActions,
@@ -264,13 +265,32 @@ export default function AudioLibraryView() {
 
       <section className="audio-library-body">
         {loading && items.length === 0 ? (
-          <p className="audio-viewer-status">Loading generated MP3 files...</p>
+          <ReaderStateCard
+            tone="loading"
+            title="Loading generated audio"
+            description="Scanning the library for MP3 files and subtitles."
+          />
         ) : null}
         {!loading && items.length === 0 ? (
-          <p className="audio-viewer-status">No generated MP3 files found.</p>
+          <ReaderStateCard
+            title="No generated MP3 files"
+            description="Open a book in Audio mode to generate chapter narration."
+            action={{
+              label: 'Open Reader',
+              onClick: () => {
+                dispatch(appActions.setMainView('reader'));
+                dispatch(appActions.setReaderViewMode('audio'));
+              }
+            }}
+          />
         ) : null}
         {items.length > 0 && filteredItems.length === 0 ? (
-          <p className="audio-viewer-status">No MP3 files match this search.</p>
+          <ReaderStateCard
+            compact
+            title="No MP3 files match this search"
+            description="Try a different book, chapter, voice, or version."
+            action={{ label: 'Clear search', onClick: () => setQuery('') }}
+          />
         ) : null}
 
         <div className="audio-library-list">

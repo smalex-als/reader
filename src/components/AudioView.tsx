@@ -1,15 +1,19 @@
 import AudioChapterRow from '@/components/AudioChapterRow';
+import ReaderStateCard from '@/components/ReaderStateCard';
 import { useAudioViewActions } from '@/hooks/useAudioViewActions';
 import { useAudioViewRuntimeActions } from '@/hooks/useAudioViewRuntimeActions';
 import { useAudioViewRows } from '@/hooks/useAudioViewRows';
 import {
+  appActions,
   selectReaderSession,
   selectTocWorkflow,
   selectVoiceWorkflow,
+  useAppDispatch,
   useAppSelector
 } from '@/state/appState';
 
 export default function AudioView() {
+  const dispatch = useAppDispatch();
   const { bookId } = useAppSelector(selectReaderSession);
   const { entries: tocEntries, loading: tocLoading } = useAppSelector(selectTocWorkflow);
   const { streamVoiceOptions, mp3Voice } = useAppSelector(selectVoiceWorkflow);
@@ -83,10 +87,21 @@ export default function AudioView() {
       </header>
       <section className="audio-viewer-body">
         {tocLoading || statusLoading ? (
-          <p className="audio-viewer-status">Loading audio status…</p>
+          <ReaderStateCard
+            tone="loading"
+            title="Loading chapter audio"
+            description="Checking narration and generated audio files."
+          />
         ) : null}
         {!tocLoading && !statusLoading && audioRows.length === 0 ? (
-          <p className="audio-viewer-status">No chapters found. Use Edit TOC to add them.</p>
+          <ReaderStateCard
+            title="No chapters available for audio"
+            description="Add a table of contents before generating chapter narration."
+            action={{
+              label: 'Edit TOC',
+              onClick: () => dispatch(appActions.openModal('tocManage'))
+            }}
+          />
         ) : null}
         {!tocLoading && audioRows.length > 0 ? (
           <div className="audio-list">
