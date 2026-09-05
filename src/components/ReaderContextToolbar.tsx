@@ -1,4 +1,5 @@
 import { useEffect, useRef, type MouseEvent } from 'react';
+import SearchReadingReturn from '@/components/SearchReadingReturn';
 import ReaderIcon, { type ReaderIconName } from '@/components/ReaderIcon';
 import {
   useReaderContextToolbar,
@@ -27,6 +28,8 @@ const PANEL_FOCUSABLE_SELECTOR = [
 
 export default function ReaderContextToolbar() {
   const toolbar = useReaderContextToolbar();
+  const searchButtonRef = useRef<HTMLButtonElement | null>(null);
+  const mobileSearchButtonRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const panelTriggerRef = useRef<HTMLButtonElement | null>(null);
   const activeMode = VIEW_MODES.find((item) => item.mode === toolbar.viewMode) ?? VIEW_MODES[0];
@@ -35,6 +38,13 @@ export default function ReaderContextToolbar() {
       ? `Chapter ${toolbar.chapterNavigation.position} / ${toolbar.chapterNavigation.total}`
       : 'No chapters'
     : `${toolbar.displayPage} / ${toolbar.navigationCount}`;
+
+  const focusSearchButton = () => {
+    const button = searchButtonRef.current?.getClientRects().length
+      ? searchButtonRef.current
+      : mobileSearchButtonRef.current;
+    button?.focus({ preventScroll: true });
+  };
 
   const restorePanelTrigger = () => {
     panelTriggerRef.current?.focus({ preventScroll: true });
@@ -211,6 +221,7 @@ export default function ReaderContextToolbar() {
           <button
             type="button"
             className="reader-context-button"
+            ref={searchButtonRef}
             onClick={toolbar.openSearch}
             disabled={!toolbar.bookId}
             aria-label="Search this book"
@@ -277,6 +288,8 @@ export default function ReaderContextToolbar() {
       <div className="reader-context-progress" aria-hidden="true">
         <span style={{ width: `${toolbar.progress}%` }} />
       </div>
+
+      <SearchReadingReturn onBeforeAction={focusSearchButton} />
 
       {toolbar.activePanel === 'mode' ? (
         <div
@@ -461,6 +474,7 @@ export default function ReaderContextToolbar() {
         </button>
         <button
           type="button"
+          ref={mobileSearchButtonRef}
           onClick={toolbar.openSearch}
           disabled={!toolbar.bookId}
           aria-keyshortcuts="/"

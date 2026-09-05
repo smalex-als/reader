@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import SearchReadingReturn from '@/components/SearchReadingReturn';
+import SearchResultSnippet from '@/components/SearchResultSnippet';
+import { useSearchResultNavigation } from '@/hooks/useSearchResultNavigation';
 import BookSearchFeedback from '@/components/BookSearchFeedback';
 import ModalShell from '@/components/ModalShell';
 import { useBookSearch } from '@/hooks/useBookSearch';
 import {
   appActions,
-  selectBookType,
   selectModalOpen,
   selectReaderSession,
   useAppDispatch,
@@ -14,9 +16,9 @@ import {
 
 export default function SearchModal() {
   const dispatch = useAppDispatch();
+  const { openSearchResult } = useSearchResultNavigation();
   const open = useAppSelector(selectModalOpen('search'));
-  const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const bookType = useAppSelector(selectBookType);
+  const { bookId: currentBook, currentPage } = useAppSelector(selectReaderSession);
   const {
     searchQuery: query,
     setSearchQuery,
@@ -33,12 +35,7 @@ export default function SearchModal() {
   };
   const handleSelectResult = (page: number) => {
     dispatch(appActions.closeModal('search'));
-    dispatch(
-      appActions.setReaderViewMode(
-        bookType === 'text' ? 'text' : viewMode === 'scroll' ? 'scroll' : 'pages'
-      )
-    );
-    dispatch(appActions.requestPageNavigation(page));
+    openSearchResult(page);
   };
 
   useEffect(() => {
@@ -85,6 +82,7 @@ export default function SearchModal() {
           </button>
         </header>
         <section className="modal-body">
+          <SearchReadingReturn onBeforeAction={() => inputRef.current?.focus({ preventScroll: true })} />
           <form
             className="search-form"
             onSubmit={(event) => {
@@ -132,7 +130,7 @@ export default function SearchModal() {
                         </div>
                         {isActive ? <span className="bookmark-badge">Current</span> : null}
                       </div>
-                      <p className="search-result-snippet">{result.snippet}</p>
+                      <SearchResultSnippet text={result.snippet} query={submittedQuery} />
                       <span className="search-result-location">
                         {result.kind === 'chapter' && result.chapterNumber
                           ? `Chapter ${result.chapterNumber}`

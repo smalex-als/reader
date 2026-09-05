@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import SearchReadingReturn from '@/components/SearchReadingReturn';
+import SearchResultSnippet from '@/components/SearchResultSnippet';
+import { useSearchResultNavigation } from '@/hooks/useSearchResultNavigation';
 import BookSearchFeedback from '@/components/BookSearchFeedback';
 import ModalShell from '@/components/ModalShell';
 import ReaderIcon, { type ReaderIconName } from '@/components/ReaderIcon';
@@ -10,7 +13,6 @@ import { getDetailedTocLevel } from '@/lib/toc';
 import {
   appActions,
   selectBookmarkWorkflow,
-  selectBookType,
   selectModalOpen,
   selectReaderSession,
   selectTocWorkflow,
@@ -53,12 +55,12 @@ function formatTocListeningTime(value?: number) {
 
 export default function ReaderNavigator() {
   const dispatch = useAppDispatch();
+  const { openSearchResult } = useSearchResultNavigation();
   const removeBookmark = useRemoveBookmark();
   const searchOpen = useAppSelector(selectModalOpen('search'));
   const tocOpen = useAppSelector(selectModalOpen('tocNav'));
   const bookmarksOpen = useAppSelector(selectModalOpen('bookmarks'));
-  const { bookId: currentBook, currentPage, viewMode } = useAppSelector(selectReaderSession);
-  const bookType = useAppSelector(selectBookType);
+  const { bookId: currentBook, currentPage } = useAppSelector(selectReaderSession);
   const { items: bookmarks, loading: bookmarksLoading } = useAppSelector(selectBookmarkWorkflow);
   const {
     variant,
@@ -158,14 +160,7 @@ export default function ReaderNavigator() {
     window.requestAnimationFrame(() => tabRefs.current[nextTab]?.focus({ preventScroll: true }));
   };
 
-  const navigateToPage = (page: number, searchResult = false) => {
-    if (searchResult) {
-      dispatch(
-        appActions.setReaderViewMode(
-          bookType === 'text' ? 'text' : viewMode === 'scroll' ? 'scroll' : 'pages'
-        )
-      );
-    }
+  const navigateToPage = (page: number) => {
     dispatch(appActions.requestPageNavigation(page));
   };
 
@@ -221,6 +216,8 @@ export default function ReaderNavigator() {
           </button>
         ))}
       </nav>
+
+      <SearchReadingReturn onBeforeAction={() => tabRefs.current[activeTab]?.focus({ preventScroll: true })} />
 
       {activeTab === 'contents' ? (
         <section
@@ -353,7 +350,7 @@ export default function ReaderNavigator() {
                         </div>
                         {isActive ? <span className="bookmark-badge">Current</span> : null}
                       </div>
-                      <p className="search-result-snippet">{result.snippet}</p>
+                      <SearchResultSnippet text={result.snippet} query={submittedQuery} />
                       <span className="search-result-location">
                         {result.kind === 'chapter' && result.chapterNumber
                           ? `Chapter ${result.chapterNumber}`
@@ -364,7 +361,7 @@ export default function ReaderNavigator() {
                       <button
                         type="button"
                         className="button button-secondary"
-                        onClick={() => navigateToPage(result.page, true)}
+                        onClick={() => openSearchResult(result.page)}
                       >
                         Open
                       </button>

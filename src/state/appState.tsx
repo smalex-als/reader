@@ -419,6 +419,7 @@ export interface CentralAppState {
   shellControlRequest: ShellControlRequest | null;
   ocrEditRequest: OcrEditRequest | null;
   readerSession: ReaderSessionState;
+  searchReadingPosition: ReaderSessionState | null;
   bookSessionWorkflow: BookSessionWorkflowState;
   audio: AudioState;
   chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
@@ -520,6 +521,7 @@ export function appReducer(state: CentralAppState, action: AppAction): CentralAp
   if (isReaderSessionAction(action)) {
     const readerSession = reduceReaderSession({
       readerSession: state.readerSession,
+      searchReadingPosition: state.searchReadingPosition,
       bookSessionWorkflow: state.bookSessionWorkflow,
       chapterVersionNavigationRequest: state.chapterVersionNavigationRequest,
       chapterTextContext: state.chapterTextContext,
@@ -647,6 +649,7 @@ export const selectOcrQueueWorkflow = (state: CentralAppState) => state.ocrQueue
 export const selectFloatingAudio = (state: CentralAppState) => state.floatingAudio;
 export const selectPrintWorkflow = (state: CentralAppState) => state.printWorkflow;
 export const selectTocWorkflow = (state: CentralAppState) => state.tocWorkflow;
+export const selectSearchReadingPosition = (state: CentralAppState) => state.searchReadingPosition;
 export const selectSearchWorkflow = (state: CentralAppState) => state.searchWorkflow;
 export const selectBookmarkWorkflow = (state: CentralAppState) => state.bookmarkWorkflow;
 export const selectQuizWorkflow = (modal: QuizModal) => (state: CentralAppState) => state.quizWorkflow[modal];

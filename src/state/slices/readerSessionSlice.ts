@@ -16,6 +16,7 @@ import type {
 
 export type ReaderSessionSliceState = {
   readerSession: ReaderSessionState;
+  searchReadingPosition: ReaderSessionState | null;
   bookSessionWorkflow: BookSessionWorkflowState;
   chapterVersionNavigationRequest: ChapterVersionNavigationRequest | null;
   chapterTextContext: ChapterTextContextState;
@@ -29,6 +30,8 @@ export type ReaderSessionSliceState = {
 export type ReaderSessionAction =
   | { type: 'ocrQueueWorkflow/setSnapshot'; jobs: OcrJob[]; paused: boolean; queueState: OcrQueueState }
   | { type: 'readerSession/setBookId'; bookId: string | null }
+  | { type: 'readerSession/saveSearchReadingPosition' }
+  | { type: 'readerSession/clearSearchReadingPosition' }
   | { type: 'readerSession/setCurrentPage'; page: number }
   | { type: 'readerSession/setViewMode'; mode: ViewMode }
   | { type: 'bookSessionWorkflow/setBooks'; books: string[] }
@@ -57,6 +60,8 @@ export type ReaderSessionAction =
 const READER_SESSION_ACTION_TYPES = new Set<ReaderSessionAction['type']>([
   'ocrQueueWorkflow/setSnapshot',
   'readerSession/setBookId',
+  'readerSession/saveSearchReadingPosition',
+  'readerSession/clearSearchReadingPosition',
   'readerSession/setCurrentPage',
   'readerSession/setViewMode',
   'bookSessionWorkflow/setBooks',
@@ -94,6 +99,7 @@ function getInitialReaderSession(): ReaderSessionState {
 export function createInitialReaderSessionState(): ReaderSessionSliceState {
   return {
     readerSession: getInitialReaderSession(),
+    searchReadingPosition: null,
     bookSessionWorkflow: {
       books: [],
       manifest: [],
@@ -120,6 +126,8 @@ export function createInitialReaderSessionState(): ReaderSessionSliceState {
 }
 
 export const readerSessionActions = {
+  saveSearchReadingPosition: () => ({ type: 'readerSession/saveSearchReadingPosition' as const }),
+  clearSearchReadingPosition: () => ({ type: 'readerSession/clearSearchReadingPosition' as const }),
   setOcrQueueSnapshot: (payload: { jobs: OcrJob[]; paused: boolean; queueState: OcrQueueState }) => ({
     type: 'ocrQueueWorkflow/setSnapshot' as const,
     ...payload
@@ -163,7 +171,20 @@ export function reduceReaderSession(
     case 'ocrQueueWorkflow/setSnapshot':
       return { ...state, ocrQueueWorkflow: { jobs: action.jobs, paused: action.paused, queueState: action.queueState } };
     case 'readerSession/setBookId':
-      return { ...state, readerSession: { ...state.readerSession, bookId: action.bookId } };
+      return {
+        ...state,
+        readerSession: { ...state.readerSession, bookId: action.bookId },
+        searchReadingPosition: action.bookId === state.readerSession.bookId
+          ? state.searchReadingPosition
+          : null
+      };
+    case 'readerSession/saveSearchReadingPosition':
+      if (!state.readerSession.bookId || state.searchReadingPosition) {
+        return state;
+      }
+      return { ...state, searchReadingPosition: { ...state.readerSession } };
+    case 'readerSession/clearSearchReadingPosition':
+      return { ...state, searchReadingPosition: null };
     case 'readerSession/setCurrentPage':
       return { ...state, readerSession: { ...state.readerSession, currentPage: action.page } };
     case 'readerSession/setViewMode':
