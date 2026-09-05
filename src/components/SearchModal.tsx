@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import BookSearchFeedback from '@/components/BookSearchFeedback';
 import ModalShell from '@/components/ModalShell';
 import { useBookSearch } from '@/hooks/useBookSearch';
 import {
@@ -21,6 +22,8 @@ export default function SearchModal() {
     setSearchQuery,
     searchResults: results,
     searchLoading: loading,
+    searchStatus,
+    submittedQuery,
     runSearch
   } = useBookSearch();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -106,13 +109,13 @@ export default function SearchModal() {
             </button>
           </form>
 
-          {!loading && !hasResults && query.trim() ? (
-            <p className="modal-status">No matches found for “{query.trim()}”.</p>
-          ) : null}
-          {!loading && !query.trim() ? (
-            <p className="modal-status">Enter a term or phrase to search this book.</p>
-          ) : null}
-
+          <BookSearchFeedback
+            status={searchStatus}
+            query={query}
+            submittedQuery={submittedQuery}
+            resultCount={results.length}
+            onRetry={() => void runSearch(submittedQuery)}
+          />
           {hasResults ? (
             <ul className="search-result-list">
               {results.map((result) => {

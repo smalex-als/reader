@@ -308,8 +308,10 @@ export interface TocWorkflowState {
 
 export interface SearchWorkflowState {
   query: string;
+  submittedQuery: string;
   results: SearchResult[];
-  loading: boolean;
+  status: 'idle' | 'loading' | 'success' | 'error';
+  requestId: number | null;
 }
 
 export interface BookmarkWorkflowState {

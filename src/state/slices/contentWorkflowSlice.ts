@@ -16,8 +16,9 @@ export type ContentWorkflowState = {
 export type ContentWorkflowAction =
   | { type: 'searchWorkflow/reset' }
   | { type: 'searchWorkflow/setQuery'; query: string }
-  | { type: 'searchWorkflow/setResults'; results: SearchResult[] }
-  | { type: 'searchWorkflow/setLoading'; loading: boolean }
+  | { type: 'searchWorkflow/start'; query: string; requestId: number }
+  | { type: 'searchWorkflow/succeed'; results: SearchResult[]; requestId: number }
+  | { type: 'searchWorkflow/fail'; requestId: number }
   | { type: 'bookmarkWorkflow/reset' }
   | { type: 'bookmarkWorkflow/setItems'; items: Bookmark[] }
   | { type: 'bookmarkWorkflow/setLoading'; loading: boolean }
@@ -34,8 +35,9 @@ export type ContentWorkflowAction =
 const CONTENT_WORKFLOW_ACTION_TYPES = new Set<ContentWorkflowAction['type']>([
   'searchWorkflow/reset',
   'searchWorkflow/setQuery',
-  'searchWorkflow/setResults',
-  'searchWorkflow/setLoading',
+  'searchWorkflow/start',
+  'searchWorkflow/succeed',
+  'searchWorkflow/fail',
   'bookmarkWorkflow/reset',
   'bookmarkWorkflow/setItems',
   'bookmarkWorkflow/setLoading',
@@ -53,8 +55,10 @@ const CONTENT_WORKFLOW_ACTION_TYPES = new Set<ContentWorkflowAction['type']>([
 export const initialContentWorkflowState: ContentWorkflowState = {
   searchWorkflow: {
     query: '',
+    submittedQuery: '',
     results: [],
-    loading: false
+    status: 'idle',
+    requestId: null
   },
   bookmarkWorkflow: {
     items: [],
@@ -76,11 +80,13 @@ export const initialContentWorkflowState: ContentWorkflowState = {
 export const contentWorkflowActions = {
   resetSearch: () => ({ type: 'searchWorkflow/reset' as const }),
   setSearchQuery: (query: string) => ({ type: 'searchWorkflow/setQuery' as const, query }),
-  setSearchResults: (results: SearchResult[]) => ({
-    type: 'searchWorkflow/setResults' as const,
-    results
+  startSearch: (query: string, requestId: number) => ({
+    type: 'searchWorkflow/start' as const, query, requestId
   }),
-  setSearchLoading: (loading: boolean) => ({ type: 'searchWorkflow/setLoading' as const, loading }),
+  completeSearch: (results: SearchResult[], requestId: number) => ({
+    type: 'searchWorkflow/succeed' as const, results, requestId
+  }),
+  failSearch: (requestId: number) => ({ type: 'searchWorkflow/fail' as const, requestId }),
   resetBookmarks: () => ({ type: 'bookmarkWorkflow/reset' as const }),
   setBookmarks: (items: Bookmark[]) => ({ type: 'bookmarkWorkflow/setItems' as const, items }),
   setBookmarksLoading: (loading: boolean) => ({
@@ -133,11 +139,40 @@ export function reduceContentWorkflow(
     case 'searchWorkflow/reset':
       return { ...state, searchWorkflow: initialContentWorkflowState.searchWorkflow };
     case 'searchWorkflow/setQuery':
-      return { ...state, searchWorkflow: { ...state.searchWorkflow, query: action.query } };
-    case 'searchWorkflow/setResults':
-      return { ...state, searchWorkflow: { ...state.searchWorkflow, results: action.results } };
-    case 'searchWorkflow/setLoading':
-      return { ...state, searchWorkflow: { ...state.searchWorkflow, loading: action.loading } };
+      return {
+        ...state,
+        searchWorkflow: {
+          ...(action.query.trim() === state.searchWorkflow.query.trim()
+            ? state.searchWorkflow
+            : initialContentWorkflowState.searchWorkflow),
+          query: action.query
+        }
+      };
+    case 'searchWorkflow/start':
+      return {
+        ...state,
+        searchWorkflow: {
+          query: action.query,
+          submittedQuery: action.query.trim(),
+          results: [],
+          status: 'loading',
+          requestId: action.requestId
+        }
+      };
+    case 'searchWorkflow/succeed':
+    case 'searchWorkflow/fail':
+      if (state.searchWorkflow.requestId !== action.requestId) {
+        return state;
+      }
+      return {
+        ...state,
+        searchWorkflow: {
+          ...state.searchWorkflow,
+          results: action.type === 'searchWorkflow/succeed' ? action.results : [],
+          status: action.type === 'searchWorkflow/succeed' ? 'success' : 'error',
+          requestId: null
+        }
+      };
     case 'bookmarkWorkflow/reset':
       return { ...state, bookmarkWorkflow: initialContentWorkflowState.bookmarkWorkflow };
     case 'bookmarkWorkflow/setItems':

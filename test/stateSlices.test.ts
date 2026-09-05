@@ -90,9 +90,9 @@ test('study workflow slice isolates quiz, vocabulary, and memory-card transition
 test('content workflow slice preserves unrelated domains', () => {
   const loadingSearch = reduceContentWorkflow(
     initialContentWorkflowState,
-    contentWorkflowActions.setSearchLoading(true)
+    contentWorkflowActions.startSearch('example', 1)
   );
-  assert.equal(loadingSearch.searchWorkflow.loading, true);
+  assert.equal(loadingSearch.searchWorkflow.status, 'loading');
   assert.equal(loadingSearch.pageTextWorkflow, initialContentWorkflowState.pageTextWorkflow);
 
   const withPageText = reduceContentWorkflow(

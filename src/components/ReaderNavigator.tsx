@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import CloseIcon from '@/components/CloseIcon';
+import BookSearchFeedback from '@/components/BookSearchFeedback';
 import ModalShell from '@/components/ModalShell';
 import ReaderIcon, { type ReaderIconName } from '@/components/ReaderIcon';
 import { useBookSearch } from '@/hooks/useBookSearch';
@@ -70,6 +71,8 @@ export default function ReaderNavigator() {
     setSearchQuery,
     searchResults: results,
     searchLoading,
+    searchStatus,
+    submittedQuery,
     runSearch
   } = useBookSearch();
   const [draftQuery, setDraftQuery] = useState(query);
@@ -322,12 +325,13 @@ export default function ReaderNavigator() {
               {searchLoading ? 'Searching…' : 'Search'}
             </button>
           </form>
-          {!searchLoading && !hasSearchResults && query.trim() ? (
-            <p className="modal-status">No matches found for “{query.trim()}”.</p>
-          ) : null}
-          {!searchLoading && !query.trim() ? (
-            <p className="modal-status">Enter a term or phrase to search this book.</p>
-          ) : null}
+          <BookSearchFeedback
+            status={searchStatus}
+            query={query}
+            submittedQuery={submittedQuery}
+            resultCount={results.length}
+            onRetry={() => void runSearch(submittedQuery)}
+          />
           {hasSearchResults ? (
             <ul className="search-result-list">
               {results.map((result) => {
