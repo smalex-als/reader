@@ -7,17 +7,20 @@ export function useDisplayedChapterText({
   chapterTitle,
   displayText,
   selectedVersionId,
-  selectedVersionLabel
+  selectedVersionLabel,
+  enabled = true
 }: {
   chapterNumber: number | null;
   chapterTitle: string | null;
   displayText: string;
   selectedVersionId: string;
   selectedVersionLabel: string | null;
+  enabled?: boolean;
 }) {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
+    if (!enabled) return;
     if (!displayText || !chapterNumber) {
       dispatch(appActions.setFirstChapterParagraph(null));
       return;
@@ -37,9 +40,10 @@ export function useDisplayedChapterText({
       startIndex: Math.max(0, startIndex),
       key: `chapter-${chapterNumber}-${selectedVersionId}-${hashText(firstParagraph)}-${startIndex}`
     }));
-  }, [chapterNumber, dispatch, displayText, selectedVersionId]);
+  }, [chapterNumber, dispatch, displayText, enabled, selectedVersionId]);
 
   useEffect(() => {
+    if (!enabled) return;
     if (!displayText || !chapterNumber) {
       dispatch(appActions.setDisplayedChapterText(null));
       return;
@@ -50,5 +54,5 @@ export function useDisplayedChapterText({
       versionLabel: selectedVersionLabel,
       versionId: selectedVersionId
     }));
-  }, [chapterNumber, chapterTitle, dispatch, displayText, selectedVersionId, selectedVersionLabel]);
+  }, [chapterNumber, chapterTitle, dispatch, displayText, enabled, selectedVersionId, selectedVersionLabel]);
 }

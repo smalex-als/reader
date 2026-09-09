@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import ChapterTextMarkdownLayout from '@/components/ChapterTextMarkdownLayout';
+import ChapterComparisonView from '@/components/ChapterComparisonView';
+import type { ComparisonSelection } from '@/lib/chapterComparison';
 import AddChapterModal from '@/components/AddChapterModal';
 import ChapterToolsPanel from '@/components/ChapterToolsPanel';
 import CreateChapterIcon from '@/components/CreateChapterIcon';
@@ -78,6 +80,29 @@ export default function ChapterViewer() {
   const [chapterGenerationOpen, setChapterGenerationOpen] = useState(false);
   const [chapterGenerationModel, setChapterGenerationModel] = useState<ChapterTextVersionModel>('gpt-5.6-sol');
   const textViewerRef = useRef<HTMLDivElement | null>(null);
+  const compareButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [comparison, setComparison] = useState<{
+    bookId: string;
+    selections: [ComparisonSelection, ComparisonSelection];
+  } | null>(null);
+  const savedReadingScroll = useRef<{ chapterNumber: number; top: number } | null>(null);
+  const comparing = Boolean(comparison && comparison.bookId === bookId && chapterNumber);
+  useLayoutEffect(() => {
+    if (comparing) {
+      if (textViewerRef.current) textViewerRef.current.scrollTop = 0;
+    } else if (savedReadingScroll.current) {
+      if (textViewerRef.current) {
+        textViewerRef.current.scrollTop = savedReadingScroll.current.chapterNumber === chapterNumber
+          ? savedReadingScroll.current.top : 0;
+      }
+      savedReadingScroll.current = null;
+      compareButtonRef.current?.focus({ preventScroll: true });
+    }
+  }, [comparing, chapterNumber]);
+  useLayoutEffect(() => {
+    setComparison(null);
+    savedReadingScroll.current = null;
+  }, [bookId]);
 
   const {
     displayText,
@@ -155,6 +180,7 @@ export default function ChapterViewer() {
     handleCreateVersion
   });
   useDisplayedChapterText({
+    enabled: !comparing,
     chapterNumber,
     chapterTitle: visibleChapterTitle,
     displayText: displayText ?? '',
@@ -187,7 +213,7 @@ export default function ChapterViewer() {
   }, [pageRange]);
 
   return (
-    <div ref={textViewerRef} className="text-viewer" style={textStyle}>
+    <div ref={textViewerRef} className={`text-viewer${comparing ? ' text-viewer-comparing' : ''}`} style={textStyle}>
       <header className="text-viewer-header">
         <div className="text-viewer-title">
           <div className="text-viewer-title-kicker">
@@ -204,7 +230,7 @@ export default function ChapterViewer() {
         </div>
         {pageMeta ? <div className="text-viewer-meta">{pageMeta}</div> : null}
         <div className="text-viewer-actions">
-          {chapterNumber && versions.length > 0 ? (
+          {!comparing && chapterNumber && versions.length > 0 ? (
             <label className="text-viewer-version-select text-viewer-current-version">
               <span>Version</span>
               <select
@@ -222,7 +248,23 @@ export default function ChapterViewer() {
               </select>
             </label>
           ) : null}
-          {allowEdit && chapterNumber ? (
+          {!comparing && chapterNumber && versions.length >= 2 ? (
+            <button ref={compareButtonRef} type="button" className="button button-secondary"
+              disabled={displayLoading || versionSaving || !bookId}
+              onClick={() => {
+                if (!bookId || !chapterNumber) return;
+                const left = versions.find((version) => version.kind === 'base') ?? versions[0];
+                const right = selectedVersion && selectedVersion.id !== left.id
+                  ? selectedVersion : versions.find((version) => version.id !== left.id)!;
+                savedReadingScroll.current = { chapterNumber, top: textViewerRef.current?.scrollTop ?? 0 };
+                setSettingsOpen(false);
+                setToolsOpen(false);
+                setComparison({ bookId, selections: [
+                  { chapterNumber, version: left }, { chapterNumber, version: right }
+                ] });
+              }}>Compare</button>
+          ) : null}
+          {!comparing && allowEdit && chapterNumber ? (
             <button
               type="button"
               className="button button-secondary modal-icon-button text-viewer-action-icon"
@@ -234,7 +276,7 @@ export default function ChapterViewer() {
               <EditIcon />
             </button>
           ) : null}
-          {bookType === 'text' ? (
+          {!comparing && bookType === 'text' ? (
             <button
               type="button"
               className="button button-secondary modal-icon-button text-viewer-action-icon"
@@ -246,7 +288,7 @@ export default function ChapterViewer() {
               <CreateChapterIcon />
             </button>
           ) : null}
-          <button
+          {!comparing ? <button
             type="button"
             className="button button-secondary modal-icon-button text-viewer-action-icon"
             onClick={openVersionModal}
@@ -255,7 +297,7 @@ export default function ChapterViewer() {
             title="Create text version"
           >
             <CreateVersionIcon />
-          </button>
+          </button> : null}
           <button
             type="button"
             className="button button-secondary modal-icon-button text-viewer-action-icon"
@@ -268,7 +310,7 @@ export default function ChapterViewer() {
           >
             <TextSettingsIcon />
           </button>
-          {outlineItems.length > 0 ? (
+          {!comparing && outlineItems.length > 0 ? (
             <button
               type="button"
               className="button button-secondary modal-icon-button text-viewer-action-icon"
@@ -281,7 +323,7 @@ export default function ChapterViewer() {
               <OutlineIcon />
             </button>
           ) : null}
-          <button
+          {!comparing ? <button
             type="button"
             className="button button-secondary modal-icon-button text-viewer-action-icon"
             onClick={handleToolsToggle}
@@ -292,7 +334,7 @@ export default function ChapterViewer() {
             aria-pressed={toolsOpen}
           >
             <ToolsIcon />
-          </button>
+          </button> : null}
         </div>
         {toolsOpen ? (
           <ChapterToolsPanel
@@ -349,7 +391,12 @@ export default function ChapterViewer() {
         ) : null}
         {settingsOpen ? <TextSettingsPanel id="text-viewer-settings" controlPrefix="text" /> : null}
       </header>
-      <section className="text-viewer-body">
+      {comparing && comparison && bookId && chapterNumber ? (
+        <ChapterComparisonView key={bookId} bookId={bookId} chapterNumber={chapterNumber}
+          chapterTitle={visibleChapterTitle} initialSelections={comparison.selections}
+          onClose={() => setComparison(null)} />
+      ) : null}
+      <section className="text-viewer-body" hidden={comparing}>
         {tocLoading ? (
           <ReaderStateCard
             tone="loading"
@@ -419,7 +466,7 @@ export default function ChapterViewer() {
           outlineByOffset={outlineByOffset}
           outlineItems={outlineItems}
           outlineOpen={outlineOpen}
-          playingParagraphMode={playingParagraphMode}
+          playingParagraphMode={comparing ? null : playingParagraphMode}
           playingParagraphStart={playingParagraphStart}
           selectedVersionId={selectedVersionId}
           textViewerRef={textViewerRef}
