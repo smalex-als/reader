@@ -30,8 +30,10 @@ test('builds a single-video MP3 yt-dlp command without invoking a shell', () => 
     outputTemplate: '/data/book/chapter001.source-job.download.%(ext)s'
   });
 
-  assert.deepEqual(args.slice(0, 10), [
+  assert.deepEqual(args.slice(0, 12), [
     '--ignore-config',
+    '--js-runtimes',
+    `node:${process.execPath}`,
     '--no-playlist',
     '--extract-audio',
     '--audio-format',

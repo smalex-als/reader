@@ -1,4 +1,5 @@
 import type { YouTubeAudioImportStatus } from '@/api/youtubeAudioImport';
+import { getYouTubeDownloadFailureDetail } from '@/lib/youtubeAudioImportStatus';
 
 function formatBytes(value?: number | null) {
   if (!value || value <= 0) {
@@ -52,7 +53,8 @@ function getStatusCopy(status: YouTubeAudioImportStatus) {
           ? 'The MP3 and base transcript are safe. Retry to create the selected text version.'
           : status.audioUrl
           ? 'The MP3 is safe. Retry OpenAI gpt-transcribe without downloading the video.'
-          : 'The latest download attempt failed. The queue may retry automatically, or you can retry now.'
+          : getYouTubeDownloadFailureDetail(status.error)
+            ?? 'The latest download attempt failed. The queue may retry automatically, or you can retry now.'
       };
   }
 }
@@ -104,7 +106,13 @@ export default function YouTubeAudioImportCard({
             Open video ↗
           </a>
         </div>
-        <p>{requestError ?? (status.status === 'failed' ? status.error ?? copy.detail : copy.detail)}</p>
+        <p>{requestError ?? copy.detail}</p>
+        {status.status === 'failed' && status.error ? (
+          <details className="youtube-audio-import-error">
+            <summary>Technical details</summary>
+            <pre>{status.error}</pre>
+          </details>
+        ) : null}
         {active ? (
           <div className="youtube-audio-import-progress" role="progressbar" aria-label={copy.title}>
             <span />

@@ -64,6 +64,9 @@ function formatLegacyChapterSourceMetadataFilename(chapterNumber) {
 export function buildYouTubeDownloadArgs({ sourceUrl, outputTemplate }) {
   return [
     '--ignore-config',
+    // --ignore-config also ignores user runtime settings. Use the running server's Node.
+    '--js-runtimes',
+    `node:${process.execPath}`,
     '--no-playlist',
     '--extract-audio',
     '--audio-format',

@@ -277,6 +277,17 @@ Server environment variables:
 - `REDIS_URL` (enables the BullMQ background queue, for example `redis://localhost:6379`)
 - `BACKGROUND_JOB_CONCURRENCY` (number of long-running jobs processed concurrently; default `1`)
 - `YT_DLP_BIN` (yt-dlp executable used by YouTube chapter imports; default `yt-dlp`)
+
+YouTube downloads require Node.js 22 or newer. Reader explicitly passes its running Node executable
+to yt-dlp with `--js-runtimes`, including when yt-dlp configuration files are ignored.
+The Docker image includes a pinned yt-dlp release with bundled EJS challenge scripts.
+For a non-Docker installation, ensure your yt-dlp distribution also includes `yt-dlp-ejs`;
+see the [official runtime setup guide](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
+After updating the Dockerfile or download code, rebuild and recreate the Reader container
+before using **Retry download**; restarting an old image does not apply the fix.
+An HTTP 403 can also be caused by YouTube access restrictions, so enabling the runtime
+does not guarantee every video can be downloaded.
+
 YouTube imports use `gpt-transcribe` and upload the downloaded MP3 to OpenAI; recordings above the API file-size limit are converted into 15-minute mono chunks and transcribed sequentially.
 
 Front-end environment variables:

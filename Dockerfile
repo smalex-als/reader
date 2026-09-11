@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-bookworm AS builder
+FROM node:22-bookworm AS builder
 WORKDIR /app
 
 COPY package.json ./
@@ -9,10 +9,10 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-FROM node:20-bookworm-slim AS runner
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
-ARG YT_DLP_VERSION=2026.07.04
+ARG YT_DLP_VERSION=2026.08.19
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
@@ -25,7 +25,7 @@ RUN apt-get update \
     "https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux" \
     --output /usr/local/bin/yt-dlp \
   && chmod +x /usr/local/bin/yt-dlp \
-  && yt-dlp --version \
+  && yt-dlp --ignore-config --js-runtimes node:/usr/local/bin/node --version \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json ./

@@ -3346,6 +3346,26 @@ body {
   font-size: 0.9rem;
 }
 
+.youtube-audio-import-error {
+  margin-top: 0.75rem;
+  color: var(--text-viewer-muted);
+  font-size: 0.85rem;
+}
+
+.youtube-audio-import-error summary {
+  cursor: pointer;
+}
+
+.youtube-audio-import-error pre {
+  max-height: 14rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--text-viewer-bg-faint);
+}
+
 .youtube-audio-import-source {
   color: var(--text-viewer-accent);
   font-size: 0.85rem;
