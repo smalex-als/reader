@@ -43,7 +43,7 @@ export type StreamVoice = string;
 export type StreamVoiceOption = {
   id: string;
   label: string;
-  provider: 'openai' | 'xai' | 'yandex' | 'streaming';
+  provider: 'xai' | 'streaming';
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {

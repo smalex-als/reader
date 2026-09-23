@@ -14,7 +14,6 @@ import {
   streamChapterAudioChunk
 } from './streamAudio.js';
 import { generateChapterXaiAudio } from './chapterXaiAudio.js';
-import { generateChapterYandexAudio } from './chapterYandexAudio.js';
 import { createTtsLogTimer } from './ttsLog.js';
 import {
   cancelBackgroundJob,
@@ -28,6 +27,12 @@ const activeSignals = new Map();
 let cachedJobs = null;
 let writeQueue = Promise.resolve();
 const PCM_BYTES_PER_SECOND = PCM_STREAM_SAMPLE_RATE * PCM_STREAM_CHANNEL_COUNT * (PCM_STREAM_BIT_DEPTH / 8);
+const PCM_FRAME_BYTES = PCM_STREAM_CHANNEL_COUNT * (PCM_STREAM_BIT_DEPTH / 8);
+
+function createPcmSilence(durationMs) {
+  const frames = Math.round((durationMs / 1000) * PCM_STREAM_SAMPLE_RATE);
+  return Buffer.alloc(frames * PCM_FRAME_BYTES);
+}
 
 function normalizeProgress(progress) {
   if (!progress || typeof progress !== 'object') {
@@ -98,7 +103,7 @@ function normalizeJob(job) {
   return {
     bookId: job.bookId,
     chapterNumber: job.chapterNumber,
-    provider: job.provider === 'xai' || job.provider === 'yandex' ? job.provider : 'default',
+    provider: job.provider === 'xai' ? job.provider : 'default',
     status: job.status ?? 'queued',
     versionId: typeof job.versionId === 'string' ? job.versionId : 'base',
     startedAt: job.startedAt ?? null,
@@ -242,7 +247,7 @@ export async function runChapterAudioJob({
   };
   activeSignals.set(key, signal);
   let preparation = null;
-  const normalizedProvider = provider === 'xai' || provider === 'yandex' ? provider : 'streaming';
+  const normalizedProvider = provider === 'xai' ? provider : 'streaming';
   const jobLog = createTtsLogTimer({
     scope: 'job',
     endpoint: 'chapter-audio',
@@ -304,31 +309,6 @@ export async function runChapterAudioJob({
       return;
     }
 
-    if (provider === 'yandex') {
-      await updateJob(bookId, chapterNumber, {
-        status: 'running',
-        progress: { percent: 35, current: 0, total: 0, label: 'Generating MP3' }
-      });
-      const result = await generateChapterYandexAudio({ bookId, chapterNumber, versionId, voice, force });
-      await updateJob(bookId, chapterNumber, {
-        provider,
-        status: 'completed',
-        versionId: result.versionId ?? versionId ?? 'base',
-        audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
-        error: null,
-        progress: { percent: 100, current: 1, total: 1, label: 'MP3 ready' }
-      });
-      await finishJobLog({
-        status: 'ok',
-        source: 'existingAudioUrl' in result ? 'file' : 'ai',
-        cacheHit: 'existingAudioUrl' in result,
-        audioUrl: 'existingAudioUrl' in result ? result.existingAudioUrl : result.mp3Url,
-        text: 'cleanText' in result ? result.cleanText : '',
-        versionId: result.versionId ?? versionId ?? 'base'
-      });
-      return;
-    }
-
     preparation = await prepareChapterAudio({ bookId, chapterNumber, versionId, provider, voice, force });
     if ('existingAudioUrl' in preparation) {
       await updateJob(bookId, chapterNumber, {
@@ -367,7 +347,8 @@ export async function runChapterAudioJob({
       });
       for (let index = 0; index < preparation.textChunks.length; index += 1) {
         const chunk = preparation.textChunks[index];
-        const chunkText = typeof chunk === 'string' ? chunk : chunk.text;
+        const chunkText = chunk.text;
+        const chunkVoice = chunk.voice || voice;
         if (signal?.canceled) {
           canceled = true;
           break;
@@ -387,7 +368,7 @@ export async function runChapterAudioJob({
           scope: 'job',
           endpoint: 'chapter-audio-chunk',
           provider: 'streaming',
-          voice: voice || null,
+          voice: chunkVoice || null,
           format: 'pcm_s16le',
           bookId,
           chapterNumber,
@@ -398,7 +379,7 @@ export async function runChapterAudioJob({
         });
         let pcmBuffer;
         try {
-          pcmBuffer = await streamChapterAudioChunk(chunkText, voice);
+          pcmBuffer = await streamChapterAudioChunk(chunkText, chunkVoice);
           await chunkLog.finish({
             status: 'ok',
             source: 'streaming',
@@ -414,6 +395,11 @@ export async function runChapterAudioJob({
         }
         await pcmHandle.write(pcmBuffer);
         pcmLength += pcmBuffer.length;
+        if (chunk.pauseAfterMs > 0) {
+          const silence = createPcmSilence(chunk.pauseAfterMs);
+          await pcmHandle.write(silence);
+          pcmLength += silence.length;
+        }
         const current = index + 1;
         const total = preparation.textChunks.length;
         await updateJob(bookId, chapterNumber, {

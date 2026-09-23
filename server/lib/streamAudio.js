@@ -20,7 +20,9 @@ import { AsyncSingleFlight } from './asyncSingleFlight.js';
 import { getChapterTextVersionText } from './chapterTextVersions.js';
 import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
-import { prepareChapterSpeechSegments, stripMarkdown } from './streamText.js';
+import { formatChapterSpeechPlan, prepareChapterSpeechSegments, stripMarkdown } from './streamText.js';
+import { getChapterAudioVoiceOptions } from './streamVoices.js';
+import { resolveVoiceCommandId } from '../../shared/voiceCommandsCore.js';
 import { splitTextForStreaming } from './streamAudioText.js';
 
 const SAMPLE_RATE = 24_000;
@@ -683,14 +685,17 @@ export async function prepareChapterAudio({
   const mp3Filename = audioFilename.replace(/\.wav$/i, '.mp3');
   const mp3Path = path.join(directory, mp3Filename);
   const metaPath = `${mp3Path}.meta.json`;
-  const speechSegments = prepareChapterSpeechSegments(textVersion.text);
+  const voiceOptions = getChapterAudioVoiceOptions(provider);
+  const speechSegments = prepareChapterSpeechSegments(textVersion.text, {
+    resolveVoice: (name) => resolveVoiceCommandId(name, voiceOptions)
+  });
   const speechSections = speechSegments.map((section) => section.text);
   const cleaned = speechSections.join('\n\n').trim();
   if (!cleaned) {
     throw createHttpError(400, 'No text available for audio generation');
   }
   const normalizedVoice = normalizeAudioVoice(voice);
-  const textHash = hashSpeechText(cleaned);
+  const textHash = hashSpeechText(formatChapterSpeechPlan(speechSegments).trim());
   const existingMp3 = await safeStat(mp3Path);
   if (existingMp3?.isFile()) {
     const meta = await readChapterAudioMeta(metaPath);
@@ -722,11 +727,16 @@ export async function prepareChapterAudio({
     speechSections,
     textHash,
     textChunks: speechSegments.flatMap((section, sectionIndex) =>
-      splitTextForStreaming(section.text).map((text) => ({
-        text,
-        sectionIndex,
-        title: section.title
-      }))
+      section.parts.flatMap((part) => {
+        const chunks = splitTextForStreaming(part.text);
+        return chunks.map((text, index) => ({
+          text,
+          sectionIndex,
+          title: section.title,
+          voice: part.voice,
+          pauseAfterMs: index === chunks.length - 1 ? part.pauseAfterMs : 0
+        }));
+      })
     ),
     versionId: textVersion.versionId
   };

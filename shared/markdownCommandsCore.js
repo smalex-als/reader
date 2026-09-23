@@ -142,3 +142,70 @@ export function resolveMarkdownCommandLines(text) {
   }
   return changed ? kept.join('\n') : input;
 }
+
+const MARKDOWN_LIST_ITEM_PATTERN = /^\s*(?:[-+*]|\d+[.)])\s+\S/;
+
+function splitSourceLines(input) {
+  const lines = [];
+  let lineStart = 0;
+  while (lineStart < input.length) {
+    const newlineIndex = input.indexOf('\n', lineStart);
+    const end = newlineIndex === -1 ? input.length : newlineIndex;
+    lines.push({ text: input.slice(lineStart, end), start: lineStart, end });
+    lineStart = newlineIndex === -1 ? input.length : newlineIndex + 1;
+  }
+  return lines;
+}
+
+/**
+ * Splits Markdown into the blocks playback walks: paragraphs, single list
+ * items, and standalone command lines. Shared by the live stream and chapter
+ * MP3 generation so both agree on where a command sits.
+ */
+export function splitMarkdownPlaybackBlocks(input) {
+  const blocks = [];
+  const lines = splitSourceLines(typeof input === 'string' ? input : '');
+  let blockStart = -1;
+  let blockEnd = -1;
+
+  const flushBlock = () => {
+    if (blockStart < 0 || blockEnd <= blockStart) {
+      return;
+    }
+    const rawText = input.slice(blockStart, blockEnd).trim();
+    if (rawText) {
+      blocks.push({ rawText, startIndex: blockStart });
+    }
+    blockStart = -1;
+    blockEnd = -1;
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.text.trim()) {
+      flushBlock();
+      continue;
+    }
+
+    // `blockStart < 0` means the previous line was blank, so together with a
+    // blank line after we know the command stands alone as its own block.
+    const command = blockStart < 0 && isBlankLine(lines[index + 1]?.text)
+      ? parseMarkdownCommandLine(line.text)
+      : null;
+    if (command) {
+      blocks.push({ rawText: line.text.trim(), startIndex: line.start, command });
+      continue;
+    }
+
+    if (MARKDOWN_LIST_ITEM_PATTERN.test(line.text)) {
+      flushBlock();
+    }
+    if (blockStart < 0) {
+      blockStart = line.start;
+    }
+    blockEnd = line.end;
+  }
+  flushBlock();
+
+  return blocks;
+}

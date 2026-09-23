@@ -11,7 +11,6 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - OCR block overlays on page images with click-to-stream playback.
 - OCR block edit mode to exclude/include blocks from speech directly on the page; exclusions are saved back into the OCR text file.
 - Page dimming controls for OCR overlays, including toolbar toggle and adjustable dim level.
-- Page audio playback with `OpenAI TTS` and `xAI TTS`.
 - Streaming audio via WebSocket (external stream server), including a floating stream control bubble.
 - Backend streaming audio test endpoints for raw PCM and experimental streaming WAV output.
 - Chapter text view with versioning: create prompt-based text variants, switch between versions, and generate chapter MP3s with the default stream provider or `xAI`.
@@ -258,11 +257,8 @@ names are left alone and render as written.
 
 Server environment variables:
 
-- `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, YouTube `gpt-transcribe`, TTS, and image enhancement)
+- `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, YouTube `gpt-transcribe`, and image enhancement)
 - `XAI_API_KEY` (required for xAI TTS generation)
-- `YANDEX_API_KEY` and `YANDEX_FOLDER_ID` (required for Yandex stream voices)
-- `YANDEX_STREAM_VOICES` (comma-separated Yandex stream voices; defaults to `alena,jane,zahar,oksana,ermil,marina`)
-- `YANDEX_TTS_LANG`, `YANDEX_TTS_SPEED`, and `YANDEX_TTS_SAMPLE_RATE` (optional Yandex stream voice settings; defaults to `ru-RU`, `1.0`, and `48000`; audio is resampled to the app stream rate)
 - `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://reader.test:11434`)
 - `OCR_DEEPSEEK_CONCURRENCY` (max active Deepseek OCR requests; default `1`, so extra requests wait server-side instead of overloading the model)
 - `OCR_DEEPSEEK_MODEL` (default `deepseek-ocr`)
@@ -323,8 +319,6 @@ Notes:
 - `O`: run OCR for the current page in the background
 - `E`: toggle OCR block edit mode on the page
 - `S`: start/stop stream audio
-- `P`: play/stop `OpenAI TTS`
-- `X`: play/stop `xAI TTS`
 - `7`: open `Quiz`
 - `8`: open `Vocabulary`
 - `G`: focus the page number input
@@ -338,14 +332,12 @@ These scripts are intended for backend verification and latency comparison.
 - `scripts/test-stream-audio-wav-stream.txt`: shared long-form sample text for stream tests.
 - `scripts/test-stream-audio-wav-stream.sh`: exercises `POST /api/stream-audio/wav` and plays the response through `ffplay` or `mpv`.
 - `scripts/test-stream-audio-pcm.sh`: exercises `POST /api/stream-audio/pcm` and plays raw PCM with the correct player flags.
-- `scripts/test-openai-stream-audio-wav.sh`: sends the same sample text directly to OpenAI TTS and plays the result for comparison with the local streaming backend.
 
 Examples:
 
 ```bash
 ./scripts/test-stream-audio-pcm.sh
 STREAM_WAV_ENDPOINT='http://localhost:3000/api/stream-audio/wav' ./scripts/test-stream-audio-wav-stream.sh
-./scripts/test-openai-stream-audio-wav.sh
 ```
 
 ## API highlights
@@ -390,8 +382,6 @@ Units:
 
 Page media:
 - `GET /api/page-text?image=/data/...`
-- `POST /api/page-audio`
-- `GET /api/page-audio/stream`
 - `POST /api/text-audio`
 - `POST /api/text-audio/stream`
 - `POST /api/stream-audio/pcm`

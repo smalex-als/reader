@@ -14,6 +14,12 @@ export type MarkdownCommand =
   | MarkdownVoiceCommand
   | MarkdownSayCommand;
 
+export type MarkdownPlaybackBlock = {
+  rawText: string;
+  startIndex: number;
+  command?: MarkdownCommand;
+};
+
 export declare const DEFAULT_PAUSE_MS: number;
 export declare const MAX_PAUSE_MS: number;
 
@@ -22,3 +28,4 @@ export function parseMarkdownCommandLine(line: string): MarkdownCommand | null;
 export function isStandaloneCommandLine(lines: string[], index: number): boolean;
 export function removeSkippedRegions(text: string): string;
 export function resolveMarkdownCommandLines(text: string): string;
+export function splitMarkdownPlaybackBlocks(input: string): MarkdownPlaybackBlock[];

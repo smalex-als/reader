@@ -35,9 +35,6 @@ function getGenerateLabel({
   if (isAudioJobActive) {
     return actionLabel;
   }
-  if (selectedMp3Provider === 'yandex') {
-    return 'Generate Yandex';
-  }
   if (selectedMp3Provider === 'xai') {
     return 'Generate xAI';
   }

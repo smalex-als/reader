@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { createHttpError } from './errors.js';
 import { normalizeMp3Chunk } from './mp3Chunks.js';
+import { createMp3SilenceLike } from './mp3Silence.js';
 import { getMp3BufferDurationSeconds } from './streamAudio.js';
 import { splitStreamChunks } from './streamText.js';
 
@@ -22,17 +23,21 @@ function closeSubchapter(entry, endSeconds) {
 }
 
 function buildSpeechChunkRecords({ segments, chunkSize, lookahead }) {
-  return segments.flatMap((section, sectionIndex) => {
-    const chunks =
-      typeof chunkSize === 'number'
-        ? splitStreamChunks(section.text, 0, chunkSize, lookahead)
-        : splitStreamChunks(section.text, 0);
-    return chunks.map((text) => ({
-      text,
-      sectionIndex,
-      title: section.title
-    }));
-  });
+  return segments.flatMap((section, sectionIndex) =>
+    section.parts.flatMap((part) => {
+      const chunks =
+        typeof chunkSize === 'number'
+          ? splitStreamChunks(part.text, 0, chunkSize, lookahead)
+          : splitStreamChunks(part.text, 0);
+      return chunks.map((text, index) => ({
+        text,
+        sectionIndex,
+        title: section.title,
+        voice: part.voice,
+        pauseAfterMs: index === chunks.length - 1 ? part.pauseAfterMs : 0
+      }));
+    })
+  );
 }
 
 export async function generateDirectChapterMp3Buffer({
@@ -44,6 +49,7 @@ export async function generateDirectChapterMp3Buffer({
   generateChunk
 }) {
   const chunkRecords = buildSpeechChunkRecords({ segments, chunkSize, lookahead });
+  const tempDir = path.dirname(mp3Path);
   const mp3Chunks = [];
   const subchapters = [];
   let activeSubchapter = null;
@@ -63,13 +69,19 @@ export async function generateDirectChapterMp3Buffer({
       };
     }
 
-    const mp3Chunk = await generateChunk({ text: chunk.text, voice });
-    const durationSeconds = await getMp3BufferDurationSeconds(mp3Chunk, path.dirname(mp3Path));
+    const mp3Chunk = await generateChunk({ text: chunk.text, voice: chunk.voice || voice });
+    const durationSeconds = await getMp3BufferDurationSeconds(mp3Chunk, tempDir);
     if (durationSeconds === null) {
       throw createHttpError(502, 'Failed to read generated MP3 chunk duration');
     }
     elapsedSeconds += durationSeconds;
-    mp3Chunks.push(normalizeMp3Chunk(mp3Chunk, index, chunkRecords.length));
+    mp3Chunks.push(mp3Chunk);
+    if (chunk.pauseAfterMs > 0) {
+      const silence = await createMp3SilenceLike(mp3Chunk, chunk.pauseAfterMs, tempDir);
+      const silenceSeconds = await getMp3BufferDurationSeconds(silence, tempDir);
+      elapsedSeconds += silenceSeconds ?? chunk.pauseAfterMs / 1000;
+      mp3Chunks.push(silence);
+    }
   }
 
   const closed = closeSubchapter(activeSubchapter, elapsedSeconds);
@@ -78,7 +90,9 @@ export async function generateDirectChapterMp3Buffer({
   }
 
   return {
-    mp3Buffer: Buffer.concat(mp3Chunks),
+    mp3Buffer: Buffer.concat(
+      mp3Chunks.map((mp3Chunk, index) => normalizeMp3Chunk(mp3Chunk, index, mp3Chunks.length))
+    ),
     subchapters
   };
 }

@@ -5,7 +5,7 @@ import { formatVoiceBadgeLabel, resolveVoiceCommandId } from '../src/lib/streamV
 const OPTIONS = [
   { id: 'en-Mike_man', label: 'Mike', provider: 'streaming' as const },
   { id: 'en-Sara_woman', label: 'Sara', provider: 'streaming' as const },
-  { id: 'alloy', label: 'Alloy', provider: 'openai' as const }
+  { id: 'xai_ara', label: 'Ara - xAI', provider: 'xai' as const }
 ];
 
 test('matches a full voice id exactly', () => {
@@ -44,4 +44,9 @@ test('the badge label keeps hyphenated names intact', () => {
 test('the badge label tolerates stray separators and spacing', () => {
   assert.equal(formatVoiceBadgeLabel('  Emma-  woman '), 'Emma');
   assert.equal(formatVoiceBadgeLabel('- woman'), '- woman');
+});
+
+test('matches the bare name inside an xAI voice id', () => {
+  const options = [{ id: 'xai_eve', label: 'Eve - xAI', provider: 'xai' as const }];
+  assert.equal(resolveVoiceCommandId('eve', options), 'xai_eve');
 });

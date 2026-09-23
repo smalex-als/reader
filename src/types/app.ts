@@ -217,7 +217,7 @@ export interface ChapterTextVersion {
   deletable: boolean;
 }
 
-export type ChapterAudioProvider = 'default' | 'xai' | 'yandex';
+export type ChapterAudioProvider = 'default' | 'xai';
 
 export interface ImagePreviewTarget {
   bookId: string;

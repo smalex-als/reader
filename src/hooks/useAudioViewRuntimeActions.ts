@@ -9,9 +9,6 @@ function getMp3Provider(voice: string): ChapterAudioProvider {
   if (voice.startsWith('xai_')) {
     return 'xai';
   }
-  if (voice.startsWith('yandex_')) {
-    return 'yandex';
-  }
   return 'default';
 }
 
@@ -31,7 +28,7 @@ export function useAudioViewRuntimeActions({
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'yandex' || option.provider === 'xai'
+        (option) => option.provider === 'streaming' || option.provider === 'xai'
       ),
     [streamVoiceOptions]
   );

@@ -63,8 +63,5 @@ export function getChapterAudioProvider(voice: string): ChapterAudioProvider {
   if (voice.startsWith('xai_')) {
     return 'xai';
   }
-  if (voice.startsWith('yandex_')) {
-    return 'yandex';
-  }
   return 'default';
 }

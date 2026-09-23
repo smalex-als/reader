@@ -17,9 +17,7 @@ export async function fetchStreamVoices() {
           typeof voice.id === 'string' &&
           voice.id.trim() &&
           typeof voice.label === 'string' &&
-          (voice.provider === 'openai' ||
-            voice.provider === 'xai' ||
-            voice.provider === 'yandex' ||
+          (voice.provider === 'xai' ||
             voice.provider === 'streaming')
       )
     : [];

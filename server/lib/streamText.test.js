@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  formatChapterSpeechPlan,
   prepareChapterSpeechSections,
   prepareChapterSpeechSegments,
   splitStreamChunks,
@@ -250,11 +251,115 @@ test('preserves subchapter titles while preparing chapter speech', () => {
 
   const output = prepareChapterSpeechSegments(input);
 
-  assert.deepEqual(output, [
-    { title: null, text: 'Preface text.' },
-    { title: 'Data model', text: 'Data model.\nThe table stores hotel info.' },
-    { title: 'API design', text: 'API design.\nRequests are routed by region.' }
+  assert.deepEqual(
+    output.map(({ title, text }) => ({ title, text })),
+    [
+      { title: null, text: 'Preface text.' },
+      { title: 'Data model', text: 'Data model.\nThe table stores hotel info.' },
+      { title: 'API design', text: 'API design.\nRequests are routed by region.' }
+    ]
+  );
+  assert.deepEqual(output[1].parts, [
+    { text: 'Data model.\nThe table stores hotel info.', voice: null, pauseAfterMs: 0 }
   ]);
+});
+
+const resolveTestVoice = (name) =>
+  ({ mike: 'en-Mike_man', 'en-mike_man': 'en-Mike_man', emma: 'en-Emma_woman' })[name.toLowerCase()] ?? null;
+
+test('splits chapter speech into parts at pauses and adds up consecutive pauses', () => {
+  const input = ['First line', '', '::pause 2s', '', '::pause 500ms', '', 'Second line'].join('\n');
+
+  const [section] = prepareChapterSpeechSegments(input);
+
+  assert.equal(section.text, 'First line.\n\nSecond line.');
+  assert.deepEqual(section.parts, [
+    { text: 'First line.', voice: null, pauseAfterMs: 2500 },
+    { text: 'Second line.', voice: null, pauseAfterMs: 0 }
+  ]);
+});
+
+test('carries a pause at the start of a section onto the previous section', () => {
+  const input = ['Intro', '', '## Next', '', '::pause 1s', '', 'Body'].join('\n');
+
+  const output = prepareChapterSpeechSegments(input);
+
+  assert.deepEqual(
+    output.map((section) => section.parts.map((part) => [part.text, part.pauseAfterMs])),
+    [[['Intro.', 0]], [['Next.', 1000], ['Body.', 0]]]
+  );
+});
+
+test('switches chapter voices across sections and returns on a bare voice command', () => {
+  const input = [
+    'Narrator',
+    '',
+    '::voice mike',
+    '',
+    'Mike speaks',
+    '',
+    '## Scene',
+    '',
+    'Still Mike',
+    '',
+    '::voice',
+    '',
+    'Narrator again'
+  ].join('\n');
+
+  const output = prepareChapterSpeechSegments(input, { resolveVoice: resolveTestVoice });
+
+  assert.deepEqual(
+    output.flatMap((section) => section.parts.map((part) => [part.text, part.voice])),
+    [
+      ['Narrator.', null],
+      ['Mike speaks.', 'en-Mike_man'],
+      ['Scene.\n\nStill Mike.', 'en-Mike_man'],
+      ['Narrator again.', null]
+    ]
+  );
+});
+
+test('ignores voices the chapter provider cannot produce, and ignores stop', () => {
+  const input = ['One', '', '::voice xai_eve', '', 'Two', '', '::stop', '', 'Three'].join('\n');
+
+  const [section] = prepareChapterSpeechSegments(input, { resolveVoice: resolveTestVoice });
+
+  assert.deepEqual(section.parts, [{ text: 'One\n\nTwo\n\nThree.', voice: null, pauseAfterMs: 0 }]);
+});
+
+test('keeps skip regions and say lines working in chapter speech parts', () => {
+  const input = [
+    'Kept',
+    '',
+    '::skip',
+    '',
+    'Hidden',
+    '',
+    '::say Spoken instead',
+    '',
+    '::skip-end',
+    '',
+    'Also kept'
+  ].join('\n');
+
+  const [section] = prepareChapterSpeechSegments(input);
+
+  assert.equal(section.text, 'Kept\n\nSpoken instead\n\nAlso kept.');
+});
+
+test('writes voices and pauses into the chapter speech plan, and nothing else without commands', () => {
+  const plain = prepareChapterSpeechSegments('Just text');
+  assert.equal(formatChapterSpeechPlan(plain), 'Just text.');
+
+  const withCommands = prepareChapterSpeechSegments(
+    ['::voice mike', '', 'Hello', '', '::pause 1s', '', 'Bye'].join('\n'),
+    { resolveVoice: resolveTestVoice }
+  );
+  assert.equal(
+    formatChapterSpeechPlan(withCommands),
+    '[voice en-Mike_man]\nHello.\n[pause 1000ms]\n\n[voice en-Mike_man]\nBye.'
+  );
 });
 
 test('keeps markdown subchapters in separate speech chunks', () => {

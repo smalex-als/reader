@@ -10,7 +10,7 @@ export type FloatingAudioTrack = {
   url: string;
   subtitle?: string;
   kind?: 'page-tts' | 'text-tts' | 'file';
-  provider?: 'openai' | 'xai' | 'yandex' | 'default' | null;
+  provider?: 'openai' | 'xai' | 'default' | null;
   pageKey?: string | null;
   chapterNumber?: number | null;
   versionId?: string | null;

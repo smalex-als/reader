@@ -26,7 +26,6 @@ export const BOOKMARKS_FILENAME = 'bookmarks.txt';
 export const TOC_FILENAME = 'toc.json';
 export const DETAILED_TOC_FILENAME = 'toc.detailed.json';
 export const SEARCH_INDEX_FILENAME = 'search.index.json';
-export const DEFAULT_VOICE = 'santa';
 export const HTTPS_KEY_PATH = process.env.HTTPS_KEY_PATH;
 export const HTTPS_CERT_PATH = process.env.HTTPS_CERT_PATH;
 const parsePositiveNumber = (value, fallback) => {
@@ -57,18 +56,6 @@ export const STREAM_PCM_MAX_INITIAL_BUFFER_SECONDS = parseNonNegativeNumber(
   45
 );
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
-export const YANDEX_API_KEY = process.env.YANDEX_API_KEY || '';
-export const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID || '';
-export const YANDEX_TTS_LANG = process.env.YANDEX_TTS_LANG || 'ru-RU';
-export const YANDEX_TTS_SPEED = process.env.YANDEX_TTS_SPEED || '1.0';
-export const YANDEX_TTS_SAMPLE_RATE = Number.parseInt(process.env.YANDEX_TTS_SAMPLE_RATE || '48000', 10);
-const parseCsvList = (value) =>
-  typeof value === 'string' && value.trim()
-    ? value
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : null;
 export const LOCAL_STREAM_VOICES = [
   'en-Breeze_woman',
   'en-Brutalon_man',
@@ -89,14 +76,6 @@ export const LOCAL_STREAM_VOICES = [
   'en-Soother_woman'
 ];
 export const XAI_STREAM_VOICES = ['ara', 'eve', 'leo', 'rex', 'sal'];
-export const YANDEX_STREAM_VOICES = parseCsvList(process.env.YANDEX_STREAM_VOICES) || [
-  'alena',
-  'jane',
-  'zahar',
-  'oksana',
-  'ermil',
-  'marina'
-];
 
 export const OCR_BACKEND = process.env.OCR_BACKEND || 'openai'; // 'openai' | 'deepseek_ocr'
 export const OCR_TIMEOUT_MS = Number.parseInt(process.env.OCR_TIMEOUT_MS || '20000', 10);
@@ -163,51 +142,7 @@ export const getTextPrompt = ({ backend, model } = {}) => {
   return TEXT_PROMPT;
 };
 
-export const voiceProfiles = {
-  santa: {
-    openAiVoice: 'ash',
-    instructions: `Identity: Santa Claus
-
-Affect: Jolly, warm, and cheerful, with a playful and magical quality that fits Santa's personality.
-
-Tone: Festive and welcoming, creating a joyful, holiday atmosphere for the caller.
-
-Emotion: Joyful and playful, filled with holiday spirit, ensuring the caller feels excited and appreciated.
-
-Pronunciation: Clear, articulate, and exaggerated in key festive phrases to maintain clarity and fun.
-
-Pause: Brief pauses after each option and statement to allow for processing and to add a natural flow to the message.`
-  },
-  nyc_cabbie: {
-    openAiVoice: 'ash',
-    instructions: `Identity: NYC Cabbie
-
-Voice: Gruff, fast-talking, and a little worn-out, like a New York cabbie who's seen it all but still keeps things moving.
-
-Tone: Slightly exasperated but still functional, with a mix of sarcasm and no-nonsense efficiency.
-
-Dialect: Strong New York accent, with dropped "r"s, sharp consonants, and classic phrases like whaddaya and lemme guess.
-
-Pronunciation: Quick and clipped, with a rhythm that mimics the natural hustle of a busy city conversation.
-
-Features: Uses informal, straight-to-the-point language, throws in some dry humor, and keeps the energy just on the edge of impatience but still helpful.`
-  },
-  bedtime_story: {
-    openAiVoice: 'coral',
-    instructions: `Identity: Bedtime Story
-
-Affect: A gentle, curious narrator with a British accent, guiding a magical, child-friendly adventure through a fairy tale world.
-
-Tone: Magical, warm, and inviting, creating a sense of wonder and excitement for young listeners.
-
-Pacing: Steady and measured, with slight pauses to emphasize magical moments and maintain the storytelling flow.
-
-Emotion: Wonder, curiosity, and a sense of adventure, with a lighthearted and positive vibe throughout.
-
-Pronunciation: Clear and precise, with an emphasis on storytelling, ensuring the words are easy to follow and enchanting to listen to.`
-  }
-};
-export const DEFAULT_STREAM_VOICE = STREAM_VOICE || DEFAULT_VOICE || 'en-Mike_man';
+export const DEFAULT_STREAM_VOICE = STREAM_VOICE || 'en-Mike_man';
 
 export const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
 export const PDF_EXTENSIONS = new Set(['.pdf']);
