@@ -23,6 +23,111 @@ const CHAPTER_TEXT_VERSION_MODELS = new Set(['gpt-5.6-sol', 'gpt-5.6-terra', 'gp
 const CHAPTER_TEXT_VERSION_EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh']);
 const DEFAULT_VERSION_EFFORT = 'medium';
 
+const CHUNKED_PROMPT_IDS = new Set(['transcript-cleanup']);
+const CHUNKED_PROMPT_MAX_CHARS = 20000;
+
+function splitOversizedPiece(piece, maxChars) {
+  if (piece.length <= maxChars) {
+    return [piece];
+  }
+  const sentences = piece.split(/(?<=[.!?…])\s+/);
+  const parts = sentences.length > 1 ? sentences : piece.split(/\s+/);
+  const chunks = [];
+  let current = '';
+  for (const part of parts) {
+    if (part.length > maxChars) {
+      if (current) {
+        chunks.push(current);
+        current = '';
+      }
+      for (let offset = 0; offset < part.length; offset += maxChars) {
+        chunks.push(part.slice(offset, offset + maxChars));
+      }
+      continue;
+    }
+    if (current && current.length + 1 + part.length > maxChars) {
+      chunks.push(current);
+      current = part;
+    } else {
+      current = current ? `${current} ${part}` : part;
+    }
+  }
+  if (current) {
+    chunks.push(current);
+  }
+  return chunks;
+}
+
+export function splitTextIntoChunks(text, maxChars) {
+  const source = String(text || '').trim();
+  if (source.length <= maxChars) {
+    return source ? [source] : [];
+  }
+  const pieces = source
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .flatMap((paragraph) => splitOversizedPiece(paragraph, maxChars));
+  const chunks = [];
+  let current = '';
+  for (const piece of pieces) {
+    if (current && current.length + 2 + piece.length > maxChars) {
+      chunks.push(current);
+      current = piece;
+    } else {
+      current = current ? `${current}\n\n${piece}` : piece;
+    }
+  }
+  if (current) {
+    chunks.push(current);
+  }
+  return chunks;
+}
+
+// Streams the completion: a non-streaming request only receives headers once the
+// whole answer is generated, so long rewrites hit the SDK's 10-minute timeout.
+async function requestChapterTextCompletion({ model, reasoningEffort, promptText }) {
+  const stream = await getOpenAI().chat.completions.create({
+    model,
+    reasoning_effort: reasoningEffort,
+    stream: true,
+    messages: [
+      {
+        role: 'developer',
+        content: [
+          {
+            type: 'text',
+            text: 'Transform the chapter text according to the user prompt. Return only the final rewritten chapter text.'
+          }
+        ]
+      },
+      {
+        role: 'user',
+        content: [{ type: 'text', text: promptText }]
+      }
+    ]
+  });
+  let output = '';
+  let finishReason = null;
+  for await (const chunk of stream) {
+    const choice = chunk?.choices?.[0];
+    if (typeof choice?.delta?.content === 'string') {
+      output += choice.delta.content;
+    }
+    if (choice?.finish_reason) {
+      finishReason = choice.finish_reason;
+    }
+  }
+  if (finishReason === 'length') {
+    throw createHttpError(502, 'Chapter text version was cut off by the model output limit');
+  }
+  const text = output.trim();
+  if (!text) {
+    throw createHttpError(502, 'Chapter text version generation returned empty text');
+  }
+  return text;
+}
+
 function formatChapterFilename(chapterNumber) {
   return `chapter${String(chapterNumber).padStart(CHAPTER_PAD_LENGTH, '0')}.txt`;
 }
@@ -565,7 +670,8 @@ export async function createChapterTextVersion({
   }
 
   const placeholders = await buildPromptInput({ bookId, chapterNumber, chapterText });
-  const promptText = applyPromptTemplate(ensurePromptTemplateContext(template), placeholders).trim();
+  const resolvedTemplate = ensurePromptTemplateContext(template);
+  const promptText = applyPromptTemplate(resolvedTemplate, placeholders).trim();
   if (!promptText) {
     throw createHttpError(400, 'Prompt resolved to empty text');
   }
@@ -573,7 +679,13 @@ export async function createChapterTextVersion({
   const selectedModel = sanitizeVersionModel(model || selectedPrompt?.model);
   // An explicit request wins; otherwise fall back to what the prompt was saved with.
   const selectedEffort = sanitizeVersionEffort(reasoningEffort || selectedPrompt?.reasoningEffort);
-  const openai = getOpenAI();
+  // Rewrite-style prompts return roughly as much text as they receive. For long
+  // sources (multi-hour transcripts) one request outruns the model's output budget,
+  // so these prompts are applied section by section.
+  const sourceChunks =
+    !explicitPrompt && CHUNKED_PROMPT_IDS.has(selectedPrompt?.id)
+      ? splitTextIntoChunks(chapterText, CHUNKED_PROMPT_MAX_CHARS)
+      : [chapterText];
   // eslint-disable-next-line no-console
   console.log('Creating chapter text version via OpenAI', {
     bookId,
@@ -586,29 +698,39 @@ export async function createChapterTextVersion({
     customPrompt: Boolean(explicitPrompt),
     addToLibrary: Boolean(explicitPrompt && addToLibrary),
     sourceChars: chapterText.length,
-    promptChars: promptText.length
+    promptChars: promptText.length,
+    chunks: sourceChunks.length
   });
-  const response = await openai.chat.completions.create({
-    model: selectedModel,
-    reasoning_effort: selectedEffort,
-    messages: [
-      {
-        role: 'developer',
-        content: [
-          {
-            type: 'text',
-            text: 'Transform the chapter text according to the user prompt. Return only the final rewritten chapter text.'
-          }
-        ]
-      },
-      {
-        role: 'user',
-        content: [{ type: 'text', text: promptText }]
+  const outputs = [];
+  for (const [index, chunkText] of sourceChunks.entries()) {
+    const chunkPromptText =
+      sourceChunks.length === 1
+        ? promptText
+        : applyPromptTemplate(resolvedTemplate, { ...placeholders, chapter_text: chunkText }).trim();
+    try {
+      outputs.push(
+        await requestChapterTextCompletion({
+          model: selectedModel,
+          reasoningEffort: selectedEffort,
+          promptText: chunkPromptText
+        })
+      );
+    } catch (error) {
+      if (sourceChunks.length === 1) {
+        throw error;
       }
-    ]
-  });
-
-  const output = response?.choices?.[0]?.message?.content?.trim() || '';
+      const message = error instanceof Error ? error.message : 'request failed';
+      throw createHttpError(error?.status ?? 502, `Section ${index + 1}/${sourceChunks.length}: ${message}`);
+    }
+    if (sourceChunks.length > 1) {
+      // eslint-disable-next-line no-console
+      console.log(`Chapter text version section ${index + 1}/${sourceChunks.length} ready`, {
+        bookId,
+        chapterNumber
+      });
+    }
+  }
+  const output = outputs.join('\n\n').trim();
   if (!output) {
     throw createHttpError(502, 'Chapter text version generation returned empty text');
   }

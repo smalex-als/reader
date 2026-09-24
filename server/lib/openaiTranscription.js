@@ -97,12 +97,19 @@ export async function transcribeAudioWithOpenAI(audioPath) {
   try {
     const chunkPaths = await createAudioChunks(audioPath, temporaryDirectory);
     const transcripts = [];
-    for (const chunkPath of chunkPaths) {
+    for (const [index, chunkPath] of chunkPaths.entries()) {
+      const label = `Audio chunk ${index + 1}/${chunkPaths.length}`;
       const chunkStat = await fs.stat(chunkPath);
       if (chunkStat.size > OPENAI_TRANSCRIPTION_SAFE_FILE_BYTES) {
-        throw createHttpError(502, 'An audio chunk exceeds the OpenAI 25 MB upload limit');
+        throw createHttpError(502, `${label} exceeds the OpenAI 25 MB upload limit`);
       }
-      transcripts.push(await transcribeFile(chunkPath));
+      try {
+        transcripts.push(await transcribeFile(chunkPath));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'transcription failed';
+        throw createHttpError(error?.status ?? 502, `${label}: ${message}`);
+      }
+      console.log(`${label} transcribed`, { audioPath });
     }
     return transcripts.join('\n\n').trim();
   } finally {
