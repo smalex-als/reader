@@ -18,6 +18,8 @@ import {
 
 const execFileAsync = promisify(execFile);
 const CHAPTER_PAD_LENGTH = 3;
+// Multi-hour videos need time to download and convert to MP3.
+const YT_DLP_TIMEOUT_MS = 3 * 60 * 60 * 1000;
 const YOUTUBE_HOSTS = new Set([
   'youtube.com',
   'www.youtube.com',
@@ -215,11 +217,22 @@ export async function runYouTubeAudioDownloadJob({
     let videoTitle = current?.videoTitle || '';
     if (!downloaded) {
       await fs.rm(temporaryMp3Path, { force: true });
-      const { stdout } = await execFileAsync(
-        YT_DLP_BIN,
-        buildYouTubeDownloadArgs({ sourceUrl: normalizedUrl, outputTemplate }),
-        { timeout: 30 * 60 * 1000, maxBuffer: 10 * 1024 * 1024 }
-      );
+      let stdout;
+      try {
+        ({ stdout } = await execFileAsync(
+          YT_DLP_BIN,
+          buildYouTubeDownloadArgs({ sourceUrl: normalizedUrl, outputTemplate }),
+          { timeout: YT_DLP_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 }
+        ));
+      } catch (error) {
+        if (error?.killed) {
+          throw createHttpError(
+            504,
+            `yt-dlp did not finish within ${YT_DLP_TIMEOUT_MS / 60000} minutes`
+          );
+        }
+        throw error;
+      }
       videoTitle = extractYouTubeVideoTitle(stdout);
       downloaded = await safeStat(temporaryMp3Path);
       if (!downloaded?.isFile() || downloaded.size <= 0) {
