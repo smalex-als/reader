@@ -36,6 +36,26 @@ The app runs on Vite (default `http://localhost:5173`), and the API/static serve
 
 Without `REDIS_URL`, long-running jobs use the existing in-process fallback.
 
+## Command line
+
+With the API server running, use Node.js 20 or newer:
+
+```bash
+npm run reader -- books list
+npm run reader -- chapters list BOOK_ID
+npm run reader -- books list --url http://192.168.1.10:3000
+READER_URL=http://192.168.1.10:3000 node scripts/reader.js chapters list BOOK_ID --json
+```
+
+`--url` overrides `READER_URL`; the default is `http://localhost:3000`.
+`books list` prints one book ID per line. `chapters list` reads the main table of
+contents and prints the starting page number (scanned books) or chapter number
+(text books), followed by its title. Numbers start at 1; a book without a
+table of contents is reported as having no TOC chapters. `--json` returns the original
+API response, including zero-based `page` indices. Errors go to stderr and exit
+with code 1. Run `npm run reader -- --help` for help. For JSON pipelines, use
+`node scripts/reader.js` directly or `npm run --silent reader --`.
+
 ## Local Docker
 
 The shortest way to build and start Reader with Redis is:
