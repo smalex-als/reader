@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { derivePrintFilename, createPdfFromImages } from '../lib/pdf.js';
 import {
   deleteBook,
+  assertBookDirectory,
   getBookType,
   listBookCards,
   listBooks,
@@ -523,6 +524,25 @@ router.post('/api/books/:id/search/index', asyncHandler(async (req, res) => {
     documents: index.documents.length,
     terms: Object.keys(index.terms).length
   });
+}));
+
+router.get('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => {
+  const bookId = normalizeBookId(req.params.id);
+  const chapterNumber = Number(req.params.chapter);
+  if (!/^[1-9]\d*$/.test(req.params.chapter) || !Number.isSafeInteger(chapterNumber)) {
+    throw createHttpError(400, 'Valid chapter number is required');
+  }
+  const directory = await assertBookDirectory(bookId);
+  let text;
+  try {
+    text = await fs.readFile(path.join(directory, `chapter${formatChapterSuffix(chapterNumber)}.txt`), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw createHttpError(404, 'Chapter text not found. Import or generate the chapter text first.');
+    }
+    throw error;
+  }
+  res.json({ book: bookId, chapterNumber, text });
 }));
 
 router.post('/api/books/:id/chapters/generate', asyncHandler(async (req, res) => {

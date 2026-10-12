@@ -43,18 +43,35 @@ With the API server running, use Node.js 20 or newer:
 ```bash
 npm run reader -- books list
 npm run reader -- chapters list BOOK_ID
+npm run reader -- chapters show BOOK_ID 3
 npm run reader -- books list --url http://192.168.1.10:3000
 READER_URL=http://192.168.1.10:3000 node scripts/reader.js chapters list BOOK_ID --json
 ```
 
 `--url` overrides `READER_URL`; the default is `http://localhost:3000`.
 `books list` prints one book ID per line. `chapters list` reads the main table of
-contents and prints the starting page number (scanned books) or chapter number
-(text books), followed by its title. Numbers start at 1; a book without a
+contents and prints the chapter number and title, plus the starting page for
+scanned books. Numbers start at 1 and can be passed to `chapters show`; a book without a
 table of contents is reported as having no TOC chapters. `--json` returns the original
 API response, including zero-based `page` indices. Errors go to stderr and exit
 with code 1. Run `npm run reader -- --help` for help. For JSON pipelines, use
 `node scripts/reader.js` directly or `npm run --silent reader --`.
+
+`chapters show BOOK_ID CHAPTER_NUMBER` prints the saved base chapter text exactly
+as stored, without selecting a rewritten version or generating missing text.
+For scanned books, chapter numbers follow the main TOC order; for text books,
+they match the chapter file numbers, including gaps after deleted chapters.
+Missing books or chapter text return an error. To save the text without npm's
+startup output:
+
+```bash
+node scripts/reader.js chapters show BOOK_ID 3 > chapter.md
+node scripts/reader.js chapters show BOOK_ID 3 --json
+```
+
+The API endpoint is `GET /api/books/:id/chapters/:chapter` and returns
+`{ "book": "BOOK_ID", "chapterNumber": 3, "text": "..." }`.
+Deploy the updated server before using `chapters show` remotely.
 
 ## Local Docker
 

@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 const help = `Usage:
   reader books list [--url URL] [--json]
   reader chapters list BOOK_ID [--url URL] [--json]
+  reader chapters show BOOK_ID CHAPTER_NUMBER [--url URL] [--json]
 
 Options:
   --url URL   Reader server (default: READER_URL or http://localhost:3000)
@@ -11,7 +12,8 @@ Options:
   --help, -h  Show help
 
 Chapters are entries from the book's main table of contents.
-The text output shows the starting page/chapter number, counting from 1.
+The text output shows chapter numbers counting from 1 (and starting pages for scans).
+Show prints the saved base chapter text without generating or rewriting it.
 JSON preserves the API's zero-based page indices.`;
 
 async function main() {
@@ -28,11 +30,15 @@ async function main() {
     return;
   }
 
-  const [resource, action, bookId] = positionals;
+  const [resource, action, bookId, chapter] = positionals;
   const books = resource === 'books' && action === 'list' && positionals.length === 2;
   const chapters = resource === 'chapters' && action === 'list' && positionals.length === 3 && bookId.trim();
-  if (!books && !chapters) {
-    throw new Error('Expected "books list" or "chapters list BOOK_ID". Use --help for usage.');
+  const show = resource === 'chapters' && action === 'show' && positionals.length === 4 && bookId.trim();
+  if (!books && !chapters && !show) {
+    throw new Error('Expected "books list", "chapters list BOOK_ID", or "chapters show BOOK_ID CHAPTER_NUMBER". Use --help for usage.');
+  }
+  if (show && (!/^[1-9]\d*$/.test(chapter) || !Number.isSafeInteger(Number(chapter)))) {
+    throw new Error('Chapter number must be a positive integer.');
   }
 
   const base = new URL(values.url ?? process.env.READER_URL ?? 'http://localhost:3000');
@@ -40,19 +46,31 @@ async function main() {
     throw new Error('Server URL must use HTTP or HTTPS without a query or fragment.');
   }
   base.pathname = `${base.pathname.replace(/\/+$/, '')}/`;
-  const endpoint = books ? 'api/books' : `api/books/${encodeURIComponent(bookId)}/toc`;
-  let response;
-  try {
-    response = await fetch(new URL(endpoint, base), {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(30_000)
-    });
-  } catch (error) {
-    throw new Error(`Unable to reach Reader at ${base.origin}: ${error.message}`);
+  const bookEndpoint = `api/books/${encodeURIComponent(bookId)}`;
+  const endpoint = books ? 'api/books' : show ? `${bookEndpoint}/chapters/${chapter}` : `${bookEndpoint}/toc`;
+  async function request(endpoint) {
+    let response;
+    try {
+      response = await fetch(new URL(endpoint, base), {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(30_000)
+      });
+    } catch (error) {
+      throw new Error(`Unable to reach Reader at ${base.origin}: ${error.cause?.message || error.message}`);
+    }
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${payload?.error || response.statusText}`);
+    }
+    return payload;
   }
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${payload?.error || response.statusText}`);
+  const payload = await request(endpoint);
+  if (show) {
+    if (typeof payload?.text !== 'string') {
+      throw new Error('Unexpected API response: chapter text is missing.');
+    }
+    process.stdout.write(values.json ? `${JSON.stringify(payload, null, 2)}\n` : payload.text);
+    return;
   }
   const entries = books ? payload?.books : payload?.toc;
   if (!Array.isArray(entries) || !entries.every((entry) => books
@@ -65,8 +83,18 @@ async function main() {
   } else if (entries.length === 0) {
     console.log(books ? 'No books found.' : 'No chapters in the table of contents.');
   } else {
-    for (const entry of entries) {
-      console.log(books ? entry : `${entry.page + 1}\t${entry.title.replace(/[\r\n\t]/g, ' ')}`);
+    const meta = chapters ? await request(`${bookEndpoint}/meta`) : null;
+    if (chapters && !['text', 'image'].includes(meta?.bookType)) {
+      throw new Error('Unexpected API response: book type is missing.');
+    }
+    for (const [index, entry] of entries.entries()) {
+      if (books) {
+        console.log(entry);
+      } else {
+        const number = meta.bookType === 'text' ? entry.page + 1 : index + 1;
+        const page = meta.bookType === 'image' ? `\t(page ${entry.page + 1})` : '';
+        console.log(`${number}\t${entry.title.replace(/[\r\n\t]/g, ' ')}${page}`);
+      }
     }
   }
 }
