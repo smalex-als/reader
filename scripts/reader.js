@@ -5,15 +5,19 @@ const help = `Usage:
   reader books list [--url URL] [--json]
   reader chapters list BOOK_ID [--url URL] [--json]
   reader chapters show BOOK_ID CHAPTER_NUMBER [--url URL] [--json]
+  reader chapters import-youtube BOOK_ID YOUTUBE_URL [--title TITLE] [--prompt-id ID] [--url URL] [--json]
 
 Options:
   --url URL   Reader server (default: READER_URL or http://localhost:3000)
   --json      Print the API response as JSON
+  --title     Chapter title for a YouTube import (optional)
+  --prompt-id Saved post-processing prompt for a YouTube import (optional)
   --help, -h  Show help
 
 Chapters are entries from the book's main table of contents.
 The text output shows chapter numbers counting from 1 (and starting pages for scans).
 Show prints the saved base chapter text without generating or rewriting it.
+Import-youtube creates a chapter and starts the import in the background.
 JSON preserves the API's zero-based page indices.`;
 
 async function main() {
@@ -21,6 +25,8 @@ async function main() {
     allowPositionals: true,
     options: {
       url: { type: 'string' },
+      title: { type: 'string' },
+      'prompt-id': { type: 'string' },
       json: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false }
     }
@@ -34,8 +40,12 @@ async function main() {
   const books = resource === 'books' && action === 'list' && positionals.length === 2;
   const chapters = resource === 'chapters' && action === 'list' && positionals.length === 3 && bookId.trim();
   const show = resource === 'chapters' && action === 'show' && positionals.length === 4 && bookId.trim();
-  if (!books && !chapters && !show) {
-    throw new Error('Expected "books list", "chapters list BOOK_ID", or "chapters show BOOK_ID CHAPTER_NUMBER". Use --help for usage.');
+  const importYouTube = resource === 'chapters' && action === 'import-youtube' && positionals.length === 4 && bookId.trim();
+  if (!books && !chapters && !show && !importYouTube) {
+    throw new Error('Expected "books list", "chapters list BOOK_ID", "chapters show BOOK_ID CHAPTER_NUMBER", or "chapters import-youtube BOOK_ID YOUTUBE_URL". Use --help for usage.');
+  }
+  if (!importYouTube && (values.title !== undefined || values['prompt-id'] !== undefined)) {
+    throw new Error('--title and --prompt-id are only supported for chapters import-youtube.');
   }
   if (show && (!/^[1-9]\d*$/.test(chapter) || !Number.isSafeInteger(Number(chapter)))) {
     throw new Error('Chapter number must be a positive integer.');
@@ -47,12 +57,13 @@ async function main() {
   }
   base.pathname = `${base.pathname.replace(/\/+$/, '')}/`;
   const bookEndpoint = `api/books/${encodeURIComponent(bookId)}`;
-  const endpoint = books ? 'api/books' : show ? `${bookEndpoint}/chapters/${chapter}` : `${bookEndpoint}/toc`;
-  async function request(endpoint) {
+  const endpoint = books ? 'api/books' : importYouTube ? `${bookEndpoint}/chapters/youtube` : show ? `${bookEndpoint}/chapters/${chapter}` : `${bookEndpoint}/toc`;
+  async function request(endpoint, options = {}) {
     let response;
     try {
       response = await fetch(new URL(endpoint, base), {
-        headers: { Accept: 'application/json' },
+        ...options,
+        headers: { Accept: 'application/json', ...options.headers },
         signal: AbortSignal.timeout(30_000)
       });
     } catch (error) {
@@ -64,7 +75,19 @@ async function main() {
     }
     return payload;
   }
-  const payload = await request(endpoint);
+  const payload = await request(endpoint, importYouTube ? {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sourceUrl: chapter, chapterTitle: values.title, postProcessPromptId: values['prompt-id'] })
+  } : {});
+  if (importYouTube) {
+    if (typeof payload?.book !== 'string' || !Number.isSafeInteger(payload?.chapterNumber) || payload.chapterNumber < 1 ||
+        typeof payload?.sourceAudioJob?.jobId !== 'string' || payload.sourceAudioJob.status !== 'queued') {
+      throw new Error('Unexpected API response: YouTube import was not queued.');
+    }
+    console.log(values.json ? JSON.stringify(payload, null, 2) : `Chapter ${payload.chapterNumber} in ${payload.book}: YouTube import queued.`);
+    return;
+  }
   if (show) {
     if (typeof payload?.text !== 'string') {
       throw new Error('Unexpected API response: chapter text is missing.');

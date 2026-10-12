@@ -904,15 +904,15 @@ router.post('/api/books/:id/chapters', upload.single('file'), asyncHandler(async
   res.json({ book: bookId, bookType: 'text', chapterCount, chapterFileCount, ...result });
 }));
 
-router.post('/api/books/:id/chapters/empty', asyncHandler(async (req, res) => {
+async function createChapterFromSource(req, res, body) {
   const bookId = normalizeBookId(req.params.id);
-  const { result, sourceAudioJob } = await createTextChapterFromSource(bookId, req.body);
+  const { result, sourceAudioJob } = await createTextChapterFromSource(bookId, body);
   await invalidateBookSearchIndex(bookId);
   const [chapterCount, chapterFileCount] = await Promise.all([
     getTextChapterNavigationCount(bookId),
     getTextChapterCount(bookId)
   ]);
-  res.status(sourceAudioJob ? 202 : 200).json({
+  res.status(sourceAudioJob?.status === 'failed' ? 503 : sourceAudioJob ? 202 : 200).json({
     book: bookId,
     bookType: 'text',
     chapterCount,
@@ -920,6 +920,14 @@ router.post('/api/books/:id/chapters/empty', asyncHandler(async (req, res) => {
     ...result,
     sourceAudioJob
   });
+}
+
+router.post('/api/books/:id/chapters/empty', asyncHandler(async (req, res) => {
+  await createChapterFromSource(req, res, req.body);
+}));
+
+router.post('/api/books/:id/chapters/youtube', asyncHandler(async (req, res) => {
+  await createChapterFromSource(req, res, { ...req.body, source: 'youtube' });
 }));
 
 router.put('/api/books/:id/chapters/:chapter', asyncHandler(async (req, res) => {

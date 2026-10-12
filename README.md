@@ -44,6 +44,7 @@ With the API server running, use Node.js 20 or newer:
 npm run reader -- books list
 npm run reader -- chapters list BOOK_ID
 npm run reader -- chapters show BOOK_ID 3
+npm run reader -- chapters import-youtube BOOK_ID 'https://youtu.be/VIDEO_ID'
 npm run reader -- books list --url http://192.168.1.10:3000
 READER_URL=http://192.168.1.10:3000 node scripts/reader.js chapters list BOOK_ID --json
 ```
@@ -72,6 +73,63 @@ node scripts/reader.js chapters show BOOK_ID 3 --json
 The API endpoint is `GET /api/books/:id/chapters/:chapter` and returns
 `{ "book": "BOOK_ID", "chapterNumber": 3, "text": "..." }`.
 Deploy the updated server before using `chapters show` remotely.
+
+Import a YouTube chapter with one command:
+
+```bash
+npm run reader -- chapters import-youtube my-book 'https://youtu.be/VIDEO_ID'
+```
+
+The command prints the new chapter number and queues the import in the background;
+it does not wait for downloading or transcription. Use `--title 'My chapter'`
+for a title, `--prompt-id ID` for a saved post-processing prompt, and `--json`
+for the complete API response including the job ID. `--url` and `READER_URL`
+work as for the other commands. The server must include the YouTube import endpoint.
+
+## YouTube chapter import API
+
+Add a YouTube video as a new chapter in an existing text book:
+
+```bash
+curl --fail-with-body http://localhost:3000/api/books/BOOK_ID/chapters/youtube \
+  -H 'Content-Type: application/json' \
+  -d '{"sourceUrl":"https://www.youtube.com/watch?v=VIDEO_ID","chapterTitle":"My chapter"}'
+```
+
+`sourceUrl` is required. `chapterTitle` and `postProcessPromptId` are optional;
+the latter selects a saved chapter text prompt to run after transcription.
+The endpoint always imports from YouTube; no `source` field is needed.
+It uses the same download, transcription, and optional post-processing workflow as the UI.
+
+The server returns **202 Accepted** with `book`, `chapterNumber` (starting at 1),
+chapter metadata, and `sourceAudioJob` containing the job ID and initial status.
+The chapter initially contains the source URL; the transcript replaces it when ready.
+Acceptance does not mean the download or transcription has completed.
+Invalid URLs or unknown prompts return 400, missing books return 404, and a
+failure to enqueue the import returns 503 with the chapter and failed job metadata.
+
+Poll the import status, retry a failed import, and retrieve the saved transcript:
+
+```bash
+curl --fail-with-body http://localhost:3000/api/books/BOOK_ID/chapters/1/youtube-audio/status
+curl --fail-with-body -X POST http://localhost:3000/api/books/BOOK_ID/chapters/1/youtube-audio/retry
+curl --fail-with-body http://localhost:3000/api/books/BOOK_ID/chapters/1
+```
+
+The status response is `{ "book": "BOOK_ID", "chapterNumber": 1, "job": { ... } }`.
+Job states are `queued`, `running`, `transcribing`, `post-processing`, `completed`,
+and `failed`. Inspect `job.error` and `job.failureStage` for failures.
+`job.transcriptReady` indicates that the transcript is saved; optional
+post-processing may still be running. Retry returns 202 and reuses an active job.
+Retrying an import whose MP3 is already saved reuses that audio.
+
+The server needs `yt-dlp` with EJS support, Node.js 22 or newer, FFmpeg, and
+`OPENAI_API_KEY` for transcription. Redis enables BullMQ; without `REDIS_URL`,
+the documented in-process fallback runs the import.
+Existing UI requests to `/api/books/:id/chapters/empty` with `source: "youtube"`
+continue to work. To create a new text book and its first YouTube chapter in one
+request, use `POST /api/books/text/empty` with `bookName`, `source: "youtube"`,
+`sourceUrl`, and the same optional chapter fields.
 
 ## Local Docker
 
@@ -396,6 +454,9 @@ Books:
 Chapters and narration:
 - `POST /api/books/:id/chapters`
 - `POST /api/books/:id/chapters/empty`
+- `POST /api/books/:id/chapters/youtube`
+- `GET /api/books/:id/chapters/:chapter/youtube-audio/status`
+- `POST /api/books/:id/chapters/:chapter/youtube-audio/retry`
 - `PUT /api/books/:id/chapters/:chapter`
 - `DELETE /api/books/:id/chapters/:chapter`
 - `POST /api/books/:id/chapters/generate`
