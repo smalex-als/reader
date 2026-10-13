@@ -3,6 +3,7 @@ import { parseArgs } from 'node:util';
 
 const help = `Usage:
   reader books list [--url URL] [--json]
+  reader prompts list [--url URL] [--json]
   reader chapters list BOOK_ID [--url URL] [--json]
   reader chapters show BOOK_ID CHAPTER_NUMBER [--url URL] [--json]
   reader chapters import-youtube BOOK_ID YOUTUBE_URL [--title TITLE] [--prompt-id ID] [--url URL] [--json]
@@ -18,6 +19,7 @@ Chapters are entries from the book's main table of contents.
 The text output shows chapter numbers counting from 1 (and starting pages for scans).
 Show prints the saved base chapter text without generating or rewriting it.
 Import-youtube creates a chapter and starts the import in the background.
+Prompts list prints the prompt ID and name; --json includes the full templates.
 JSON preserves the API's zero-based page indices.`;
 
 async function main() {
@@ -38,11 +40,12 @@ async function main() {
 
   const [resource, action, bookId, chapter] = positionals;
   const books = resource === 'books' && action === 'list' && positionals.length === 2;
+  const prompts = resource === 'prompts' && action === 'list' && positionals.length === 2;
   const chapters = resource === 'chapters' && action === 'list' && positionals.length === 3 && bookId.trim();
   const show = resource === 'chapters' && action === 'show' && positionals.length === 4 && bookId.trim();
   const importYouTube = resource === 'chapters' && action === 'import-youtube' && positionals.length === 4 && bookId.trim();
-  if (!books && !chapters && !show && !importYouTube) {
-    throw new Error('Expected "books list", "chapters list BOOK_ID", "chapters show BOOK_ID CHAPTER_NUMBER", or "chapters import-youtube BOOK_ID YOUTUBE_URL". Use --help for usage.');
+  if (!books && !prompts && !chapters && !show && !importYouTube) {
+    throw new Error('Expected "books list", "prompts list", "chapters list BOOK_ID", "chapters show BOOK_ID CHAPTER_NUMBER", or "chapters import-youtube BOOK_ID YOUTUBE_URL". Use --help for usage.');
   }
   if (!importYouTube && (values.title !== undefined || values['prompt-id'] !== undefined)) {
     throw new Error('--title and --prompt-id are only supported for chapters import-youtube.');
@@ -57,7 +60,7 @@ async function main() {
   }
   base.pathname = `${base.pathname.replace(/\/+$/, '')}/`;
   const bookEndpoint = `api/books/${encodeURIComponent(bookId)}`;
-  const endpoint = books ? 'api/books' : importYouTube ? `${bookEndpoint}/chapters/youtube` : show ? `${bookEndpoint}/chapters/${chapter}` : `${bookEndpoint}/toc`;
+  const endpoint = books ? 'api/books' : prompts ? 'api/chapter-text-prompts' : importYouTube ? `${bookEndpoint}/chapters/youtube` : show ? `${bookEndpoint}/chapters/${chapter}` : `${bookEndpoint}/toc`;
   async function request(endpoint, options = {}) {
     let response;
     try {
@@ -80,6 +83,22 @@ async function main() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sourceUrl: chapter, chapterTitle: values.title, postProcessPromptId: values['prompt-id'] })
   } : {});
+  if (prompts) {
+    if (!Array.isArray(payload?.prompts) || !payload.prompts.every((prompt) =>
+      typeof prompt?.id === 'string' && prompt.id.trim() && typeof prompt.name === 'string' && prompt.name.trim())) {
+      throw new Error('Unexpected API response: prompt IDs and names are missing.');
+    }
+    if (values.json) {
+      console.log(JSON.stringify(payload, null, 2));
+    } else if (payload.prompts.length === 0) {
+      console.log('No prompts found.');
+    } else {
+      for (const prompt of payload.prompts) {
+        console.log(`${prompt.id.replace(/[\r\n\t]/g, ' ')}\t${prompt.name.replace(/[\r\n\t]/g, ' ')}`);
+      }
+    }
+    return;
+  }
   if (importYouTube) {
     if (typeof payload?.book !== 'string' || !Number.isSafeInteger(payload?.chapterNumber) || payload.chapterNumber < 1 ||
         typeof payload?.sourceAudioJob?.jobId !== 'string' || payload.sourceAudioJob.status !== 'queued') {

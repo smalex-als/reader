@@ -42,6 +42,7 @@ With the API server running, use Node.js 20 or newer:
 
 ```bash
 npm run reader -- books list
+npm run reader -- prompts list
 npm run reader -- chapters list BOOK_ID
 npm run reader -- chapters show BOOK_ID 3
 npm run reader -- chapters import-youtube BOOK_ID 'https://youtu.be/VIDEO_ID'
@@ -85,6 +86,23 @@ it does not wait for downloading or transcription. Use `--title 'My chapter'`
 for a title, `--prompt-id ID` for a saved post-processing prompt, and `--json`
 for the complete API response including the job ID. `--url` and `READER_URL`
 work as for the other commands. The server must include the YouTube import endpoint.
+
+List available built-in and saved custom prompts before choosing `--prompt-id`:
+
+```bash
+npm run reader -- prompts list
+npm run reader -- prompts list --json
+```
+
+The default output has one prompt per line: `ID`, a tab, and its name.
+`--json` includes the complete prompt library, including each template, model,
+and reasoning effort. The command uses `GET /api/chapter-text-prompts` and
+supports `--url` and `READER_URL` for remote servers. Use a listed ID when importing:
+
+```bash
+npm run reader -- chapters import-youtube my-book 'https://youtu.be/VIDEO_ID' \
+  --prompt-id youtube-transcript-summary
+```
 
 ## YouTube chapter import API
 
