@@ -177,6 +177,10 @@ make local-up
 
 Then open `http://localhost:3000`, or run `make local-open`.
 
+The local image build uses the host network for package downloads. Set
+`READER_BUILD_NETWORK=default` to use Docker's default build network instead.
+This does not change the running containers' network configuration.
+
 Useful Make targets:
 
 ```bash
