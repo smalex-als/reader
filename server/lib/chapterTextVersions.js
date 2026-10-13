@@ -13,10 +13,10 @@ import {
   YOUTUBE_TRANSCRIPT_SUMMARY_PROMPT
 } from '../config.js';
 import { getOpenAI } from './openai.js';
+import { normalizeChapterModel } from '../../shared/chapterModels.js';
 
 const CHAPTER_PAD_LENGTH = 3;
 const GLOBAL_PROMPTS_PATH = path.join(DATA_DIR, '.chapter-text-prompts.json');
-const CHAPTER_TEXT_VERSION_MODELS = new Set(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']);
 // How hard the model reasons before answering. Sent as `reasoning_effort` on
 // chat.completions. Keep in sync with CHAPTER_TEXT_VERSION_EFFORTS in
 // src/types/app.ts.
@@ -249,8 +249,7 @@ function sanitizeTemplate(value) {
 }
 
 function sanitizeVersionModel(value) {
-  const model = typeof value === 'string' ? value.trim() : '';
-  return CHAPTER_TEXT_VERSION_MODELS.has(model) ? model : 'gpt-5.6-sol';
+  return normalizeChapterModel(value);
 }
 
 function sanitizeVersionEffort(value) {

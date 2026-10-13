@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { normalizeChapterGenerationModel } from './chapters.js';
 
 test('accepts supported chapter generation models', () => {
+  assert.equal(normalizeChapterGenerationModel('gpt-6.1-sol'), 'gpt-6.1-sol');
+  assert.equal(normalizeChapterGenerationModel('gpt-6-astra'), 'gpt-6-astra');
+  assert.equal(normalizeChapterGenerationModel('gpt-6-sol'), 'gpt-6-sol');
+  assert.equal(normalizeChapterGenerationModel(' gpt-6-luna '), 'gpt-6-luna');
   assert.equal(normalizeChapterGenerationModel('gpt-5.6-sol'), 'gpt-5.6-sol');
   assert.equal(normalizeChapterGenerationModel('gpt-5.6-terra'), 'gpt-5.6-terra');
   assert.equal(normalizeChapterGenerationModel('gpt-5.6-luna'), 'gpt-5.6-luna');

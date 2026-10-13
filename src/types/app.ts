@@ -1,3 +1,7 @@
+import type { ChapterTextVersionModel } from '../../shared/chapterModels.js';
+export { CHAPTER_TEXT_VERSION_MODELS } from '../../shared/chapterModels.js';
+export type { ChapterTextVersionModel } from '../../shared/chapterModels.js';
+
 export type ZoomMode = 'custom' | 'fit-width' | 'fit-height';
 export type PageTextOcrEngine = 'deepseek_ocr' | 'openai';
 
@@ -171,14 +175,6 @@ export interface ChapterTextPromptDraft {
   model: ChapterTextVersionModel;
   reasoningEffort: ChapterTextVersionEffort;
 }
-
-export const CHAPTER_TEXT_VERSION_MODELS = [
-  'gpt-5.6-sol',
-  'gpt-5.6-terra',
-  'gpt-5.6-luna'
-] as const;
-
-export type ChapterTextVersionModel = (typeof CHAPTER_TEXT_VERSION_MODELS)[number];
 
 /**
  * How hard the model reasons before answering — sent as `reasoning_effort`.
