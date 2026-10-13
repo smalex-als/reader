@@ -267,7 +267,10 @@ export default function ReaderNavigator() {
                       ref={isActive ? activeEntryRef : null}
                       type="button"
                       className={`toc-nav-button ${isActive ? 'toc-nav-button-active' : ''}`}
-                      onClick={() => navigateToPage(entry.page)}
+                      onClick={() => {
+                        closeNavigator();
+                        navigateToPage(entry.page);
+                      }}
                       aria-current={isActive ? 'page' : undefined}
                     >
                       <span className="toc-nav-copy">
