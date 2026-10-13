@@ -6,13 +6,11 @@ import {createHttpError} from './errors.js';
 import {getOpenAI} from './openai.js';
 import {loadPageText} from './ocr.js';
 import {extractPlainTextFromOcrLayout} from './ocrLayout.js';
+import {normalizeChapterModel} from '../../shared/chapterModels.js';
 
 const CHAPTER_PAD_LENGTH = 3;
-const CHAPTER_GENERATION_MODELS = new Set(['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']);
-
 export function normalizeChapterGenerationModel(value) {
-  const model = typeof value === 'string' ? value.trim() : '';
-  return CHAPTER_GENERATION_MODELS.has(model) ? model : 'gpt-5.6-sol';
+  return normalizeChapterModel(value);
 }
 
 function formatChapterFilename(chapterNumber) {

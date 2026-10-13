@@ -448,6 +448,10 @@ Notes:
   entries are created automatically.
 - Chapter text supports prompt-based derived versions. The base chapter text is preserved; derived versions can
   be created and deleted from the text presentation UI.
+- The prompt editor's `Default model` selector includes `gpt-6.1-sol`, `gpt-6-astra`,
+  `gpt-6-sol`, and `gpt-6-luna`, alongside the existing 5.6 models. The saved model is
+  used for prompt-based text generation unless explicitly overridden. The shared
+  catalog in `shared/chapterModels.js` also supplies chapter generation selectors.
 - Unit sets are generated from the text view with `Create Unit`. The chapter content is adapted using
   `server/prompts/chapter-units.txt`; each topic is saved as its own JSON file.
 - Prompt text lives in `server/prompts/` for easy editing and review.
