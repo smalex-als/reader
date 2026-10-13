@@ -1,3 +1,21 @@
+import type { YouTubeAudioImportStatus } from '../api/youtubeAudioImport';
+
+export type ChapterYouTubeAudioImportStatus = {
+  bookId: string;
+  chapterNumber: number;
+  status: YouTubeAudioImportStatus | null;
+};
+
+export function getYouTubeAudioImportStatusForChapter(
+  snapshot: ChapterYouTubeAudioImportStatus | null,
+  bookId: string | null,
+  chapterNumber: number | null
+) {
+  return snapshot?.bookId === bookId && snapshot?.chapterNumber === chapterNumber
+    ? snapshot.status
+    : null;
+}
+
 export type YouTubeAudioImportState =
   | 'queued'
   | 'running'

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchYouTubeAudioImportStatus,
-  retryYouTubeAudioImport,
-  type YouTubeAudioImportStatus
+  retryYouTubeAudioImport
 } from '@/api/youtubeAudioImport';
 import {
   appActions,
@@ -11,8 +10,10 @@ import {
   useAppSelector
 } from '@/state/appState';
 import {
+  getYouTubeAudioImportStatusForChapter,
   isActiveYouTubeAudioImportState,
-  shouldNavigateToCompletedYouTubeVersion
+  shouldNavigateToCompletedYouTubeVersion,
+  type ChapterYouTubeAudioImportStatus
 } from '@/lib/youtubeAudioImportStatus';
 
 const ACTIVE_POLL_DELAY_MS = 2000;
@@ -27,7 +28,10 @@ export function useYouTubeAudioImport({
 }) {
   const dispatch = useAppDispatch();
   const { entries: tocEntries } = useAppSelector(selectTocWorkflow);
-  const [status, setStatus] = useState<YouTubeAudioImportStatus | null>(null);
+  const [statusSnapshot, setStatusSnapshot] = useState<ChapterYouTubeAudioImportStatus | null>(null);
+  // Hide the old chapter's status during render, before effects can update its
+  // title, TOC entry, or text version using the new chapter number.
+  const status = getYouTubeAudioImportStatusForChapter(statusSnapshot, bookId, chapterNumber);
   const [loading, setLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -37,7 +41,7 @@ export function useYouTubeAudioImport({
 
   useEffect(() => {
     if (!bookId || !chapterNumber) {
-      setStatus(null);
+      setStatusSnapshot(null);
       setLoading(false);
       setRequestError(null);
       return;
@@ -54,7 +58,7 @@ export function useYouTubeAudioImport({
         if (canceled) {
           return;
         }
-        setStatus(next);
+        setStatusSnapshot({ bookId, chapterNumber, status: next });
         setRequestError(null);
         setLoading(false);
         if (next?.status === 'failed') {
@@ -144,7 +148,7 @@ export function useYouTubeAudioImport({
     setRequestError(null);
     try {
       const next = await retryYouTubeAudioImport(bookId, chapterNumber);
-      setStatus(next);
+      setStatusSnapshot({ bookId, chapterNumber, status: next });
       setPollNonce((current) => current + 1);
     } catch (error) {
       setRequestError(error instanceof Error ? error.message : 'Unable to retry YouTube audio import');
