@@ -27,7 +27,9 @@ import { useCurrentChapterContext } from '@/hooks/useCurrentChapterLabel';
 import { useDisplayedChapterText } from '@/hooks/useDisplayedChapterText';
 import { useUnitActions } from '@/hooks/useUnitActions';
 import { useYouTubeAudioImport } from '@/hooks/useYouTubeAudioImport';
+import { useToast } from '@/hooks/useToast';
 import { formatListeningTime } from '@/lib/listeningTime';
+import { printChapter } from '@/lib/chapterPrint';
 import {
   appActions,
   selectBookDeletingChapter,
@@ -43,6 +45,7 @@ import type { ChapterTextVersionModel } from '@/types/app';
 
 export default function ChapterViewer() {
   const dispatch = useAppDispatch();
+  const { showToast } = useToast();
   const { handleCreateChapter, handleDeleteChapter } = useChapterActions();
   const { settings } = useAppSelector(selectViewerWorkflow);
   const { loading: tocLoading } = useAppSelector(selectTocWorkflow);
@@ -76,6 +79,7 @@ export default function ChapterViewer() {
   const visibleChapterLabel = chapterNumber ? `Chapter ${chapterNumber}` : 'Chapter';
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [addChapterOpen, setAddChapterOpen] = useState(false);
   const [chapterGenerationOpen, setChapterGenerationOpen] = useState(false);
   const [chapterGenerationModel, setChapterGenerationModel] = useState<ChapterTextVersionModel>('gpt-5.6-sol');
@@ -193,6 +197,27 @@ export default function ChapterViewer() {
     displayText?.trim() === youtubeAudioImport.status.sourceUrl.trim()
   );
 
+  const handlePrintChapter = async () => {
+    const content = textViewerRef.current?.querySelector<HTMLElement>('.text-viewer-markdown');
+    if (!content || !bookId || !chapterNumber) {
+      return;
+    }
+    setPrinting(true);
+    try {
+      await printChapter({
+        content,
+        bookId,
+        chapterNumber,
+        chapterTitle: visibleChapterTitle ?? `Chapter ${chapterNumber}`,
+        versionLabel: [selectedVersion?.label ?? 'Base', selectedVersion?.promptName].filter(Boolean).join(' · ')
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Unable to print this chapter.', 'error');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   const handleToolsToggle = useCallback(() => {
     setSettingsOpen(false);
     setToolsOpen((current) => !current);
@@ -263,6 +288,18 @@ export default function ChapterViewer() {
                   { chapterNumber, version: left }, { chapterNumber, version: right }
                 ] });
               }}>Compare</button>
+          ) : null}
+          {!comparing && chapterNumber ? (
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => void handlePrintChapter()}
+              disabled={printing || tocLoading || displayLoading || Boolean(displayError) || Boolean(missingFile) ||
+                youtubeUrlPlaceholder || !displayText?.trim()}
+              title="Print the current chapter version"
+            >
+              {printing ? 'Preparing…' : 'Print'}
+            </button>
           ) : null}
           {!comparing && allowEdit && chapterNumber ? (
             <button

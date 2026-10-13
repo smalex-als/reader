@@ -21,6 +21,7 @@ Node/Express server for OCR, audio, chapter tools, search, and image enhancement
 - Listening dashboard backed by `.stream-history.log`, including grouped sessions, top books/chapters, and navigation back into the book.
 - Image preview modal with AI enhancement using OpenAI image editing for illustration-style rerenders.
 - Bookmarks, table of contents (manual or generated), detailed TOC support, search, and print-to-PDF.
+- Print the currently selected chapter text version with a layout for paper or PDF.
 - PDF upload to convert scans into a new book (requires `pdftoppm`).
 
 ## Quick start
@@ -457,6 +458,20 @@ Notes:
 - Prompt text lives in `server/prompts/` for easy editing and review.
 - PDF upload uses `pdftoppm` from Poppler. Install it before using `/api/upload/pdf`.
 - Image enhancement in the preview window uses OpenAI image editing and currently targets illustration-style output.
+
+## Print the current chapter
+
+In Text mode, select the chapter and text version you want, then click **Print**
+next to the version selector. The browser's print dialog opens with the selected
+version formatted for paper: white background, readable type, margins, headings,
+lists, tables, code, and images. Book, chapter, and version labels identify the
+document; reader controls, playback highlights, and voice badges are excluded.
+Choose **Save as PDF** in the browser dialog to export a PDF instead of printing.
+
+Printing uses the text already displayed; it does not generate or rewrite text.
+The button is disabled while text loads, when text is missing, or when a YouTube
+import is still showing only its source URL. Printing scanned page images through
+the existing PDF dialog remains available separately.
 
 ## Useful hotkeys
 
