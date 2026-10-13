@@ -8,6 +8,14 @@ const help = `Usage:
   reader chapters list BOOK_ID [--url URL] [--json]
   reader chapters show BOOK_ID CHAPTER_NUMBER [--url URL] [--json]
   reader chapters import-youtube BOOK_ID YOUTUBE_URL [--title TITLE] [--prompt-id ID] [--wait] [--url URL] [--json]
+  reader help
+
+Commands:
+  books list                 List books
+  prompts list               List prompt IDs, names, and processing models
+  chapters list              List a book's chapters
+  chapters show              Print saved chapter text
+  chapters import-youtube    Import a YouTube video as a new chapter
 
 Options:
   --url URL   Reader server (default: READER_URL or http://localhost:3000)
@@ -21,8 +29,10 @@ Chapters are entries from the book's main table of contents.
 The text output shows chapter numbers counting from 1 (and starting pages for scans).
 Show prints the saved base chapter text without generating or rewriting it.
 Import-youtube starts the import in the background; --wait returns after completion.
-Prompts list prints the prompt ID and name; --json includes the full templates.
-JSON preserves the API's zero-based page indices.`;
+Prompts list prints ID, name, and processing model, separated by tabs.
+Use prompts list --json to include templates and all prompt settings.
+JSON preserves the API's zero-based page indices.
+With npm, run: npm run reader -- help (or npm run reader -- --help).`;
 
 async function waitForYouTubeImport(payload, request, showProgress) {
   const endpoint = `api/books/${encodeURIComponent(payload.book)}/chapters/${payload.chapterNumber}/youtube-audio/status`;
@@ -63,7 +73,7 @@ async function main() {
       help: { type: 'boolean', short: 'h', default: false }
     }
   });
-  if (values.help || positionals.length === 0) {
+  if (values.help || positionals.length === 0 || positionals[0] === 'help') {
     console.log(help);
     return;
   }
@@ -115,8 +125,9 @@ async function main() {
   } : {});
   if (prompts) {
     if (!Array.isArray(payload?.prompts) || !payload.prompts.every((prompt) =>
-      typeof prompt?.id === 'string' && prompt.id.trim() && typeof prompt.name === 'string' && prompt.name.trim())) {
-      throw new Error('Unexpected API response: prompt IDs and names are missing.');
+      typeof prompt?.id === 'string' && prompt.id.trim() && typeof prompt.name === 'string' && prompt.name.trim() &&
+      typeof prompt.model === 'string' && prompt.model.trim())) {
+      throw new Error('Unexpected API response: prompt IDs, names, or models are missing.');
     }
     if (values.json) {
       console.log(JSON.stringify(payload, null, 2));
@@ -124,7 +135,7 @@ async function main() {
       console.log('No prompts found.');
     } else {
       for (const prompt of payload.prompts) {
-        console.log(`${prompt.id.replace(/[\r\n\t]/g, ' ')}\t${prompt.name.replace(/[\r\n\t]/g, ' ')}`);
+        console.log([prompt.id, prompt.name, prompt.model].map((value) => value.replace(/[\r\n\t]/g, ' ')).join('\t'));
       }
     }
     return;

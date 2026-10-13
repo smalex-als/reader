@@ -56,7 +56,10 @@ contents and prints the chapter number and title, plus the starting page for
 scanned books. Numbers start at 1 and can be passed to `chapters show`; a book without a
 table of contents is reported as having no TOC chapters. `--json` returns the original
 API response, including zero-based `page` indices. Errors go to stderr and exit
-with code 1. Run `npm run reader -- --help` for help. For JSON pipelines, use
+with code 1. Running `npm run reader` without arguments prints help with all
+commands, including `prompts list`. You can also run `npm run reader -- help` or `npm run reader -- --help` for
+Reader's help, including `prompts list`. The `--` separator forwards flags to
+Reader; `npm run reader --help` displays npm's help instead. For JSON pipelines, use
 `node scripts/reader.js` directly or `npm run --silent reader --`.
 
 `chapters show BOOK_ID CHAPTER_NUMBER` prints the saved base chapter text exactly
@@ -111,7 +114,13 @@ npm run reader -- prompts list
 npm run reader -- prompts list --json
 ```
 
-The default output has one prompt per line: `ID`, a tab, and its name.
+The default output has one prompt per line with three tab-separated columns:
+`ID`, name, and the model used to process that prompt. For example:
+
+```text
+youtube-transcript-summary\tSummarize YouTube Transcript\tgpt-5.6-sol
+```
+
 `--json` includes the complete prompt library, including each template, model,
 and reasoning effort. The command uses `GET /api/chapter-text-prompts` and
 supports `--url` and `READER_URL` for remote servers. Use a listed ID when importing:

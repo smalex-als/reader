@@ -65,8 +65,8 @@ test('Reader CLI reads saved chapters through the API', async (t) => {
   assert.equal((await cli('books', 'list', '--json')).code, 0);
   const prompts = await cli('prompts', 'list');
   assert.equal(prompts.code, 0, prompts.stderr);
-  assert.match(prompts.stdout, /^youtube-transcript-summary\tSummarize YouTube Transcript$/m);
-  assert.match(prompts.stdout, /^transcript-cleanup\tClean Transcript$/m);
+  assert.match(prompts.stdout, /^youtube-transcript-summary\tSummarize YouTube Transcript\tgpt-5\.6-sol$/m);
+  assert.match(prompts.stdout, /^transcript-cleanup\tClean Transcript\tgpt-5\.6-sol$/m);
   const promptJson = await cli('prompts', 'list', '--json');
   assert.equal(promptJson.code, 0, promptJson.stderr);
   const summary = JSON.parse(promptJson.stdout).prompts.find((prompt) => prompt.id === 'youtube-transcript-summary');
@@ -76,7 +76,7 @@ test('Reader CLI reads saved chapters through the API', async (t) => {
 
 test('Reader CLI lists custom prompts and handles empty, invalid, and failed responses', async (t) => {
   let status = 200;
-  let payload = { prompts: [{ id: 'custom-prompt', name: 'Мой промпт\nдля главы', template: 'Full\ntext' }] };
+  let payload = { prompts: [{ id: 'custom-prompt', name: 'Мой промпт\nдля главы', model: 'custom-model', template: 'Full\ntext' }] };
   const requests = [];
   const server = createServer((req, res) => {
     requests.push({ path: req.url, method: req.method });
@@ -87,7 +87,7 @@ test('Reader CLI lists custom prompts and handles empty, invalid, and failed res
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const url = `http://127.0.0.1:${server.address().port}/reader/`;
   assert.deepEqual(await runCli(url, 'prompts', 'list'), {
-    code: 0, stdout: 'custom-prompt\tМой промпт для главы\n', stderr: ''
+    code: 0, stdout: 'custom-prompt\tМой промпт для главы\tcustom-model\n', stderr: ''
   });
   assert.deepEqual(requests[0], { path: '/reader/api/chapter-text-prompts', method: 'GET' });
   const json = await runCli(url, 'prompts', 'list', '--json');
@@ -95,7 +95,9 @@ test('Reader CLI lists custom prompts and handles empty, invalid, and failed res
   assert.deepEqual(JSON.parse(json.stdout), payload);
   payload = { prompts: [] };
   assert.deepEqual(await runCli(url, 'prompts', 'list'), { code: 0, stdout: 'No prompts found.\n', stderr: '' });
-  for (const invalid of [{}, { prompts: 'invalid' }, { prompts: [null] }, { prompts: [{ name: 'No ID' }] }]) {
+  for (const invalid of [{}, { prompts: 'invalid' }, { prompts: [null] }, { prompts: [{ name: 'No ID' }] },
+    { prompts: [{ id: 'no-model', name: 'Missing model' }] },
+    { prompts: [{ id: 'invalid-model', name: 'Invalid model', model: 42 }] }]) {
     payload = invalid;
     const result = await runCli(url, 'prompts', 'list', '--json');
     assert.equal(result.code, 1);
@@ -111,6 +113,30 @@ test('Reader CLI lists custom prompts and handles empty, invalid, and failed res
   assert.equal((await runCli(url, 'prompts', 'list', 'extra')).code, 1);
   assert.equal((await runCli(url, 'prompts', 'list', '--title', 'Wrong flag')).code, 1);
   assert.equal(requests.length, requestCount);
+});
+
+test('Reader help lists prompt commands and processing models without requiring a server', async () => {
+  for (const args of [[], ['help'], ['--help'], ['-h'], ['prompts', 'list', '--help']]) {
+    const result = await runCli('http://invalid.test', ...args);
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stderr, '');
+    assert.match(result.stdout, /reader prompts list \[--url URL\] \[--json\]/);
+    assert.match(result.stdout, /prompts list\s+List prompt IDs, names, and processing models/);
+    assert.match(result.stdout, /npm run reader -- help/);
+  }
+  for (const args of [['run', '--silent', 'reader'], ['run', '--silent', 'reader', '--', 'help']]) {
+    const child = spawn('npm', args, {
+      cwd: ROOT_DIR, env: { ...process.env, READER_URL: 'http://invalid.test' }
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    const [code] = await once(child, 'close');
+    assert.equal(code, 0, stderr);
+    assert.match(stdout, /reader prompts list/);
+    assert.match(stdout, /processing models/);
+  }
 });
 
 test('Reader CLI waits for the entire YouTube job and reports failures', async (t) => {
