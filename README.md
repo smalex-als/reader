@@ -81,11 +81,28 @@ Import a YouTube chapter with one command:
 npm run reader -- chapters import-youtube my-book 'https://youtu.be/VIDEO_ID'
 ```
 
-The command prints the new chapter number and queues the import in the background;
-it does not wait for downloading or transcription. Use `--title 'My chapter'`
+By default, the command prints the new chapter number and queues the import in
+the background. Use `--title 'My chapter'`
 for a title, `--prompt-id ID` for a saved post-processing prompt, and `--json`
 for the complete API response including the job ID. `--url` and `READER_URL`
 work as for the other commands. The server must include the YouTube import endpoint.
+
+To keep the command running until the entire import completes:
+
+```bash
+npm run reader -- chapters import-youtube my-book 'https://youtu.be/VIDEO_ID' \
+  --prompt-id youtube-transcript-summary --wait
+```
+
+`--wait` waits for the download, transcription, and any selected post-processing
+to reach `completed`; a saved transcript alone does not finish the wait.
+It polls the existing status API once per second, with a 30-second timeout for
+each request and no overall time limit. Progress appears on stderr, and the final
+result appears on stdout. With `--json`, progress is suppressed and the final
+response includes the completed job in `sourceAudioJob`.
+An import failure, failed status request, or replaced job exits with code 1.
+The HTTP API continues to return 202; waiting happens in the CLI.
+Ctrl+C stops waiting without cancelling the import on the server.
 
 List available built-in and saved custom prompts before choosing `--prompt-id`:
 

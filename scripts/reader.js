@@ -1,26 +1,55 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
+import { setTimeout as delay } from 'node:timers/promises';
 
 const help = `Usage:
   reader books list [--url URL] [--json]
   reader prompts list [--url URL] [--json]
   reader chapters list BOOK_ID [--url URL] [--json]
   reader chapters show BOOK_ID CHAPTER_NUMBER [--url URL] [--json]
-  reader chapters import-youtube BOOK_ID YOUTUBE_URL [--title TITLE] [--prompt-id ID] [--url URL] [--json]
+  reader chapters import-youtube BOOK_ID YOUTUBE_URL [--title TITLE] [--prompt-id ID] [--wait] [--url URL] [--json]
 
 Options:
   --url URL   Reader server (default: READER_URL or http://localhost:3000)
   --json      Print the API response as JSON
   --title     Chapter title for a YouTube import (optional)
   --prompt-id Saved post-processing prompt for a YouTube import (optional)
+  --wait      Wait for download, transcription, and optional post-processing
   --help, -h  Show help
 
 Chapters are entries from the book's main table of contents.
 The text output shows chapter numbers counting from 1 (and starting pages for scans).
 Show prints the saved base chapter text without generating or rewriting it.
-Import-youtube creates a chapter and starts the import in the background.
+Import-youtube starts the import in the background; --wait returns after completion.
 Prompts list prints the prompt ID and name; --json includes the full templates.
 JSON preserves the API's zero-based page indices.`;
+
+async function waitForYouTubeImport(payload, request, showProgress) {
+  const endpoint = `api/books/${encodeURIComponent(payload.book)}/chapters/${payload.chapterNumber}/youtube-audio/status`;
+  const activeStatuses = new Set(['queued', 'running', 'transcribing', 'post-processing']);
+  let previousStatus;
+  for (;;) {
+    const { job } = await request(endpoint) ?? {};
+    if (!job || typeof job.jobId !== 'string' ||
+        (!activeStatuses.has(job.status) && job.status !== 'completed' && job.status !== 'failed')) {
+      throw new Error('Unexpected API response: YouTube import status is missing or invalid.');
+    }
+    if (job.jobId !== payload.sourceAudioJob.jobId) {
+      throw new Error('YouTube import was replaced by another job.');
+    }
+    if (job.status === 'failed') {
+      throw new Error(`YouTube import failed for chapter ${payload.chapterNumber}: ${job.error || 'Unknown error'}`);
+    }
+    if (job.status === 'completed') {
+      return { ...payload, sourceAudioJob: job };
+    }
+    if (showProgress && job.status !== previousStatus) {
+      console.error(`Chapter ${payload.chapterNumber}: ${job.status}`);
+    }
+    previousStatus = job.status;
+    await delay(1000);
+  }
+}
 
 async function main() {
   const { values, positionals } = parseArgs({
@@ -29,6 +58,7 @@ async function main() {
       url: { type: 'string' },
       title: { type: 'string' },
       'prompt-id': { type: 'string' },
+      wait: { type: 'boolean', default: false },
       json: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false }
     }
@@ -47,8 +77,8 @@ async function main() {
   if (!books && !prompts && !chapters && !show && !importYouTube) {
     throw new Error('Expected "books list", "prompts list", "chapters list BOOK_ID", "chapters show BOOK_ID CHAPTER_NUMBER", or "chapters import-youtube BOOK_ID YOUTUBE_URL". Use --help for usage.');
   }
-  if (!importYouTube && (values.title !== undefined || values['prompt-id'] !== undefined)) {
-    throw new Error('--title and --prompt-id are only supported for chapters import-youtube.');
+  if (!importYouTube && (values.title !== undefined || values['prompt-id'] !== undefined || values.wait)) {
+    throw new Error('--title, --prompt-id, and --wait are only supported for chapters import-youtube.');
   }
   if (show && (!/^[1-9]\d*$/.test(chapter) || !Number.isSafeInteger(Number(chapter)))) {
     throw new Error('Chapter number must be a positive integer.');
@@ -104,7 +134,9 @@ async function main() {
         typeof payload?.sourceAudioJob?.jobId !== 'string' || payload.sourceAudioJob.status !== 'queued') {
       throw new Error('Unexpected API response: YouTube import was not queued.');
     }
-    console.log(values.json ? JSON.stringify(payload, null, 2) : `Chapter ${payload.chapterNumber} in ${payload.book}: YouTube import queued.`);
+    const result = values.wait ? await waitForYouTubeImport(payload, request, !values.json) : payload;
+    console.log(values.json ? JSON.stringify(result, null, 2) :
+      `Chapter ${result.chapterNumber} in ${result.book}: YouTube import ${values.wait ? 'completed' : 'queued'}.`);
     return;
   }
   if (show) {

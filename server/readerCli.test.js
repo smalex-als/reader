@@ -112,3 +112,91 @@ test('Reader CLI lists custom prompts and handles empty, invalid, and failed res
   assert.equal((await runCli(url, 'prompts', 'list', '--title', 'Wrong flag')).code, 1);
   assert.equal(requests.length, requestCount);
 });
+
+test('Reader CLI waits for the entire YouTube job and reports failures', async (t) => {
+  const queued = {
+    book: 'test-book', chapterNumber: 4,
+    sourceAudioJob: { jobId: 'import-job', status: 'queued' }
+  };
+  let statuses = [
+    { status: 'transcribing', transcriptReady: false },
+    { status: 'post-processing', transcriptReady: true },
+    { status: 'completed', transcriptReady: true, postProcessVersionId: 'summary-v1' }
+  ];
+  let statusCode = 200;
+  let pollCount = 0;
+  const requests = [];
+  const server = createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    requests.push({ method: req.method, path: req.url, body });
+    const isImport = req.method === 'POST' && req.url === '/reader/api/books/test-book/chapters/youtube';
+    const isStatus = req.method === 'GET' && req.url === '/reader/api/books/test-book/chapters/4/youtube-audio/status';
+    if (!isImport && !isStatus) {
+      res.writeHead(404).end();
+      return;
+    }
+    res.writeHead(isImport ? 202 : statusCode, { 'Content-Type': 'application/json' });
+    if (isImport) {
+      res.end(JSON.stringify(queued));
+    } else {
+      const status = statuses[Math.min(pollCount++, statuses.length - 1)];
+      res.end(JSON.stringify(statusCode !== 200 ? { error: 'Status unavailable' } : {
+        book: queued.book, chapterNumber: queued.chapterNumber,
+        job: status === null ? null : { ...queued.sourceAudioJob, ...status }
+      }));
+    }
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/reader/`;
+  const importArgs = ['chapters', 'import-youtube', 'test-book', 'https://youtu.be/video'];
+
+  const completed = await runCli(url, ...importArgs, '--prompt-id', 'youtube-transcript-summary', '--wait', '--json');
+  assert.equal(completed.code, 0, completed.stderr);
+  assert.equal(completed.stderr, '');
+  assert.equal(pollCount, 3, 'must wait past transcriptReady until post-processing completes');
+  assert.deepEqual(JSON.parse(requests[0].body), {
+    sourceUrl: 'https://youtu.be/video', postProcessPromptId: 'youtube-transcript-summary'
+  });
+  const result = JSON.parse(completed.stdout);
+  assert.equal(result.chapterNumber, 4);
+  assert.equal(result.sourceAudioJob.status, 'completed');
+  assert.equal(result.sourceAudioJob.postProcessVersionId, 'summary-v1');
+  assert.equal(result.sourceAudioJob.transcriptReady, true);
+
+  pollCount = 0;
+  statuses = [{ status: 'completed' }];
+  assert.deepEqual(await runCli(url, ...importArgs, '--wait'), {
+    code: 0, stdout: 'Chapter 4 in test-book: YouTube import completed.\n', stderr: ''
+  });
+  pollCount = 0;
+  statuses = [{ status: 'failed', error: 'Transcription failed' }];
+  const failed = await runCli(url, ...importArgs, '--wait', '--json');
+  assert.equal(failed.code, 1);
+  assert.equal(failed.stdout, '');
+  assert.match(failed.stderr, /YouTube import failed for chapter 4: Transcription failed/);
+
+  for (const invalidStatus of [null, { status: 'unexpected' }, { jobId: 'replacement-job', status: 'completed' }]) {
+    pollCount = 0;
+    statuses = [invalidStatus];
+    const invalid = await runCli(url, ...importArgs, '--wait');
+    assert.equal(invalid.code, 1);
+    assert.equal(invalid.stdout, '');
+    assert.match(invalid.stderr, /status is missing or invalid|replaced by another job/);
+  }
+  statusCode = 503;
+  const unavailable = await runCli(url, ...importArgs, '--wait');
+  assert.equal(unavailable.code, 1);
+  assert.equal(unavailable.stdout, '');
+  assert.match(unavailable.stderr, /HTTP 503: Status unavailable/);
+
+  pollCount = 0;
+  const background = await runCli(url, ...importArgs);
+  assert.equal(background.code, 0, background.stderr);
+  assert.match(background.stdout, /import queued/);
+  assert.equal(pollCount, 0, 'background import must return without polling');
+  const requestCount = requests.length;
+  assert.equal((await runCli(url, 'prompts', 'list', '--wait')).code, 1);
+  assert.equal(requests.length, requestCount);
+});

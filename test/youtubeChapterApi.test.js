@@ -120,4 +120,10 @@ test('YouTube chapter API validates, queues, reports status, and retries imports
   assert.equal((await cli('books', 'list', '--title', 'Invalid')).code, 1);
   assert.match((await cli('chapters', 'import-youtube', 'missing-youtube-cli-test',
     'https://youtu.be/video')).stderr, /404.*Book not found/);
+  const waited = await cli('chapters', 'import-youtube', book, 'https://youtu.be/waited-video', '--wait', '--json');
+  assert.equal(waited.code, 1);
+  assert.equal(waited.stdout, '');
+  assert.match(waited.stderr, /YouTube import failed for chapter 4/);
+  assert.match(waited.stderr, /Test downloader failure/);
+  await waitForFailure(4);
 });
