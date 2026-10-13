@@ -58,7 +58,7 @@ services:
       - "3001:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ${HOME}/dev/certs2:/certs:ro
+      - ${READER_CERTS_DIR:-./certs}:/certs:ro
     restart: unless-stopped
 
 volumes:
