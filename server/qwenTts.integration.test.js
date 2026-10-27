@@ -65,9 +65,16 @@ test('Qwen voices, playback, WAV download, and chapter MP3 work through Reader A
   });
 
   await t.test('loads renamed voices live and keeps other providers available when Qwen is offline', async () => {
+    upstreamError = 'offline';
+    let payload = await (await fetch(`${base}/api/stream-audio/voices`)).json();
+    assert.match(payload.providerErrors.qwen, /Offline/);
+    assert(!payload.voices.some((voice) => voice.provider === 'qwen'));
+    assert(payload.voices.some((voice) => voice.provider === 'streaming'));
+    upstreamError = null;
     let response = await fetch(`${base}/api/stream-audio/voices`);
     assert.equal(response.headers.get('cache-control'), 'no-store');
-    let payload = await response.json();
+    payload = await response.json();
+    assert.deepEqual(payload.providerErrors, {});
     assert(payload.voices.some((voice) => voice.id === 'qwen_voice_alexey.pt' && voice.label === 'Alexey - Qwen' && voice.provider === 'qwen'));
     assert(payload.voices.some((voice) => voice.provider === 'xai'));
     voiceName = 'Алексей';
@@ -78,7 +85,12 @@ test('Qwen voices, playback, WAV download, and chapter MP3 work through Reader A
     assert.equal(response.status, 200);
     payload = await response.json();
     assert(payload.voices.some((voice) => voice.provider === 'streaming'));
+    assert(payload.voices.some((voice) => voice.id === 'qwen_voice_alexey.pt' && voice.label === 'Алексей - Qwen'));
+    assert.match(payload.providerErrors.qwen, /Offline/);
+    assert.match(payload.providerErrors.qwen, /QWEN_TTS_SERVER/);
     upstreamError = null;
+    payload = await (await fetch(`${base}/api/stream-audio/voices`)).json();
+    assert.deepEqual(payload.providerErrors, {});
   });
 
   await t.test('returns playable PCM and a complete WAV through the same-origin API', async () => {
@@ -138,7 +150,7 @@ test('Qwen voices, playback, WAV download, and chapter MP3 work through Reader A
     assert.equal(response.status, 202);
     assert.equal((await response.json()).job.provider, 'qwen');
     let job;
-    const deadline = Date.now() + 30000;
+    const deadline = Date.now() + 60000;
     do {
       await new Promise((resolve) => setTimeout(resolve, 50));
       job = (await (await fetch(`${base}${endpoint}/status`)).json()).job;

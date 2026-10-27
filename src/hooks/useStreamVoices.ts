@@ -41,8 +41,9 @@ addActionHandler('loadVoices', async (_state, actions): Promise<void> => {
     setError: actions.setError,
     fallbackError: 'Unable to load streaming voices',
     request: fetchStreamVoices,
-    onSuccess: ({ voices, defaultVoice }) => {
+    onSuccess: ({ voices, defaultVoice, qwenError }) => {
       actions.setVoiceOptions(voices, defaultVoice);
+      if (qwenError) actions.showError(qwenError);
     },
     onError: (error) => {
       console.error('Unable to load streaming voices', error);

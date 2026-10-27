@@ -37,6 +37,14 @@ The app runs on Vite (default `http://localhost:5173`), and the API/static serve
 
 Without `REDIS_URL`, long-running jobs use the existing in-process fallback.
 
+For the local Docker setup, run `make local-up`. It builds and starts Reader and
+Redis using `docker-compose.local.yml`. Local builds keep host networking and
+explicitly declare the `network.host` build entitlement. The Make target sets
+`COMPOSE_BAKE=false` to use Compose's native BuildKit path: some Compose/Buildx
+versions delegate to Bake without forwarding the required entitlement grant and
+fail with `additional privileges requested: pass "--allow=network.host"`.
+For a direct Compose invocation, prefix the same command with `COMPOSE_BAKE=false`.
+
 ## Command line
 
 With the API server running, use Node.js 20 or newer:
@@ -438,7 +446,24 @@ Qwen voices appear as `<name> - Qwen` in both the playback and MP3 voice selecto
 Reader loads the names and IDs from `GET /api/voices` when the app opens, regains
 focus, or receives a missing-voice error during playback. Reload or refocus the app
 after adding or renaming voice files. If Qwen is unavailable, the other TTS voices
-remain available.
+remain available and Reader shows a Qwen-specific error. Voices already received
+from Qwen stay in the list during a temporary failure; a fresh server process
+needs one successful request before Qwen voices can appear.
+
+If Qwen voices are missing, open `/api/stream-audio/voices` on the Reader origin.
+`providerErrors.qwen` contains the voice-loading error; a successful request has
+`providerErrors: {}` and voices with `provider: "qwen"`. An older Reader build
+will not return `providerErrors`. Update and rebuild Reader after pulling changes:
+`docker compose up -d --build reader`. Then refresh the browser. To check access
+from the same container that makes the actual TTS requests, run:
+
+```sh
+docker compose exec reader sh -c 'curl --fail --show-error --max-time 10 "${QWEN_TTS_SERVER:-http://192.168.1.174:8001}/api/voices"'
+```
+
+Opening the Qwen page in the browser alone does not verify access from Reader's
+server/container. For a connection error, check the configured address, the
+service's listen interface, and firewall access from the Reader host.
 
 Set `QWEN_TTS_SERVER` on Reader's server (and in `.env` when using Docker Compose)
 if the service moves. Use `http://127.0.0.1:8001` only when Reader and Qwen run on

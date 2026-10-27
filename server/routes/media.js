@@ -19,7 +19,7 @@ import {
 } from '../lib/streamAudio.js';
 import { generateXaiTtsDebugFile, generateXaiTtsPcmBuffer } from '../lib/xaiTts.js';
 import {
-  loadStreamVoiceOptions,
+  loadStreamVoices,
   TTS_PROVIDER_QWEN,
   TTS_PROVIDER_STREAMING,
   TTS_PROVIDER_XAI
@@ -114,7 +114,7 @@ router.get('/api/stream-audio/voices', asyncHandler(async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({
     defaultVoice: DEFAULT_STREAM_VOICE,
-    voices: await loadStreamVoiceOptions()
+    ...await loadStreamVoices()
   });
 }));
 

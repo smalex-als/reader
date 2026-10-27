@@ -5,6 +5,7 @@ export const STREAM_VOICES_REFRESH_EVENT = 'reader:refresh-voices';
 type StreamVoicesResponse = {
   defaultVoice?: string;
   voices?: StreamVoiceOption[];
+  providerErrors?: { qwen?: string };
 };
 
 export async function fetchStreamVoices() {
@@ -30,6 +31,7 @@ export async function fetchStreamVoices() {
       : voices[0]?.id ?? '';
   return {
     voices,
-    defaultVoice
+    defaultVoice,
+    qwenError: typeof payload.providerErrors?.qwen === 'string' ? payload.providerErrors.qwen : null
   };
 }

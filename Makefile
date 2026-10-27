@@ -27,7 +27,7 @@ help:
 		'make check          Run lint, tests, and production build'
 
 local-up:
-	$(LOCAL_COMPOSE) up --build -d --wait redis reader
+	COMPOSE_BAKE=false $(LOCAL_COMPOSE) up --build -d --wait redis reader
 	@printf 'Reader: %s\n' '$(READER_URL)'
 
 local-start:

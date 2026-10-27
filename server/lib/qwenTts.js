@@ -58,7 +58,8 @@ export function createQwenTtsClient({
       return await fetchImpl(`${baseUrl}${endpoint}`, { ...options, signal });
     } catch (error) {
       if (signal.aborted) throw error;
-      throw createHttpError(502, `Qwen TTS connection failed: ${error.message}`);
+      const cause = error.cause?.code || error.cause?.message;
+      throw createHttpError(502, `Qwen TTS connection failed: ${error.message}${cause ? ` (${cause})` : ''}`);
     }
   }
 
