@@ -37,7 +37,7 @@ const parseNonNegativeNumber = (value, fallback) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 };
 export const STREAM_SERVER =
-  process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'http://192.168.1.174:3005';
+  process.env.STREAM_SERVER || process.env.VITE_STREAM_SERVER || 'http://localhost:3005';
 export const STREAM_VOICE = process.env.STREAM_VOICE || process.env.VITE_STREAM_VOICE || '';
 export const STREAM_PCM_INITIAL_BUFFER_SECONDS = parseNonNegativeNumber(
   process.env.STREAM_PCM_INITIAL_BUFFER_SECONDS,
@@ -56,7 +56,7 @@ export const STREAM_PCM_MAX_INITIAL_BUFFER_SECONDS = parseNonNegativeNumber(
   45
 );
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
-export const QWEN_TTS_SERVER = process.env.QWEN_TTS_SERVER || 'http://192.168.1.174:8001';
+export const QWEN_TTS_SERVER = process.env.QWEN_TTS_SERVER || 'http://localhost:8001';
 export const QWEN_TTS_TIMEOUT_MS = parsePositiveNumber(process.env.QWEN_TTS_TIMEOUT_MS, 300_000);
 export const LOCAL_STREAM_VOICES = [
   'en-Breeze_woman',

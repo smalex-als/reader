@@ -2,10 +2,11 @@ LOCAL_COMPOSE := docker compose -f docker-compose.yml -f docker-compose.local.ym
 SERVER_COMPOSE := docker compose --profile https
 READER_URL ?= http://localhost:$(or $(READER_PORT),3000)
 
-.PHONY: help local-up local-start local-down local-stop local-restart local-logs local-ps local-health local-open server-deploy server-up server-start server-down server-stop server-restart server-logs server-ps server-health lint test build check
+.PHONY: help local-build local-up local-start local-down local-stop local-restart local-logs local-ps local-health local-open server-deploy server-build server-up server-start server-down server-stop server-restart server-logs server-ps server-health lint test build check
 
 help:
 	@printf '%s\n' \
+		'make local-build    Build the local Reader image' \
 		'make local-up       Build and start Reader + Redis' \
 		'make local-start    Start existing Reader + Redis containers' \
 		'make local-stop     Stop local containers without removing them' \
@@ -16,6 +17,7 @@ help:
 		'make local-health   Check the Reader health endpoint' \
 		'make local-open     Open Reader in the default browser' \
 		'make server-deploy  Pull and deploy Reader on the server' \
+		'make server-build   Build the server Reader image' \
 		'make server-up      Build and start server Redis + Reader + HTTPS nginx' \
 		'make server-start   Start existing server containers' \
 		'make server-stop    Stop server containers without removing them' \
@@ -26,8 +28,11 @@ help:
 		'make server-health  Check Reader from inside the server container' \
 		'make check          Run lint, tests, and production build'
 
-local-up:
-	COMPOSE_BAKE=false $(LOCAL_COMPOSE) up --build -d --wait redis reader
+local-build:
+	bash scripts/build-reader-image.sh -f docker-compose.yml -f docker-compose.local.yml
+
+local-up: local-build
+	$(LOCAL_COMPOSE) up --no-build -d --wait redis reader
 	@printf 'Reader: %s\n' '$(READER_URL)'
 
 local-start:
@@ -65,8 +70,11 @@ local-open:
 server-deploy:
 	./deploy-local.sh
 
-server-up:
-	$(SERVER_COMPOSE) up --build -d --wait redis reader
+server-build:
+	bash scripts/build-reader-image.sh --profile https
+
+server-up: server-build
+	$(SERVER_COMPOSE) up --no-build -d --wait redis reader
 	$(SERVER_COMPOSE) up -d --no-deps --force-recreate nginx
 
 server-start:

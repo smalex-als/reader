@@ -39,11 +39,11 @@ Without `REDIS_URL`, long-running jobs use the existing in-process fallback.
 
 For the local Docker setup, run `make local-up`. It builds and starts Reader and
 Redis using `docker-compose.local.yml`. Local builds keep host networking and
-explicitly declare the `network.host` build entitlement. The Make target sets
-`COMPOSE_BAKE=false` to use Compose's native BuildKit path: some Compose/Buildx
-versions delegate to Bake without forwarding the required entitlement grant and
-fail with `additional privileges requested: pass "--allow=network.host"`.
-For a direct Compose invocation, prefix the same command with `COMPOSE_BAKE=false`.
+explicitly declare the `network.host` build entitlement. The Make target invokes
+Buildx Bake with `--allow=network.host`: some Compose/Buildx versions delegate to
+Bake without forwarding this grant and fail with `additional privileges
+requested: pass "--allow=network.host"`. See Local Docker below for the equivalent
+commands.
 
 ## Command line
 
@@ -195,7 +195,7 @@ make local-up
 
 Then open `http://localhost:3000`, or run `make local-open`.
 
-The local image build uses the host network for package downloads. Set
+The image build uses the host network for package downloads, both locally and on the server. Set
 `READER_BUILD_NETWORK=default` to use Docker's default build network instead.
 This does not change the running containers' network configuration.
 
@@ -218,10 +218,10 @@ READER_PORT=3100 make local-up
 ```
 
 The local Docker profile connects chapter streaming audio to
-`http://192.168.1.174:3005`. Override it when needed:
+`http://host.docker.internal:3005` on the Docker host. Override it when needed:
 
 ```bash
-LOCAL_STREAM_SERVER=http://host.docker.internal:3005 make local-up
+LOCAL_STREAM_SERVER=http://host.docker.internal:3006 make local-up
 ```
 
 The equivalent full Docker Compose command is:
@@ -232,7 +232,13 @@ cd /Users/smalex/jsprojects/reader
 docker compose \
   -f docker-compose.yml \
   -f docker-compose.local.yml \
-  up --build -d redis reader
+  build --print reader \
+  | docker buildx bake --file - --allow=network.host --progress=plain reader
+
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.local.yml \
+  up --no-build -d --wait redis reader
 ```
 
 Open the app at `http://localhost:3000`. Set `READER_PORT` to publish a different host port.
@@ -269,13 +275,27 @@ want to delete that queued-job data as well.
 
 ## Server deployment
 
-`./deploy-local.sh` is the server deployment entrypoint. It pulls `origin/main`, starts Redis, Reader, and the HTTPS nginx profile, then verifies their health endpoints. The Reader port is not published directly by the server Compose configuration.
+`./deploy-local.sh` is the server deployment entrypoint. It pulls `origin/main`, builds Reader, starts Redis, Reader, and the HTTPS nginx profile, then verifies their health endpoints. It retries the cached build on every run, including after a failed build with an unchanged commit. The Reader port is not published directly by the server Compose configuration.
 
 Run it from the repository checkout on the server:
 
 ```bash
 make server-deploy
 ```
+
+To rebuild the current checkout with detailed package download logs:
+
+```bash
+make server-build
+make server-start
+```
+
+The Docker build installs the versions in `package-lock.json` with `npm ci` and
+reuses an npm download cache. It uses the host network by default to avoid Docker
+bridge DNS/download failures (`EAI_AGAIN`, `ETIMEDOUT`) during npm and apt downloads.
+Set `READER_BUILD_NETWORK=default` if your builder requires Docker's default network.
+The Make targets and deployment script invoke Buildx Bake with an explicit
+`--allow=network.host`, working around Compose 5.6.0's missing entitlement grant.
 
 Server stack commands:
 
@@ -411,7 +431,7 @@ Server environment variables:
 
 - `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, YouTube `gpt-transcribe`, and image enhancement)
 - `XAI_API_KEY` (required for xAI TTS generation)
-- `QWEN_TTS_SERVER` (Qwen3-TTS HTTP API base URL; default `http://192.168.1.174:8001`, not the demo on port `8000`)
+- `QWEN_TTS_SERVER` (Qwen3-TTS HTTP API base URL; default `http://localhost:8001` without Docker, `http://host.docker.internal:8001` in Docker Compose; not the demo on port `8000`)
 - `QWEN_TTS_TIMEOUT_MS` (Qwen timeout per generated chunk, including busy retries; default `300000` milliseconds)
 - `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://reader.test:11434`)
 - `OCR_DEEPSEEK_CONCURRENCY` (max active Deepseek OCR requests; default `1`, so extra requests wait server-side instead of overloading the model)
@@ -420,7 +440,7 @@ Server environment variables:
 - `HOST` (default `0.0.0.0`)
 - `PORT` (default `3000`)
 - `HTTPS_KEY_PATH` and `HTTPS_CERT_PATH` to enable HTTPS
-- `STREAM_SERVER` (WebSocket server for streaming audio; defaults to `VITE_STREAM_SERVER`)
+- `STREAM_SERVER` (streaming audio server; defaults to `VITE_STREAM_SERVER`, then `http://localhost:3005`; Docker Compose uses `http://host.docker.internal:3005`)
 - `STREAM_VOICE` (default stream voice id; defaults to `VITE_STREAM_VOICE`)
 - `OCR_TIMEOUT_MS` (timeout for OCR requests in milliseconds; default `20000`. On timeout the server writes an empty page text file and returns empty OCR text.)
 - `MAX_UPLOAD_MB` (max upload size for multipart uploads like PDF import; default `300`)
@@ -454,11 +474,11 @@ If Qwen voices are missing, open `/api/stream-audio/voices` on the Reader origin
 `providerErrors.qwen` contains the voice-loading error; a successful request has
 `providerErrors: {}` and voices with `provider: "qwen"`. An older Reader build
 will not return `providerErrors`. Update and rebuild Reader after pulling changes:
-`docker compose up -d --build reader`. Then refresh the browser. To check access
+`make server-up` (or `make local-up` for the local profile). Then refresh the browser. To check access
 from the same container that makes the actual TTS requests, run:
 
 ```sh
-docker compose exec reader sh -c 'curl --fail --show-error --max-time 10 "${QWEN_TTS_SERVER:-http://192.168.1.174:8001}/api/voices"'
+docker compose exec reader sh -c 'curl --fail --show-error --max-time 10 "${QWEN_TTS_SERVER:-http://host.docker.internal:8001}/api/voices"'
 ```
 
 Opening the Qwen page in the browser alone does not verify access from Reader's
@@ -466,7 +486,8 @@ server/container. For a connection error, check the configured address, the
 service's listen interface, and firewall access from the Reader host.
 
 Set `QWEN_TTS_SERVER` on Reader's server (and in `.env` when using Docker Compose)
-if the service moves. Use `http://127.0.0.1:8001` only when Reader and Qwen run on
+if the service moves. With Docker Compose, `host.docker.internal` reaches Qwen
+on the Docker host. Use `http://localhost:8001` only when Reader and Qwen run on
 the same host without container isolation. The browser calls Reader's own API;
 Reader sends `{ "voice": "voice_alexey.pt", "text": "…" }` to Qwen and receives
 binary WAV. No browser CORS changes, Qwen libraries, or client GPU are required.

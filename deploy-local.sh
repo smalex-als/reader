@@ -30,17 +30,15 @@ main() {
     UPDATED=true
   fi
 
-  COMPOSE_ARGS=(up -d)
-  if [ "$UPDATED" = true ]; then
-    COMPOSE_ARGS+=(--build)
-  fi
-
   CERT_DIR="${HOME}/dev/certs2"
   if [ ! -f "${CERT_DIR}/reader.test.pem" ] || [ ! -f "${CERT_DIR}/reader.test.key" ]; then
     log "server deploy requires ${CERT_DIR}/reader.test.pem and reader.test.key"
     return 1
   fi
-  docker compose --profile https "${COMPOSE_ARGS[@]}" redis reader
+  # Retry the cached build even when HEAD is unchanged: a previous deploy may
+  # have pulled the new commit successfully and then failed while building it.
+  bash scripts/build-reader-image.sh --profile https
+  docker compose --profile https up -d --no-build redis reader
 
   HEALTH_URL="http://127.0.0.1:3000/api/health"
   HEALTHY=false
@@ -59,11 +57,7 @@ main() {
 
   # nginx resolves the Reader service through Docker DNS. Recreate the proxy
   # after a deployment so it cannot retain an old Reader container IP.
-  if [ "$UPDATED" = true ]; then
-    docker compose --profile https up -d --no-deps --force-recreate nginx
-  else
-    docker compose --profile https up -d --no-deps nginx
-  fi
+  docker compose --profile https up -d --no-deps --force-recreate nginx
 
   PROXY_HEALTH_URL="https://127.0.0.1:3001/api/health"
   PROXY_HEALTHY=false

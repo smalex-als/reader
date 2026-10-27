@@ -3,8 +3,9 @@
 FROM node:22-bookworm AS builder
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json .npmrc ./
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+  npm ci --no-audit --no-fund --fetch-timeout=30000 --fetch-retries=2 --loglevel=http
 
 COPY . .
 RUN npm run build
@@ -28,8 +29,9 @@ RUN apt-get update \
   && yt-dlp --ignore-config --js-runtimes node:/usr/local/bin/node --version \
   && rm -rf /var/lib/apt/lists/*
 
-COPY package.json ./
-RUN npm install --omit=dev && npm cache clean --force
+COPY package.json package-lock.json .npmrc ./
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+  npm ci --omit=dev --no-audit --no-fund --fetch-timeout=30000 --fetch-retries=2 --loglevel=http
 
 RUN mkdir -p /app/data
 COPY --from=builder /app/dist ./dist
