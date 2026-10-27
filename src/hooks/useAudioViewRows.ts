@@ -38,6 +38,9 @@ function getGenerateLabel({
   if (selectedMp3Provider === 'xai') {
     return 'Generate xAI';
   }
+  if (selectedMp3Provider === 'qwen') {
+    return 'Generate Qwen';
+  }
   return 'Generate audio';
 }
 

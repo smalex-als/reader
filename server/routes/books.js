@@ -173,7 +173,7 @@ async function loadChapterAudioMeta(bookId, chapterNumber, versionId = 'base') {
     const parsed = JSON.parse(raw);
     return {
       versionId: typeof parsed?.versionId === 'string' ? parsed.versionId : 'base',
-      provider: parsed?.provider === 'xai' ? parsed.provider : 'default',
+      provider: ['xai', 'qwen'].includes(parsed?.provider) ? parsed.provider : 'default',
       voice: typeof parsed?.voice === 'string' ? parsed.voice : null,
       generatedAt: typeof parsed?.generatedAt === 'string' ? parsed.generatedAt : null,
       subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : []
@@ -560,7 +560,7 @@ router.post('/api/books/:id/chapters/:chapter/audio', asyncHandler(async (req, r
   const chapterNumber = Number.parseInt(req.params.chapter, 10);
   const voice = typeof req.body?.voice === 'string' ? req.body.voice.trim() : '';
   const versionId = typeof req.body?.versionId === 'string' ? req.body.versionId.trim() : null;
-  const provider = req.body?.provider === 'xai' ? 'xai' : 'default';
+  const provider = ['xai', 'qwen'].includes(req.body?.provider) ? req.body.provider : 'default';
   const force = req.body?.force !== false;
   const job = await enqueueChapterAudioJob({ bookId, chapterNumber, voice, versionId, provider, force });
   res.status(202).json({ book: bookId, chapterNumber, job });

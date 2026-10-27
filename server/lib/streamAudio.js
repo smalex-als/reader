@@ -22,6 +22,7 @@ import { createHttpError } from './errors.js';
 import { safeStat } from './fs.js';
 import { formatChapterSpeechPlan, prepareChapterSpeechSegments, stripMarkdown } from './streamText.js';
 import { getChapterAudioVoiceOptions } from './streamVoices.js';
+import { generateQwenTtsPcmBuffer, QWEN_VOICE_PREFIX, splitQwenText } from './qwenTts.js';
 import { resolveVoiceCommandId } from '../../shared/voiceCommandsCore.js';
 import { splitTextForStreaming } from './streamAudioText.js';
 
@@ -197,7 +198,7 @@ export async function getMp3BufferDurationSeconds(buffer, tempDir) {
   }
 }
 
-function buildWavHeader(dataLength) {
+export function buildWavHeader(dataLength) {
   const blockAlign = (CHANNEL_COUNT * BIT_DEPTH) / 8;
   const byteRate = SAMPLE_RATE * blockAlign;
   const buffer = Buffer.alloc(44);
@@ -685,7 +686,10 @@ export async function prepareChapterAudio({
   const mp3Filename = audioFilename.replace(/\.wav$/i, '.mp3');
   const mp3Path = path.join(directory, mp3Filename);
   const metaPath = `${mp3Path}.meta.json`;
-  const voiceOptions = getChapterAudioVoiceOptions(provider);
+  const voiceOptions = await getChapterAudioVoiceOptions(provider);
+  if (provider === 'qwen' && !voiceOptions.some((option) => option.id === voice)) {
+    throw createHttpError(404, 'Qwen TTS voice not found. Refresh the voice list.');
+  }
   const speechSegments = prepareChapterSpeechSegments(textVersion.text, {
     resolveVoice: (name) => resolveVoiceCommandId(name, voiceOptions)
   });
@@ -728,7 +732,7 @@ export async function prepareChapterAudio({
     textHash,
     textChunks: speechSegments.flatMap((section, sectionIndex) =>
       section.parts.flatMap((part) => {
-        const chunks = splitTextForStreaming(part.text);
+        const chunks = provider === 'qwen' ? splitQwenText(part.text) : splitTextForStreaming(part.text);
         return chunks.map((text, index) => ({
           text,
           sectionIndex,
@@ -742,7 +746,10 @@ export async function prepareChapterAudio({
   };
 }
 
-export async function streamChapterAudioChunk(text, voice) {
+export async function streamChapterAudioChunk(text, voice, signal) {
+  if (voice?.startsWith(QWEN_VOICE_PREFIX)) {
+    return generateQwenTtsPcmBuffer({ text, voice, signal });
+  }
   return streamTextToPcm(text, voice);
 }
 

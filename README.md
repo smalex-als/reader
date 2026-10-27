@@ -403,6 +403,8 @@ Server environment variables:
 
 - `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, YouTube `gpt-transcribe`, and image enhancement)
 - `XAI_API_KEY` (required for xAI TTS generation)
+- `QWEN_TTS_SERVER` (Qwen3-TTS HTTP API base URL; default `http://192.168.1.174:8001`, not the demo on port `8000`)
+- `QWEN_TTS_TIMEOUT_MS` (Qwen timeout per generated chunk, including busy retries; default `300000` milliseconds)
 - `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://reader.test:11434`)
 - `OCR_DEEPSEEK_CONCURRENCY` (max active Deepseek OCR requests; default `1`, so extra requests wait server-side instead of overloading the model)
 - `OCR_DEEPSEEK_MODEL` (default `deepseek-ocr`)
@@ -429,6 +431,36 @@ An HTTP 403 can also be caused by YouTube access restrictions, so enabling the r
 does not guarantee every video can be downloaded.
 
 YouTube imports use `gpt-transcribe` and upload the downloaded MP3 to OpenAI; recordings above the API file-size limit are converted into 15-minute mono chunks and transcribed sequentially.
+
+### Qwen3-TTS
+
+Qwen voices appear as `<name> - Qwen` in both the playback and MP3 voice selectors.
+Reader loads the names and IDs from `GET /api/voices` when the app opens, regains
+focus, or receives a missing-voice error during playback. Reload or refocus the app
+after adding or renaming voice files. If Qwen is unavailable, the other TTS voices
+remain available.
+
+Set `QWEN_TTS_SERVER` on Reader's server (and in `.env` when using Docker Compose)
+if the service moves. Use `http://127.0.0.1:8001` only when Reader and Qwen run on
+the same host without container isolation. The browser calls Reader's own API;
+Reader sends `{ "voice": "voice_alexey.pt", "text": "…" }` to Qwen and receives
+binary WAV. No browser CORS changes, Qwen libraries, or client GPU are required.
+The current service speaks Russian only.
+
+Reader splits speech into paragraphs within the API's current `max_text_length`
+(at most 3000 Unicode characters), queues Qwen generation within each server
+process, and retries HTTP 409 until the chunk timeout. This also handles contention
+with other processes or clients. HTTP 404 refreshes the voice catalog and reports
+the missing voice; validation details (422) and model errors (502) are shown as
+errors rather than treated as audio. Timeouts return 504.
+
+The full WAV for each chunk arrives after generation completes. Reader uses
+`ffmpeg` to decode/resample it to 24 kHz mono PCM for playback and the existing
+chapter pipeline to save MP3, voice metadata, pauses, and subchapter timings.
+`ffmpeg`, `ffprobe`, and `lame` must be installed on a non-Docker server; the Docker
+image already includes them. Allow long requests in any additional reverse proxy:
+at least 300 seconds for one generation, and longer when requests queue or contain
+multiple chunks. The supplied nginx configuration allows 900 seconds.
 
 Front-end environment variables:
 

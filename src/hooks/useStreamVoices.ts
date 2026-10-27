@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
-import { fetchStreamVoices } from '@/api/streamVoices';
+import { fetchStreamVoices, STREAM_VOICES_REFRESH_EVENT } from '@/api/streamVoices';
 import { useToast } from '@/hooks/useToast';
 import { createActionHandlerRegistry, runRequest } from '@/lib/actionHandlers';
 import {
@@ -77,7 +77,7 @@ export function useStreamVoices() {
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'xai'
+        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen'
       ),
     [streamVoiceOptions]
   );
@@ -98,9 +98,16 @@ export function useStreamVoices() {
         }
       }
     };
-    void voiceHandlers.runAction('loadVoices', undefined, actions, undefined);
+    const refreshVoices = () => {
+      void voiceHandlers.runAction('loadVoices', undefined, actions, undefined);
+    };
+    refreshVoices();
+    window.addEventListener('focus', refreshVoices);
+    window.addEventListener(STREAM_VOICES_REFRESH_EVENT, refreshVoices);
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', refreshVoices);
+      window.removeEventListener(STREAM_VOICES_REFRESH_EVENT, refreshVoices);
     };
   }, [dispatch, showToast]);
 
@@ -149,7 +156,7 @@ export function useMp3Voice() {
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'xai'
+        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen'
       ),
     [streamVoiceOptions]
   );

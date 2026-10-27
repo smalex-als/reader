@@ -1,4 +1,5 @@
 import express from 'express';
+import { pipeline } from 'node:stream/promises';
 import { DEFAULT_STREAM_VOICE, XAI_STREAM_VOICES } from '../config.js';
 import { createHttpError } from '../lib/errors.js';
 import { asyncHandler } from '../lib/async.js';
@@ -7,6 +8,7 @@ import { createBookFromPdf } from '../lib/pdf.js';
 import { invalidateSearchIndexForImage } from '../lib/search.js';
 import {
   createBufferedPcmStream,
+  buildWavHeader,
   createTextPcmStream,
   createTextWavStream,
   estimatePcmInitialBufferSeconds,
@@ -17,12 +19,15 @@ import {
 } from '../lib/streamAudio.js';
 import { generateXaiTtsDebugFile, generateXaiTtsPcmBuffer } from '../lib/xaiTts.js';
 import {
-  createStreamVoiceOptions,
+  loadStreamVoiceOptions,
+  TTS_PROVIDER_QWEN,
   TTS_PROVIDER_STREAMING,
   TTS_PROVIDER_XAI
 } from '../lib/streamVoices.js';
 import { createTtsLogTimer } from '../lib/ttsLog.js';
 import { createMemoryUpload } from '../lib/upload.js';
+import { generateQwenTtsPcmBuffer, QWEN_VOICE_PREFIX } from '../lib/qwenTts.js';
+import { stripMarkdown } from '../lib/streamText.js';
 
 const router = express.Router();
 const upload = createMemoryUpload();
@@ -83,8 +88,12 @@ function setPcmStreamHeaders(res) {
 }
 
 function resolvePcmTtsTarget(voice) {
+  const selectedVoice = typeof voice === 'string' && voice.trim() ? voice.trim() : DEFAULT_STREAM_VOICE;
+  if (selectedVoice.startsWith(QWEN_VOICE_PREFIX)) {
+    return { provider: TTS_PROVIDER_QWEN, voice: selectedVoice, xaiVoice: '' };
+  }
   const requestedVoice =
-    typeof voice === 'string' && voice.trim().length ? voice.trim().toLowerCase() : '';
+    selectedVoice.toLowerCase();
   const xaiVoice = requestedVoice.startsWith('xai_') ? requestedVoice.slice(4) : '';
 
   if (XAI_STREAM_VOICES.includes(xaiVoice)) {
@@ -101,13 +110,13 @@ function resolvePcmTtsTarget(voice) {
   };
 }
 
-router.get('/api/stream-audio/voices', (_req, res) => {
+router.get('/api/stream-audio/voices', asyncHandler(async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({
     defaultVoice: DEFAULT_STREAM_VOICE,
-    voices: createStreamVoiceOptions()
+    voices: await loadStreamVoiceOptions()
   });
-});
+}));
 
 router.get('/api/page-text', asyncHandler(async (req, res) => {
   const image = req.query.image;
@@ -162,6 +171,18 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
   req.once('aborted', handleRequestAborted);
   res.once('close', handleResponseClosed);
   try {
+    if (target.provider === TTS_PROVIDER_QWEN) {
+      const pcmBuffer = await generateQwenTtsPcmBuffer({
+        text: stripMarkdown(typeof text === 'string' ? text : ''),
+        voice: target.voice,
+        signal: abortController.signal
+      });
+      if (abortController.signal.aborted) return;
+      setPcmStreamHeaders(res);
+      res.end(pcmBuffer);
+      await log.finish({ status: 'ok', source: 'qwen', responseBytes: pcmBuffer.length });
+      return;
+    }
     if (target.xaiVoice) {
       const pcmBuffer = await generateXaiTtsPcmBuffer({
         text,
@@ -205,14 +226,15 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
 
 router.post('/api/stream-audio/wav', asyncHandler(async (req, res) => {
   const { text, voice } = req.body || {};
+  const target = resolvePcmTtsTarget(voice);
   const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const log = createTtsLogTimer({
     requestId,
     scope: 'api',
     endpoint: '/api/stream-audio/wav',
     method: 'POST',
-    provider: TTS_PROVIDER_STREAMING,
-    voice: typeof voice === 'string' && voice.trim() ? voice.trim() : DEFAULT_STREAM_VOICE,
+    provider: target.provider,
+    voice: target.voice,
     format: 'wav',
     text: typeof text === 'string' ? text : ''
   });
@@ -228,18 +250,31 @@ router.post('/api/stream-audio/wav', asyncHandler(async (req, res) => {
   req.once('aborted', handleRequestAborted);
   res.once('close', handleResponseClosed);
 
-  const wavStream = createTextWavStream(
-    text,
-    typeof voice === 'string' ? voice.trim() : '',
-    abortController.signal,
-    requestId
-  );
-  res.setHeader('Content-Type', PCM_STREAM_MIME_TYPE);
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('Content-Disposition', 'inline; filename="stream-audio-streaming.wav"');
-  res.setHeader('X-Audio-Streaming', 'wav');
-
   try {
+    if (target.provider === TTS_PROVIDER_QWEN) {
+      const pcm = await generateQwenTtsPcmBuffer({
+        text: stripMarkdown(typeof text === 'string' ? text : ''),
+        voice: target.voice,
+        signal: abortController.signal
+      });
+      if (abortController.signal.aborted) return;
+      res.setHeader('Content-Type', PCM_STREAM_MIME_TYPE);
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Content-Disposition', 'inline; filename="speech.wav"');
+      res.end(Buffer.concat([buildWavHeader(pcm.length), pcm]));
+      await log.finish({ status: 'ok', source: 'qwen', responseBytes: pcm.length + 44 });
+      return;
+    }
+    const wavStream = createTextWavStream(
+      text,
+      typeof voice === 'string' ? voice.trim() : '',
+      abortController.signal,
+      requestId
+    );
+    res.setHeader('Content-Type', PCM_STREAM_MIME_TYPE);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Disposition', 'inline; filename="stream-audio-streaming.wav"');
+    res.setHeader('X-Audio-Streaming', 'wav');
     await pipeline(wavStream, res);
     await log.finish({ status: 'ok', source: 'streaming' });
   } catch (error) {

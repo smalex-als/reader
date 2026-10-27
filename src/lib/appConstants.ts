@@ -43,7 +43,7 @@ export type StreamVoice = string;
 export type StreamVoiceOption = {
   id: string;
   label: string;
-  provider: 'xai' | 'streaming';
+  provider: 'xai' | 'streaming' | 'qwen';
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {

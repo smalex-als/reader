@@ -103,7 +103,7 @@ function normalizeJob(job) {
   return {
     bookId: job.bookId,
     chapterNumber: job.chapterNumber,
-    provider: job.provider === 'xai' ? job.provider : 'default',
+    provider: ['xai', 'qwen'].includes(job.provider) ? job.provider : 'default',
     status: job.status ?? 'queued',
     versionId: typeof job.versionId === 'string' ? job.versionId : 'base',
     startedAt: job.startedAt ?? null,
@@ -154,6 +154,7 @@ export async function cancelChapterAudioJob(bookId, chapterNumber) {
   const signal = activeSignals.get(key);
   if (signal) {
     signal.canceled = true;
+    signal.abortController?.abort();
   }
   const existing = await getChapterAudioJob(bookId, chapterNumber);
   if (existing?.queueJobId) {
@@ -240,6 +241,7 @@ export async function runChapterAudioJob({
   const key = getJobKey(bookId, chapterNumber);
   const signal = activeSignals.get(key) ?? {
     canceled: false,
+    abortController: new AbortController(),
     voice,
     versionId: versionId ?? 'base',
     provider,
@@ -247,7 +249,7 @@ export async function runChapterAudioJob({
   };
   activeSignals.set(key, signal);
   let preparation = null;
-  const normalizedProvider = provider === 'xai' ? provider : 'streaming';
+  const normalizedProvider = ['xai', 'qwen'].includes(provider) ? provider : 'streaming';
   const jobLog = createTtsLogTimer({
     scope: 'job',
     endpoint: 'chapter-audio',
@@ -367,7 +369,7 @@ export async function runChapterAudioJob({
         const chunkLog = createTtsLogTimer({
           scope: 'job',
           endpoint: 'chapter-audio-chunk',
-          provider: 'streaming',
+          provider: normalizedProvider,
           voice: chunkVoice || null,
           format: 'pcm_s16le',
           bookId,
@@ -379,10 +381,10 @@ export async function runChapterAudioJob({
         });
         let pcmBuffer;
         try {
-          pcmBuffer = await streamChapterAudioChunk(chunkText, chunkVoice);
+          pcmBuffer = await streamChapterAudioChunk(chunkText, chunkVoice, signal.abortController?.signal);
           await chunkLog.finish({
             status: 'ok',
-            source: 'streaming',
+            source: normalizedProvider,
             responseBytes: pcmBuffer.length,
             text: chunkText
           });
@@ -392,6 +394,10 @@ export async function runChapterAudioJob({
         }
         if (!pcmBuffer.length) {
           throw createHttpError(502, 'No audio returned from streaming service');
+        }
+        if (signal.canceled) {
+          canceled = true;
+          break;
         }
         await pcmHandle.write(pcmBuffer);
         pcmLength += pcmBuffer.length;
@@ -431,7 +437,7 @@ export async function runChapterAudioJob({
       await updateJob(bookId, chapterNumber, { status: 'canceled', progress: null });
       await finishJobLog({
         status: 'aborted',
-        source: 'streaming',
+        source: normalizedProvider,
         text: preparation.cleanText,
         versionId: preparation.versionId
       });
@@ -470,7 +476,7 @@ export async function runChapterAudioJob({
     });
     await finishJobLog({
       status: 'ok',
-      source: 'streaming',
+      source: normalizedProvider,
       cacheHit: false,
       responseBytes: mp3Stat.size,
       audioUrl: preparation.mp3Url,
@@ -486,6 +492,11 @@ export async function runChapterAudioJob({
           console.warn('Failed to delete PCM file after error', cleanupError);
         }
       }
+    }
+    if (signal.canceled) {
+      await updateJob(bookId, chapterNumber, { status: 'canceled', progress: null });
+      await finishJobLog({ status: 'aborted', error });
+      return;
     }
     await finalizeFailure(bookId, chapterNumber, error);
     await finishJobLog({

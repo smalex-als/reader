@@ -2,6 +2,7 @@ import {
   getStreamPcmResponseKey,
   streamPcmResponseCache
 } from '@/lib/streamPcmResponseCache';
+import { STREAM_VOICES_REFRESH_EVENT } from '@/api/streamVoices';
 
 export type StreamPcmRequest = {
   text: string;
@@ -77,6 +78,9 @@ export async function openStreamPcmReader({
   const response = await responsePromise;
 
   if (!response.ok) {
+    if (response.status === 404 && voice.startsWith('qwen_')) {
+      window.dispatchEvent(new Event(STREAM_VOICES_REFRESH_EVENT));
+    }
     throw new Error(await readStreamError(response));
   }
   if (!response.body) {

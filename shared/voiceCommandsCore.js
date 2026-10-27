@@ -4,6 +4,8 @@
  */
 function extractVoiceNamePart(id) {
   return id
+    .replace(/^qwen_(?:voice_)?/i, '')
+    .replace(/\.pt$/i, '')
     .replace(/^xai_/i, '')
     .replace(/^[a-z]{2}(?:-[A-Z]{2})?-/i, '')
     .split('_')[0]
@@ -23,6 +25,7 @@ export function resolveVoiceCommandId(name, options) {
     options.find((option) => option.id === target) ??
     options.find((option) => option.id.toLowerCase() === lowered) ??
     options.find((option) => option.label.toLowerCase() === lowered) ??
+    options.find((option) => option.id.startsWith('qwen_') && option.label.replace(/ - Qwen$/, '').toLowerCase() === lowered) ??
     options.find((option) => extractVoiceNamePart(option.id) === lowered);
   return match?.id ?? null;
 }

@@ -23,7 +23,7 @@ export function useChapterViewerActions({
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'xai'
+        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen'
       ),
     [streamVoiceOptions]
   );

@@ -1,5 +1,7 @@
 import type { StreamVoice, StreamVoiceOption } from '@/lib/appConstants';
 
+export const STREAM_VOICES_REFRESH_EVENT = 'reader:refresh-voices';
+
 type StreamVoicesResponse = {
   defaultVoice?: string;
   voices?: StreamVoiceOption[];
@@ -18,6 +20,7 @@ export async function fetchStreamVoices() {
           voice.id.trim() &&
           typeof voice.label === 'string' &&
           (voice.provider === 'xai' ||
+            voice.provider === 'qwen' ||
             voice.provider === 'streaming')
       )
     : [];

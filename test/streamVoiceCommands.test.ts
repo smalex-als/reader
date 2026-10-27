@@ -50,3 +50,10 @@ test('matches the bare name inside an xAI voice id', () => {
   const options = [{ id: 'xai_eve', label: 'Eve - xAI', provider: 'xai' as const }];
   assert.equal(resolveVoiceCommandId('eve', options), 'xai_eve');
 });
+
+test('matches Qwen filenames and live display names without changing the exact service ID', () => {
+  const options = [{ id: 'qwen_voice_Petukhov.pt', label: 'Петухов - Qwen', provider: 'qwen' as const }];
+  assert.equal(resolveVoiceCommandId('petukhov', options), 'qwen_voice_Petukhov.pt');
+  assert.equal(resolveVoiceCommandId('Петухов', options), 'qwen_voice_Petukhov.pt');
+  assert.equal(resolveVoiceCommandId('qwen_voice_Petukhov.pt', options), 'qwen_voice_Petukhov.pt');
+});

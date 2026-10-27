@@ -60,6 +60,9 @@ export function getChapterTextVersionDisplayState({
 }
 
 export function getChapterAudioProvider(voice: string): ChapterAudioProvider {
+  if (voice.startsWith('qwen_')) {
+    return 'qwen';
+  }
   if (voice.startsWith('xai_')) {
     return 'xai';
   }

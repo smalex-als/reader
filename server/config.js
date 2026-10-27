@@ -56,6 +56,8 @@ export const STREAM_PCM_MAX_INITIAL_BUFFER_SECONDS = parseNonNegativeNumber(
   45
 );
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
+export const QWEN_TTS_SERVER = process.env.QWEN_TTS_SERVER || 'http://192.168.1.174:8001';
+export const QWEN_TTS_TIMEOUT_MS = parsePositiveNumber(process.env.QWEN_TTS_TIMEOUT_MS, 300_000);
 export const LOCAL_STREAM_VOICES = [
   'en-Breeze_woman',
   'en-Brutalon_man',

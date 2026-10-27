@@ -55,7 +55,7 @@ function parseChapterAudioFilename(filename) {
 }
 
 function normalizeProvider(value) {
-  return value === 'xai' ? value : 'default';
+  return ['xai', 'qwen'].includes(value) ? value : 'default';
 }
 
 export async function listGeneratedAudio() {
