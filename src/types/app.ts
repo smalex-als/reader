@@ -213,7 +213,7 @@ export interface ChapterTextVersion {
   deletable: boolean;
 }
 
-export type ChapterAudioProvider = 'default' | 'xai' | 'qwen';
+export type ChapterAudioProvider = 'default' | 'xai' | 'qwen' | 'elevenlabs';
 
 export interface ImagePreviewTarget {
   bookId: string;

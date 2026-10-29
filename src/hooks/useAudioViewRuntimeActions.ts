@@ -6,6 +6,9 @@ import { appActions, useAppDispatch } from '@/state/appState';
 import type { ChapterAudioProvider } from '@/types/app';
 
 function getMp3Provider(voice: string): ChapterAudioProvider {
+  if (voice.startsWith('elevenlabs_')) {
+    return 'elevenlabs';
+  }
   if (voice.startsWith('qwen_')) {
     return 'qwen';
   }
@@ -31,7 +34,7 @@ export function useAudioViewRuntimeActions({
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen'
+        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen' || option.provider === 'elevenlabs'
       ),
     [streamVoiceOptions]
   );

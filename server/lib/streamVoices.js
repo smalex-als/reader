@@ -1,9 +1,15 @@
-import { LOCAL_STREAM_VOICES, XAI_STREAM_VOICES } from '../config.js';
+import { ELEVENLABS_VOICE_IDS, LOCAL_STREAM_VOICES, XAI_STREAM_VOICES } from '../config.js';
+import { ELEVENLABS_VOICE_PREFIX } from './elevenlabsTts.js';
 import { getQwenTtsVoices, QWEN_VOICE_PREFIX } from './qwenTts.js';
 
 export const TTS_PROVIDER_XAI = 'xai';
 export const TTS_PROVIDER_STREAMING = 'streaming';
 export const TTS_PROVIDER_QWEN = 'qwen';
+export const TTS_PROVIDER_ELEVENLABS = 'elevenlabs';
+const ELEVENLABS_VOICE_NAMES = new Map([
+  ['3EuKHIEZbSzrHGNmdYsx', 'Nikolay'],
+  ['gJEfHTTiifXEDmO687lC', 'Prince Nur']
+]);
 let lastQwenVoiceOptions = [];
 
 function formatProviderVoiceLabel(voice) {
@@ -18,6 +24,11 @@ function formatLocalVoiceLabel(voice) {
 
 export function createStreamVoiceOptions() {
   return [
+    ...ELEVENLABS_VOICE_IDS.map((id) => ({
+      id: `${ELEVENLABS_VOICE_PREFIX}${id}`,
+      label: `${ELEVENLABS_VOICE_NAMES.get(id) || id} - ElevenLabs`,
+      provider: TTS_PROVIDER_ELEVENLABS
+    })),
     ...XAI_STREAM_VOICES.map((voice) => ({
       id: `xai_${voice}`,
       label: `${formatProviderVoiceLabel(voice)} - xAI`,
@@ -66,6 +77,7 @@ export async function loadStreamVoices() {
  */
 export async function getChapterAudioVoiceOptions(provider) {
   if (provider === TTS_PROVIDER_QWEN) return getQwenVoiceOptions();
-  const target = provider === 'xai' ? TTS_PROVIDER_XAI : TTS_PROVIDER_STREAMING;
+  const target = provider === TTS_PROVIDER_ELEVENLABS ? TTS_PROVIDER_ELEVENLABS
+    : provider === 'xai' ? TTS_PROVIDER_XAI : TTS_PROVIDER_STREAMING;
   return createStreamVoiceOptions().filter((option) => option.provider === target);
 }

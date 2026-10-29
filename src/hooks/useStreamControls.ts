@@ -57,7 +57,7 @@ export function useStreamControls({
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen'
+        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen' || option.provider === 'elevenlabs'
       ),
     [streamVoiceOptions]
   );

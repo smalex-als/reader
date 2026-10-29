@@ -4,6 +4,7 @@
  */
 function extractVoiceNamePart(id) {
   return id
+    .replace(/^elevenlabs_/i, '')
     .replace(/^qwen_(?:voice_)?/i, '')
     .replace(/\.pt$/i, '')
     .replace(/^xai_/i, '')

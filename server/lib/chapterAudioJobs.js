@@ -103,7 +103,7 @@ function normalizeJob(job) {
   return {
     bookId: job.bookId,
     chapterNumber: job.chapterNumber,
-    provider: ['xai', 'qwen'].includes(job.provider) ? job.provider : 'default',
+    provider: ['xai', 'qwen', 'elevenlabs'].includes(job.provider) ? job.provider : 'default',
     status: job.status ?? 'queued',
     versionId: typeof job.versionId === 'string' ? job.versionId : 'base',
     startedAt: job.startedAt ?? null,
@@ -249,7 +249,7 @@ export async function runChapterAudioJob({
   };
   activeSignals.set(key, signal);
   let preparation = null;
-  const normalizedProvider = ['xai', 'qwen'].includes(provider) ? provider : 'streaming';
+  const normalizedProvider = ['xai', 'qwen', 'elevenlabs'].includes(provider) ? provider : 'streaming';
   const jobLog = createTtsLogTimer({
     scope: 'job',
     endpoint: 'chapter-audio',

@@ -78,7 +78,7 @@ export function useStreamVoices() {
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen'
+        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen' || option.provider === 'elevenlabs'
       ),
     [streamVoiceOptions]
   );
@@ -157,7 +157,7 @@ export function useMp3Voice() {
   const mp3VoiceOptions = useMemo(
     () =>
       streamVoiceOptions.filter(
-        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen'
+        (option) => option.provider === 'streaming' || option.provider === 'xai' || option.provider === 'qwen' || option.provider === 'elevenlabs'
       ),
     [streamVoiceOptions]
   );

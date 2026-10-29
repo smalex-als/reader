@@ -56,6 +56,12 @@ export const STREAM_PCM_MAX_INITIAL_BUFFER_SECONDS = parseNonNegativeNumber(
   45
 );
 export const XAI_API_KEY = process.env.XAI_API_KEY || '';
+export const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || '';
+export const ELEVENLABS_VOICE_IDS = [...new Set((
+  process.env.ELEVENLABS_VOICE_IDS || '3EuKHIEZbSzrHGNmdYsx,gJEfHTTiifXEDmO687lC'
+).split(',').map((id) => id.trim()).filter(Boolean))];
+export const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || 'eleven_v4';
+export const ELEVENLABS_TTS_TIMEOUT_MS = parsePositiveNumber(process.env.ELEVENLABS_TTS_TIMEOUT_MS, 300_000);
 export const QWEN_TTS_SERVER = process.env.QWEN_TTS_SERVER || 'http://localhost:8001';
 export const QWEN_TTS_TIMEOUT_MS = parsePositiveNumber(process.env.QWEN_TTS_TIMEOUT_MS, 300_000);
 export const LOCAL_STREAM_VOICES = [

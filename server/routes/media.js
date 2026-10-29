@@ -20,6 +20,7 @@ import {
 import { generateXaiTtsDebugFile, generateXaiTtsPcmBuffer } from '../lib/xaiTts.js';
 import {
   loadStreamVoices,
+  TTS_PROVIDER_ELEVENLABS,
   TTS_PROVIDER_QWEN,
   TTS_PROVIDER_STREAMING,
   TTS_PROVIDER_XAI
@@ -28,6 +29,7 @@ import { createTtsLogTimer } from '../lib/ttsLog.js';
 import { createMemoryUpload } from '../lib/upload.js';
 import { generateQwenTtsPcmBuffer, QWEN_VOICE_PREFIX } from '../lib/qwenTts.js';
 import { stripMarkdown } from '../lib/streamText.js';
+import { createElevenLabsTtsPcmStream, generateElevenLabsTtsPcmBuffer, ELEVENLABS_VOICE_PREFIX } from '../lib/elevenlabsTts.js';
 
 const router = express.Router();
 const upload = createMemoryUpload();
@@ -89,6 +91,9 @@ function setPcmStreamHeaders(res) {
 
 function resolvePcmTtsTarget(voice) {
   const selectedVoice = typeof voice === 'string' && voice.trim() ? voice.trim() : DEFAULT_STREAM_VOICE;
+  if (selectedVoice.startsWith(ELEVENLABS_VOICE_PREFIX)) {
+    return { provider: TTS_PROVIDER_ELEVENLABS, voice: selectedVoice, xaiVoice: '' };
+  }
   if (selectedVoice.startsWith(QWEN_VOICE_PREFIX)) {
     return { provider: TTS_PROVIDER_QWEN, voice: selectedVoice, xaiVoice: '' };
   }
@@ -171,6 +176,16 @@ router.post('/api/stream-audio/pcm', asyncHandler(async (req, res) => {
   req.once('aborted', handleRequestAborted);
   res.once('close', handleResponseClosed);
   try {
+    if (target.provider === TTS_PROVIDER_ELEVENLABS) {
+      const pcmStream = createElevenLabsTtsPcmStream({
+        text: stripMarkdown(typeof text === 'string' ? text : ''),
+        voice: target.voice,
+        signal: abortController.signal
+      });
+      const responseBytes = await writeStreamResponse(pcmStream, res, () => setPcmStreamHeaders(res));
+      await log.finish({ status: 'ok', source: 'elevenlabs', responseBytes });
+      return;
+    }
     if (target.provider === TTS_PROVIDER_QWEN) {
       const pcmBuffer = await generateQwenTtsPcmBuffer({
         text: stripMarkdown(typeof text === 'string' ? text : ''),
@@ -251,8 +266,10 @@ router.post('/api/stream-audio/wav', asyncHandler(async (req, res) => {
   res.once('close', handleResponseClosed);
 
   try {
-    if (target.provider === TTS_PROVIDER_QWEN) {
-      const pcm = await generateQwenTtsPcmBuffer({
+    if (target.provider === TTS_PROVIDER_QWEN || target.provider === TTS_PROVIDER_ELEVENLABS) {
+      const generatePcm = target.provider === TTS_PROVIDER_ELEVENLABS
+        ? generateElevenLabsTtsPcmBuffer : generateQwenTtsPcmBuffer;
+      const pcm = await generatePcm({
         text: stripMarkdown(typeof text === 'string' ? text : ''),
         voice: target.voice,
         signal: abortController.signal
@@ -262,7 +279,7 @@ router.post('/api/stream-audio/wav', asyncHandler(async (req, res) => {
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('Content-Disposition', 'inline; filename="speech.wav"');
       res.end(Buffer.concat([buildWavHeader(pcm.length), pcm]));
-      await log.finish({ status: 'ok', source: 'qwen', responseBytes: pcm.length + 44 });
+      await log.finish({ status: 'ok', source: target.provider, responseBytes: pcm.length + 44 });
       return;
     }
     const wavStream = createTextWavStream(

@@ -5,6 +5,8 @@ import { fetchStreamVoices } from '../src/api/streamVoices.ts';
 test('keeps Qwen voice choices and surfaces a provider failure alongside other voices', async (t) => {
   const voices = [
     { id: 'en-Mike_man', label: 'Mike - man', provider: 'streaming' },
+    { id: 'elevenlabs_3EuKHIEZbSzrHGNmdYsx', label: 'Nikolay - ElevenLabs', provider: 'elevenlabs' },
+    { id: 'elevenlabs_gJEfHTTiifXEDmO687lC', label: 'Prince Nur - ElevenLabs', provider: 'elevenlabs' },
     { id: 'qwen_voice_alexey.pt', label: 'Alexey - Qwen', provider: 'qwen' }
   ];
   t.mock.method(globalThis, 'fetch', async () => Response.json({

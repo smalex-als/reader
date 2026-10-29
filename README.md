@@ -431,6 +431,10 @@ Server environment variables:
 
 - `OPENAI_API_KEY` (required for OpenAI OCR, TOC generation, YouTube `gpt-transcribe`, and image enhancement)
 - `XAI_API_KEY` (required for xAI TTS generation)
+- `ELEVENLABS_API_KEY` (required for ElevenLabs TTS generation; server only)
+- `ELEVENLABS_VOICE_IDS` (comma-separated voice IDs; defaults to `3EuKHIEZbSzrHGNmdYsx,gJEfHTTiifXEDmO687lC`)
+- `ELEVENLABS_MODEL_ID` (default `eleven_v4`)
+- `ELEVENLABS_TTS_TIMEOUT_MS` (timeout per ElevenLabs request; default `300000` milliseconds)
 - `QWEN_TTS_SERVER` (Qwen3-TTS HTTP API base URL; default `http://localhost:8001` without Docker, `http://host.docker.internal:8001` in Docker Compose; not the demo on port `8000`)
 - `QWEN_TTS_TIMEOUT_MS` (Qwen timeout per generated chunk, including busy retries; default `300000` milliseconds)
 - `OCR_DEEPSEEK_HOST` (base URL for Deepseek OCR server; default `http://reader.test:11434`)
@@ -459,6 +463,29 @@ An HTTP 403 can also be caused by YouTube access restrictions, so enabling the r
 does not guarantee every video can be downloaded.
 
 YouTube imports use `gpt-transcribe` and upload the downloaded MP3 to OpenAI; recordings above the API file-size limit are converted into 15-minute mono chunks and transcribed sequentially.
+
+### ElevenLabs TTS
+
+Set `ELEVENLABS_API_KEY` on the Reader server, or in `.env` when using Docker Compose.
+For a direct Node launch, export it in the shell or use Node's `--env-file=.env` option.
+Restart the server (recreate the Reader container for Docker Compose), then refresh the app.
+The default voices appear as `Nikolay - ElevenLabs` (`3EuKHIEZbSzrHGNmdYsx`) and
+`Prince Nur - ElevenLabs` (`gJEfHTTiifXEDmO687lC`) in the playback and MP3 selectors.
+Reader uses Eleven v4 by default. Set `ELEVENLABS_MODEL_ID` to select another model,
+for example `eleven_multilingual_v2`. Previously generated MP3 files retain their original
+audio; regenerate them to hear the new model.
+Override `ELEVENLABS_VOICE_IDS` to use a different comma-separated list of voices available
+to your ElevenLabs account. To make one the default playback voice, set
+`STREAM_VOICE=elevenlabs_<voice ID>` on the server.
+
+Reader calls the [ElevenLabs streaming API](https://elevenlabs.io/docs/api-reference/text-to-dialogue/stream)
+from the server with `xi-api-key`, requesting 24 kHz mono 16-bit PCM (`pcm_24000`).
+Eleven v4 uses Text to Dialogue with one voice per request; older models such as
+Multilingual v2 use the Text to Speech endpoint.
+Playback starts as audio arrives. The same provider supports WAV responses and chapter MP3
+generation, including `::voice` commands, pauses, and subchapter timings. MP3 encoding uses
+the existing `lame` and `ffprobe` tools. API keys are never sent to the browser.
+Missing credentials, API errors, and timeouts are reported through Reader's API.
 
 ### Qwen3-TTS
 

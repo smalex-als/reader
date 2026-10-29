@@ -41,6 +41,9 @@ function getGenerateLabel({
   if (selectedMp3Provider === 'qwen') {
     return 'Generate Qwen';
   }
+  if (selectedMp3Provider === 'elevenlabs') {
+    return 'Generate ElevenLabs';
+  }
   return 'Generate audio';
 }
 

@@ -43,7 +43,7 @@ export type StreamVoice = string;
 export type StreamVoiceOption = {
   id: string;
   label: string;
-  provider: 'xai' | 'streaming' | 'qwen';
+  provider: 'xai' | 'streaming' | 'qwen' | 'elevenlabs';
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {

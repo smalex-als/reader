@@ -21,6 +21,7 @@ export async function fetchStreamVoices() {
           voice.id.trim() &&
           typeof voice.label === 'string' &&
           (voice.provider === 'xai' ||
+            voice.provider === 'elevenlabs' ||
             voice.provider === 'qwen' ||
             voice.provider === 'streaming')
       )

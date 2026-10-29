@@ -8,7 +8,7 @@ export type AudioLibraryItem = {
   chapterNumber: number;
   chapterTitle: string;
   versionId: string;
-  provider: 'default' | 'xai' | 'qwen';
+  provider: 'default' | 'xai' | 'qwen' | 'elevenlabs';
   voice: string | null;
   audioUrl: string;
   srtUrl: string | null;

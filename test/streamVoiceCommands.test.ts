@@ -51,6 +51,13 @@ test('matches the bare name inside an xAI voice id', () => {
   assert.equal(resolveVoiceCommandId('eve', options), 'xai_eve');
 });
 
+test('matches ElevenLabs voice IDs with or without the provider prefix', () => {
+  const id = 'gJEfHTTiifXEDmO687lC';
+  const options = [{ id: `elevenlabs_${id}`, label: 'Prince Nur - ElevenLabs', provider: 'elevenlabs' as const }];
+  assert.equal(resolveVoiceCommandId(id, options), `elevenlabs_${id}`);
+  assert.equal(resolveVoiceCommandId(`elevenlabs_${id}`, options), `elevenlabs_${id}`);
+});
+
 test('matches Qwen filenames and live display names without changing the exact service ID', () => {
   const options = [{ id: 'qwen_voice_Petukhov.pt', label: 'Петухов - Qwen', provider: 'qwen' as const }];
   assert.equal(resolveVoiceCommandId('petukhov', options), 'qwen_voice_Petukhov.pt');
